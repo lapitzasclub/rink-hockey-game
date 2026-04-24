@@ -1,5 +1,4 @@
 import './style.css'
-import nipplejs from 'nipplejs'
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MatchScene } from './scenes/MatchScene'
@@ -50,28 +49,45 @@ const touchState = { x: 0, y: 0, pass: false, shoot: false, switch: false }
 ;(window as Window & { __RINK_TOUCH_LOG__?: boolean }).__RINK_TOUCH_LOG__ = true
 ;(window as typeof window & { __RINK_TOUCH__?: typeof touchState }).__RINK_TOUCH__ = touchState
 
-const joystick = nipplejs.create({
-  zone: touchLeft,
-  mode: 'static',
-  position: { left: '66px', top: '66px' },
-  color: 'white',
-  size: 120,
-  threshold: 0.08,
-  fadeTime: 0,
-  restOpacity: 0.25,
-})
+let nipplejsModule: any = null
 
-;(joystick as any).on('move', (_event: any, data: any) => {
-  const force = Math.min(data?.force ?? 0, 1)
-  const angle = data?.angle?.radian ?? 0
-  touchState.x = Math.cos(angle) * force
-  touchState.y = -Math.sin(angle) * force
-})
+async function setupTouchJoystick() {
+  if (!isTouchPrimary) return
 
-;(joystick as any).on('end', () => {
-  touchState.x = 0
-  touchState.y = 0
-})
+  const mod = await import('nipplejs')
+  nipplejsModule = mod.default ?? mod
+
+  const joystick = nipplejsModule.create({
+    zone: touchLeft,
+    mode: 'dynamic',
+    multitouch: false,
+    color: 'white',
+    size: 120,
+    threshold: 0.05,
+    fadeTime: 0,
+    restOpacity: 0.25,
+    dynamicPage: true,
+  })
+
+  joystick.on('start', () => {
+    touchLeft.classList.add('active')
+  })
+
+  joystick.on('move', (_event: any, data: any) => {
+    const vectorX = Number(data?.vector?.x ?? 0)
+    const vectorY = Number(data?.vector?.y ?? 0)
+    touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
+    touchState.y = Phaser.Math.Clamp(vectorY, -1, 1)
+  })
+
+  joystick.on('end hidden', () => {
+    touchLeft.classList.remove('active')
+    touchState.x = 0
+    touchState.y = 0
+  })
+}
+
+void setupTouchJoystick()
 
 for (const [id, key] of [['touch-pass', 'pass'], ['touch-shoot', 'shoot'], ['touch-switch', 'switch']] as const) {
   const el = document.getElementById(id)!
