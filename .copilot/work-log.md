@@ -65,3 +65,4 @@
 - Se endureció además el umbral de gol y se evitó recolocar la bola al centro geométrico de la portería, manteniéndola cerca del punto real de entrada dentro de la red.
 - Se mejoró también el comportamiento del balón alrededor del arco con rebotes más coherentes en la cara de portería y en el fondo de la red.
 - Se hizo más legible la reanudación por falta, con una breve preparación visible, balón fijo y ejecutor colocado antes de soltar de nuevo el juego.
+- El botón de disparo del jugador controlado pasó a servir también para robo manual cuando no hay posesión propia, con ramas de robo exitoso, fallo silencioso o falta.

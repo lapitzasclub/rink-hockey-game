@@ -6,6 +6,9 @@ import {
   FOUL_CHANCE_ON_STEAL,
   FOUL_SETUP_MS,
   GAME_HEIGHT,
+  MANUAL_STEAL_FOUL_CHANCE,
+  MANUAL_STEAL_RANGE,
+  MANUAL_STEAL_SUCCESS_CHANCE,
   GAME_WIDTH,
   GOAL_LINE_OFFSET,
   GOAL_NET_HOLD_X,
@@ -216,7 +219,10 @@ export class MatchScene extends Phaser.Scene {
     applySkating(player, dt)
 
     if (Phaser.Input.Keyboard.JustDown(this.passKey)) this.tryPass(player)
-    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) this.tryShot(player)
+    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) {
+      if (this.ballCarrierId === player.id) this.tryShot(player)
+      else this.tryManualSteal(player)
+    }
   }
 
   /**
@@ -485,6 +491,30 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
     if (player.role === 'goalie') clearGoalieCatch(player)
+  }
+
+  private tryManualSteal(player: Player) {
+    const carrier = this.ballCarrierId ? findPlayerById(this.players, this.ballCarrierId) : null
+    if (!carrier || carrier.team === player.team) return
+
+    const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y)
+    if (distance > MANUAL_STEAL_RANGE) return
+
+    const roll = Math.random()
+    if (roll < MANUAL_STEAL_FOUL_CHANCE) {
+      registerStealFoul(this.ruleState, player, carrier, carrier.pos.x, carrier.pos.y)
+      this.ballCarrierId = null
+      this.ballVelocity = { x: 0, y: 0 }
+      return
+    }
+
+    if (roll < MANUAL_STEAL_FOUL_CHANCE + MANUAL_STEAL_SUCCESS_CHANCE) {
+      const stealDirection = getAimingDirection(player)
+      const released = releaseBall(this.ball, this.players, this.ballCarrierId, stealDirection, STEAL_RELEASE_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
+      this.ballCarrierId = player.id
+      this.ballVelocity = released.ballVelocity
+      this.lastTouch = player.team
+    }
   }
 
   private getClosestRivalToCarrier(carrier: Player) {
