@@ -74,3 +74,4 @@
 - Tras ver que el robo apenas entraba, se amplió bastante la ventana útil de robo y se hizo que la IA solo intente robar cuando realmente está en rango, pero con una frecuencia mucho más visible.
 - Se reequilibraron las entradas para reducir faltas excesivas: ahora hay más margen para fallo limpio y menos castigo automático al intentar robar.
 - Se añadió una primera capa de controles táctiles para móvil sin gamepad: stick analógico virtual a la izquierda y botones a la derecha para pase, tiro/robo y cambio.
+- Al ver que el stick casero no era suficiente, se sustituyó por `nipplejs` para obtener un control táctil analógico mucho más usable en móvil.

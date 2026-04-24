@@ -54,25 +54,9 @@ canvas {
   height: 132px;
 }
 
-#touch-stick-base,
-#touch-stick-knob {
-  position: absolute;
+#touch-left {
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 70%, rgba(255,255,255,0) 100%);
   border-radius: 50%;
-}
-
-#touch-stick-base {
-  inset: 0;
-  background: rgba(255, 255, 255, 0.12);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-#touch-stick-knob {
-  left: 42px;
-  top: 42px;
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.28);
-  border: 2px solid rgba(255, 255, 255, 0.35);
 }
 
 #touch-right {

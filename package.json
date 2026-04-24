@@ -13,6 +13,7 @@
     "vite": "^8.0.10"
   },
   "dependencies": {
+    "nipplejs": "^1.0.1",
     "phaser": "^4.0.0"
   }
 }

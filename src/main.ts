@@ -1,4 +1,5 @@
 import './style.css'
+import nipplejs from 'nipplejs'
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MatchScene } from './scenes/MatchScene'
@@ -6,10 +7,7 @@ import { MatchScene } from './scenes/MatchScene'
 const app = document.querySelector<HTMLDivElement>('#app')!
 app.innerHTML = `
   <div id="game-shell">
-    <div id="touch-left" class="touch-zone hidden">
-      <div id="touch-stick-base"></div>
-      <div id="touch-stick-knob"></div>
-    </div>
+    <div id="touch-left" class="touch-zone hidden"></div>
     <div id="game-host"></div>
     <div id="touch-right" class="touch-buttons hidden">
       <button id="touch-pass">P</button>
@@ -38,8 +36,6 @@ const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches
 const hasGamepad = () => navigator.getGamepads?.().some(Boolean) ?? false
 const touchLeft = document.getElementById('touch-left')!
 const touchRight = document.getElementById('touch-right')!
-const knob = document.getElementById('touch-stick-knob')!
-const base = document.getElementById('touch-stick-base')!
 
 function setTouchUiVisible(visible: boolean) {
   touchLeft.classList.toggle('hidden', !visible)
@@ -50,46 +46,31 @@ setTouchUiVisible(isTouchPrimary && !hasGamepad())
 window.addEventListener('gamepadconnected', () => setTouchUiVisible(false))
 window.addEventListener('gamepaddisconnected', () => setTouchUiVisible(isTouchPrimary && !hasGamepad()))
 
-let activePointerId: number | null = null
 const touchState = { x: 0, y: 0, pass: false, shoot: false, switch: false }
 ;(window as typeof window & { __RINK_TOUCH__?: typeof touchState }).__RINK_TOUCH__ = touchState
 
-function resetStick() {
+const joystick = nipplejs.create({
+  zone: touchLeft,
+  mode: 'static',
+  position: { left: '66px', top: '66px' },
+  color: 'white',
+  size: 120,
+  threshold: 0.08,
+  fadeTime: 0,
+  restOpacity: 0.25,
+})
+
+;(joystick as any).on('move', (_event: any, data: any) => {
+  const force = Math.min(data?.force ?? 0, 1)
+  const angle = data?.angle?.radian ?? 0
+  touchState.x = Math.cos(angle) * force
+  touchState.y = Math.sin(angle) * force
+})
+
+;(joystick as any).on('end', () => {
   touchState.x = 0
   touchState.y = 0
-  knob.setAttribute('style', '')
-}
-
-touchLeft.addEventListener('pointerdown', (event) => {
-  activePointerId = event.pointerId
-  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 })
-
-touchLeft.addEventListener('pointermove', (event) => {
-  if (event.pointerId !== activePointerId) return
-  const rect = base.getBoundingClientRect()
-  const cx = rect.left + rect.width / 2
-  const cy = rect.top + rect.height / 2
-  const dx = event.clientX - cx
-  const dy = event.clientY - cy
-  const max = 44
-  const len = Math.hypot(dx, dy) || 1
-  const clamped = Math.min(len, max)
-  const nx = (dx / len) * clamped
-  const ny = (dy / len) * clamped
-  knob.setAttribute('style', `transform: translate(${nx}px, ${ny}px);`)
-  touchState.x = nx / max
-  touchState.y = ny / max
-})
-
-const clearPointer = (event: PointerEvent) => {
-  if (event.pointerId !== activePointerId) return
-  activePointerId = null
-  resetStick()
-}
-
-touchLeft.addEventListener('pointerup', clearPointer)
-touchLeft.addEventListener('pointercancel', clearPointer)
 
 for (const [id, key] of [['touch-pass', 'pass'], ['touch-shoot', 'shoot'], ['touch-switch', 'switch']] as const) {
   const el = document.getElementById(id)!
