@@ -38,17 +38,17 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 ## Estructura inicial actual
 
 - `.copilot/` documentación operativa y memoria del proyecto.
-- `app/` aplicación web Vite.
-- `app/src/main.ts` prototipo jugable actual en una sola escena.
-- `app/src/style.css` estilos mínimos del contenedor web.
+- `src/main.ts` prototipo jugable actual en una sola escena.
+- `src/style.css` estilos mínimos del contenedor web.
+- `public/` recursos públicos del proyecto.
 
 ## Evolución estructural prevista
 
-- `app/src/game/` lógica principal del juego.
-- `app/src/scenes/` escenas Phaser.
-- `app/src/entities/` jugador, bola y porterías.
-- `app/src/systems/` reglas, marcador, IA y utilidades.
-- `app/public/assets/` sprites, audio y UI.
+- `src/game/` lógica principal del juego.
+- `src/scenes/` escenas Phaser.
+- `src/entities/` jugador, bola y porterías.
+- `src/systems/` reglas, marcador, IA y utilidades.
+- `public/assets/` sprites, audio y UI.
 
 ## Riesgos conocidos
 

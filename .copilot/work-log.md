@@ -10,3 +10,4 @@
 - Se integró Phaser 3 como base del juego.
 - Se implementó un primer prototipo jugable con pista, dos jugadores, bola, goles, marcador, tiempo e IA rival básica.
 - Se validó el build de producción correctamente con `npm run build`.
+- Se reorganizó la estructura para que la app web viva en la raíz del proyecto y `.copilot` quede como carpeta interna al mismo nivel.

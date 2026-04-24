@@ -2,7 +2,7 @@
 
 ## Estado actual
 
-Fase: arranque del proyecto
+Fase: prototipo base jugable
 
 ## Hito 1, base jugable
 
