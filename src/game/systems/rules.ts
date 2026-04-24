@@ -1,5 +1,10 @@
 import type { Player, TeamColor } from '../types'
 
+export type BullyParticipant = {
+  bluePlayerId: string
+  redPlayerId: string
+}
+
 /** Estado mínimo de reglas para empezar a soportar faltas y bullys. */
 export type RuleState = {
   pendingFoul: null | {
@@ -14,6 +19,7 @@ export type RuleState = {
     x: number
     y: number
     message: string
+    participants: BullyParticipant
   }
 }
 
@@ -35,10 +41,11 @@ export function registerStealFoul(state: RuleState, offender: Player, victim: Pl
   }
 }
 
-export function registerBully(state: RuleState, x: number, y: number) {
+export function registerBully(state: RuleState, x: number, y: number, participants: BullyParticipant) {
   state.pendingBully = {
     x,
     y,
     message: 'Bully',
+    participants,
   }
 }

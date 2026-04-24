@@ -309,7 +309,14 @@ export class MatchScene extends Phaser.Scene {
       if (bullySituation) {
         if (this.lastLooseBallTime === 0) this.lastLooseBallTime = time
         if (time - this.lastLooseBallTime > STUCK_BALL_TIMEOUT_MS) {
-          registerBully(this.ruleState, this.ball.x, this.ball.y)
+          const blue = this.getClosestTeamPlayerToPoint('blue', this.ball.x, this.ball.y)
+          const red = this.getClosestTeamPlayerToPoint('red', this.ball.x, this.ball.y)
+          if (blue && red) {
+            registerBully(this.ruleState, this.ball.x, this.ball.y, {
+              bluePlayerId: blue.id,
+              redPlayerId: red.id,
+            })
+          }
           this.lastLooseBallTime = 0
         }
       } else {
@@ -417,6 +424,16 @@ export class MatchScene extends Phaser.Scene {
     if (player.role === 'goalie') clearGoalieCatch(player)
   }
 
+  private getClosestTeamPlayerToPoint(team: TeamColor, x: number, y: number) {
+    return this.players
+      .filter((player) => player.team === team && player.role !== 'goalie')
+      .sort((a, b) => {
+        const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, x, y)
+        const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, x, y)
+        return da - db
+      })[0] ?? null
+  }
+
   private getClosestRivalToCarrier(carrier: Player) {
     return this.players
       .filter((player) => player.team !== carrier.team)
@@ -446,6 +463,23 @@ export class MatchScene extends Phaser.Scene {
       this.ball.setPosition(bully.x, bully.y)
       this.ballVelocity = { x: 0, y: 0 }
       this.ballCarrierId = null
+
+      const blue = findPlayerById(this.players, bully.participants.bluePlayerId)
+      const red = findPlayerById(this.players, bully.participants.redPlayerId)
+      const offset = 26
+
+      if (blue) {
+        blue.pos = { x: bully.x - offset, y: bully.y }
+        blue.velocity = { x: 0, y: 0 }
+        blue.facing = { x: 1, y: 0 }
+      }
+
+      if (red) {
+        red.pos = { x: bully.x + offset, y: bully.y }
+        red.velocity = { x: 0, y: 0 }
+        red.facing = { x: -1, y: 0 }
+      }
+
       this.ruleState.pendingBully = null
       this.restartAt = this.time.now + 900
     }
