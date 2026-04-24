@@ -11,3 +11,7 @@
 - Se implementó un primer prototipo jugable con pista, dos jugadores, bola, goles, marcador, tiempo e IA rival básica.
 - Se validó el build de producción correctamente con `npm run build`.
 - Se reorganizó la estructura para que la app web viva en la raíz del proyecto y `.copilot` quede como carpeta interna al mismo nivel.
+- Se evolucionó el prototipo desde un 1v1 mínimo a una base 5v5 simplificada con portero y 4 jugadores de campo por equipo.
+- Se añadió control de jugador activo y cambio de jugador con `Shift`.
+- Se eliminó la restricción artificial de media pista para jugadores de campo.
+- Se introdujo una IA táctica simple con roles básicos: portero, defensas, ala y pivote.

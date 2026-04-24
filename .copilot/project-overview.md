@@ -21,7 +21,9 @@ Se prioriza una primera versión 2D top-down con gameplay arcade, controles inme
 
 ## Alcance de la primera versión
 
-- Partido 1v1 controlado por jugador contra IA.
+- Partido 5v5 simplificado, con portero y 4 jugadores de campo por equipo.
+- Control de un jugador activo del equipo azul.
+- Cambio rápido del jugador controlado.
 - Pista visible completa.
 - Porterías, marcador y temporizador.
 - Bola, golpeo básico y goles.

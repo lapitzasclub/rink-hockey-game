@@ -19,6 +19,10 @@ Fase: prototipo base jugable
 
 ## Hito 2, jugabilidad ampliada
 
+- [x] Pasar de 1v1 a base 5v5 simplificada
+- [x] Añadir porteros y 4 jugadores de campo por equipo
+- [x] Permitir movimiento por toda la pista
+- [x] Añadir cambio de jugador activo
 - [ ] Pase y tiro diferenciados
 - [ ] Mejor control de posesión
 - [ ] Rebotes y colisiones refinadas

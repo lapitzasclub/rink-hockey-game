@@ -10,17 +10,25 @@ Controlar a un jugador de rink hockey y disputar un partido corto, rápido y leg
 
 ## Primera implementación
 
-- Formato 1v1.
-- Un jugador humano contra un rival controlado por IA.
+- Formato 5v5 simplificado.
+- Cada equipo tiene 1 portero y 4 jugadores de campo.
+- El jugador humano controla un jugador activo del equipo azul.
+- Puede cambiar de jugador activo rápidamente.
 - Partido corto con marcador visible.
 - La bola puede ser empujada y golpeada.
 - Se marcan goles al cruzar completamente la línea de portería.
 
-## Controles previstos
+## Controles actuales
 
 - `WASD` o flechas: movimiento.
 - `Espacio`: golpeo/tiro.
-- Más adelante: pase, sprint, cambio de jugador.
+- `Shift`: cambio del jugador activo.
+
+## Controles futuros
+
+- Pase separado del tiro.
+- Sprint.
+- Cambio de jugador más inteligente/manual.
 
 ## Sensación objetivo
 
@@ -30,9 +38,10 @@ Controlar a un jugador de rink hockey y disputar un partido corto, rápido y leg
 
 ## IA inicial
 
-- Persigue la bola.
-- Intenta orientarse hacia la portería rival.
-- Dispara cuando tiene oportunidad cercana.
+- Los porteros se mueven sobre su zona para cubrir portería.
+- El compañero más cercano puede ir a la bola.
+- El resto intenta guardar una forma táctica simple alrededor de su posición base.
+- Los rivales buscan bola, portería y remate cercano de forma básica.
 
 ## Reglas simplificadas
 
