@@ -45,4 +45,5 @@ export type ActiveFoulRestart = {
   x: number
   y: number
   readyAt: number
+  sanction: 'free-hit' | 'direct-free-hit' | 'penalty'
 }

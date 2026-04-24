@@ -637,6 +637,7 @@ export class MatchScene extends Phaser.Scene {
       x: foul.restartX,
       y: foul.restartY,
       readyAt: this.time.now + FOUL_SETUP_MS,
+      sanction: foul.sanction,
     }
   }
 
@@ -689,7 +690,11 @@ export class MatchScene extends Phaser.Scene {
 
     if (time < foul.readyAt) return
 
-    this.centerText.setText('Falta, elige dirección y saca').setVisible(true)
+    this.centerText.setText(
+      foul.sanction === 'direct-free-hit'
+        ? 'Falta directa, prepara el lanzamiento'
+        : 'Falta, elige dirección y saca'
+    ).setVisible(true)
 
     if (!taker) return
 
@@ -700,7 +705,7 @@ export class MatchScene extends Phaser.Scene {
       if (index >= 0) this.controlledPlayerIndex = index
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.passKey)) {
+    if (foul.sanction === 'free-hit' && Phaser.Input.Keyboard.JustDown(this.passKey)) {
       this.ballCarrierId = taker.id
       this.tryPass(taker)
       this.centerText.setVisible(false)
@@ -709,7 +714,7 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.shootKey) || (foul.sanction === 'free-hit' && Phaser.Input.Keyboard.JustDown(this.passKey))) {
       this.ballCarrierId = taker.id
       this.tryShot(taker)
       this.centerText.setVisible(false)
