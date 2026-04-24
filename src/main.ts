@@ -57,7 +57,7 @@ async function setupTouchJoystick() {
   const mod = await import('nipplejs')
   nipplejsModule = mod.default ?? mod
 
-  const joystick = nipplejsModule.create({
+  const manager = nipplejsModule.create({
     zone: touchLeft,
     mode: 'dynamic',
     multitouch: false,
@@ -74,21 +74,23 @@ async function setupTouchJoystick() {
     const vectorY = Number(data?.vector?.y ?? 0)
     touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
     touchState.y = Phaser.Math.Clamp(vectorY, -1, 1)
+    ;(window as any).__RINK_TOUCH_DIAG__ = `mgr ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
   }
 
-  joystick.on('start', (_event: any, data: any) => {
+  manager.on('start', () => {
     touchLeft.classList.add('active')
+    ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr start'
+  })
+
+  manager.on('move dir plain', (_evt: any, data: any) => {
     syncFromData(data)
   })
 
-  joystick.on('move dir plain', (_event: any, data: any) => {
-    syncFromData(data)
-  })
-
-  joystick.on('end hidden removed', () => {
+  manager.on('end hidden removed', () => {
     touchLeft.classList.remove('active')
     touchState.x = 0
     touchState.y = 0
+    ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr end'
   })
 }
 
