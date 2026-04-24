@@ -6,6 +6,8 @@ import {
   FOUL_CHANCE_ON_STEAL,
   GAME_HEIGHT,
   GAME_WIDTH,
+  GOAL_LINE_OFFSET,
+  GOAL_NET_HOLD_X,
   GOALIE_DISTRIBUTION_POWER,
   GOALIE_RADIUS,
   GOALIE_RELEASE_COOLDOWN_MS,
@@ -527,10 +529,13 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = null
     this.ballVelocity = { x: 0, y: 0 }
 
+    const leftGoalLineX = 70 + GOAL_LINE_OFFSET
+    const rightGoalLineX = 70 + (GAME_WIDTH - 140) - GOAL_LINE_OFFSET
+
     if (message.includes('azul')) {
-      this.ball.setPosition(GAME_WIDTH - 62, GAME_HEIGHT / 2)
+      this.ball.setPosition(rightGoalLineX + GOAL_NET_HOLD_X, GAME_HEIGHT / 2)
     } else {
-      this.ball.setPosition(62, GAME_HEIGHT / 2)
+      this.ball.setPosition(leftGoalLineX - GOAL_NET_HOLD_X, GAME_HEIGHT / 2)
     }
 
     const blue = getFormation('left')
