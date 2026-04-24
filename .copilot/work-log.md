@@ -24,3 +24,5 @@
 - Se extrajeron sistemas jugables desde `MatchScene` hacia módulos separados para balón, movimiento, helpers de jugadores y visuales.
 - La escena principal quedó bastante más limpia y preparada para seguir escalando sin convertir cada cambio en una edición gigante.
 - Se extrajo además la IA de porteros y jugadores de campo a `src/game/systems/ai.ts`, reduciendo todavía más la responsabilidad de `MatchScene`.
+- Se añadieron comentarios útiles en escena y systems clave para explicar intención, heurísticas y orden de ejecución.
+- Se documentó una convención explícita de comentarios en `.copilot/code-style.md` para mantener coherencia entre agentes.

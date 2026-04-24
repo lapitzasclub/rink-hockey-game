@@ -2,6 +2,11 @@ import * as Phaser from 'phaser'
 import { GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, RINK } from '../constants'
 import type { Player, Vector } from '../types'
 
+/**
+ * Aplica aceleración hacia un objetivo.
+ *
+ * Es la primitiva común para IA y otros comportamientos dirigidos.
+ */
 export function seek(player: Player, target: Vector, intensity: number, dt: number) {
   const dx = target.x - player.pos.x
   const dy = target.y - player.pos.y
@@ -12,6 +17,12 @@ export function seek(player: Player, target: Vector, intensity: number, dt: numb
   player.velocity.y += (dy / len) * PLAYER_ACCEL * intensity * dt
 }
 
+/**
+ * Integra el movimiento del jugador con una sensación simple de inercia.
+ *
+ * Aquí vive el comportamiento más cercano al "patinaje" actual, incluyendo
+ * rozamiento, límite de velocidad y restricciones del portero.
+ */
 export function applySkating(player: Player, dt: number) {
   player.velocity.x *= PLAYER_FRICTION
   player.velocity.y *= PLAYER_FRICTION
@@ -36,6 +47,10 @@ export function applySkating(player: Player, dt: number) {
   }
 }
 
+/**
+ * Separa jugadores solapados para que la lectura visual y la colisión básica
+ * no se degraden cuando varios convergen sobre la misma zona.
+ */
 export function resolvePlayerSpacing(players: Player[]) {
   for (let i = 0; i < players.length; i += 1) {
     for (let j = i + 1; j < players.length; j += 1) {

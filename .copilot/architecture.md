@@ -58,6 +58,7 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 - `src/game/systems/playerHelpers.ts` selección y consulta de jugadores.
 - `src/game/systems/visuals.ts` actualización visual de jugadores/sticks.
 - `src/game/audio/` sonido y música.
+- `.copilot/code-style.md` convención de comentarios y estilo interno.
 - `public/assets/` sprites, audio y UI.
 
 ## Riesgos conocidos

@@ -3,6 +3,12 @@ import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_PICKUP_DISTANCE, GAME_HEIGHT
 import type { Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
+/**
+ * Actualiza la posición del balón.
+ *
+ * Si existe portador, el balón queda anclado delante del jugador. Si no,
+ * avanza con inercia, rebote en bandas y apertura del área de portería.
+ */
 export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, ballCarrierId: string | null, players: Player[], dt: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
 
@@ -45,6 +51,12 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
   return nextVelocity
 }
 
+/**
+ * Intenta convertir una bola libre en posesión formal de un jugador.
+ *
+ * También actualiza el índice del jugador controlado cuando la posesión azul
+ * cambia a otro compañero de campo.
+ */
 export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[]) {
   if (ballCarrierId) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
@@ -65,6 +77,7 @@ export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballC
   }
 }
 
+/** Libera la bola desde el portador en una dirección y potencia concretas. */
 export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], ballCarrierId: string | null, direction: Vector, power: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
   if (carrier) {
@@ -78,6 +91,7 @@ export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], bal
   }
 }
 
+/** Aplica un impulso instantáneo al balón respetando una velocidad máxima. */
 export function kickBall(ballVelocity: Vector, angle: number, power: number) {
   const nextVelocity = {
     x: ballVelocity.x + Math.cos(angle) * power,
@@ -94,6 +108,11 @@ export function kickBall(ballVelocity: Vector, angle: number, power: number) {
   return nextVelocity
 }
 
+/**
+ * Elige un receptor de pase con una heurística muy simple.
+ *
+ * Por ahora prioriza progreso ofensivo y distancia razonable.
+ */
 export function getBestPassTarget(players: Player[], player: Player) {
   const teammates = players.filter((candidate) => candidate.team === player.team && candidate.id !== player.id && candidate.role !== 'goalie')
   const attackDirection = player.side === 'left' ? 1 : -1
@@ -109,6 +128,7 @@ export function getBestPassTarget(players: Player[], player: Player) {
     .sort((a, b) => b.score - a.score)[0]?.candidate ?? null
 }
 
+/** Detecta si un rival está lo bastante cerca del portador como para forzar pérdida. */
 export function checkLooseBallTackle(players: Player[], carrier: Player) {
   for (const rival of players) {
     if (rival.team === carrier.team) continue
@@ -118,6 +138,7 @@ export function checkLooseBallTackle(players: Player[], carrier: Player) {
   return false
 }
 
+/** Devuelve qué equipo ha marcado si la bola ha cruzado la línea de gol. */
 export function checkGoal(ball: Phaser.GameObjects.Arc) {
   const inGoalY = ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
   if (!inGoalY) return null

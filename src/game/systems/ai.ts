@@ -5,6 +5,12 @@ import { findPlayerById, getClosestPlayerToBall } from './playerHelpers'
 import type { Player } from '../types'
 import { normalizedVector } from '../utils'
 
+/**
+ * IA base del portero.
+ *
+ * No sale realmente a jugar el balón todavía, pero sí acompaña la jugada
+ * lateralmente dentro de su zona para cubrir mejor el arco.
+ */
 export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt: number) {
   const targetY = Phaser.Math.Clamp(ballY, GAME_HEIGHT / 2 - 120, GAME_HEIGHT / 2 + 120)
   const targetX = player.home.x + (player.side === 'left' ? 12 : -12)
@@ -12,6 +18,12 @@ export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt:
   player.facing = normalizedVector(ballX - player.pos.x, ballY - player.pos.y, player.facing)
 }
 
+/**
+ * IA base de jugadores de campo.
+ *
+ * Mantiene una lógica táctica ligera: perseguir, abrirse cuando hay posesión
+ * propia y replegar/ajustar forma cuando la bola está libre o rival.
+ */
 export function updateFieldPlayerAI(players: Player[], player: Player, ballX: number, ballY: number, ballCarrierId: string | null, dt: number) {
   const nearest = getClosestPlayerToBall(players, player.team, ballX, ballY)
   const hasBall = ballCarrierId === player.id
@@ -44,6 +56,7 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
   player.facing = normalizedVector(target.x - player.pos.x, target.y - player.pos.y, player.facing)
 }
 
+/** Heurística rápida para saber si un atacante IA está en zona razonable de tiro. */
 export function shouldAIShoot(player: Player) {
   return player.side === 'right' ? player.pos.x < RINK.x + 380 : player.pos.x > RINK.x + RINK.width - 380
 }

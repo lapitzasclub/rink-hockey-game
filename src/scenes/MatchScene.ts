@@ -35,6 +35,13 @@ import type { Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
 import { getRoleName } from '../game/utils'
 
+/**
+ * Escena principal del partido.
+ *
+ * Aquí se orquesta el ciclo general del match, pero la lógica detallada vive
+ * en systems/ para que el crecimiento del prototipo no concentre todo en un
+ * único archivo inmanejable.
+ */
 export class MatchScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private wasd!: Record<string, Phaser.Input.Keyboard.Key>
@@ -60,6 +67,7 @@ export class MatchScene extends Phaser.Scene {
     super('match')
   }
 
+  /** Inicializa escena, entidades, HUD y estado de saque inicial. */
   create() {
     this.cameras.main.setBackgroundColor('#08111b')
     drawRink(this)
@@ -85,6 +93,16 @@ export class MatchScene extends Phaser.Scene {
     this.updateHud()
   }
 
+  /**
+   * Tick principal del partido.
+   *
+   * Orden importante:
+   * 1. input y decisiones,
+   * 2. movimiento,
+   * 3. balón/posesión/contactos,
+   * 4. visuales,
+   * 5. reglas de gol y HUD.
+   */
   update(time: number, delta: number) {
     const dt = Math.min(delta / 1000, 0.033)
 
@@ -134,6 +152,7 @@ export class MatchScene extends Phaser.Scene {
     ]
   }
 
+  /** Gestiona el jugador humano actualmente seleccionado. */
   private updateControlledPlayer(dt: number) {
     const player = getControlledPlayer(this.players, this.controlledPlayerIndex)
     let inputX = 0
@@ -157,6 +176,12 @@ export class MatchScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.shootKey)) this.tryShot(player)
   }
 
+  /**
+   * Actualiza toda la IA no controlada por el usuario.
+   *
+   * Ahora mismo la IA sigue siendo simple, pero ya está preparada para ir
+   * creciendo como sistema separado sin inflar la escena.
+   */
   private updateTeamAI(dt: number) {
     const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
 
@@ -184,6 +209,12 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Resuelve la posesión de la bola.
+   *
+   * Si hay portador, comprobamos presión rival y posible pérdida.
+   * Si no lo hay, se intenta asignar la posesión al jugador válido más cercano.
+   */
   private handleBallControl() {
     if (this.ballCarrierId) {
       const carrier = findPlayerById(this.players, this.ballCarrierId)
@@ -211,6 +242,12 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Aplica micro-contactos cuando la bola va suelta.
+   *
+   * Esto evita que el balón parezca totalmente desconectado de los jugadores
+   * incluso antes de entrar en posesión formal.
+   */
   private handleLooseBallContacts() {
     if (this.ballCarrierId) return
 
@@ -234,6 +271,7 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** Intenta asignar la posesión a un jugador concreto y sincroniza el estado local. */
   private claimBallFor(player: Player) {
     const result = tryClaimBall(this.ball, player, this.ballCarrierId, this.ballVelocity, this.controlledPlayerIndex, this.players)
     if (!result.claimed) return false
@@ -245,6 +283,7 @@ export class MatchScene extends Phaser.Scene {
     return true
   }
 
+  /** Ejecuta un pase hacia el mejor compañero detectado por heurística simple. */
   private tryPass(player: Player) {
     if (this.ballCarrierId !== player.id) return
     const mate = getBestPassTarget(this.players, player)
@@ -257,6 +296,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastTouch = player.team
   }
 
+  /** Ejecuta un tiro hacia una zona de portería con pequeña variación vertical. */
   private tryShot(player: Player) {
     if (this.ballCarrierId !== player.id) return
 
@@ -269,6 +309,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastTouch = player.team
   }
 
+  /** Comprueba si la bola ha cruzado la portería y actualiza marcador. */
   private checkGoalState(time: number) {
     const scorer = checkGoal(this.ball)
     if (!scorer) return
@@ -292,6 +333,7 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** Recoloca a todos los jugadores y reinicia la bola tras gol o al comienzo. */
   private resetKickoff(team: TeamColor) {
     const blue = getFormation('left')
     const red = getFormation('right')
@@ -319,6 +361,7 @@ export class MatchScene extends Phaser.Scene {
     this.centerText.setText(`${result}\nPulsa ESPACIO para reiniciar`).setVisible(true)
   }
 
+  /** Refresca marcador, tiempo y ayuda contextual del jugador controlado. */
   private updateHud() {
     const minutes = Math.floor(this.remainingSeconds / 60)
     const seconds = this.remainingSeconds % 60
