@@ -44,3 +44,4 @@
 - Se blindó la distribución del portero bloqueando durante un instante el magnetismo y los micro-contactos sobre la bola recién soltada, para que no se reenganche en el mismo frame.
 - Se eliminó además la dependencia del `facing` para la distribución del portero: ahora calcula una salida explícita hacia un compañero de campo, tanto para el portero azul como para el rojo.
 - Se aumentó la longitud efectiva del pase general y se hizo la distribución del portero claramente más larga, penalizando además receptores demasiado cercanos.
+- Se añadió una exclusión temporal explícita para que el mismo portero que acaba de distribuir no pueda reclamar la bola de vuelta inmediatamente.

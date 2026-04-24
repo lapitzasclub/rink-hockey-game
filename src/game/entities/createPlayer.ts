@@ -40,5 +40,6 @@ export function createPlayer(
     controllable,
     possessionCooldownUntil: 0,
     goalieCatchTime: 0,
+    ignoreBallUntil: 0,
   }
 }

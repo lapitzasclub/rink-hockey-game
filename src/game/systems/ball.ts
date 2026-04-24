@@ -60,6 +60,7 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
 export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[], now: number) {
   if (ballCarrierId) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   if ((player.possessionCooldownUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
+  if ((player.ignoreBallUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
   const claimRadius = player.role === 'goalie' ? GOALIE_CLAIM_RADIUS : BALL_PICKUP_DISTANCE
   if (distance > claimRadius) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }

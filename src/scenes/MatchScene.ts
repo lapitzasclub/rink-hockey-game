@@ -383,6 +383,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastTouch = player.team
     if (player.role === 'goalie') {
       clearGoalieCatch(player)
+      player.ignoreBallUntil = this.time.now + GOALIE_RELEASE_COOLDOWN_MS
       this.ballIgnoreContactsUntil = this.time.now + BALL_FREEZE_AFTER_GOALIE_RELEASE_MS
     }
   }
@@ -478,6 +479,7 @@ export class MatchScene extends Phaser.Scene {
       player.facing = { x: player.side === 'left' ? 1 : -1, y: 0 }
       player.possessionCooldownUntil = 0
       player.goalieCatchTime = 0
+      player.ignoreBallUntil = 0
     }
 
     this.ball.setPosition(GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22), GAME_HEIGHT / 2)

@@ -21,4 +21,5 @@ export type Player = {
   controllable: boolean
   possessionCooldownUntil?: number
   goalieCatchTime?: number
+  ignoreBallUntil?: number
 }
