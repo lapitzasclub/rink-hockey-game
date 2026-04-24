@@ -253,8 +253,12 @@ export class MatchScene extends Phaser.Scene {
           } else if (Math.random() < 0.015) {
             this.tryPass(player)
           }
-        } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team && Math.random() < AI_STEAL_ATTEMPT_CHANCE) {
-          this.tryManualSteal(player)
+        } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
+          const carrier = findPlayerById(this.players, this.ballCarrierId)
+          const inStealRange = carrier
+            ? Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y) <= MANUAL_STEAL_RANGE
+            : false
+          if (inStealRange && Math.random() < AI_STEAL_ATTEMPT_CHANCE) this.tryManualSteal(player)
         } else if (distToBall < 34 && this.ballCarrierId === null) {
           this.claimBallFor(player)
         }

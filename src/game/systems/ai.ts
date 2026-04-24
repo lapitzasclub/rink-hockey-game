@@ -83,7 +83,8 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
     const rivalCarrier = carrier && carrier.team !== player.team ? carrier : null
 
     if (rivalCarrier && pressureIndex === 0) {
-      target = { x: rivalCarrier.pos.x, y: rivalCarrier.pos.y }
+      const engageOffset = player.side === 'left' ? 10 : -10
+      target = { x: rivalCarrier.pos.x + engageOffset, y: rivalCarrier.pos.y }
     } else if (rivalCarrier && pressureIndex === 1) {
       const protectX = rivalCarrier.pos.x + (player.side === 'left' ? -54 : 54)
       const protectY = rivalCarrier.pos.y + (player.home.y < GAME_HEIGHT / 2 ? -34 : 34)

@@ -67,3 +67,4 @@
 - Se hizo más legible la reanudación por falta, con una breve preparación visible, balón fijo y ejecutor colocado antes de soltar de nuevo el juego.
 - El botón de disparo del jugador controlado pasó a servir también para robo manual cuando no hay posesión propia, con ramas de robo exitoso, fallo silencioso o falta.
 - Se eliminó el robo automático por simple contacto sobre el portador y la IA rival pasó a usar también intentos de robo con el mismo esquema probabilístico de robo, fallo o falta.
+- Tras ver que el robo apenas entraba, se amplió bastante la ventana útil de robo y se hizo que la IA solo intente robar cuando realmente está en rango, pero con una frecuencia mucho más visible.
