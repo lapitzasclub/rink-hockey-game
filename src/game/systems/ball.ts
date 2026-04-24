@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK, SHOT_ASSIST_BLEND } from '../constants'
 import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -201,6 +201,23 @@ export function getGoalieDistributionTarget(players: Player[], player: Player) {
 
   if (target) return target.candidate
   return null
+}
+
+export function getAssistedShotDirection(player: Player, fallbackDirection: Vector) {
+  const targetX = player.side === 'left' ? RINK.x + RINK.width + 24 : RINK.x - 24
+  const targetY = GAME_HEIGHT / 2 + Phaser.Math.Clamp(player.pos.y - GAME_HEIGHT / 2, -36, 36)
+  const raw = {
+    x: targetX - player.pos.x,
+    y: targetY - player.pos.y,
+  }
+  const rawLength = Math.hypot(raw.x, raw.y) || 1
+  const goalDirection = { x: raw.x / rawLength, y: raw.y / rawLength }
+  const blended = {
+    x: fallbackDirection.x * (1 - SHOT_ASSIST_BLEND) + goalDirection.x * SHOT_ASSIST_BLEND,
+    y: fallbackDirection.y * (1 - SHOT_ASSIST_BLEND) + goalDirection.y * SHOT_ASSIST_BLEND,
+  }
+  const length = Math.hypot(blended.x, blended.y) || 1
+  return { x: blended.x / length, y: blended.y / length }
 }
 
 export function getGoalieDistributionDirection(players: Player[], player: Player) {

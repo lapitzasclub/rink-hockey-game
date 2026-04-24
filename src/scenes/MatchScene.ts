@@ -27,6 +27,7 @@ import {
   checkGoal,
   checkLooseBallTackle,
   getAssistedPassDirection,
+  getAssistedShotDirection,
   getBullyCandidate,
   getGoalieDistributionDirection,
   getGoalieDistributionTarget,
@@ -467,7 +468,7 @@ export class MatchScene extends Phaser.Scene {
   private tryShot(player: Player) {
     if (this.ballCarrierId !== player.id) return
 
-    const direction = getAimingDirection(player)
+    const direction = getAssistedShotDirection(player, getAimingDirection(player))
     const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, SHOT_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
