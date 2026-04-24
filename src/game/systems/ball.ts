@@ -336,19 +336,19 @@ export function checkGoal(ball: Phaser.GameObjects.Arc) {
   const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
   const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
 
-  if (ball.x <= leftGoalLineX - BALL_RADIUS) {
+  if (ball.x <= leftGoalLineX - BALL_RADIUS - 6) {
     return {
       scorer: 'red' as TeamColor,
-      holdX: leftGoalLineX - 18,
-      holdY: GAME_HEIGHT / 2,
+      holdX: leftGoalLineX - 10,
+      holdY: Phaser.Math.Clamp(ball.y, top + 6, bottom - 6),
     }
   }
 
-  if (ball.x >= rightGoalLineX + BALL_RADIUS) {
+  if (ball.x >= rightGoalLineX + BALL_RADIUS + 6) {
     return {
       scorer: 'blue' as TeamColor,
-      holdX: rightGoalLineX + 18,
-      holdY: GAME_HEIGHT / 2,
+      holdX: rightGoalLineX + 10,
+      holdY: Phaser.Math.Clamp(ball.y, top + 6, bottom - 6),
     }
   }
 

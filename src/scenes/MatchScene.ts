@@ -537,9 +537,9 @@ export class MatchScene extends Phaser.Scene {
     const rightGoalLineX = 70 + (GAME_WIDTH - 140) - GOAL_LINE_OFFSET
 
     if (message.includes('azul')) {
-      this.ball.setPosition(rightGoalLineX + GOAL_NET_HOLD_X, GAME_HEIGHT / 2)
+      this.ball.setPosition(rightGoalLineX + GOAL_NET_HOLD_X, Phaser.Math.Clamp(this.ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
     } else {
-      this.ball.setPosition(leftGoalLineX - GOAL_NET_HOLD_X, GAME_HEIGHT / 2)
+      this.ball.setPosition(leftGoalLineX - GOAL_NET_HOLD_X, Phaser.Math.Clamp(this.ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
     }
 
     const blue = getFormation('left')

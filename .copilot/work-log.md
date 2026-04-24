@@ -62,3 +62,4 @@
 - Tras gol, la bola ahora se aloja visualmente dentro de la portería en vez de parecer que atraviesa la red sin detenerse.
 - Se corrigió además el momento del anclaje tras gol para fijar la bola dentro de la red justo al detectar el tanto, no solo durante la pausa posterior.
 - Se revisaron escala y hitboxes básicas: se redujo el tamaño visual de la bola y la detección de gol pasó a usar la línea real de portería y el radio de la bola, no el borde externo del rink.
+- Se endureció además el umbral de gol y se evitó recolocar la bola al centro geométrico de la portería, manteniéndola cerca del punto real de entrada dentro de la red.
