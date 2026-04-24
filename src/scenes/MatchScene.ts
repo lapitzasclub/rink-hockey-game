@@ -26,6 +26,7 @@ import {
   checkLooseBallTackle,
   getAssistedPassDirection,
   getGoalieDistributionDirection,
+  getGoalieDistributionTarget,
   kickBall,
   magnetBallTowardsPlayer,
   releaseBall,
@@ -378,6 +379,17 @@ export class MatchScene extends Phaser.Scene {
       isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS,
       isGoalie ? GOALIE_RELEASE_DISTANCE : undefined,
     )
+
+    if (isGoalie) {
+      const target = getGoalieDistributionTarget(this.players, player)
+      if (target) {
+        const lead = 28
+        this.ball.setPosition(
+          player.pos.x + direction.x * GOALIE_RELEASE_DISTANCE + (target.pos.x - player.pos.x) * 0.18 + direction.x * lead,
+          player.pos.y + direction.y * GOALIE_RELEASE_DISTANCE + (target.pos.y - player.pos.y) * 0.18 + direction.y * lead,
+        )
+      }
+    }
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team

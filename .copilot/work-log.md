@@ -46,3 +46,4 @@
 - Se aumentó la longitud efectiva del pase general y se hizo la distribución del portero claramente más larga, penalizando además receptores demasiado cercanos.
 - Se añadió una exclusión temporal explícita para que el mismo portero que acaba de distribuir no pueda reclamar la bola de vuelta inmediatamente.
 - Se desacopló además la IA del portero recién distribuidor durante una breve recuperación, para que no vuelva a orientarse ni a salir hacia esa misma bola justo después del pase.
+- Se adelantó visual y físicamente el punto inicial de salida del pase del portero hacia el carril del receptor para evitar solapes residuales con su propio cuerpo.

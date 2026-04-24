@@ -180,7 +180,7 @@ export function getAssistedPassDirection(players: Player[], player: Player, fall
  * Busca directamente un compañero de campo y, si no hay una línea clara,
  * al menos despeja hacia delante con una ligera componente vertical.
  */
-export function getGoalieDistributionDirection(players: Player[], player: Player) {
+export function getGoalieDistributionTarget(players: Player[], player: Player) {
   const target = players
     .filter((candidate) => candidate.team === player.team && candidate.id !== player.id && candidate.role !== 'goalie')
     .map((candidate) => {
@@ -194,10 +194,19 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
     })
     .sort((a, b) => b.score - a.score)[0]
 
+  if (target) return target.candidate
+  return null
+}
+
+export function getGoalieDistributionDirection(players: Player[], player: Player) {
+  const target = getGoalieDistributionTarget(players, player)
   if (target) {
+    const dx = target.pos.x - player.pos.x
+    const dy = target.pos.y - player.pos.y
+    const distance = Math.hypot(dx, dy) || 1
     return {
-      x: target.dx / target.distance,
-      y: target.dy / target.distance,
+      x: dx / distance,
+      y: dy / distance,
     }
   }
 
