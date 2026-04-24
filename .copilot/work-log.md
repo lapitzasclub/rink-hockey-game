@@ -23,3 +23,4 @@
 - `src/main.ts` quedó reducido al arranque del juego para evitar que el archivo principal siguiera creciendo.
 - Se extrajeron sistemas jugables desde `MatchScene` hacia módulos separados para balón, movimiento, helpers de jugadores y visuales.
 - La escena principal quedó bastante más limpia y preparada para seguir escalando sin convertir cada cambio en una edición gigante.
+- Se extrajo además la IA de porteros y jugadores de campo a `src/game/systems/ai.ts`, reduciendo todavía más la responsabilidad de `MatchScene`.

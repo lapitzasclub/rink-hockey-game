@@ -23,17 +23,17 @@ import {
   tryClaimBall,
   updateBallPosition,
 } from '../game/systems/ball'
-import { applySkating, resolvePlayerSpacing, seek } from '../game/systems/movement'
+import { updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
+import { applySkating, resolvePlayerSpacing } from '../game/systems/movement'
 import {
   findPlayerById,
-  getClosestPlayerToBall,
   getControlledPlayer,
   selectBestControlledPlayer,
 } from '../game/systems/playerHelpers'
 import { getStickTip, updateVisuals } from '../game/systems/visuals'
 import type { Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
-import { getRoleName, normalizedVector } from '../game/utils'
+import { getRoleName } from '../game/utils'
 
 export class MatchScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -163,8 +163,8 @@ export class MatchScene extends Phaser.Scene {
     for (const player of this.players) {
       if (player.id === controlled.id) continue
 
-      if (player.role === 'goalie') this.updateGoalie(player, dt)
-      else this.updateFieldPlayerAI(player, dt)
+      if (player.role === 'goalie') updateGoalieAI(player, this.ball.x, this.ball.y, dt)
+      else updateFieldPlayerAI(this.players, player, this.ball.x, this.ball.y, this.ballCarrierId, dt)
 
       applySkating(player, dt)
 
@@ -173,8 +173,7 @@ export class MatchScene extends Phaser.Scene {
 
       if (player.team === 'red') {
         if (hasBall) {
-          const shootingLane = player.side === 'right' ? player.pos.x < RINK.x + 380 : player.pos.x > RINK.x + RINK.width - 380
-          if (shootingLane) this.tryShot(player)
+          if (shouldAIShoot(player)) this.tryShot(player)
           else if (Math.random() < 0.015) this.tryPass(player)
         } else if (distToBall < 34 && this.ballCarrierId === null) {
           this.claimBallFor(player)
@@ -183,45 +182,6 @@ export class MatchScene extends Phaser.Scene {
         this.claimBallFor(player)
       }
     }
-  }
-
-  private updateGoalie(player: Player, dt: number) {
-    const targetY = Phaser.Math.Clamp(this.ball.y, GAME_HEIGHT / 2 - 120, GAME_HEIGHT / 2 + 120)
-    const targetX = player.home.x + (player.side === 'left' ? 12 : -12)
-    seek(player, { x: targetX, y: targetY }, 0.75, dt)
-    player.facing = normalizedVector(this.ball.x - player.pos.x, this.ball.y - player.pos.y, player.facing)
-  }
-
-  private updateFieldPlayerAI(player: Player, dt: number) {
-    const nearest = getClosestPlayerToBall(this.players, player.team, this.ball.x, this.ball.y)
-    const hasBall = this.ballCarrierId === player.id
-    const sameTeamHasBall = this.ballCarrierId !== null && findPlayerById(this.players, this.ballCarrierId)?.team === player.team
-
-    let target = { ...player.home }
-
-    if (hasBall) {
-      const advance = player.side === 'left' ? 1 : -1
-      target = {
-        x: player.pos.x + 70 * advance,
-        y: GAME_HEIGHT / 2 + Phaser.Math.Clamp(this.ball.y - GAME_HEIGHT / 2, -140, 140),
-      }
-    } else if (this.ballCarrierId === null && nearest?.id === player.id) {
-      target = { x: this.ball.x, y: this.ball.y }
-    } else if (sameTeamHasBall) {
-      const attackShift = player.side === 'left' ? 80 : -80
-      target = {
-        x: player.home.x + attackShift,
-        y: player.home.y + Phaser.Math.Clamp(this.ball.y - player.home.y, -90, 90),
-      }
-    } else {
-      target = {
-        x: player.home.x + Phaser.Math.Clamp(this.ball.x - player.home.x, -140, 140),
-        y: player.home.y + Phaser.Math.Clamp(this.ball.y - player.home.y, -110, 110),
-      }
-    }
-
-    seek(player, target, 1, dt)
-    player.facing = normalizedVector(target.x - player.pos.x, target.y - player.pos.y, player.facing)
   }
 
   private handleBallControl() {

@@ -54,6 +54,7 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 
 - `src/game/systems/ball.ts` lógica de posesión, pase, tiro y gol.
 - `src/game/systems/movement.ts` movimiento, skating y separación.
+- `src/game/systems/ai.ts` comportamiento táctico base de porteros y jugadores.
 - `src/game/systems/playerHelpers.ts` selección y consulta de jugadores.
 - `src/game/systems/visuals.ts` actualización visual de jugadores/sticks.
 - `src/game/audio/` sonido y música.
