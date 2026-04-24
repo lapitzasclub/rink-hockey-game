@@ -34,7 +34,8 @@ Fase: prototipo base jugable
 - [x] Extraer constantes y tipos compartidos
 - [x] Mover bootstrap fuera de la lógica de partido
 - [x] Separar escena principal y helpers base
-- [ ] Extraer sistemas de IA, posesión, colisiones y HUD
+- [x] Extraer sistemas de IA, posesión, colisiones y HUD
+- [ ] Seguir separando la IA de partido en un sistema dedicado
 
 ## Hito 3, presentación
 

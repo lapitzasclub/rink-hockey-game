@@ -1,17 +1,11 @@
 import * as Phaser from 'phaser'
 import {
-  BALL_CONTROL_DISTANCE,
-  BALL_FRICTION,
-  BALL_PICKUP_DISTANCE,
   GAME_HEIGHT,
   GAME_WIDTH,
-  GOAL_HEIGHT,
   GOALIE_RADIUS,
   MATCH_DURATION,
   PASS_POWER,
   PLAYER_ACCEL,
-  PLAYER_FRICTION,
-  PLAYER_MAX_SPEED,
   PLAYER_RADIUS,
   RINK,
   SHOT_POWER,
@@ -20,9 +14,26 @@ import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation } from '../game/formation'
 import { drawRink } from '../game/render/drawRink'
+import {
+  checkGoal,
+  checkLooseBallTackle,
+  getBestPassTarget,
+  kickBall,
+  releaseBall,
+  tryClaimBall,
+  updateBallPosition,
+} from '../game/systems/ball'
+import { applySkating, resolvePlayerSpacing, seek } from '../game/systems/movement'
+import {
+  findPlayerById,
+  getClosestPlayerToBall,
+  getControlledPlayer,
+  selectBestControlledPlayer,
+} from '../game/systems/playerHelpers'
+import { getStickTip, updateVisuals } from '../game/systems/visuals'
 import type { Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
-import { getRoleName, getRoleShort, normalizedVector } from '../game/utils'
+import { getRoleName, normalizedVector } from '../game/utils'
 
 export class MatchScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -91,17 +102,17 @@ export class MatchScene extends Phaser.Scene {
     if (this.restartAt > 0) return
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKey)) {
-      this.selectBestControlledPlayer()
+      this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, this.ballCarrierId, this.ball.x, this.ball.y)
     }
 
     this.updateControlledPlayer(dt)
     this.updateTeamAI(dt)
-    this.resolvePlayerSpacing()
-    this.updateBall(dt)
+    resolvePlayerSpacing(this.players)
+    this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
     this.handleBallControl()
     this.handleLooseBallContacts()
-    this.updateVisuals()
-    this.checkGoal(time)
+    updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
+    this.checkGoalState(time)
     this.updateHud()
   }
 
@@ -124,7 +135,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private updateControlledPlayer(dt: number) {
-    const player = this.getControlledPlayer()
+    const player = getControlledPlayer(this.players, this.controlledPlayerIndex)
     let inputX = 0
     let inputY = 0
 
@@ -140,14 +151,14 @@ export class MatchScene extends Phaser.Scene {
       player.facing = { x: inputX / len, y: inputY / len }
     }
 
-    this.applySkating(player, dt)
+    applySkating(player, dt)
 
     if (Phaser.Input.Keyboard.JustDown(this.passKey)) this.tryPass(player)
     if (Phaser.Input.Keyboard.JustDown(this.shootKey)) this.tryShot(player)
   }
 
   private updateTeamAI(dt: number) {
-    const controlled = this.getControlledPlayer()
+    const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
 
     for (const player of this.players) {
       if (player.id === controlled.id) continue
@@ -155,7 +166,7 @@ export class MatchScene extends Phaser.Scene {
       if (player.role === 'goalie') this.updateGoalie(player, dt)
       else this.updateFieldPlayerAI(player, dt)
 
-      this.applySkating(player, dt)
+      applySkating(player, dt)
 
       const hasBall = this.ballCarrierId === player.id
       const distToBall = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)
@@ -166,10 +177,10 @@ export class MatchScene extends Phaser.Scene {
           if (shootingLane) this.tryShot(player)
           else if (Math.random() < 0.015) this.tryPass(player)
         } else if (distToBall < 34 && this.ballCarrierId === null) {
-          this.tryClaimBall(player)
+          this.claimBallFor(player)
         }
       } else if (!hasBall && distToBall < 34 && this.ballCarrierId === null) {
-        this.tryClaimBall(player)
+        this.claimBallFor(player)
       }
     }
   }
@@ -177,14 +188,14 @@ export class MatchScene extends Phaser.Scene {
   private updateGoalie(player: Player, dt: number) {
     const targetY = Phaser.Math.Clamp(this.ball.y, GAME_HEIGHT / 2 - 120, GAME_HEIGHT / 2 + 120)
     const targetX = player.home.x + (player.side === 'left' ? 12 : -12)
-    this.seek(player, { x: targetX, y: targetY }, 0.75, dt)
+    seek(player, { x: targetX, y: targetY }, 0.75, dt)
     player.facing = normalizedVector(this.ball.x - player.pos.x, this.ball.y - player.pos.y, player.facing)
   }
 
   private updateFieldPlayerAI(player: Player, dt: number) {
-    const nearest = this.getClosestPlayerToBall(player.team)
+    const nearest = getClosestPlayerToBall(this.players, player.team, this.ball.x, this.ball.y)
     const hasBall = this.ballCarrierId === player.id
-    const sameTeamHasBall = this.ballCarrierId !== null && this.findPlayerById(this.ballCarrierId)?.team === player.team
+    const sameTeamHasBall = this.ballCarrierId !== null && findPlayerById(this.players, this.ballCarrierId)?.team === player.team
 
     let target = { ...player.home }
 
@@ -209,126 +220,22 @@ export class MatchScene extends Phaser.Scene {
       }
     }
 
-    this.seek(player, target, 1, dt)
+    seek(player, target, 1, dt)
     player.facing = normalizedVector(target.x - player.pos.x, target.y - player.pos.y, player.facing)
-  }
-
-  private seek(player: Player, target: Vector, intensity: number, dt: number) {
-    const dx = target.x - player.pos.x
-    const dy = target.y - player.pos.y
-    const len = Math.hypot(dx, dy)
-    if (len < 6) return
-
-    player.velocity.x += (dx / len) * PLAYER_ACCEL * intensity * dt
-    player.velocity.y += (dy / len) * PLAYER_ACCEL * intensity * dt
-  }
-
-  private applySkating(player: Player, dt: number) {
-    player.velocity.x *= PLAYER_FRICTION
-    player.velocity.y *= PLAYER_FRICTION
-
-    const speed = Math.hypot(player.velocity.x, player.velocity.y)
-    if (speed > PLAYER_MAX_SPEED) {
-      player.velocity.x = (player.velocity.x / speed) * PLAYER_MAX_SPEED
-      player.velocity.y = (player.velocity.y / speed) * PLAYER_MAX_SPEED
-    }
-
-    player.pos.x += player.velocity.x * dt
-    player.pos.y += player.velocity.y * dt
-
-    const radius = player.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
-    player.pos.x = Phaser.Math.Clamp(player.pos.x, RINK.x + radius, RINK.x + RINK.width - radius)
-    player.pos.y = Phaser.Math.Clamp(player.pos.y, RINK.y + radius, RINK.y + RINK.height - radius)
-
-    if (player.role === 'goalie') {
-      const minX = player.side === 'left' ? RINK.x + 28 : RINK.x + RINK.width - 90
-      const maxX = player.side === 'left' ? RINK.x + 90 : RINK.x + RINK.width - 28
-      player.pos.x = Phaser.Math.Clamp(player.pos.x, minX, maxX)
-    }
-  }
-
-  private resolvePlayerSpacing() {
-    for (let i = 0; i < this.players.length; i += 1) {
-      for (let j = i + 1; j < this.players.length; j += 1) {
-        const a = this.players[i]
-        const b = this.players[j]
-        const ar = a.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
-        const br = b.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
-        const dx = b.pos.x - a.pos.x
-        const dy = b.pos.y - a.pos.y
-        const dist = Math.hypot(dx, dy) || 1
-        const minDist = ar + br + 8
-
-        if (dist < minDist) {
-          const push = (minDist - dist) / 2
-          const nx = dx / dist
-          const ny = dy / dist
-          a.pos.x -= nx * push
-          a.pos.y -= ny * push
-          b.pos.x += nx * push
-          b.pos.y += ny * push
-          a.velocity.x -= nx * 25
-          a.velocity.y -= ny * 25
-          b.velocity.x += nx * 25
-          b.velocity.y += ny * 25
-        }
-      }
-    }
-  }
-
-  private updateBall(dt: number) {
-    const carrier = this.ballCarrierId ? this.findPlayerById(this.ballCarrierId) : null
-
-    if (carrier) {
-      const carryOffset = carrier.role === 'goalie' ? GOALIE_RADIUS + 8 : PLAYER_RADIUS + 8
-      this.ball.x = carrier.pos.x + carrier.facing.x * carryOffset
-      this.ball.y = carrier.pos.y + carrier.facing.y * carryOffset
-      this.ballVelocity = { x: carrier.velocity.x * 0.35, y: carrier.velocity.y * 0.35 }
-      return
-    }
-
-    this.ballVelocity.x *= BALL_FRICTION
-    this.ballVelocity.y *= BALL_FRICTION
-    this.ball.x += this.ballVelocity.x * dt
-    this.ball.y += this.ballVelocity.y * dt
-
-    const top = RINK.y + 9
-    const bottom = RINK.y + RINK.height - 9
-    const left = RINK.x + 9
-    const right = RINK.x + RINK.width - 9
-    const inGoalMouth = this.ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && this.ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
-
-    if (this.ball.y <= top || this.ball.y >= bottom) {
-      this.ballVelocity.y *= -0.88
-      this.ball.y = Phaser.Math.Clamp(this.ball.y, top, bottom)
-    }
-
-    if (this.ball.x <= left && !inGoalMouth) {
-      this.ballVelocity.x *= -0.88
-      this.ball.x = left
-    }
-
-    if (this.ball.x >= right && !inGoalMouth) {
-      this.ballVelocity.x *= -0.88
-      this.ball.x = right
-    }
   }
 
   private handleBallControl() {
     if (this.ballCarrierId) {
-      const carrier = this.findPlayerById(this.ballCarrierId)
+      const carrier = findPlayerById(this.players, this.ballCarrierId)
       if (!carrier) {
         this.ballCarrierId = null
         return
       }
 
-      for (const rival of this.players) {
-        if (rival.team === carrier.team) continue
-        const tackleDistance = Phaser.Math.Distance.Between(rival.pos.x, rival.pos.y, carrier.pos.x, carrier.pos.y)
-        if (tackleDistance < PLAYER_RADIUS + 10) {
-          this.releaseBall(carrier.facing, 140)
-          break
-        }
+      if (checkLooseBallTackle(this.players, carrier)) {
+        const released = releaseBall(this.ball, this.players, this.ballCarrierId, carrier.facing, 140)
+        this.ballCarrierId = released.ballCarrierId
+        this.ballVelocity = released.ballVelocity
       }
       return
     }
@@ -340,7 +247,7 @@ export class MatchScene extends Phaser.Scene {
     })
 
     for (const player of candidates) {
-      if (this.tryClaimBall(player)) break
+      if (this.claimBallFor(player)) break
     }
   }
 
@@ -350,46 +257,43 @@ export class MatchScene extends Phaser.Scene {
     for (const player of this.players) {
       const radius = player.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
       const bodyDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)
-      const stickTip = this.getStickTip(player)
+      const stickTip = getStickTip(player)
       const stickDistance = Phaser.Math.Distance.Between(stickTip.x, stickTip.y, this.ball.x, this.ball.y)
 
-      if (bodyDistance < radius + 9 + 3) {
+      if (bodyDistance < radius + 12) {
         const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)
-        this.kickBall(angle, player.role === 'goalie' ? 70 : 90)
+        this.ballVelocity = kickBall(this.ballVelocity, angle, player.role === 'goalie' ? 70 : 90)
         this.lastTouch = player.team
       }
 
       if (stickDistance < 14) {
         const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)
-        this.kickBall(angle, player.role === 'goalie' ? 55 : 70)
+        this.ballVelocity = kickBall(this.ballVelocity, angle, player.role === 'goalie' ? 55 : 70)
         this.lastTouch = player.team
       }
     }
   }
 
-  private tryClaimBall(player: Player) {
-    if (this.ballCarrierId) return false
-    const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)
-    if (distance > BALL_PICKUP_DISTANCE) return false
+  private claimBallFor(player: Player) {
+    const result = tryClaimBall(this.ball, player, this.ballCarrierId, this.ballVelocity, this.controlledPlayerIndex, this.players)
+    if (!result.claimed) return false
 
-    this.ballCarrierId = player.id
-    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = result.ballCarrierId
+    this.ballVelocity = result.ballVelocity
+    this.controlledPlayerIndex = result.controlledPlayerIndex
     this.lastTouch = player.team
-    if (player.team === 'blue' && player.role !== 'goalie') {
-      const options = this.getControllablePlayers()
-      const index = options.findIndex((candidate) => candidate.id === player.id)
-      if (index >= 0) this.controlledPlayerIndex = index
-    }
     return true
   }
 
   private tryPass(player: Player) {
     if (this.ballCarrierId !== player.id) return
-    const mate = this.getBestPassTarget(player)
+    const mate = getBestPassTarget(this.players, player)
     if (!mate) return
 
     const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, mate.pos.x, mate.pos.y)
-    this.releaseBall({ x: Math.cos(angle), y: Math.sin(angle) }, PASS_POWER)
+    const released = releaseBall(this.ball, this.players, this.ballCarrierId, { x: Math.cos(angle), y: Math.sin(angle) }, PASS_POWER)
+    this.ballCarrierId = released.ballCarrierId
+    this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
   }
 
@@ -399,124 +303,20 @@ export class MatchScene extends Phaser.Scene {
     const goalX = player.side === 'left' ? RINK.x + RINK.width + 30 : RINK.x - 30
     const targetY = GAME_HEIGHT / 2 + Phaser.Math.Between(-40, 40)
     const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, goalX, targetY)
-    this.releaseBall({ x: Math.cos(angle), y: Math.sin(angle) }, SHOT_POWER)
+    const released = releaseBall(this.ball, this.players, this.ballCarrierId, { x: Math.cos(angle), y: Math.sin(angle) }, SHOT_POWER)
+    this.ballCarrierId = released.ballCarrierId
+    this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
   }
 
-  private releaseBall(direction: Vector, power: number) {
-    const carrier = this.ballCarrierId ? this.findPlayerById(this.ballCarrierId) : null
-    if (carrier) {
-      this.ball.x = carrier.pos.x + direction.x * BALL_CONTROL_DISTANCE
-      this.ball.y = carrier.pos.y + direction.y * BALL_CONTROL_DISTANCE
-    }
+  private checkGoalState(time: number) {
+    const scorer = checkGoal(this.ball)
+    if (!scorer) return
 
-    this.ballCarrierId = null
-    this.ballVelocity = { x: direction.x * power, y: direction.y * power }
-  }
-
-  private kickBall(angle: number, power: number) {
-    this.ballVelocity.x += Math.cos(angle) * power
-    this.ballVelocity.y += Math.sin(angle) * power
-    const speed = Math.hypot(this.ballVelocity.x, this.ballVelocity.y)
-    const maxSpeed = 760
-    if (speed > maxSpeed) {
-      this.ballVelocity.x = (this.ballVelocity.x / speed) * maxSpeed
-      this.ballVelocity.y = (this.ballVelocity.y / speed) * maxSpeed
-    }
-  }
-
-  private getBestPassTarget(player: Player) {
-    const teammates = this.players.filter((candidate) => candidate.team === player.team && candidate.id !== player.id && candidate.role !== 'goalie')
-    const attackDirection = player.side === 'left' ? 1 : -1
-
-    return teammates
-      .map((candidate) => {
-        const dx = candidate.pos.x - player.pos.x
-        const dy = candidate.pos.y - player.pos.y
-        const forwardness = dx * attackDirection
-        const distance = Math.hypot(dx, dy)
-        return { candidate, score: forwardness - distance * 0.25 }
-      })
-      .sort((a, b) => b.score - a.score)[0]?.candidate ?? null
-  }
-
-  private updateVisuals() {
-    const controlled = this.getControlledPlayer()
-
-    for (const player of this.players) {
-      player.body.setPosition(player.pos.x, player.pos.y)
-      player.label.setPosition(player.pos.x, player.pos.y - 30)
-
-      const aimX = this.ballCarrierId === player.id ? player.pos.x + player.facing.x * 40 : this.ball.x
-      const aimY = this.ballCarrierId === player.id ? player.pos.y + player.facing.y * 40 : this.ball.y
-      const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, aimX, aimY)
-      player.stick.setPosition(player.pos.x + Math.cos(angle) * 18, player.pos.y + Math.sin(angle) * 18)
-      player.stick.rotation = angle
-
-      const active = controlled.id === player.id
-      const carrying = this.ballCarrierId === player.id
-      player.body.setStrokeStyle(active ? 5 : player.controllable ? 4 : 2, carrying ? 0x9cff7a : active ? 0xfff27a : 0xeaf4ff)
-      player.label.setText(`${getRoleShort(player.role)}${active ? '★' : ''}${carrying ? '●' : ''}`)
-    }
-  }
-
-  private getStickTip(player: Player) {
-    const angle = player.stick.rotation
-    return { x: player.stick.x + Math.cos(angle) * 14, y: player.stick.y + Math.sin(angle) * 14 }
-  }
-
-  private getControllablePlayers() {
-    return this.players.filter((player) => player.team === 'blue' && player.role !== 'goalie')
-  }
-
-  private getControlledPlayer() {
-    const controllables = this.getControllablePlayers()
-    return controllables[this.controlledPlayerIndex % controllables.length]
-  }
-
-  private selectBestControlledPlayer() {
-    const options = this.getControllablePlayers()
-    const ballCarrier = this.ballCarrierId ? this.findPlayerById(this.ballCarrierId) : null
-
-    if (ballCarrier?.team === 'blue' && ballCarrier.role !== 'goalie') {
-      const index = options.findIndex((player) => player.id === ballCarrier.id)
-      if (index >= 0) {
-        this.controlledPlayerIndex = index
-        return
-      }
-    }
-
-    const nearestToBall = [...options].sort((a, b) => {
-      const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, this.ball.x, this.ball.y)
-      const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, this.ball.x, this.ball.y)
-      return da - db
-    })[0]
-
-    const index = options.findIndex((player) => player.id === nearestToBall.id)
-    this.controlledPlayerIndex = index >= 0 ? index : (this.controlledPlayerIndex + 1) % options.length
-  }
-
-  private getClosestPlayerToBall(team: TeamColor) {
-    const teamPlayers = this.players.filter((player) => player.team === team && player.role !== 'goalie')
-    return [...teamPlayers].sort((a, b) => {
-      const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, this.ball.x, this.ball.y)
-      const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, this.ball.x, this.ball.y)
-      return da - db
-    })[0]
-  }
-
-  private findPlayerById(id: string) {
-    return this.players.find((player) => player.id === id) ?? null
-  }
-
-  private checkGoal(time: number) {
-    const inGoalY = this.ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && this.ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
-    if (!inGoalY) return
-
-    if (this.ball.x < RINK.x - 10) {
+    if (scorer === 'red') {
       this.redScore += 1
       this.onGoal('¡Gol rojo!', time)
-    } else if (this.ball.x > RINK.x + RINK.width + 10) {
+    } else {
       this.blueScore += 1
       this.onGoal('¡Gol azul!', time)
     }
@@ -550,7 +350,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = { x: 0, y: 0 }
     this.lastTouch = team
     this.controlledPlayerIndex = 0
-    this.updateVisuals()
+    updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
   }
 
   private finishMatch() {
@@ -563,7 +363,7 @@ export class MatchScene extends Phaser.Scene {
     const minutes = Math.floor(this.remainingSeconds / 60)
     const seconds = this.remainingSeconds % 60
     this.hudText.setText(`Azul ${this.blueScore}  -  ${this.redScore} Rojo   |   ${minutes}:${seconds.toString().padStart(2, '0')}`)
-    const controlled = this.getControlledPlayer()
+    const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
     this.subHudText.setText(`Controlas: ${getRoleName(controlled.role)} azul | WASD mover | X pase | ESPACIO tiro | SHIFT cambia jugador`)
   }
 }

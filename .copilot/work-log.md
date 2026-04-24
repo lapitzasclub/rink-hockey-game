@@ -21,3 +21,5 @@
 - Se ajustaron colisiones y contactos para que el juego sea menos caótico y más legible.
 - Se inició la modularización real del código, separando constantes, tipos, utilidades, formaciones, entidades, render y escena principal.
 - `src/main.ts` quedó reducido al arranque del juego para evitar que el archivo principal siguiera creciendo.
+- Se extrajeron sistemas jugables desde `MatchScene` hacia módulos separados para balón, movimiento, helpers de jugadores y visuales.
+- La escena principal quedó bastante más limpia y preparada para seguir escalando sin convertir cada cambio en una edición gigante.

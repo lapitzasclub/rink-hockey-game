@@ -52,7 +52,10 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 
 ## Evolución estructural prevista
 
-- `src/game/systems/` reglas, marcador, posesión, IA y colisiones.
+- `src/game/systems/ball.ts` lógica de posesión, pase, tiro y gol.
+- `src/game/systems/movement.ts` movimiento, skating y separación.
+- `src/game/systems/playerHelpers.ts` selección y consulta de jugadores.
+- `src/game/systems/visuals.ts` actualización visual de jugadores/sticks.
 - `src/game/audio/` sonido y música.
 - `public/assets/` sprites, audio y UI.
 
