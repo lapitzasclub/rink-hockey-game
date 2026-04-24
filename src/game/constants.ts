@@ -9,6 +9,7 @@ export const GOAL_HEIGHT = 150
 export const GOAL_BACK_DEPTH = 34
 export const GOAL_LINE_OFFSET = 96
 export const GOAL_NET_HOLD_X = 10
+export const GOAL_POST_REBOUND = 0.82
 export const BLUE_LINE_OFFSET = 210
 export const PLAYER_MAX_SPEED = 320
 export const PLAYER_ACCEL = 860

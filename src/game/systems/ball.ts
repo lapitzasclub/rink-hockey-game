@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, GOAL_POST_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
 import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -31,7 +31,13 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
   const bottom = RINK.y + RINK.height - 9
   const left = RINK.x + 9
   const right = RINK.x + RINK.width - 9
-  const inGoalMouth = ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+  const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
+  const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+  const inGoalMouth = ball.y > goalTop && ball.y < goalBottom
+  const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
+  const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
+  const leftNetBackX = leftGoalLineX - GOAL_BACK_DEPTH
+  const rightNetBackX = rightGoalLineX + GOAL_BACK_DEPTH
 
   if (ball.y <= top || ball.y >= bottom) {
     nextVelocity.y *= -0.88
@@ -46,6 +52,24 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
   if (ball.x >= right && !inGoalMouth) {
     nextVelocity.x *= -0.88
     ball.x = right
+  }
+
+  const hitLeftPostFace = ball.x <= leftGoalLineX + BALL_RADIUS && ball.x >= leftGoalLineX - BALL_RADIUS && !inGoalMouth
+  const hitRightPostFace = ball.x >= rightGoalLineX - BALL_RADIUS && ball.x <= rightGoalLineX + BALL_RADIUS && !inGoalMouth
+
+  if (hitLeftPostFace || hitRightPostFace) {
+    nextVelocity.x *= -GOAL_POST_REBOUND
+    ball.x = hitLeftPostFace ? leftGoalLineX + BALL_RADIUS : rightGoalLineX - BALL_RADIUS
+  }
+
+  if (inGoalMouth && ball.x <= leftNetBackX + BALL_RADIUS) {
+    nextVelocity.x = Math.abs(nextVelocity.x) * GOAL_POST_REBOUND
+    ball.x = leftNetBackX + BALL_RADIUS
+  }
+
+  if (inGoalMouth && ball.x >= rightNetBackX - BALL_RADIUS) {
+    nextVelocity.x = -Math.abs(nextVelocity.x) * GOAL_POST_REBOUND
+    ball.x = rightNetBackX - BALL_RADIUS
   }
 
   return nextVelocity
