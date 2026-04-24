@@ -50,3 +50,4 @@
 - Se redujo y acotó el magnetismo de la bola para que ya no curve pases rápidos ni saques claros, y solo ayude en capturas lentas y cercanas.
 - Tras notar una captura demasiado dura, se recuperó algo de asistencia de recepción ampliando ligeramente pickup y radio de ayuda, pero con tirón más suave para no reintroducir órbitas marcadas.
 - Se dio prioridad a la captura frente al empujón físico, bloqueando micro-contactos cuando la bola ya está en una zona claramente controlable.
+- Como el bully se volvió demasiado raro tras mejorar la captura, se relajó su detector para aceptar disputas reales entre dos rivales cercanos y reducir el tiempo de atasco necesario.

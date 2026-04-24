@@ -276,8 +276,16 @@ export function shouldCallBully(players: Player[], ball: Phaser.GameObjects.Arc,
   const nearbyPlayers = players.filter((player) => Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y) < BULLY_CLUSTER_RADIUS)
   const teams = new Set(nearbyPlayers.map((player) => player.team))
   const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
+  const nearestTwo = [...nearbyPlayers]
+    .sort((a, b) => {
+      const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ball.x, ball.y)
+      const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ball.x, ball.y)
+      return da - db
+    })
+    .slice(0, 2)
 
-  return nearbyPlayers.length >= BULLY_MIN_PLAYERS && teams.size >= 2 && speed < 22
+  const directContest = nearestTwo.length === 2 && nearestTwo[0].team !== nearestTwo[1].team
+  return nearbyPlayers.length >= BULLY_MIN_PLAYERS && teams.size >= 2 && (speed < 34 || directContest)
 }
 
 export function checkGoal(ball: Phaser.GameObjects.Arc) {
