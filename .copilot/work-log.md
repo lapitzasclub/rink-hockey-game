@@ -56,3 +56,4 @@
 - Se convirtió el bully en un estado temporal explícito dentro de la escena, congelando una disputa neutral visible entre dos jugadores antes de soltar de nuevo el juego.
 - Se añadió además detección de bully por atasco real con portador: si un jugador mantiene la bola casi inmóvil en una zona estrecha bajo disputa rival durante varios segundos, se fuerza el bully.
 - Se alargó la fase visible de preparación del bully para que el jugador tenga tiempo real de reconocer la jugada y reaccionar antes de la reanudación.
+- Se mejoró la IA táctica de campo para repartir mejor presión, apoyo y cobertura, evitando que varios jugadores persigan la bola de forma demasiado redundante.

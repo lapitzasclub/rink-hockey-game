@@ -35,9 +35,15 @@ export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt:
  * propia y replegar/ajustar forma cuando la bola está libre o rival.
  */
 export function updateFieldPlayerAI(players: Player[], player: Player, ballX: number, ballY: number, ballCarrierId: string | null, dt: number) {
+  const teammates = players.filter((candidate) => candidate.team === player.team && candidate.role !== 'goalie')
+  const rivals = players.filter((candidate) => candidate.team !== player.team && candidate.role !== 'goalie')
   const nearest = getClosestPlayerToBall(players, player.team, ballX, ballY)
   const hasBall = ballCarrierId === player.id
-  const sameTeamHasBall = ballCarrierId !== null && findPlayerById(players, ballCarrierId)?.team === player.team
+  const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
+  const sameTeamHasBall = carrier?.team === player.team
+  const teamChaserOrder = [...teammates]
+    .sort((a, b) => Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ballX, ballY) - Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ballX, ballY))
+  const pressureIndex = teamChaserOrder.findIndex((candidate) => candidate.id === player.id)
 
   let target = { ...player.home }
 
@@ -47,18 +53,47 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
       x: player.pos.x + 70 * advance,
       y: GAME_HEIGHT / 2 + Phaser.Math.Clamp(ballY - GAME_HEIGHT / 2, -140, 140),
     }
-  } else if (ballCarrierId === null && nearest?.id === player.id) {
-    target = { x: ballX, y: ballY }
+  } else if (ballCarrierId === null) {
+    if (nearest?.id === player.id) {
+      target = { x: ballX, y: ballY }
+    } else if (pressureIndex === 1) {
+      target = {
+        x: ballX + (player.side === 'left' ? -42 : 42),
+        y: ballY + (player.home.y < GAME_HEIGHT / 2 ? -28 : 28),
+      }
+    } else {
+      target = {
+        x: player.home.x + Phaser.Math.Clamp(ballX - player.home.x, -110, 110),
+        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -90, 90),
+      }
+    }
   } else if (sameTeamHasBall) {
-    const attackShift = player.side === 'left' ? 80 : -80
+    const attackShift = player.side === 'left' ? 90 : -90
+    const laneSpread = player.role === 'wing' ? -36 : player.role === 'pivot' ? 36 : 0
     target = {
       x: player.home.x + attackShift,
-      y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -90, 90),
+      y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -80, 80) + laneSpread,
+    }
+
+    if (pressureIndex === 0) {
+      target.x -= attackShift * 0.35
+      target.y = ballY + (player.home.y < GAME_HEIGHT / 2 ? -22 : 22)
     }
   } else {
-    target = {
-      x: player.home.x + Phaser.Math.Clamp(ballX - player.home.x, -140, 140),
-      y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -110, 110),
+    const rivalCarrier = carrier && carrier.team !== player.team ? carrier : null
+
+    if (rivalCarrier && pressureIndex === 0) {
+      target = { x: rivalCarrier.pos.x, y: rivalCarrier.pos.y }
+    } else if (rivalCarrier && pressureIndex === 1) {
+      const protectX = rivalCarrier.pos.x + (player.side === 'left' ? -54 : 54)
+      const protectY = rivalCarrier.pos.y + (player.home.y < GAME_HEIGHT / 2 ? -34 : 34)
+      target = { x: protectX, y: protectY }
+    } else {
+      const fallbackBias = rivals.length > 0 ? Phaser.Math.Clamp(ballX - player.home.x, -90, 90) : 0
+      target = {
+        x: player.home.x + fallbackBias,
+        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -80, 80),
+      }
     }
   }
 
