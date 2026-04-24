@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import {
+  BALL_CAPTURE_SHIELD_DISTANCE,
   BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
   FOUL_CHANCE_ON_STEAL,
   GAME_HEIGHT,
@@ -334,6 +335,9 @@ export class MatchScene extends Phaser.Scene {
       const bodyDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)
       const stickTip = getStickTip(player)
       const stickDistance = Phaser.Math.Distance.Between(stickTip.x, stickTip.y, this.ball.x, this.ball.y)
+      const captureShield = player.role === 'goalie' ? BALL_CAPTURE_SHIELD_DISTANCE - 8 : BALL_CAPTURE_SHIELD_DISTANCE
+
+      if (bodyDistance < captureShield || stickDistance < captureShield - 10) continue
 
       if (bodyDistance < radius + 12) {
         const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, this.ball.x, this.ball.y)

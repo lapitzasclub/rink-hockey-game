@@ -15,6 +15,7 @@ export const PLAYER_FRICTION = 0.9
 export const BALL_FRICTION = 0.988
 export const BALL_CONTROL_DISTANCE = 30
 export const BALL_PICKUP_DISTANCE = 38
+export const BALL_CAPTURE_SHIELD_DISTANCE = 46
 export const BALL_MAGNET_DISTANCE = 48
 export const PASS_POWER = 520
 export const SHOT_POWER = 700
