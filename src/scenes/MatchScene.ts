@@ -45,7 +45,7 @@ import {
   selectBestControlledPlayer,
 } from '../game/systems/playerHelpers'
 import { getStickTip, updateVisuals } from '../game/systems/visuals'
-import type { Player, TeamColor, Vector } from '../game/types'
+import type { ActiveBully, Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
 import { createRuleState, registerBully, registerStealFoul, type RuleState } from '../game/systems/rules'
 import { getRoleName } from '../game/utils'
@@ -80,6 +80,7 @@ export class MatchScene extends Phaser.Scene {
   private ruleState: RuleState = createRuleState()
   private lastLooseBallTime = 0
   private ballIgnoreContactsUntil = 0
+  private activeBully: ActiveBully | null = null
 
   constructor() {
     super('match')
@@ -136,6 +137,13 @@ export class MatchScene extends Phaser.Scene {
     }
 
     if (this.restartAt > 0) return
+
+    if (this.activeBully) {
+      this.updateBullyState(time)
+      updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
+      this.updateHud()
+      return
+    }
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKey)) {
       this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, this.ballCarrierId, this.ball.x, this.ball.y)
@@ -450,28 +458,8 @@ export class MatchScene extends Phaser.Scene {
     if (this.ruleState.pendingBully) {
       const bully = this.ruleState.pendingBully
       this.centerText.setText(bully.message).setVisible(true)
-      this.ball.setPosition(bully.x, bully.y)
-      this.ballVelocity = { x: 0, y: 0 }
-      this.ballCarrierId = null
-
-      const blue = findPlayerById(this.players, bully.participants.bluePlayerId)
-      const red = findPlayerById(this.players, bully.participants.redPlayerId)
-      const offset = 26
-
-      if (blue) {
-        blue.pos = { x: bully.x - offset, y: bully.y }
-        blue.velocity = { x: 0, y: 0 }
-        blue.facing = { x: 1, y: 0 }
-      }
-
-      if (red) {
-        red.pos = { x: bully.x + offset, y: bully.y }
-        red.velocity = { x: 0, y: 0 }
-        red.facing = { x: -1, y: 0 }
-      }
-
+      this.startBully(bully.x, bully.y, bully.participants.bluePlayerId, bully.participants.redPlayerId)
       this.ruleState.pendingBully = null
-      this.restartAt = this.time.now + 900
     }
   }
 
@@ -531,8 +519,73 @@ export class MatchScene extends Phaser.Scene {
     this.controlledPlayerIndex = 0
     this.lastLooseBallTime = 0
     this.ballIgnoreContactsUntil = 0
+    this.activeBully = null
     this.ruleState = createRuleState()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
+  }
+
+  private startBully(x: number, y: number, bluePlayerId: string, redPlayerId: string) {
+    this.ball.setPosition(x, y)
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+    this.ballIgnoreContactsUntil = this.time.now + 700
+
+    for (const player of this.players) {
+      player.velocity = { x: 0, y: 0 }
+    }
+
+    const blue = findPlayerById(this.players, bluePlayerId)
+    const red = findPlayerById(this.players, redPlayerId)
+    const offset = 26
+
+    if (blue) {
+      blue.pos = { x: x - offset, y }
+      blue.facing = { x: 1, y: 0 }
+    }
+
+    if (red) {
+      red.pos = { x: x + offset, y }
+      red.facing = { x: -1, y: 0 }
+    }
+
+    this.activeBully = {
+      bluePlayerId,
+      redPlayerId,
+      x,
+      y,
+      releaseAt: this.time.now + 700,
+    }
+  }
+
+  private updateBullyState(time: number) {
+    const bully = this.activeBully
+    if (!bully) return
+
+    const blue = findPlayerById(this.players, bully.bluePlayerId)
+    const red = findPlayerById(this.players, bully.redPlayerId)
+    const offset = 26
+
+    if (blue) {
+      blue.pos = { x: bully.x - offset, y: bully.y }
+      blue.velocity = { x: 0, y: 0 }
+      blue.facing = { x: 1, y: 0 }
+    }
+
+    if (red) {
+      red.pos = { x: bully.x + offset, y: bully.y }
+      red.velocity = { x: 0, y: 0 }
+      red.facing = { x: -1, y: 0 }
+    }
+
+    this.ball.setPosition(bully.x, bully.y)
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+
+    if (time >= bully.releaseAt) {
+      this.centerText.setVisible(false)
+      this.ballIgnoreContactsUntil = 0
+      this.activeBully = null
+    }
   }
 
   private finishMatch() {

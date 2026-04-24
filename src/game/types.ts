@@ -31,3 +31,11 @@ export type BullyCandidate = {
   x: number
   y: number
 }
+
+export type ActiveBully = {
+  bluePlayerId: string
+  redPlayerId: string
+  x: number
+  y: number
+  releaseAt: number
+}
