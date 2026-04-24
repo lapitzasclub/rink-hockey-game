@@ -52,3 +52,4 @@
 - Se dio prioridad a la captura frente al empujón físico, bloqueando micro-contactos cuando la bola ya está en una zona claramente controlable.
 - Como el bully se volvió demasiado raro tras mejorar la captura, se relajó su detector para aceptar disputas reales entre dos rivales cercanos y reducir el tiempo de atasco necesario.
 - Se convirtió además el bully en una reanudación visible con disputa neutral: se elige un jugador de campo de cada equipo y se colocan frente a frente sobre la bola antes del reinicio.
+- Se rehízo la detección de bully para basarla en disputa real entre un azul y un rojo cercanos a la bola, en vez de depender casi solo de una bola totalmente muerta.

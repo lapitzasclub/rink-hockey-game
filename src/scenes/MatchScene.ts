@@ -26,6 +26,7 @@ import {
   checkGoal,
   checkLooseBallTackle,
   getAssistedPassDirection,
+  getBullyCandidate,
   getGoalieDistributionDirection,
   getGoalieDistributionTarget,
   kickBall,
@@ -309,12 +310,11 @@ export class MatchScene extends Phaser.Scene {
       if (bullySituation) {
         if (this.lastLooseBallTime === 0) this.lastLooseBallTime = time
         if (time - this.lastLooseBallTime > STUCK_BALL_TIMEOUT_MS) {
-          const blue = this.getClosestTeamPlayerToPoint('blue', this.ball.x, this.ball.y)
-          const red = this.getClosestTeamPlayerToPoint('red', this.ball.x, this.ball.y)
-          if (blue && red) {
-            registerBully(this.ruleState, this.ball.x, this.ball.y, {
-              bluePlayerId: blue.id,
-              redPlayerId: red.id,
+          const candidate = getBullyCandidate(this.players, this.ball, this.ballVelocity)
+          if (candidate) {
+            registerBully(this.ruleState, candidate.x, candidate.y, {
+              bluePlayerId: candidate.bluePlayerId,
+              redPlayerId: candidate.redPlayerId,
             })
           }
           this.lastLooseBallTime = 0
@@ -422,16 +422,6 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
     if (player.role === 'goalie') clearGoalieCatch(player)
-  }
-
-  private getClosestTeamPlayerToPoint(team: TeamColor, x: number, y: number) {
-    return this.players
-      .filter((player) => player.team === team && player.role !== 'goalie')
-      .sort((a, b) => {
-        const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, x, y)
-        const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, x, y)
-        return da - db
-      })[0] ?? null
   }
 
   private getClosestRivalToCarrier(carrier: Player) {

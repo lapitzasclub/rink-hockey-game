@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK } from '../constants'
-import type { Player, TeamColor, Vector } from '../types'
+import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
 /**
@@ -273,19 +273,41 @@ export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector
 }
 
 export function shouldCallBully(players: Player[], ball: Phaser.GameObjects.Arc, ballVelocity: Vector) {
-  const nearbyPlayers = players.filter((player) => Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y) < BULLY_CLUSTER_RADIUS)
-  const teams = new Set(nearbyPlayers.map((player) => player.team))
-  const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
-  const nearestTwo = [...nearbyPlayers]
-    .sort((a, b) => {
-      const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ball.x, ball.y)
-      const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ball.x, ball.y)
-      return da - db
-    })
-    .slice(0, 2)
+  return getBullyCandidate(players, ball, ballVelocity) !== null
+}
 
-  const directContest = nearestTwo.length === 2 && nearestTwo[0].team !== nearestTwo[1].team
-  return nearbyPlayers.length >= BULLY_MIN_PLAYERS && teams.size >= 2 && (speed < 34 || directContest)
+export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Arc, ballVelocity: Vector): BullyCandidate | null {
+  const nearbyPlayers = players.filter((player) => {
+    if (player.role === 'goalie') return false
+    return Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y) < BULLY_CLUSTER_RADIUS
+  })
+
+  const blues = nearbyPlayers
+    .filter((player) => player.team === 'blue')
+    .sort((a, b) => Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ball.x, ball.y) - Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ball.x, ball.y))
+  const reds = nearbyPlayers
+    .filter((player) => player.team === 'red')
+    .sort((a, b) => Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ball.x, ball.y) - Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ball.x, ball.y))
+
+  if (blues.length === 0 || reds.length === 0) return null
+
+  const blue = blues[0]
+  const red = reds[0]
+  const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
+  const playerGap = Phaser.Math.Distance.Between(blue.pos.x, blue.pos.y, red.pos.x, red.pos.y)
+  const blueBallDistance = Phaser.Math.Distance.Between(blue.pos.x, blue.pos.y, ball.x, ball.y)
+  const redBallDistance = Phaser.Math.Distance.Between(red.pos.x, red.pos.y, ball.x, ball.y)
+  const contested = playerGap < 74 && blueBallDistance < BULLY_CLUSTER_RADIUS && redBallDistance < BULLY_CLUSTER_RADIUS
+
+  if (!contested) return null
+  if (nearbyPlayers.length < BULLY_MIN_PLAYERS && speed >= 34) return null
+
+  return {
+    bluePlayerId: blue.id,
+    redPlayerId: red.id,
+    x: ball.x,
+    y: ball.y,
+  }
 }
 
 export function checkGoal(ball: Phaser.GameObjects.Arc) {

@@ -24,3 +24,10 @@ export type Player = {
   ignoreBallUntil?: number
   goalieRecoverUntil?: number
 }
+
+export type BullyCandidate = {
+  bluePlayerId: string
+  redPlayerId: string
+  x: number
+  y: number
+}
