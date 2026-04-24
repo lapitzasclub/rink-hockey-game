@@ -47,6 +47,7 @@ window.addEventListener('gamepadconnected', () => setTouchUiVisible(false))
 window.addEventListener('gamepaddisconnected', () => setTouchUiVisible(isTouchPrimary && !hasGamepad()))
 
 const touchState = { x: 0, y: 0, pass: false, shoot: false, switch: false }
+;(window as Window & { __RINK_TOUCH_LOG__?: boolean }).__RINK_TOUCH_LOG__ = true
 ;(window as typeof window & { __RINK_TOUCH__?: typeof touchState }).__RINK_TOUCH__ = touchState
 
 const joystick = nipplejs.create({

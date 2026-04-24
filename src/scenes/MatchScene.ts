@@ -81,6 +81,7 @@ export class MatchScene extends Phaser.Scene {
   private hudText!: Phaser.GameObjects.Text
   private subHudText!: Phaser.GameObjects.Text
   private centerText!: Phaser.GameObjects.Text
+  private touchDebugText!: Phaser.GameObjects.Text
   private blueScore = 0
   private redScore = 0
   private remainingSeconds = MATCH_DURATION
@@ -111,6 +112,13 @@ export class MatchScene extends Phaser.Scene {
     this.hudText = hud.hudText
     this.subHudText = hud.subHudText
     this.centerText = hud.centerText
+    this.touchDebugText = this.add.text(20, GAME_HEIGHT - 78, '', {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: '#9fd3ff',
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      padding: { x: 6, y: 4 },
+    }).setDepth(30)
     this.resetKickoff('blue')
 
     this.time.addEvent({
@@ -194,6 +202,16 @@ export class MatchScene extends Phaser.Scene {
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
     this.checkGoalState(time)
     this.updateHud()
+    this.updateTouchDebug()
+  }
+
+  private updateTouchDebug() {
+    const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    this.touchDebugText.setText(
+      `touch ${this.touchInput.x.toFixed(2)},${this.touchInput.y.toFixed(2)} | ` +
+      `vel ${controlled.velocity.x.toFixed(1)},${controlled.velocity.y.toFixed(1)} | ` +
+      `pos ${controlled.pos.x.toFixed(0)},${controlled.pos.y.toFixed(0)}`
+    )
   }
 
   private createInput() {
