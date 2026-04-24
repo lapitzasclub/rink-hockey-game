@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK } from '../constants'
 import type { Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -85,11 +85,16 @@ export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballC
  * se sienta menos torpe y menos dependiente de rebotes diminutos.
  */
 export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, player: Player) {
+  const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
+  if (speed > BALL_MAGNET_MAX_SPEED) return ballVelocity
+
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
   if (distance > BALL_MAGNET_DISTANCE) return ballVelocity
 
   const angle = Phaser.Math.Angle.Between(ball.x, ball.y, player.pos.x, player.pos.y)
-  const pull = Phaser.Math.Clamp((BALL_MAGNET_DISTANCE - distance) * 6, 0, 110)
+  const pullStrength = Phaser.Math.Clamp((BALL_MAGNET_DISTANCE - distance) / BALL_MAGNET_DISTANCE, 0, 1)
+  const velocityBlend = 1 - Phaser.Math.Clamp(speed / BALL_MAGNET_MAX_SPEED, 0, 1)
+  const pull = 42 * pullStrength * velocityBlend
   return {
     x: ballVelocity.x + Math.cos(angle) * pull,
     y: ballVelocity.y + Math.sin(angle) * pull,
