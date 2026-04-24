@@ -35,7 +35,7 @@ export const GOALIE_RELEASE_DISTANCE = 66
 export const BALL_FREEZE_AFTER_GOALIE_RELEASE_MS = 220
 export const BULLY_CLUSTER_RADIUS = 52
 export const BULLY_MIN_PLAYERS = 2
-export const STUCK_BALL_TIMEOUT_MS = 900
+export const STUCK_BALL_TIMEOUT_MS = 3000
 
 export const RINK = {
   x: 70,

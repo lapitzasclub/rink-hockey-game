@@ -81,6 +81,8 @@ export class MatchScene extends Phaser.Scene {
   private lastLooseBallTime = 0
   private ballIgnoreContactsUntil = 0
   private activeBully: ActiveBully | null = null
+  private stuckCarrierStartTime = 0
+  private stuckCarrierOrigin: Vector | null = null
 
   constructor() {
     super('match')
@@ -275,7 +277,44 @@ export class MatchScene extends Phaser.Scene {
       const carrier = findPlayerById(this.players, this.ballCarrierId)
       if (!carrier) {
         this.ballCarrierId = null
+        this.stuckCarrierStartTime = 0
+        this.stuckCarrierOrigin = null
         return
+      }
+
+      const nearbyRivals = this.players.filter((player) => {
+        if (player.team === carrier.team) return false
+        return Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y) < 54
+      })
+      const carrierTravel = this.stuckCarrierOrigin
+        ? Phaser.Math.Distance.Between(carrier.pos.x, carrier.pos.y, this.stuckCarrierOrigin.x, this.stuckCarrierOrigin.y)
+        : 0
+      const ballSpeed = Math.hypot(this.ballVelocity.x, this.ballVelocity.y)
+
+      if (nearbyRivals.length > 0 && carrierTravel < 42 && ballSpeed < 45) {
+        if (this.stuckCarrierStartTime === 0) {
+          this.stuckCarrierStartTime = time
+          this.stuckCarrierOrigin = { x: carrier.pos.x, y: carrier.pos.y }
+        } else if (time - this.stuckCarrierStartTime >= STUCK_BALL_TIMEOUT_MS) {
+          const rival = nearbyRivals.sort((a, b) => {
+            const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, carrier.pos.x, carrier.pos.y)
+            const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, carrier.pos.x, carrier.pos.y)
+            return da - db
+          })[0]
+
+          registerBully(this.ruleState, carrier.pos.x, carrier.pos.y, carrier.team === 'blue'
+            ? { bluePlayerId: carrier.id, redPlayerId: rival.id }
+            : { bluePlayerId: rival.id, redPlayerId: carrier.id })
+
+          this.ballCarrierId = null
+          this.ballVelocity = { x: 0, y: 0 }
+          this.stuckCarrierStartTime = 0
+          this.stuckCarrierOrigin = null
+          return
+        }
+      } else {
+        this.stuckCarrierStartTime = 0
+        this.stuckCarrierOrigin = this.ballCarrierId ? { x: carrier.pos.x, y: carrier.pos.y } : null
       }
 
       const thief = this.getClosestRivalToCarrier(carrier)
@@ -295,6 +334,9 @@ export class MatchScene extends Phaser.Scene {
       }
       return
     }
+
+    this.stuckCarrierStartTime = 0
+    this.stuckCarrierOrigin = null
 
     if (time < this.ballIgnoreContactsUntil) return
 
@@ -520,6 +562,8 @@ export class MatchScene extends Phaser.Scene {
     this.lastLooseBallTime = 0
     this.ballIgnoreContactsUntil = 0
     this.activeBully = null
+    this.stuckCarrierStartTime = 0
+    this.stuckCarrierOrigin = null
     this.ruleState = createRuleState()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
   }

@@ -54,3 +54,4 @@
 - Se convirtió además el bully en una reanudación visible con disputa neutral: se elige un jugador de campo de cada equipo y se colocan frente a frente sobre la bola antes del reinicio.
 - Se rehízo la detección de bully para basarla en disputa real entre un azul y un rojo cercanos a la bola, en vez de depender casi solo de una bola totalmente muerta.
 - Se convirtió el bully en un estado temporal explícito dentro de la escena, congelando una disputa neutral visible entre dos jugadores antes de soltar de nuevo el juego.
+- Se añadió además detección de bully por atasco real con portador: si un jugador mantiene la bola casi inmóvil en una zona estrecha bajo disputa rival durante varios segundos, se fuerza el bully.
