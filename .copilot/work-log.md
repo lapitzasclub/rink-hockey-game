@@ -41,3 +41,4 @@
 - Se reajustaron proporciones del rink para dejar más espacio detrás de portería y acercarlo mejor a la estructura de referencia.
 - Se corrigió el bug del portero reteniendo la bola demasiado tiempo, forzando una distribución explícita tras una pequeña ventana de control.
 - Se endureció además la salida del portero con una liberación más adelantada, más potencia y un cooldown de recaptura mayor para evitar que la bola vuelva a pegarse al instante.
+- Se blindó la distribución del portero bloqueando durante un instante el magnetismo y los micro-contactos sobre la bola recién soltada, para que no se reenganche en el mismo frame.

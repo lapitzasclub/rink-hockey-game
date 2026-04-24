@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import {
+  BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
   FOUL_CHANCE_ON_STEAL,
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -74,6 +75,7 @@ export class MatchScene extends Phaser.Scene {
   private lastTouch: TeamColor = 'blue'
   private ruleState: RuleState = createRuleState()
   private lastLooseBallTime = 0
+  private ballIgnoreContactsUntil = 0
 
   constructor() {
     super('match')
@@ -282,6 +284,8 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
+    if (time < this.ballIgnoreContactsUntil) return
+
     const candidates = [...this.players].sort((a, b) => {
       const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, this.ball.x, this.ball.y)
       const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, this.ball.x, this.ball.y)
@@ -321,6 +325,7 @@ export class MatchScene extends Phaser.Scene {
    */
   private handleLooseBallContacts() {
     if (this.ballCarrierId) return
+    if (this.time.now < this.ballIgnoreContactsUntil) return
 
     for (const player of this.players) {
       const radius = player.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
@@ -373,7 +378,10 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
-    if (player.role === 'goalie') clearGoalieCatch(player)
+    if (player.role === 'goalie') {
+      clearGoalieCatch(player)
+      this.ballIgnoreContactsUntil = this.time.now + BALL_FREEZE_AFTER_GOALIE_RELEASE_MS
+    }
   }
 
   /** Ejecuta un tiro hacia una zona de portería con pequeña variación vertical. */
@@ -475,6 +483,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastTouch = team
     this.controlledPlayerIndex = 0
     this.lastLooseBallTime = 0
+    this.ballIgnoreContactsUntil = 0
     this.ruleState = createRuleState()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
   }
