@@ -22,4 +22,5 @@ export type Player = {
   possessionCooldownUntil?: number
   goalieCatchTime?: number
   ignoreBallUntil?: number
+  goalieRecoverUntil?: number
 }

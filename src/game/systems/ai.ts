@@ -12,7 +12,14 @@ import { normalizedVector } from '../utils'
  * lateralmente dentro de su zona para cubrir mejor el arco y cerrarse más
  * cuando la bola entra en radio claro de intervención.
  */
-export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt: number) {
+export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt: number, now = 0) {
+  if ((player.goalieRecoverUntil ?? 0) > now) {
+    const resetFacing = { x: player.side === 'left' ? 1 : -1, y: 0 }
+    seek(player, player.home, 0.55, dt)
+    player.facing = normalizedVector(resetFacing.x, resetFacing.y, resetFacing)
+    return
+  }
+
   const targetY = Phaser.Math.Clamp(ballY, GAME_HEIGHT / 2 - 120, GAME_HEIGHT / 2 + 120)
   const ballDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ballX, ballY)
   const stepOut = ballDistance < GOALIE_SAVE_RADIUS + 18 ? 26 : 12

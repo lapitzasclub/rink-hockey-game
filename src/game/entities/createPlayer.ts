@@ -41,5 +41,6 @@ export function createPlayer(
     possessionCooldownUntil: 0,
     goalieCatchTime: 0,
     ignoreBallUntil: 0,
+    goalieRecoverUntil: 0,
   }
 }

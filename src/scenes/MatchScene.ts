@@ -205,7 +205,7 @@ export class MatchScene extends Phaser.Scene {
     for (const player of this.players) {
       if (player.id === controlled.id) continue
 
-      if (player.role === 'goalie') updateGoalieAI(player, this.ball.x, this.ball.y, dt)
+      if (player.role === 'goalie') updateGoalieAI(player, this.ball.x, this.ball.y, dt, this.time.now)
       else updateFieldPlayerAI(this.players, player, this.ball.x, this.ball.y, this.ballCarrierId, dt)
 
       applySkating(player, dt)
@@ -384,6 +384,7 @@ export class MatchScene extends Phaser.Scene {
     if (player.role === 'goalie') {
       clearGoalieCatch(player)
       player.ignoreBallUntil = this.time.now + GOALIE_RELEASE_COOLDOWN_MS
+      player.goalieRecoverUntil = this.time.now + GOALIE_RELEASE_COOLDOWN_MS
       this.ballIgnoreContactsUntil = this.time.now + BALL_FREEZE_AFTER_GOALIE_RELEASE_MS
     }
   }
@@ -480,6 +481,7 @@ export class MatchScene extends Phaser.Scene {
       player.possessionCooldownUntil = 0
       player.goalieCatchTime = 0
       player.ignoreBallUntil = 0
+      player.goalieRecoverUntil = 0
     }
 
     this.ball.setPosition(GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22), GAME_HEIGHT / 2)
