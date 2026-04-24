@@ -96,11 +96,11 @@ export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVeloci
 }
 
 /** Libera la bola desde el portador en una dirección y potencia concretas. */
-export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], ballCarrierId: string | null, direction: Vector, power: number, now: number, cooldownMs: number) {
+export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], ballCarrierId: string | null, direction: Vector, power: number, now: number, cooldownMs: number, releaseDistance = BALL_CONTROL_DISTANCE) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
   if (carrier) {
-    ball.x = carrier.pos.x + direction.x * BALL_CONTROL_DISTANCE
-    ball.y = carrier.pos.y + direction.y * BALL_CONTROL_DISTANCE
+    ball.x = carrier.pos.x + direction.x * releaseDistance
+    ball.y = carrier.pos.y + direction.y * releaseDistance
     carrier.possessionCooldownUntil = now + cooldownMs
   }
 

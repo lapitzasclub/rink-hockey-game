@@ -3,7 +3,10 @@ import {
   FOUL_CHANCE_ON_STEAL,
   GAME_HEIGHT,
   GAME_WIDTH,
+  GOALIE_DISTRIBUTION_POWER,
   GOALIE_RADIUS,
+  GOALIE_RELEASE_COOLDOWN_MS,
+  GOALIE_RELEASE_DISTANCE,
   MATCH_DURATION,
   PASS_POWER,
   POSSESSION_RELEASE_COOLDOWN_MS,
@@ -356,7 +359,17 @@ export class MatchScene extends Phaser.Scene {
   private tryPass(player: Player) {
     if (this.ballCarrierId !== player.id) return
     const direction = getAssistedPassDirection(this.players, player, getAimingDirection(player))
-    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, PASS_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
+    const isGoalie = player.role === 'goalie'
+    const released = releaseBall(
+      this.ball,
+      this.players,
+      this.ballCarrierId,
+      direction,
+      isGoalie ? GOALIE_DISTRIBUTION_POWER : PASS_POWER,
+      this.time.now,
+      isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS,
+      isGoalie ? GOALIE_RELEASE_DISTANCE : undefined,
+    )
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
