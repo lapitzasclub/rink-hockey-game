@@ -75,3 +75,4 @@
 - Se reequilibraron las entradas para reducir faltas excesivas: ahora hay más margen para fallo limpio y menos castigo automático al intentar robar.
 - Se añadió una primera capa de controles táctiles para móvil sin gamepad: stick analógico virtual a la izquierda y botones a la derecha para pase, tiro/robo y cambio.
 - Al ver que el stick casero no era suficiente, se sustituyó por `nipplejs` para obtener un control táctil analógico mucho más usable en móvil.
+- Tras detectar que el input táctil seguía sin mover ni accionar al jugador, se reforzó la integración leyendo el estado táctil al inicio de cada frame, corrigiendo el eje vertical del joystick y robusteciendo los eventos de los botones táctiles.

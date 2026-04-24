@@ -149,6 +149,7 @@ export class MatchScene extends Phaser.Scene {
    */
   update(time: number, delta: number) {
     const dt = Math.min(delta / 1000, 0.033)
+    this.readTouchInput()
 
     if (this.matchEnded) {
       if (Phaser.Input.Keyboard.JustDown(this.shootKey)) this.scene.restart()
@@ -177,7 +178,8 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.switchKey)) {
+    const touchSwitchPressed = this.touchInput.switch && !this.prevTouchButtons.switch
+    if (Phaser.Input.Keyboard.JustDown(this.switchKey) || touchSwitchPressed) {
       this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, this.ballCarrierId, this.ball.x, this.ball.y)
     }
 
@@ -209,9 +211,12 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
-    this.touchInput = { ...state }
-    if (this.touchInput.switch && !this.prevTouchButtons.switch) {
-      this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, this.ballCarrierId, this.ball.x, this.ball.y)
+    this.touchInput = {
+      x: Math.abs(state.x) > 0.08 ? state.x : 0,
+      y: Math.abs(state.y) > 0.08 ? state.y : 0,
+      pass: state.pass,
+      shoot: state.shoot,
+      switch: state.switch,
     }
   }
 
@@ -228,7 +233,6 @@ export class MatchScene extends Phaser.Scene {
   /** Gestiona el jugador humano actualmente seleccionado. */
   private updateControlledPlayer(dt: number) {
     const player = getControlledPlayer(this.players, this.controlledPlayerIndex)
-    this.readTouchInput()
 
     let inputX = 0
     let inputY = 0

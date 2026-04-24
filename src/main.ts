@@ -64,7 +64,7 @@ const joystick = nipplejs.create({
   const force = Math.min(data?.force ?? 0, 1)
   const angle = data?.angle?.radian ?? 0
   touchState.x = Math.cos(angle) * force
-  touchState.y = Math.sin(angle) * force
+  touchState.y = -Math.sin(angle) * force
 })
 
 ;(joystick as any).on('end', () => {
@@ -74,7 +74,25 @@ const joystick = nipplejs.create({
 
 for (const [id, key] of [['touch-pass', 'pass'], ['touch-shoot', 'shoot'], ['touch-switch', 'switch']] as const) {
   const el = document.getElementById(id)!
-  el.addEventListener('pointerdown', () => { touchState[key] = true })
-  el.addEventListener('pointerup', () => { touchState[key] = false })
-  el.addEventListener('pointercancel', () => { touchState[key] = false })
+  const press = (event: PointerEvent) => {
+    event.preventDefault()
+    touchState[key] = true
+  }
+  const release = (event: PointerEvent) => {
+    event.preventDefault()
+    touchState[key] = false
+  }
+  el.addEventListener('pointerdown', press)
+  el.addEventListener('pointerup', release)
+  el.addEventListener('pointercancel', release)
+  el.addEventListener('pointerleave', release)
+  el.addEventListener('lostpointercapture', release)
 }
+
+window.addEventListener('blur', () => {
+  touchState.x = 0
+  touchState.y = 0
+  touchState.pass = false
+  touchState.shoot = false
+  touchState.switch = false
+})
