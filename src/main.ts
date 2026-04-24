@@ -59,17 +59,18 @@ async function setupTouchJoystick() {
 
   const manager = nipplejsModule.create({
     zone: touchLeft,
-    mode: 'dynamic',
+    mode: 'static',
+    position: { left: '66px', bottom: '66px' },
     multitouch: false,
     color: 'white',
     size: 120,
     threshold: 0.05,
     fadeTime: 0,
     restOpacity: 0.25,
-    dynamicPage: true,
   })
 
-  const syncFromData = (data: any) => {
+  const syncFromEvent = (evt: any) => {
+    const data = evt?.data
     const vectorX = Number(data?.vector?.x ?? 0)
     const vectorY = Number(data?.vector?.y ?? 0)
     touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
@@ -82,8 +83,8 @@ async function setupTouchJoystick() {
     ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr start'
   })
 
-  manager.on('move dir plain', (_evt: any, data: any) => {
-    syncFromData(data)
+  manager.on('move dir plain', (evt: any) => {
+    syncFromEvent(evt)
   })
 
   manager.on('end hidden removed', () => {
