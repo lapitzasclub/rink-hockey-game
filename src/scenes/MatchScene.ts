@@ -9,6 +9,7 @@ import {
   MANUAL_STEAL_FOUL_CHANCE,
   MANUAL_STEAL_RANGE,
   MANUAL_STEAL_SUCCESS_CHANCE,
+  DIRECT_FREE_HIT_SPOT_OFFSET,
   GAME_WIDTH,
   GOAL_LINE_OFFSET,
   GOAL_NET_HOLD_X,
@@ -618,7 +619,13 @@ export class MatchScene extends Phaser.Scene {
 
   private startFoulRestart(foul: RuleState['pendingFoul'] extends infer T ? Exclude<T, null> : never) {
     const taker = findPlayerById(this.players, foul.victimPlayerId)
-    this.ball.setPosition(foul.restartX, foul.restartY)
+    const isDirect = foul.sanction === 'direct-free-hit' || foul.sanction === 'penalty'
+    const restartX = isDirect
+      ? (taker?.side === 'left' ? GAME_WIDTH - DIRECT_FREE_HIT_SPOT_OFFSET : DIRECT_FREE_HIT_SPOT_OFFSET)
+      : foul.restartX
+    const restartY = GAME_HEIGHT / 2
+
+    this.ball.setPosition(restartX, restartY)
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
     this.ballIgnoreContactsUntil = this.time.now + FOUL_SETUP_MS
@@ -628,14 +635,30 @@ export class MatchScene extends Phaser.Scene {
     }
 
     if (taker) {
-      taker.pos = { x: foul.restartX + (taker.side === 'left' ? -18 : 18), y: foul.restartY }
+      taker.pos = { x: restartX + (taker.side === 'left' ? -18 : 18), y: restartY }
       taker.facing = { x: taker.side === 'left' ? 1 : -1, y: 0 }
+    }
+
+    if (isDirect) {
+      for (const player of this.players) {
+        if (player.role !== 'goalie' && player.id !== taker?.id) {
+          player.pos = { x: player.home.x, y: player.home.y }
+          player.velocity = { x: 0, y: 0 }
+        }
+      }
+
+      const defendingGoalie = this.players.find((player) => player.role === 'goalie' && player.team !== taker?.team)
+      if (defendingGoalie) {
+        defendingGoalie.pos = { x: defendingGoalie.home.x, y: GAME_HEIGHT / 2 }
+        defendingGoalie.velocity = { x: 0, y: 0 }
+        defendingGoalie.facing = { x: defendingGoalie.side === 'left' ? 1 : -1, y: 0 }
+      }
     }
 
     this.activeFoulRestart = {
       takerPlayerId: foul.victimPlayerId,
-      x: foul.restartX,
-      y: foul.restartY,
+      x: restartX,
+      y: restartY,
       readyAt: this.time.now + FOUL_SETUP_MS,
       sanction: foul.sanction,
     }
