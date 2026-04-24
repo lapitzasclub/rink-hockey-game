@@ -19,3 +19,5 @@
 - Se separaron pase y tiro como acciones distintas (`X` y `Espacio`).
 - Se mejoró el cambio de jugador para priorizar portador azul o jugador más cercano a la bola.
 - Se ajustaron colisiones y contactos para que el juego sea menos caótico y más legible.
+- Se inició la modularización real del código, separando constantes, tipos, utilidades, formaciones, entidades, render y escena principal.
+- `src/main.ts` quedó reducido al arranque del juego para evitar que el archivo principal siguiera creciendo.

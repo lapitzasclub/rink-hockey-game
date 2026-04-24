@@ -38,16 +38,22 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 ## Estructura inicial actual
 
 - `.copilot/` documentación operativa y memoria del proyecto.
-- `src/main.ts` prototipo jugable actual en una sola escena.
+- `src/main.ts` bootstrap de Phaser.
+- `src/scenes/MatchScene.ts` escena principal del partido.
+- `src/game/constants.ts` constantes globales del juego.
+- `src/game/types.ts` tipos principales.
+- `src/game/formation.ts` formaciones base.
+- `src/game/entities/` creación de entidades.
+- `src/game/render/` rendering de pista.
+- `src/game/ui/` HUD y elementos de interfaz.
+- `src/game/utils.ts` utilidades compartidas.
 - `src/style.css` estilos mínimos del contenedor web.
 - `public/` recursos públicos del proyecto.
 
 ## Evolución estructural prevista
 
-- `src/game/` lógica principal del juego.
-- `src/scenes/` escenas Phaser.
-- `src/entities/` jugador, bola y porterías.
-- `src/systems/` reglas, marcador, IA y utilidades.
+- `src/game/systems/` reglas, marcador, posesión, IA y colisiones.
+- `src/game/audio/` sonido y música.
 - `public/assets/` sprites, audio y UI.
 
 ## Riesgos conocidos

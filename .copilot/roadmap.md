@@ -29,6 +29,13 @@ Fase: prototipo base jugable
 - [ ] Ajuste de físicas de patinaje
 - [ ] Sonidos base
 
+## Hito 2.5, refactor técnico
+
+- [x] Extraer constantes y tipos compartidos
+- [x] Mover bootstrap fuera de la lógica de partido
+- [x] Separar escena principal y helpers base
+- [ ] Extraer sistemas de IA, posesión, colisiones y HUD
+
 ## Hito 3, presentación
 
 - [ ] Pantalla inicial
