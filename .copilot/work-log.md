@@ -34,4 +34,5 @@
 - Se añadió un bully básico para situaciones de bola atascada.
 - Se corrigió el pase para usar orientación real con asistencia moderada dentro de un cono frontal, en lugar de quedar totalmente ciego.
 - Se rehízo el criterio del bully para depender del apelotonamiento real de jugadores alrededor de una bola bloqueada.
+- Se corrigió la recaptura inmediata tras pase/tiro introduciendo una ventana corta de cooldown de posesión para el jugador que acaba de soltar la bola.
 - Se redibujó la pista para acercarla más al patrón visual esperado por la referencia compartida.

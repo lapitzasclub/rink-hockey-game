@@ -6,6 +6,7 @@ import {
   GOALIE_RADIUS,
   MATCH_DURATION,
   PASS_POWER,
+  POSSESSION_RELEASE_COOLDOWN_MS,
   PLAYER_ACCEL,
   PLAYER_RADIUS,
   SHOT_POWER,
@@ -260,7 +261,7 @@ export class MatchScene extends Phaser.Scene {
         }
 
         const stealDirection = getAimingDirection(thief)
-        const released = releaseBall(this.ball, this.players, this.ballCarrierId, stealDirection, STEAL_RELEASE_POWER)
+        const released = releaseBall(this.ball, this.players, this.ballCarrierId, stealDirection, STEAL_RELEASE_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
         this.ballCarrierId = thief.id
         this.ballVelocity = released.ballVelocity
         this.lastTouch = thief.team
@@ -330,7 +331,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Intenta asignar la posesión a un jugador concreto y sincroniza el estado local. */
   private claimBallFor(player: Player) {
-    const result = tryClaimBall(this.ball, player, this.ballCarrierId, this.ballVelocity, this.controlledPlayerIndex, this.players)
+    const result = tryClaimBall(this.ball, player, this.ballCarrierId, this.ballVelocity, this.controlledPlayerIndex, this.players, this.time.now)
     if (!result.claimed) return false
 
     this.ballCarrierId = result.ballCarrierId
@@ -344,7 +345,7 @@ export class MatchScene extends Phaser.Scene {
   private tryPass(player: Player) {
     if (this.ballCarrierId !== player.id) return
     const direction = getAssistedPassDirection(this.players, player, getAimingDirection(player))
-    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, PASS_POWER)
+    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, PASS_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
@@ -355,7 +356,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.ballCarrierId !== player.id) return
 
     const direction = getAimingDirection(player)
-    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, SHOT_POWER)
+    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, SHOT_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
@@ -431,6 +432,7 @@ export class MatchScene extends Phaser.Scene {
       player.pos = { x: formation.x, y: formation.y }
       player.velocity = { x: 0, y: 0 }
       player.facing = { x: player.side === 'left' ? 1 : -1, y: 0 }
+      player.possessionCooldownUntil = 0
     }
 
     this.ball.setPosition(GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22), GAME_HEIGHT / 2)

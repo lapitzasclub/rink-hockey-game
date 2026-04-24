@@ -57,8 +57,9 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
  * También actualiza el índice del jugador controlado cuando la posesión azul
  * cambia a otro compañero de campo.
  */
-export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[]) {
+export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[], now: number) {
   if (ballCarrierId) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
+  if ((player.possessionCooldownUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
   const claimRadius = player.role === 'goalie' ? GOALIE_CLAIM_RADIUS : BALL_PICKUP_DISTANCE
   if (distance > claimRadius) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
@@ -95,11 +96,12 @@ export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVeloci
 }
 
 /** Libera la bola desde el portador en una dirección y potencia concretas. */
-export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], ballCarrierId: string | null, direction: Vector, power: number) {
+export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], ballCarrierId: string | null, direction: Vector, power: number, now: number, cooldownMs: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
   if (carrier) {
     ball.x = carrier.pos.x + direction.x * BALL_CONTROL_DISTANCE
     ball.y = carrier.pos.y + direction.y * BALL_CONTROL_DISTANCE
+    carrier.possessionCooldownUntil = now + cooldownMs
   }
 
   return {

@@ -19,4 +19,5 @@ export type Player = {
   facing: Vector
   home: Vector
   controllable: boolean
+  possessionCooldownUntil?: number
 }

@@ -38,5 +38,6 @@ export function createPlayer(
     facing: { x: side === 'left' ? 1 : -1, y: 0 },
     home: { x, y },
     controllable,
+    possessionCooldownUntil: 0,
   }
 }
