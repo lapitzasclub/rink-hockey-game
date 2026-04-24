@@ -533,8 +533,15 @@ export class MatchScene extends Phaser.Scene {
       this.ball.setPosition(62, GAME_HEIGHT / 2)
     }
 
+    const blue = getFormation('left')
+    const red = getFormation('right')
     for (const player of this.players) {
+      const index = Number(player.id.split('-')[1])
+      const formation = player.team === 'blue' ? blue[index] : red[index]
+      player.home = { x: formation.x, y: formation.y }
+      player.pos = { x: formation.x, y: formation.y }
       player.velocity = { x: 0, y: 0 }
+      player.facing = { x: player.side === 'left' ? 1 : -1, y: 0 }
     }
   }
 

@@ -58,3 +58,4 @@
 - Se alargó la fase visible de preparación del bully para que el jugador tenga tiempo real de reconocer la jugada y reaccionar antes de la reanudación.
 - Se mejoró la IA táctica de campo para repartir mejor presión, apoyo y cobertura, evitando que varios jugadores persigan la bola de forma demasiado redundante.
 - Para teclado, se añadió asistencia de tiro hacia portería, manteniendo la orientación del jugador pero corrigiendo parte de la dirección hacia una zona válida de remate.
+- Se ajustó la colocación inicial y tras gol para que todos los jugadores arranquen dentro de su propio campo antes de la reanudación.

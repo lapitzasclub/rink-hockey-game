@@ -1,4 +1,6 @@
 import { GAME_HEIGHT, RINK } from './constants'
+
+const MID_X = RINK.x + RINK.width / 2
 import type { Role, TeamSide } from './types'
 
 export function getFormation(side: TeamSide) {
@@ -6,7 +8,7 @@ export function getFormation(side: TeamSide) {
   const baseX = left ? RINK.x + 110 : RINK.x + RINK.width - 110
   const defenseX = left ? RINK.x + 280 : RINK.x + RINK.width - 280
   const wingX = left ? RINK.x + 480 : RINK.x + RINK.width - 480
-  const pivotX = left ? RINK.x + 650 : RINK.x + RINK.width - 650
+  const pivotX = left ? MID_X - 70 : MID_X + 70
 
   return [
     { role: 'goalie' as Role, x: baseX, y: GAME_HEIGHT / 2 },
