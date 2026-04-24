@@ -81,6 +81,7 @@ export class MatchScene extends Phaser.Scene {
   private blueScore = 0
   private redScore = 0
   private remainingSeconds = MATCH_DURATION
+  private currentPeriod = 1
   private matchEnded = false
   private restartAt = 0
   private lastTouch: TeamColor = 'blue'
@@ -115,7 +116,18 @@ export class MatchScene extends Phaser.Scene {
       callback: () => {
         if (this.matchEnded || this.restartAt > 0) return
         this.remainingSeconds = Math.max(0, this.remainingSeconds - 1)
-        if (this.remainingSeconds === 0) this.finishMatch()
+        if (this.remainingSeconds === 0) {
+          if (this.currentPeriod < 4) {
+            this.currentPeriod += 1
+            this.ruleState.period = this.currentPeriod
+            this.ruleState.teamFouls = { blue: 0, red: 0 }
+            this.remainingSeconds = MATCH_DURATION
+            this.centerText.setText(`Inicio del ${this.currentPeriod}º tiempo`).setVisible(true)
+            this.restartAt = this.time.now + 1400
+          } else {
+            this.finishMatch()
+          }
+        }
       },
     })
 
@@ -600,6 +612,7 @@ export class MatchScene extends Phaser.Scene {
     this.stuckCarrierStartTime = 0
     this.stuckCarrierOrigin = null
     this.ruleState = createRuleState()
+    this.ruleState.period = this.currentPeriod
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
   }
 
@@ -746,7 +759,7 @@ export class MatchScene extends Phaser.Scene {
   private updateHud() {
     const minutes = Math.floor(this.remainingSeconds / 60)
     const seconds = this.remainingSeconds % 60
-    this.hudText.setText(`Azul ${this.blueScore}  -  ${this.redScore} Rojo   |   ${minutes}:${seconds.toString().padStart(2, '0')}`)
+    this.hudText.setText(`Azul ${this.blueScore}  -  ${this.redScore} Rojo   |   T${this.currentPeriod} ${minutes}:${seconds.toString().padStart(2, '0')}   |   Faltas ${this.ruleState.teamFouls.blue}-${this.ruleState.teamFouls.red}`)
     const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
     this.subHudText.setText(`Controlas: ${getRoleName(controlled.role)} azul | WASD mover | X pase | ESPACIO tiro | SHIFT cambia jugador`)
   }

@@ -7,6 +7,8 @@ export type BullyParticipant = {
 
 /** Estado mínimo de reglas para empezar a soportar faltas y bullys. */
 export type RuleState = {
+  teamFouls: Record<TeamColor, number>
+  period: number
   pendingFoul: null | {
     againstTeam: TeamColor
     byPlayerId: string
@@ -14,6 +16,7 @@ export type RuleState = {
     restartX: number
     restartY: number
     message: string
+    sanction: 'free-hit' | 'direct-free-hit' | 'penalty'
   }
   pendingBully: null | {
     x: number
@@ -25,19 +28,28 @@ export type RuleState = {
 
 export function createRuleState(): RuleState {
   return {
+    teamFouls: { blue: 0, red: 0 },
+    period: 1,
     pendingFoul: null,
     pendingBully: null,
   }
 }
 
 export function registerStealFoul(state: RuleState, offender: Player, victim: Player, restartX: number, restartY: number) {
+  state.teamFouls[offender.team] += 1
+  const fouls = state.teamFouls[offender.team]
+  const sanction = fouls >= 10 ? 'direct-free-hit' : 'free-hit'
+
   state.pendingFoul = {
     againstTeam: offender.team,
     byPlayerId: offender.id,
     victimPlayerId: victim.id,
     restartX,
     restartY,
-    message: `Falta de ${offender.team === 'blue' ? 'azul' : 'rojo'}`,
+    sanction,
+    message: sanction === 'direct-free-hit'
+      ? `Falta directa, ${offender.team === 'blue' ? 'azul' : 'rojo'} suma ${fouls}`
+      : `Falta de ${offender.team === 'blue' ? 'azul' : 'rojo'} (${fouls})`,
   }
 }
 
