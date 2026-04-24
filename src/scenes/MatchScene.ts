@@ -207,10 +207,12 @@ export class MatchScene extends Phaser.Scene {
 
   private updateTouchDebug() {
     const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    const diag = (window as Window & { __RINK_TOUCH_DIAG__?: string }).__RINK_TOUCH_DIAG__ ?? '-'
     this.touchDebugText.setText(
       `touch ${this.touchInput.x.toFixed(2)},${this.touchInput.y.toFixed(2)} | ` +
       `vel ${controlled.velocity.x.toFixed(1)},${controlled.velocity.y.toFixed(1)} | ` +
-      `pos ${controlled.pos.x.toFixed(0)},${controlled.pos.y.toFixed(0)}`
+      `pos ${controlled.pos.x.toFixed(0)},${controlled.pos.y.toFixed(0)} | ` +
+      `diag ${diag}`
     )
   }
 

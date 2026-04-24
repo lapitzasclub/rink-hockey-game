@@ -69,18 +69,23 @@ async function setupTouchJoystick() {
     dynamicPage: true,
   })
 
-  joystick.on('start', () => {
-    touchLeft.classList.add('active')
-  })
-
-  joystick.on('move', (_event: any, data: any) => {
+  const syncFromData = (data: any) => {
     const vectorX = Number(data?.vector?.x ?? 0)
     const vectorY = Number(data?.vector?.y ?? 0)
     touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
     touchState.y = Phaser.Math.Clamp(vectorY, -1, 1)
+  }
+
+  joystick.on('start', (_event: any, data: any) => {
+    touchLeft.classList.add('active')
+    syncFromData(data)
   })
 
-  joystick.on('end hidden', () => {
+  joystick.on('move dir plain', (_event: any, data: any) => {
+    syncFromData(data)
+  })
+
+  joystick.on('end hidden removed', () => {
     touchLeft.classList.remove('active')
     touchState.x = 0
     touchState.y = 0
@@ -88,6 +93,14 @@ async function setupTouchJoystick() {
 }
 
 void setupTouchJoystick()
+
+touchLeft.addEventListener('touchstart', () => {
+  ;(window as any).__RINK_TOUCH_DIAG__ = 'touchstart-left'
+}, { passive: true })
+
+touchLeft.addEventListener('pointerdown', () => {
+  ;(window as any).__RINK_TOUCH_DIAG__ = 'pointerdown-left'
+})
 
 for (const [id, key] of [['touch-pass', 'pass'], ['touch-shoot', 'shoot'], ['touch-switch', 'switch']] as const) {
   const el = document.getElementById(id)!

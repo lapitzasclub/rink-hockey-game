@@ -77,3 +77,4 @@
 - Al ver que el stick casero no era suficiente, se sustituyó por `nipplejs` para obtener un control táctil analógico mucho más usable en móvil.
 - Tras detectar que el input táctil seguía sin mover ni accionar al jugador, se reforzó la integración leyendo el estado táctil al inicio de cada frame, corrigiendo el eje vertical del joystick y robusteciendo los eventos de los botones táctiles.
 - Como el joystick seguía sin mover al jugador en móvil, se añadió instrumentación visual temporal en escena para ver el estado táctil y la velocidad real aplicada al jugador controlado.
+- Se continuó instrumentando la integración de `nipplejs` para distinguir entre fallo del propio joystick y pérdida de eventos táctiles en el contenedor/DOM del overlay.
