@@ -1,15 +1,16 @@
 import * as Phaser from 'phaser'
 import {
+  FOUL_CHANCE_ON_STEAL,
   GAME_HEIGHT,
   GAME_WIDTH,
   GOALIE_RADIUS,
-  DUMP_RELEASE_POWER,
   MATCH_DURATION,
   PASS_POWER,
   PLAYER_ACCEL,
   PLAYER_RADIUS,
-  RINK,
   SHOT_POWER,
+  STEAL_RELEASE_POWER,
+  STUCK_BALL_TIMEOUT_MS,
 } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
@@ -20,12 +21,13 @@ import {
   checkLooseBallTackle,
   getBestPassTarget,
   kickBall,
+  magnetBallTowardsPlayer,
   releaseBall,
   tryClaimBall,
   tryGoalieSave,
   updateBallPosition,
 } from '../game/systems/ball'
-import { updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
+import { getAimingDirection, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
 import { applySkating, resolvePlayerSpacing } from '../game/systems/movement'
 import {
   findPlayerById,
@@ -35,6 +37,7 @@ import {
 import { getStickTip, updateVisuals } from '../game/systems/visuals'
 import type { Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
+import { createRuleState, registerBully, registerStealFoul, type RuleState } from '../game/systems/rules'
 import { getRoleName } from '../game/utils'
 
 /**
@@ -64,6 +67,8 @@ export class MatchScene extends Phaser.Scene {
   private matchEnded = false
   private restartAt = 0
   private lastTouch: TeamColor = 'blue'
+  private ruleState: RuleState = createRuleState()
+  private lastLooseBallTime = 0
 
   constructor() {
     super('match')
@@ -130,8 +135,9 @@ export class MatchScene extends Phaser.Scene {
     resolvePlayerSpacing(this.players)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
     this.handleGoalieSave()
-    this.handleBallControl()
+    this.handleBallControl(time)
     this.handleLooseBallContacts()
+    this.handleRuleRestarts()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
     this.checkGoalState(time)
     this.updateHud()
@@ -235,7 +241,7 @@ export class MatchScene extends Phaser.Scene {
    * Si hay portador, comprobamos presión rival y posible pérdida.
    * Si no lo hay, se intenta asignar la posesión al jugador válido más cercano.
    */
-  private handleBallControl() {
+  private handleBallControl(time: number) {
     if (this.ballCarrierId) {
       const carrier = findPlayerById(this.players, this.ballCarrierId)
       if (!carrier) {
@@ -243,10 +249,20 @@ export class MatchScene extends Phaser.Scene {
         return
       }
 
-      if (checkLooseBallTackle(this.players, carrier)) {
-        const released = releaseBall(this.ball, this.players, this.ballCarrierId, carrier.facing, DUMP_RELEASE_POWER)
-        this.ballCarrierId = released.ballCarrierId
+      const thief = this.getClosestRivalToCarrier(carrier)
+      if (thief && checkLooseBallTackle(this.players, carrier)) {
+        if (Math.random() < FOUL_CHANCE_ON_STEAL) {
+          registerStealFoul(this.ruleState, thief, carrier, carrier.pos.x, carrier.pos.y)
+          this.ballCarrierId = null
+          this.ballVelocity = { x: 0, y: 0 }
+          return
+        }
+
+        const stealDirection = getAimingDirection(thief)
+        const released = releaseBall(this.ball, this.players, this.ballCarrierId, stealDirection, STEAL_RELEASE_POWER)
+        this.ballCarrierId = thief.id
         this.ballVelocity = released.ballVelocity
+        this.lastTouch = thief.team
       }
       return
     }
@@ -257,8 +273,27 @@ export class MatchScene extends Phaser.Scene {
       return da - db
     })
 
+    let claimed = false
     for (const player of candidates) {
-      if (this.claimBallFor(player)) break
+      this.ballVelocity = magnetBallTowardsPlayer(this.ball, this.ballVelocity, player)
+      if (this.claimBallFor(player)) {
+        claimed = true
+        break
+      }
+    }
+
+    if (!claimed) {
+      if (Math.hypot(this.ballVelocity.x, this.ballVelocity.y) < 28) {
+        if (this.lastLooseBallTime === 0) this.lastLooseBallTime = time
+        if (time - this.lastLooseBallTime > STUCK_BALL_TIMEOUT_MS) {
+          registerBully(this.ruleState, this.ball.x, this.ball.y)
+          this.lastLooseBallTime = 0
+        }
+      } else {
+        this.lastLooseBallTime = 0
+      }
+    } else {
+      this.lastLooseBallTime = 0
     }
   }
 
@@ -309,8 +344,8 @@ export class MatchScene extends Phaser.Scene {
     const mate = getBestPassTarget(this.players, player)
     if (!mate) return
 
-    const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, mate.pos.x, mate.pos.y)
-    const released = releaseBall(this.ball, this.players, this.ballCarrierId, { x: Math.cos(angle), y: Math.sin(angle) }, PASS_POWER)
+    const direction = getAimingDirection(player)
+    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, PASS_POWER)
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
@@ -320,13 +355,45 @@ export class MatchScene extends Phaser.Scene {
   private tryShot(player: Player) {
     if (this.ballCarrierId !== player.id) return
 
-    const goalX = player.side === 'left' ? RINK.x + RINK.width + 30 : RINK.x - 30
-    const targetY = GAME_HEIGHT / 2 + Phaser.Math.Between(-40, 40)
-    const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, goalX, targetY)
-    const released = releaseBall(this.ball, this.players, this.ballCarrierId, { x: Math.cos(angle), y: Math.sin(angle) }, SHOT_POWER)
+    const direction = getAimingDirection(player)
+    const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, SHOT_POWER)
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
+  }
+
+  private getClosestRivalToCarrier(carrier: Player) {
+    return this.players
+      .filter((player) => player.team !== carrier.team)
+      .sort((a, b) => {
+        const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, carrier.pos.x, carrier.pos.y)
+        const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, carrier.pos.x, carrier.pos.y)
+        return da - db
+      })[0] ?? null
+  }
+
+  /** Aplica reinicios simples de falta y bully. */
+  private handleRuleRestarts() {
+    if (this.ruleState.pendingFoul) {
+      const foul = this.ruleState.pendingFoul
+      this.centerText.setText(foul.message).setVisible(true)
+      this.ball.setPosition(foul.restartX, foul.restartY)
+      this.ballVelocity = { x: 0, y: 0 }
+      this.ballCarrierId = null
+      this.ruleState.pendingFoul = null
+      this.restartAt = this.time.now + 900
+      return
+    }
+
+    if (this.ruleState.pendingBully) {
+      const bully = this.ruleState.pendingBully
+      this.centerText.setText(bully.message).setVisible(true)
+      this.ball.setPosition(bully.x, bully.y)
+      this.ballVelocity = { x: 0, y: 0 }
+      this.ballCarrierId = null
+      this.ruleState.pendingBully = null
+      this.restartAt = this.time.now + 900
+    }
   }
 
   /** Comprueba si la bola ha cruzado la portería y actualiza marcador. */
@@ -372,6 +439,8 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = { x: 0, y: 0 }
     this.lastTouch = team
     this.controlledPlayerIndex = 0
+    this.lastLooseBallTime = 0
+    this.ruleState = createRuleState()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
   }
 

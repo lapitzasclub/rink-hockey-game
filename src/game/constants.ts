@@ -11,12 +11,16 @@ export const PLAYER_ACCEL = 860
 export const PLAYER_FRICTION = 0.9
 export const BALL_FRICTION = 0.988
 export const BALL_CONTROL_DISTANCE = 30
-export const BALL_PICKUP_DISTANCE = 26
+export const BALL_PICKUP_DISTANCE = 34
+export const BALL_MAGNET_DISTANCE = 54
 export const PASS_POWER = 430
 export const SHOT_POWER = 700
 export const DUMP_RELEASE_POWER = 160
+export const STEAL_RELEASE_POWER = 190
 export const GOALIE_SAVE_RADIUS = 34
 export const GOALIE_CLAIM_RADIUS = 22
+export const FOUL_CHANCE_ON_STEAL = 0.28
+export const STUCK_BALL_TIMEOUT_MS = 2200
 
 export const RINK = {
   x: 70,

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_PICKUP_DISTANCE, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_PICKUP_DISTANCE, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PLAYER_RADIUS, RINK } from '../constants'
 import type { Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -75,6 +75,22 @@ export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballC
     ballCarrierId: player.id,
     ballVelocity: { x: 0, y: 0 },
     controlledPlayerIndex: nextControlledIndex,
+  }
+}
+
+/**
+ * Atrae ligeramente una bola libre hacia un jugador cercano para que la captura
+ * se sienta menos torpe y menos dependiente de rebotes diminutos.
+ */
+export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, player: Player) {
+  const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
+  if (distance > BALL_MAGNET_DISTANCE) return ballVelocity
+
+  const angle = Phaser.Math.Angle.Between(ball.x, ball.y, player.pos.x, player.pos.y)
+  const pull = Phaser.Math.Clamp((BALL_MAGNET_DISTANCE - distance) * 6, 0, 110)
+  return {
+    x: ballVelocity.x + Math.cos(angle) * pull,
+    y: ballVelocity.y + Math.sin(angle) * pull,
   }
 }
 

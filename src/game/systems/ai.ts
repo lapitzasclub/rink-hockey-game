@@ -63,3 +63,9 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
 export function shouldAIShoot(player: Player) {
   return player.side === 'right' ? player.pos.x < RINK.x + 380 : player.pos.x > RINK.x + RINK.width - 380
 }
+
+export function getAimingDirection(player: Player) {
+  return player.facing.x === 0 && player.facing.y === 0
+    ? { x: player.side === 'left' ? 1 : -1, y: 0 }
+    : player.facing
+}

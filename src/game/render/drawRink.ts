@@ -1,32 +1,97 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GAME_WIDTH, GOAL_HEIGHT, GOAL_WIDTH, RINK } from '../constants'
+import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
 
 export function drawRink(scene: Phaser.Scene) {
   const g = scene.add.graphics()
-  g.fillStyle(0xf4f8ff, 1)
-  g.fillRoundedRect(RINK.x, RINK.y, RINK.width, RINK.height, 32)
-  g.lineStyle(6, 0x18365d, 1)
-  g.strokeRoundedRect(RINK.x, RINK.y, RINK.width, RINK.height, 32)
+  const centerX = GAME_WIDTH / 2
+  const centerY = GAME_HEIGHT / 2
+  const leftGoalLineX = RINK.x + 70
+  const rightGoalLineX = RINK.x + RINK.width - 70
+  const blueLineOffset = 255
+  const faceoffTopY = centerY - 155
+  const faceoffBottomY = centerY + 155
+  const faceoffCircleRadius = 66
 
-  g.lineStyle(4, 0xc62c42, 1)
-  g.strokeLineShape(new Phaser.Geom.Line(GAME_WIDTH / 2, RINK.y, GAME_WIDTH / 2, RINK.y + RINK.height))
-  g.strokeCircle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 80)
+  g.fillStyle(0xfdfefe, 1)
+  g.fillRoundedRect(RINK.x, RINK.y, RINK.width, RINK.height, 86)
+  g.lineStyle(7, 0x174ca8, 1)
+  g.strokeRoundedRect(RINK.x, RINK.y, RINK.width, RINK.height, 86)
 
-  g.lineStyle(3, 0x5194d1, 1)
-  g.strokeRect(RINK.x - 8, GAME_HEIGHT / 2 - GOAL_HEIGHT / 2, GOAL_WIDTH, GOAL_HEIGHT)
-  g.strokeRect(RINK.x + RINK.width - GOAL_WIDTH + 8, GAME_HEIGHT / 2 - GOAL_HEIGHT / 2, GOAL_WIDTH, GOAL_HEIGHT)
+  g.lineStyle(4, 0x174ca8, 1)
+  g.strokeLineShape(new Phaser.Geom.Line(centerX - blueLineOffset, RINK.y + 8, centerX - blueLineOffset, RINK.y + RINK.height - 8))
+  g.strokeLineShape(new Phaser.Geom.Line(centerX + blueLineOffset, RINK.y + 8, centerX + blueLineOffset, RINK.y + RINK.height - 8))
+  g.strokeCircle(centerX, centerY, 72)
 
-  g.fillStyle(0xdcecff, 1)
-  g.fillRect(RINK.x - 8, GAME_HEIGHT / 2 - GOAL_HEIGHT / 2, GOAL_WIDTH, GOAL_HEIGHT)
-  g.fillRect(RINK.x + RINK.width - GOAL_WIDTH + 8, GAME_HEIGHT / 2 - GOAL_HEIGHT / 2, GOAL_WIDTH, GOAL_HEIGHT)
+  g.lineStyle(4, 0xe02626, 1)
+  for (let y = RINK.y + 4; y < RINK.y + RINK.height; y += 36) {
+    g.strokeLineShape(new Phaser.Geom.Line(centerX, y, centerX, Math.min(y + 18, RINK.y + RINK.height)))
+  }
+  g.strokeLineShape(new Phaser.Geom.Line(leftGoalLineX, RINK.y + 20, leftGoalLineX, RINK.y + RINK.height - 20))
+  g.strokeLineShape(new Phaser.Geom.Line(rightGoalLineX, RINK.y + 20, rightGoalLineX, RINK.y + RINK.height - 20))
 
-  g.lineStyle(2, 0x8db8e0, 1)
-  g.strokeCircle(RINK.x + 170, GAME_HEIGHT / 2, 60)
-  g.strokeCircle(RINK.x + RINK.width - 170, GAME_HEIGHT / 2, 60)
+  drawFaceoffCircle(g, RINK.x + 245, faceoffTopY, faceoffCircleRadius)
+  drawFaceoffCircle(g, RINK.x + 245, faceoffBottomY, faceoffCircleRadius)
+  drawFaceoffCircle(g, RINK.x + RINK.width - 245, faceoffTopY, faceoffCircleRadius)
+  drawFaceoffCircle(g, RINK.x + RINK.width - 245, faceoffBottomY, faceoffCircleRadius)
 
-  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'Prototype build 0.4  •  código modularizado', {
+  g.fillStyle(0xe02626, 1)
+  g.fillCircle(centerX - 132, centerY - 84, 6)
+  g.fillCircle(centerX + 132, centerY - 84, 6)
+  g.fillCircle(centerX - 132, centerY + 84, 6)
+  g.fillCircle(centerX + 132, centerY + 84, 6)
+
+  drawGoalCrease(g, leftGoalLineX, centerY, true)
+  drawGoalCrease(g, rightGoalLineX, centerY, false)
+
+  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'Prototype build 0.5  •  captura, robo y pista revisada', {
     fontFamily: 'Arial',
     fontSize: '16px',
-    color: '#99aec8',
+    color: '#6f86a8',
   }).setOrigin(0.5)
+}
+
+function drawGoalCrease(g: Phaser.GameObjects.Graphics, goalLineX: number, centerY: number, leftSide: boolean) {
+  g.lineStyle(4, 0xe02626, 1)
+  g.fillStyle(0xbde9ff, 0.85)
+  const radius = 34
+  const rectWidth = 20
+  const rectHeight = 68
+
+  const points = leftSide
+    ? [
+        new Phaser.Math.Vector2(goalLineX, centerY - radius),
+        new Phaser.Math.Vector2(goalLineX - radius, centerY - radius * 0.75),
+        new Phaser.Math.Vector2(goalLineX - radius, centerY + radius * 0.75),
+        new Phaser.Math.Vector2(goalLineX, centerY + radius),
+      ]
+    : [
+        new Phaser.Math.Vector2(goalLineX, centerY - radius),
+        new Phaser.Math.Vector2(goalLineX + radius, centerY - radius * 0.75),
+        new Phaser.Math.Vector2(goalLineX + radius, centerY + radius * 0.75),
+        new Phaser.Math.Vector2(goalLineX, centerY + radius),
+      ]
+
+  g.fillPoints(points, true, true)
+  g.strokePoints(points, true, true)
+
+  if (leftSide) {
+    g.strokeRoundedRect(goalLineX - rectWidth, centerY - rectHeight / 2, rectWidth, rectHeight, 12)
+  } else {
+    g.strokeRoundedRect(goalLineX, centerY - rectHeight / 2, rectWidth, rectHeight, 12)
+  }
+}
+
+function drawFaceoffCircle(g: Phaser.GameObjects.Graphics, x: number, y: number, radius: number) {
+  g.lineStyle(4, 0xe02626, 1)
+  g.strokeCircle(x, y, radius)
+  g.fillStyle(0xe02626, 1)
+  g.fillCircle(x, y, 5)
+  g.strokeLineShape(new Phaser.Geom.Line(x - 18, y, x - 6, y))
+  g.strokeLineShape(new Phaser.Geom.Line(x + 6, y, x + 18, y))
+  g.strokeLineShape(new Phaser.Geom.Line(x, y - 18, x, y - 6))
+  g.strokeLineShape(new Phaser.Geom.Line(x, y + 6, x, y + 18))
+  g.strokeLineShape(new Phaser.Geom.Line(x - 32, y - radius, x - 32, y - radius + 18))
+  g.strokeLineShape(new Phaser.Geom.Line(x + 32, y - radius, x + 32, y - radius + 18))
+  g.strokeLineShape(new Phaser.Geom.Line(x - 32, y + radius - 18, x - 32, y + radius))
+  g.strokeLineShape(new Phaser.Geom.Line(x + 32, y + radius - 18, x + 32, y + radius))
 }

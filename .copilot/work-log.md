@@ -28,3 +28,8 @@
 - Se documentó una convención explícita de comentarios en `.copilot/code-style.md` para mantener coherencia entre agentes.
 - Se mejoró el comportamiento del portero con un sistema simple de parada/captura o despeje de tiros cercanos.
 - Se ajustó también la salida tras robo o pérdida para que el juego sea menos abrupto.
+- Se corrigió la dirección de pase y tiro para que dependan de la orientación del jugador y no de objetivos automáticos.
+- Se hizo la captura de bola más permisiva mediante radio ampliado y pequeña atracción hacia jugadores cercanos.
+- Se introdujo un robo más agresivo del rival con posibilidad de falta simple.
+- Se añadió un bully básico para situaciones de bola atascada.
+- Se redibujó la pista para acercarla más al patrón visual esperado por la referencia compartida.
