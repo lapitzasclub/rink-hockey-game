@@ -94,7 +94,7 @@ export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVeloci
   const angle = Phaser.Math.Angle.Between(ball.x, ball.y, player.pos.x, player.pos.y)
   const pullStrength = Phaser.Math.Clamp((BALL_MAGNET_DISTANCE - distance) / BALL_MAGNET_DISTANCE, 0, 1)
   const velocityBlend = 1 - Phaser.Math.Clamp(speed / BALL_MAGNET_MAX_SPEED, 0, 1)
-  const pull = 42 * pullStrength * velocityBlend
+  const pull = 28 * pullStrength * velocityBlend
   return {
     x: ballVelocity.x + Math.cos(angle) * pull,
     y: ballVelocity.y + Math.sin(angle) * pull,

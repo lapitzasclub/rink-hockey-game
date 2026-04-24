@@ -48,3 +48,4 @@
 - Se desacopló además la IA del portero recién distribuidor durante una breve recuperación, para que no vuelva a orientarse ni a salir hacia esa misma bola justo después del pase.
 - Se adelantó visual y físicamente el punto inicial de salida del pase del portero hacia el carril del receptor para evitar solapes residuales con su propio cuerpo.
 - Se redujo y acotó el magnetismo de la bola para que ya no curve pases rápidos ni saques claros, y solo ayude en capturas lentas y cercanas.
+- Tras notar una captura demasiado dura, se recuperó algo de asistencia de recepción ampliando ligeramente pickup y radio de ayuda, pero con tirón más suave para no reintroducir órbitas marcadas.
