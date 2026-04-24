@@ -2,6 +2,7 @@ import * as Phaser from 'phaser'
 import {
   BALL_CAPTURE_SHIELD_DISTANCE,
   BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
+  BULLY_SETUP_MS,
   FOUL_CHANCE_ON_STEAL,
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -572,7 +573,7 @@ export class MatchScene extends Phaser.Scene {
     this.ball.setPosition(x, y)
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
-    this.ballIgnoreContactsUntil = this.time.now + 700
+    this.ballIgnoreContactsUntil = this.time.now + BULLY_SETUP_MS
 
     for (const player of this.players) {
       player.velocity = { x: 0, y: 0 }
@@ -597,7 +598,7 @@ export class MatchScene extends Phaser.Scene {
       redPlayerId,
       x,
       y,
-      releaseAt: this.time.now + 700,
+      releaseAt: this.time.now + BULLY_SETUP_MS,
     }
   }
 
