@@ -21,7 +21,8 @@ Controlar a un jugador de rink hockey y disputar un partido corto, rápido y leg
 ## Controles actuales
 
 - `WASD` o flechas: movimiento.
-- `Espacio`: golpeo/tiro.
+- `X`: pase.
+- `Espacio`: tiro.
 - `Shift`: cambio del jugador activo.
 
 ## Controles futuros
@@ -42,9 +43,12 @@ Controlar a un jugador de rink hockey y disputar un partido corto, rápido y leg
 - El compañero más cercano puede ir a la bola.
 - El resto intenta guardar una forma táctica simple alrededor de su posición base.
 - Los rivales buscan bola, portería y remate cercano de forma básica.
+- Cuando un jugador tiene control de bola, puede avanzar, pasar o chutar según contexto simplificado.
 
 ## Reglas simplificadas
 
 - Sin faltas ni reglas avanzadas en la primera versión.
+- Hay una posesión básica: la bola puede quedar controlada por un jugador cercano.
+- Pase y tiro están separados.
 - Reinicio simple tras gol.
 - Duración corta de partido.

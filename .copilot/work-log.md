@@ -15,3 +15,7 @@
 - Se añadió control de jugador activo y cambio de jugador con `Shift`.
 - Se eliminó la restricción artificial de media pista para jugadores de campo.
 - Se introdujo una IA táctica simple con roles básicos: portero, defensas, ala y pivote.
+- Se añadió una posesión básica de la bola con portador activo.
+- Se separaron pase y tiro como acciones distintas (`X` y `Espacio`).
+- Se mejoró el cambio de jugador para priorizar portador azul o jugador más cercano a la bola.
+- Se ajustaron colisiones y contactos para que el juego sea menos caótico y más legible.

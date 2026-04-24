@@ -23,9 +23,9 @@ Fase: prototipo base jugable
 - [x] Añadir porteros y 4 jugadores de campo por equipo
 - [x] Permitir movimiento por toda la pista
 - [x] Añadir cambio de jugador activo
-- [ ] Pase y tiro diferenciados
-- [ ] Mejor control de posesión
-- [ ] Rebotes y colisiones refinadas
+- [x] Pase y tiro diferenciados
+- [x] Mejor control de posesión
+- [x] Rebotes y colisiones refinadas
 - [ ] Ajuste de físicas de patinaje
 - [ ] Sonidos base
 
