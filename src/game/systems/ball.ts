@@ -174,6 +174,37 @@ export function getAssistedPassDirection(players: Player[], player: Player, fall
   return { x: blended.x / length, y: blended.y / length }
 }
 
+/**
+ * El portero no debería depender de su facing instantáneo para distribuir.
+ * Busca directamente un compañero de campo y, si no hay una línea clara,
+ * al menos despeja hacia delante con una ligera componente vertical.
+ */
+export function getGoalieDistributionDirection(players: Player[], player: Player) {
+  const target = players
+    .filter((candidate) => candidate.team === player.team && candidate.id !== player.id && candidate.role !== 'goalie')
+    .map((candidate) => {
+      const dx = candidate.pos.x - player.pos.x
+      const dy = candidate.pos.y - player.pos.y
+      const distance = Math.hypot(dx, dy) || 1
+      const forward = player.side === 'left' ? dx / distance : -dx / distance
+      const score = forward * 220 - Math.abs(dy) * 0.22 - distance * 0.08
+      return { candidate, dx, dy, distance, score }
+    })
+    .sort((a, b) => b.score - a.score)[0]
+
+  if (target) {
+    return {
+      x: target.dx / target.distance,
+      y: target.dy / target.distance,
+    }
+  }
+
+  return {
+    x: player.side === 'left' ? 0.96 : -0.96,
+    y: player.pos.y < GAME_HEIGHT / 2 ? 0.28 : -0.28,
+  }
+}
+
 /** Detecta si un rival está lo bastante cerca del portador como para forzar pérdida. */
 export function checkLooseBallTackle(players: Player[], carrier: Player) {
   for (const rival of players) {

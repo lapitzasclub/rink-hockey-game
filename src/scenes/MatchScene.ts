@@ -25,6 +25,7 @@ import {
   checkGoal,
   checkLooseBallTackle,
   getAssistedPassDirection,
+  getGoalieDistributionDirection,
   kickBall,
   magnetBallTowardsPlayer,
   releaseBall,
@@ -363,8 +364,10 @@ export class MatchScene extends Phaser.Scene {
   /** Ejecuta un pase hacia el mejor compañero detectado por heurística simple. */
   private tryPass(player: Player) {
     if (this.ballCarrierId !== player.id) return
-    const direction = getAssistedPassDirection(this.players, player, getAimingDirection(player))
     const isGoalie = player.role === 'goalie'
+    const direction = isGoalie
+      ? getGoalieDistributionDirection(this.players, player)
+      : getAssistedPassDirection(this.players, player, getAimingDirection(player))
     const released = releaseBall(
       this.ball,
       this.players,
