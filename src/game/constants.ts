@@ -31,6 +31,7 @@ export const FOUL_CHANCE_ON_STEAL = 0.28
 export const MANUAL_STEAL_RANGE = 36
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.42
 export const MANUAL_STEAL_FOUL_CHANCE = 0.24
+export const AI_STEAL_ATTEMPT_CHANCE = 0.035
 export const PASS_ASSIST_CONE_DOT = 0.45
 export const PASS_ASSIST_BLEND = 0.55
 export const SHOT_ASSIST_BLEND = 0.68

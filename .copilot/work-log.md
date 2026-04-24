@@ -66,3 +66,4 @@
 - Se mejoró también el comportamiento del balón alrededor del arco con rebotes más coherentes en la cara de portería y en el fondo de la red.
 - Se hizo más legible la reanudación por falta, con una breve preparación visible, balón fijo y ejecutor colocado antes de soltar de nuevo el juego.
 - El botón de disparo del jugador controlado pasó a servir también para robo manual cuando no hay posesión propia, con ramas de robo exitoso, fallo silencioso o falta.
+- Se eliminó el robo automático por simple contacto sobre el portador y la IA rival pasó a usar también intentos de robo con el mismo esquema probabilístico de robo, fallo o falta.

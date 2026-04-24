@@ -262,16 +262,6 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
   }
 }
 
-/** Detecta si un rival está lo bastante cerca del portador como para forzar pérdida. */
-export function checkLooseBallTackle(players: Player[], carrier: Player) {
-  for (const rival of players) {
-    if (rival.team === carrier.team) continue
-    const tackleDistance = Phaser.Math.Distance.Between(rival.pos.x, rival.pos.y, carrier.pos.x, carrier.pos.y)
-    if (tackleDistance < PLAYER_RADIUS + 10) return true
-  }
-  return false
-}
-
 /** Devuelve qué equipo ha marcado si la bola ha cruzado la línea de gol. */
 /**
  * Comprueba si un portero consigue bloquear o desviar una bola cercana a su arco.

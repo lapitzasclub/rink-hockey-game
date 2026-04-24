@@ -3,8 +3,8 @@ import {
   BALL_CAPTURE_SHIELD_DISTANCE,
   BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
   BULLY_SETUP_MS,
-  FOUL_CHANCE_ON_STEAL,
   FOUL_SETUP_MS,
+  AI_STEAL_ATTEMPT_CHANCE,
   GAME_HEIGHT,
   MANUAL_STEAL_FOUL_CHANCE,
   MANUAL_STEAL_RANGE,
@@ -31,7 +31,6 @@ import { getFormation } from '../game/formation'
 import { drawRink } from '../game/render/drawRink'
 import {
   checkGoal,
-  checkLooseBallTackle,
   getAssistedPassDirection,
   getAssistedShotDirection,
   getBullyCandidate,
@@ -254,6 +253,8 @@ export class MatchScene extends Phaser.Scene {
           } else if (Math.random() < 0.015) {
             this.tryPass(player)
           }
+        } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team && Math.random() < AI_STEAL_ATTEMPT_CHANCE) {
+          this.tryManualSteal(player)
         } else if (distToBall < 34 && this.ballCarrierId === null) {
           this.claimBallFor(player)
         }
@@ -336,21 +337,6 @@ export class MatchScene extends Phaser.Scene {
         this.stuckCarrierOrigin = this.ballCarrierId ? { x: carrier.pos.x, y: carrier.pos.y } : null
       }
 
-      const thief = this.getClosestRivalToCarrier(carrier)
-      if (thief && checkLooseBallTackle(this.players, carrier)) {
-        if (Math.random() < FOUL_CHANCE_ON_STEAL) {
-          registerStealFoul(this.ruleState, thief, carrier, carrier.pos.x, carrier.pos.y)
-          this.ballCarrierId = null
-          this.ballVelocity = { x: 0, y: 0 }
-          return
-        }
-
-        const stealDirection = getAimingDirection(thief)
-        const released = releaseBall(this.ball, this.players, this.ballCarrierId, stealDirection, STEAL_RELEASE_POWER, this.time.now, POSSESSION_RELEASE_COOLDOWN_MS)
-        this.ballCarrierId = thief.id
-        this.ballVelocity = released.ballVelocity
-        this.lastTouch = thief.team
-      }
       return
     }
 
@@ -515,16 +501,6 @@ export class MatchScene extends Phaser.Scene {
       this.ballVelocity = released.ballVelocity
       this.lastTouch = player.team
     }
-  }
-
-  private getClosestRivalToCarrier(carrier: Player) {
-    return this.players
-      .filter((player) => player.team !== carrier.team)
-      .sort((a, b) => {
-        const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, carrier.pos.x, carrier.pos.y)
-        const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, carrier.pos.x, carrier.pos.y)
-        return da - db
-      })[0] ?? null
   }
 
   /** Aplica reinicios simples de falta y bully. */
