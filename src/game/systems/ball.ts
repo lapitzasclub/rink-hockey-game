@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK, SHOT_ASSIST_BLEND } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
 import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -328,21 +328,26 @@ export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Ar
 }
 
 export function checkGoal(ball: Phaser.GameObjects.Arc) {
-  const inGoalY = ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+  const top = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 + BALL_RADIUS
+  const bottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2 - BALL_RADIUS
+  const inGoalY = ball.y >= top && ball.y <= bottom
   if (!inGoalY) return null
 
-  if (ball.x < RINK.x - 10) {
+  const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
+  const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
+
+  if (ball.x <= leftGoalLineX - BALL_RADIUS) {
     return {
       scorer: 'red' as TeamColor,
-      holdX: RINK.x + 96 - 18,
+      holdX: leftGoalLineX - 18,
       holdY: GAME_HEIGHT / 2,
     }
   }
 
-  if (ball.x > RINK.x + RINK.width + 10) {
+  if (ball.x >= rightGoalLineX + BALL_RADIUS) {
     return {
       scorer: 'blue' as TeamColor,
-      holdX: RINK.x + RINK.width - 96 + 18,
+      holdX: rightGoalLineX + 18,
       holdY: GAME_HEIGHT / 2,
     }
   }
