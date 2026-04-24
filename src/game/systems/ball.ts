@@ -203,6 +203,7 @@ export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector
     if (!towardGoal) continue
 
     if (speed < 260 && distance < GOALIE_CLAIM_RADIUS + 4) {
+      player.goalieCatchTime = Date.now()
       return {
         saved: true,
         claimedBy: player.id,

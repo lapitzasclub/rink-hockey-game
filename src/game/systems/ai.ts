@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GOALIE_SAVE_RADIUS, PASS_ASSIST_CONE_DOT, RINK } from '../constants'
+import { GAME_HEIGHT, GOALIE_DISTRIBUTION_DELAY_MS, GOALIE_SAVE_RADIUS, PASS_ASSIST_CONE_DOT, RINK } from '../constants'
 import { seek } from './movement'
 import { findPlayerById, getClosestPlayerToBall } from './playerHelpers'
 import type { Player } from '../types'
@@ -70,9 +70,26 @@ export function getAimingDirection(player: Player) {
     : player.facing
 }
 
-/** Portero con bola: busca salida frontal simple y la usa para soltar rápido. */
-export function shouldGoaliePass(player: Player) {
+/**
+ * El portero debe distribuir tras asegurar la bola.
+ *
+ * En vez de depender de una heurística tímida, se le da una ventana corta de
+ * control y después se fuerza un pase si sigue teniendo la posesión.
+ */
+export function shouldGoaliePass(player: Player, now: number) {
+  const catchTime = player.goalieCatchTime ?? 0
+  const waitedEnough = catchTime > 0 && now - catchTime >= GOALIE_DISTRIBUTION_DELAY_MS
+  if (!waitedEnough) return false
+
   const aim = getAimingDirection(player)
   const forwardDot = aim.x * (player.side === 'left' ? 1 : -1)
-  return forwardDot >= PASS_ASSIST_CONE_DOT
+  return forwardDot >= PASS_ASSIST_CONE_DOT || Math.abs(aim.y) > 0.15
+}
+
+export function markGoalieCaughtBall(player: Player, now: number) {
+  player.goalieCatchTime = now
+}
+
+export function clearGoalieCatch(player: Player) {
+  player.goalieCatchTime = 0
 }

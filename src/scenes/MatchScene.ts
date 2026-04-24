@@ -29,7 +29,7 @@ import {
   tryGoalieSave,
   updateBallPosition,
 } from '../game/systems/ball'
-import { getAimingDirection, shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
+import { clearGoalieCatch, getAimingDirection, markGoalieCaughtBall, shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
 import { applySkating, resolvePlayerSpacing } from '../game/systems/movement'
 import {
   findPlayerById,
@@ -209,7 +209,7 @@ export class MatchScene extends Phaser.Scene {
 
       if (player.team === 'red') {
         if (hasBall) {
-          if (player.role === 'goalie' && shouldGoaliePass(player)) {
+          if (player.role === 'goalie' && shouldGoaliePass(player, this.time.now)) {
             this.tryPass(player)
           } else if (shouldAIShoot(player)) {
             this.tryShot(player)
@@ -219,7 +219,7 @@ export class MatchScene extends Phaser.Scene {
         } else if (distToBall < 34 && this.ballCarrierId === null) {
           this.claimBallFor(player)
         }
-      } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player)) {
+      } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.time.now)) {
         this.tryPass(player)
       } else if (!hasBall && distToBall < 34 && this.ballCarrierId === null) {
         this.claimBallFor(player)
@@ -240,7 +240,10 @@ export class MatchScene extends Phaser.Scene {
     if (result.claimedBy) {
       this.ballCarrierId = result.claimedBy
       const goalie = findPlayerById(this.players, result.claimedBy)
-      if (goalie) this.lastTouch = goalie.team
+      if (goalie) {
+        this.lastTouch = goalie.team
+        if (goalie.role === 'goalie') markGoalieCaughtBall(goalie, this.time.now)
+      }
     }
   }
 
@@ -345,6 +348,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = result.ballVelocity
     this.controlledPlayerIndex = result.controlledPlayerIndex
     this.lastTouch = player.team
+    if (player.role === 'goalie') markGoalieCaughtBall(player, this.time.now)
     return true
   }
 
@@ -356,6 +360,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
+    if (player.role === 'goalie') clearGoalieCatch(player)
   }
 
   /** Ejecuta un tiro hacia una zona de portería con pequeña variación vertical. */
@@ -367,6 +372,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity
     this.lastTouch = player.team
+    if (player.role === 'goalie') clearGoalieCatch(player)
   }
 
   private getClosestRivalToCarrier(carrier: Player) {
@@ -447,6 +453,7 @@ export class MatchScene extends Phaser.Scene {
       player.velocity = { x: 0, y: 0 }
       player.facing = { x: player.side === 'left' ? 1 : -1, y: 0 }
       player.possessionCooldownUntil = 0
+      player.goalieCatchTime = 0
     }
 
     this.ball.setPosition(GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22), GAME_HEIGHT / 2)

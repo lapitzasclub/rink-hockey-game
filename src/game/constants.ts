@@ -22,6 +22,7 @@ export const DUMP_RELEASE_POWER = 160
 export const STEAL_RELEASE_POWER = 190
 export const GOALIE_SAVE_RADIUS = 34
 export const GOALIE_CLAIM_RADIUS = 22
+export const GOALIE_DISTRIBUTION_DELAY_MS = 550
 export const FOUL_CHANCE_ON_STEAL = 0.28
 export const PASS_ASSIST_CONE_DOT = 0.45
 export const PASS_ASSIST_BLEND = 0.55

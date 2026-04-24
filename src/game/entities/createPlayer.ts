@@ -39,5 +39,6 @@ export function createPlayer(
     home: { x, y },
     controllable,
     possessionCooldownUntil: 0,
+    goalieCatchTime: 0,
   }
 }

@@ -39,3 +39,4 @@
 - Se añadió salida simple del portero con pase cuando controla la bola.
 - Se fijó la bola dentro de la red al marcar gol para evitar que atraviese visualmente la portería.
 - Se reajustaron proporciones del rink para dejar más espacio detrás de portería y acercarlo mejor a la estructura de referencia.
+- Se corrigió el bug del portero reteniendo la bola demasiado tiempo, forzando una distribución explícita tras una pequeña ventana de control.

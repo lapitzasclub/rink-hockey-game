@@ -20,4 +20,5 @@ export type Player = {
   home: Vector
   controllable: boolean
   possessionCooldownUntil?: number
+  goalieCatchTime?: number
 }
