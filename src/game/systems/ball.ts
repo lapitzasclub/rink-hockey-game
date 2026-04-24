@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_PICKUP_DISTANCE, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_RADIUS, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_PICKUP_DISTANCE, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PLAYER_RADIUS, RINK } from '../constants'
 import type { Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -60,7 +60,8 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
 export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[]) {
   if (ballCarrierId) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
-  if (distance > BALL_PICKUP_DISTANCE) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
+  const claimRadius = player.role === 'goalie' ? GOALIE_CLAIM_RADIUS : BALL_PICKUP_DISTANCE
+  if (distance > claimRadius) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
 
   let nextControlledIndex = controlledPlayerIndex
   if (player.team === 'blue' && player.role !== 'goalie') {
@@ -139,6 +140,45 @@ export function checkLooseBallTackle(players: Player[], carrier: Player) {
 }
 
 /** Devuelve qué equipo ha marcado si la bola ha cruzado la línea de gol. */
+/**
+ * Comprueba si un portero consigue bloquear o desviar una bola cercana a su arco.
+ *
+ * La parada no necesita posesión inmediata: puede convertirse en desvío o en
+ * captura según velocidad y distancia.
+ */
+export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, players: Player[]) {
+  for (const player of players) {
+    if (player.role !== 'goalie') continue
+
+    const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
+    if (distance > GOALIE_SAVE_RADIUS) continue
+
+    const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
+    const towardGoal = player.side === 'left' ? ballVelocity.x < 0 : ballVelocity.x > 0
+    if (!towardGoal) continue
+
+    if (speed < 260 && distance < GOALIE_CLAIM_RADIUS + 4) {
+      return {
+        saved: true,
+        claimedBy: player.id,
+        ballVelocity: { x: 0, y: 0 },
+      }
+    }
+
+    const clearAngle = player.side === 'left'
+      ? Phaser.Math.Angle.Between(player.pos.x, player.pos.y, RINK.x + RINK.width * 0.68, GAME_HEIGHT / 2)
+      : Phaser.Math.Angle.Between(player.pos.x, player.pos.y, RINK.x + RINK.width * 0.32, GAME_HEIGHT / 2)
+
+    return {
+      saved: true,
+      claimedBy: null,
+      ballVelocity: kickBall({ x: 0, y: 0 }, clearAngle, Math.max(240, speed * 0.55)),
+    }
+  }
+
+  return { saved: false, claimedBy: null, ballVelocity }
+}
+
 export function checkGoal(ball: Phaser.GameObjects.Arc) {
   const inGoalY = ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
   if (!inGoalY) return null

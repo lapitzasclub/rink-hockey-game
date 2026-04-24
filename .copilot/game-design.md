@@ -40,6 +40,7 @@ Controlar a un jugador de rink hockey y disputar un partido corto, rápido y leg
 ## IA inicial
 
 - Los porteros se mueven sobre su zona para cubrir portería.
+- Pueden adelantarse ligeramente y realizar paradas/desvíos simples cerca del arco.
 - El compañero más cercano puede ir a la bola.
 - El resto intenta guardar una forma táctica simple alrededor de su posición base.
 - Los rivales buscan bola, portería y remate cercano de forma básica.

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, RINK } from '../constants'
+import { GAME_HEIGHT, GOALIE_SAVE_RADIUS, RINK } from '../constants'
 import { seek } from './movement'
 import { findPlayerById, getClosestPlayerToBall } from './playerHelpers'
 import type { Player } from '../types'
@@ -9,11 +9,14 @@ import { normalizedVector } from '../utils'
  * IA base del portero.
  *
  * No sale realmente a jugar el balón todavía, pero sí acompaña la jugada
- * lateralmente dentro de su zona para cubrir mejor el arco.
+ * lateralmente dentro de su zona para cubrir mejor el arco y cerrarse más
+ * cuando la bola entra en radio claro de intervención.
  */
 export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt: number) {
   const targetY = Phaser.Math.Clamp(ballY, GAME_HEIGHT / 2 - 120, GAME_HEIGHT / 2 + 120)
-  const targetX = player.home.x + (player.side === 'left' ? 12 : -12)
+  const ballDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ballX, ballY)
+  const stepOut = ballDistance < GOALIE_SAVE_RADIUS + 18 ? 26 : 12
+  const targetX = player.home.x + (player.side === 'left' ? stepOut : -stepOut)
   seek(player, { x: targetX, y: targetY }, 0.75, dt)
   player.facing = normalizedVector(ballX - player.pos.x, ballY - player.pos.y, player.facing)
 }

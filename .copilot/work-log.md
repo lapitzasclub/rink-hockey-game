@@ -26,3 +26,5 @@
 - Se extrajo además la IA de porteros y jugadores de campo a `src/game/systems/ai.ts`, reduciendo todavía más la responsabilidad de `MatchScene`.
 - Se añadieron comentarios útiles en escena y systems clave para explicar intención, heurísticas y orden de ejecución.
 - Se documentó una convención explícita de comentarios en `.copilot/code-style.md` para mantener coherencia entre agentes.
+- Se mejoró el comportamiento del portero con un sistema simple de parada/captura o despeje de tiros cercanos.
+- Se ajustó también la salida tras robo o pérdida para que el juego sea menos abrupto.

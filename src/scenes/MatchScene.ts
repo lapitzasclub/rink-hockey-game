@@ -3,6 +3,7 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   GOALIE_RADIUS,
+  DUMP_RELEASE_POWER,
   MATCH_DURATION,
   PASS_POWER,
   PLAYER_ACCEL,
@@ -21,6 +22,7 @@ import {
   kickBall,
   releaseBall,
   tryClaimBall,
+  tryGoalieSave,
   updateBallPosition,
 } from '../game/systems/ball'
 import { updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
@@ -127,6 +129,7 @@ export class MatchScene extends Phaser.Scene {
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
+    this.handleGoalieSave()
     this.handleBallControl()
     this.handleLooseBallContacts()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
@@ -210,6 +213,23 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
+   * Permite que los porteros intervengan de forma más creíble ante tiros cercanos.
+   */
+  private handleGoalieSave() {
+    if (this.ballCarrierId) return
+
+    const result = tryGoalieSave(this.ball, this.ballVelocity, this.players)
+    if (!result.saved) return
+
+    this.ballVelocity = result.ballVelocity
+    if (result.claimedBy) {
+      this.ballCarrierId = result.claimedBy
+      const goalie = findPlayerById(this.players, result.claimedBy)
+      if (goalie) this.lastTouch = goalie.team
+    }
+  }
+
+  /**
    * Resuelve la posesión de la bola.
    *
    * Si hay portador, comprobamos presión rival y posible pérdida.
@@ -224,7 +244,7 @@ export class MatchScene extends Phaser.Scene {
       }
 
       if (checkLooseBallTackle(this.players, carrier)) {
-        const released = releaseBall(this.ball, this.players, this.ballCarrierId, carrier.facing, 140)
+        const released = releaseBall(this.ball, this.players, this.ballCarrierId, carrier.facing, DUMP_RELEASE_POWER)
         this.ballCarrierId = released.ballCarrierId
         this.ballVelocity = released.ballVelocity
       }

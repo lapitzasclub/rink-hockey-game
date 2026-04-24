@@ -14,6 +14,9 @@ export const BALL_CONTROL_DISTANCE = 30
 export const BALL_PICKUP_DISTANCE = 26
 export const PASS_POWER = 430
 export const SHOT_POWER = 700
+export const DUMP_RELEASE_POWER = 160
+export const GOALIE_SAVE_RADIUS = 34
+export const GOALIE_CLAIM_RADIUS = 22
 
 export const RINK = {
   x: 70,
