@@ -39,3 +39,10 @@ export type ActiveBully = {
   y: number
   releaseAt: number
 }
+
+export type ActiveFoulRestart = {
+  takerPlayerId: string
+  x: number
+  y: number
+  releaseAt: number
+}

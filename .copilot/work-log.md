@@ -64,3 +64,4 @@
 - Se revisaron escala y hitboxes básicas: se redujo el tamaño visual de la bola y la detección de gol pasó a usar la línea real de portería y el radio de la bola, no el borde externo del rink.
 - Se endureció además el umbral de gol y se evitó recolocar la bola al centro geométrico de la portería, manteniéndola cerca del punto real de entrada dentro de la red.
 - Se mejoró también el comportamiento del balón alrededor del arco con rebotes más coherentes en la cara de portería y en el fondo de la red.
+- Se hizo más legible la reanudación por falta, con una breve preparación visible, balón fijo y ejecutor colocado antes de soltar de nuevo el juego.

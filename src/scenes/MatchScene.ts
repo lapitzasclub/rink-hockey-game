@@ -4,6 +4,7 @@ import {
   BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
   BULLY_SETUP_MS,
   FOUL_CHANCE_ON_STEAL,
+  FOUL_SETUP_MS,
   GAME_HEIGHT,
   GAME_WIDTH,
   GOAL_LINE_OFFSET,
@@ -49,7 +50,7 @@ import {
   selectBestControlledPlayer,
 } from '../game/systems/playerHelpers'
 import { getStickTip, updateVisuals } from '../game/systems/visuals'
-import type { ActiveBully, Player, TeamColor, Vector } from '../game/types'
+import type { ActiveBully, ActiveFoulRestart, Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
 import { createRuleState, registerBully, registerStealFoul, type RuleState } from '../game/systems/rules'
 import { getRoleName } from '../game/utils'
@@ -85,6 +86,7 @@ export class MatchScene extends Phaser.Scene {
   private lastLooseBallTime = 0
   private ballIgnoreContactsUntil = 0
   private activeBully: ActiveBully | null = null
+  private activeFoulRestart: ActiveFoulRestart | null = null
   private stuckCarrierStartTime = 0
   private stuckCarrierOrigin: Vector | null = null
 
@@ -146,6 +148,13 @@ export class MatchScene extends Phaser.Scene {
 
     if (this.activeBully) {
       this.updateBullyState(time)
+      updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
+      this.updateHud()
+      return
+    }
+
+    if (this.activeFoulRestart) {
+      this.updateFoulRestartState(time)
       updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
       this.updateHud()
       return
@@ -493,11 +502,8 @@ export class MatchScene extends Phaser.Scene {
     if (this.ruleState.pendingFoul) {
       const foul = this.ruleState.pendingFoul
       this.centerText.setText(foul.message).setVisible(true)
-      this.ball.setPosition(foul.restartX, foul.restartY)
-      this.ballVelocity = { x: 0, y: 0 }
-      this.ballCarrierId = null
+      this.startFoulRestart(foul)
       this.ruleState.pendingFoul = null
-      this.restartAt = this.time.now + 900
       return
     }
 
@@ -580,10 +586,35 @@ export class MatchScene extends Phaser.Scene {
     this.lastLooseBallTime = 0
     this.ballIgnoreContactsUntil = 0
     this.activeBully = null
+    this.activeFoulRestart = null
     this.stuckCarrierStartTime = 0
     this.stuckCarrierOrigin = null
     this.ruleState = createRuleState()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
+  }
+
+  private startFoulRestart(foul: RuleState['pendingFoul'] extends infer T ? Exclude<T, null> : never) {
+    const taker = findPlayerById(this.players, foul.victimPlayerId)
+    this.ball.setPosition(foul.restartX, foul.restartY)
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+    this.ballIgnoreContactsUntil = this.time.now + FOUL_SETUP_MS
+
+    for (const player of this.players) {
+      player.velocity = { x: 0, y: 0 }
+    }
+
+    if (taker) {
+      taker.pos = { x: foul.restartX + (taker.side === 'left' ? -18 : 18), y: foul.restartY }
+      taker.facing = { x: taker.side === 'left' ? 1 : -1, y: 0 }
+    }
+
+    this.activeFoulRestart = {
+      takerPlayerId: foul.victimPlayerId,
+      x: foul.restartX,
+      y: foul.restartY,
+      releaseAt: this.time.now + FOUL_SETUP_MS,
+    }
   }
 
   private startBully(x: number, y: number, bluePlayerId: string, redPlayerId: string) {
@@ -616,6 +647,28 @@ export class MatchScene extends Phaser.Scene {
       x,
       y,
       releaseAt: this.time.now + BULLY_SETUP_MS,
+    }
+  }
+
+  private updateFoulRestartState(time: number) {
+    const foul = this.activeFoulRestart
+    if (!foul) return
+
+    const taker = findPlayerById(this.players, foul.takerPlayerId)
+    if (taker) {
+      taker.pos = { x: foul.x + (taker.side === 'left' ? -18 : 18), y: foul.y }
+      taker.velocity = { x: 0, y: 0 }
+      taker.facing = { x: taker.side === 'left' ? 1 : -1, y: 0 }
+    }
+
+    this.ball.setPosition(foul.x, foul.y)
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+
+    if (time >= foul.releaseAt) {
+      this.centerText.setVisible(false)
+      this.ballIgnoreContactsUntil = 0
+      this.activeFoulRestart = null
     }
   }
 
