@@ -71,6 +71,8 @@ export class MatchScene extends Phaser.Scene {
   private shootKey!: Phaser.Input.Keyboard.Key
   private passKey!: Phaser.Input.Keyboard.Key
   private switchKey!: Phaser.Input.Keyboard.Key
+  private touchInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
+  private prevTouchButtons = { pass: false, shoot: false, switch: false }
   private ball!: Phaser.GameObjects.Arc
   private ballVelocity: Vector = { x: 0, y: 0 }
   private ballCarrierId: string | null = null
@@ -200,6 +202,19 @@ export class MatchScene extends Phaser.Scene {
     this.switchKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
   }
 
+  private readTouchInput() {
+    const state = (window as Window & { __RINK_TOUCH__?: { x: number, y: number, pass: boolean, shoot: boolean, switch: boolean } }).__RINK_TOUCH__
+    if (!state) {
+      this.touchInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
+      return
+    }
+
+    this.touchInput = { ...state }
+    if (this.touchInput.switch && !this.prevTouchButtons.switch) {
+      this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, this.ballCarrierId, this.ball.x, this.ball.y)
+    }
+  }
+
   private createTeams() {
     const blueLayout = getFormation('left')
     const redLayout = getFormation('right')
@@ -213,6 +228,8 @@ export class MatchScene extends Phaser.Scene {
   /** Gestiona el jugador humano actualmente seleccionado. */
   private updateControlledPlayer(dt: number) {
     const player = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    this.readTouchInput()
+
     let inputX = 0
     let inputY = 0
 
@@ -220,6 +237,9 @@ export class MatchScene extends Phaser.Scene {
     if (this.cursors.right.isDown || this.wasd.D.isDown) inputX += 1
     if (this.cursors.up.isDown || this.wasd.W.isDown) inputY -= 1
     if (this.cursors.down.isDown || this.wasd.S.isDown) inputY += 1
+
+    if (Math.abs(this.touchInput.x) > Math.abs(inputX)) inputX = this.touchInput.x
+    if (Math.abs(this.touchInput.y) > Math.abs(inputY)) inputY = this.touchInput.y
 
     const len = Math.hypot(inputX, inputY)
     if (len > 0) {
@@ -230,10 +250,19 @@ export class MatchScene extends Phaser.Scene {
 
     applySkating(player, dt)
 
-    if (Phaser.Input.Keyboard.JustDown(this.passKey)) this.tryPass(player)
-    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) {
+    const touchPassPressed = this.touchInput.pass && !this.prevTouchButtons.pass
+    const touchShootPressed = this.touchInput.shoot && !this.prevTouchButtons.shoot
+
+    if (Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed) this.tryPass(player)
+    if (Phaser.Input.Keyboard.JustDown(this.shootKey) || touchShootPressed) {
       if (this.ballCarrierId === player.id) this.tryShot(player)
       else this.tryManualSteal(player)
+    }
+
+    this.prevTouchButtons = {
+      pass: this.touchInput.pass,
+      shoot: this.touchInput.shoot,
+      switch: this.touchInput.switch,
     }
   }
 
