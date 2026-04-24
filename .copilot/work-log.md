@@ -60,3 +60,4 @@
 - Para teclado, se añadió asistencia de tiro hacia portería, manteniendo la orientación del jugador pero corrigiendo parte de la dirección hacia una zona válida de remate.
 - Se ajustó la colocación inicial y tras gol para que todos los jugadores arranquen dentro de su propio campo antes de la reanudación.
 - Tras gol, la bola ahora se aloja visualmente dentro de la portería en vez de parecer que atraviesa la red sin detenerse.
+- Se corrigió además el momento del anclaje tras gol para fijar la bola dentro de la red justo al detectar el tanto, no solo durante la pausa posterior.

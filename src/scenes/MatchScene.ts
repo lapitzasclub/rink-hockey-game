@@ -511,10 +511,14 @@ export class MatchScene extends Phaser.Scene {
 
   /** Comprueba si la bola ha cruzado la portería y actualiza marcador. */
   private checkGoalState(time: number) {
-    const scorer = checkGoal(this.ball)
-    if (!scorer) return
+    const goal = checkGoal(this.ball)
+    if (!goal) return
 
-    if (scorer === 'red') {
+    this.ball.setPosition(goal.holdX, goal.holdY)
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+
+    if (goal.scorer === 'red') {
       this.redScore += 1
       this.onGoal('¡Gol rojo!', time)
     } else {

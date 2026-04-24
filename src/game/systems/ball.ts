@@ -330,7 +330,22 @@ export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Ar
 export function checkGoal(ball: Phaser.GameObjects.Arc) {
   const inGoalY = ball.y > GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 && ball.y < GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
   if (!inGoalY) return null
-  if (ball.x < RINK.x - 10) return 'red' as TeamColor
-  if (ball.x > RINK.x + RINK.width + 10) return 'blue' as TeamColor
+
+  if (ball.x < RINK.x - 10) {
+    return {
+      scorer: 'red' as TeamColor,
+      holdX: RINK.x + 96 - 18,
+      holdY: GAME_HEIGHT / 2,
+    }
+  }
+
+  if (ball.x > RINK.x + RINK.width + 10) {
+    return {
+      scorer: 'blue' as TeamColor,
+      holdX: RINK.x + RINK.width - 96 + 18,
+      holdY: GAME_HEIGHT / 2,
+    }
+  }
+
   return null
 }
