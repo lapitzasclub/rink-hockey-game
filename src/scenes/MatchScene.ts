@@ -19,10 +19,11 @@ import { drawRink } from '../game/render/drawRink'
 import {
   checkGoal,
   checkLooseBallTackle,
-  getBestPassTarget,
+  getAssistedPassDirection,
   kickBall,
   magnetBallTowardsPlayer,
   releaseBall,
+  shouldCallBully,
   tryClaimBall,
   tryGoalieSave,
   updateBallPosition,
@@ -283,7 +284,8 @@ export class MatchScene extends Phaser.Scene {
     }
 
     if (!claimed) {
-      if (Math.hypot(this.ballVelocity.x, this.ballVelocity.y) < 28) {
+      const bullySituation = shouldCallBully(this.players, this.ball, this.ballVelocity)
+      if (bullySituation) {
         if (this.lastLooseBallTime === 0) this.lastLooseBallTime = time
         if (time - this.lastLooseBallTime > STUCK_BALL_TIMEOUT_MS) {
           registerBully(this.ruleState, this.ball.x, this.ball.y)
@@ -341,10 +343,7 @@ export class MatchScene extends Phaser.Scene {
   /** Ejecuta un pase hacia el mejor compañero detectado por heurística simple. */
   private tryPass(player: Player) {
     if (this.ballCarrierId !== player.id) return
-    const mate = getBestPassTarget(this.players, player)
-    if (!mate) return
-
-    const direction = getAimingDirection(player)
+    const direction = getAssistedPassDirection(this.players, player, getAimingDirection(player))
     const released = releaseBall(this.ball, this.players, this.ballCarrierId, direction, PASS_POWER)
     this.ballCarrierId = released.ballCarrierId
     this.ballVelocity = released.ballVelocity

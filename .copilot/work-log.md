@@ -32,4 +32,6 @@
 - Se hizo la captura de bola más permisiva mediante radio ampliado y pequeña atracción hacia jugadores cercanos.
 - Se introdujo un robo más agresivo del rival con posibilidad de falta simple.
 - Se añadió un bully básico para situaciones de bola atascada.
+- Se corrigió el pase para usar orientación real con asistencia moderada dentro de un cono frontal, en lugar de quedar totalmente ciego.
+- Se rehízo el criterio del bully para depender del apelotonamiento real de jugadores alrededor de una bola bloqueada.
 - Se redibujó la pista para acercarla más al patrón visual esperado por la referencia compartida.

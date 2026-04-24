@@ -20,7 +20,11 @@ export const STEAL_RELEASE_POWER = 190
 export const GOALIE_SAVE_RADIUS = 34
 export const GOALIE_CLAIM_RADIUS = 22
 export const FOUL_CHANCE_ON_STEAL = 0.28
-export const STUCK_BALL_TIMEOUT_MS = 2200
+export const PASS_ASSIST_CONE_DOT = 0.45
+export const PASS_ASSIST_BLEND = 0.55
+export const BULLY_CLUSTER_RADIUS = 42
+export const BULLY_MIN_PLAYERS = 3
+export const STUCK_BALL_TIMEOUT_MS = 1500
 
 export const RINK = {
   x: 70,

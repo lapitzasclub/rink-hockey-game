@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_PICKUP_DISTANCE, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_PICKUP_DISTANCE, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PLAYER_RADIUS, RINK } from '../constants'
 import type { Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -132,17 +132,44 @@ export function kickBall(ballVelocity: Vector, angle: number, power: number) {
  */
 export function getBestPassTarget(players: Player[], player: Player) {
   const teammates = players.filter((candidate) => candidate.team === player.team && candidate.id !== player.id && candidate.role !== 'goalie')
-  const attackDirection = player.side === 'left' ? 1 : -1
+  const facingLength = Math.hypot(player.facing.x, player.facing.y) || 1
+  const facing = { x: player.facing.x / facingLength, y: player.facing.y / facingLength }
 
   return teammates
     .map((candidate) => {
       const dx = candidate.pos.x - player.pos.x
       const dy = candidate.pos.y - player.pos.y
-      const forwardness = dx * attackDirection
-      const distance = Math.hypot(dx, dy)
-      return { candidate, score: forwardness - distance * 0.25 }
+      const distance = Math.hypot(dx, dy) || 1
+      const dir = { x: dx / distance, y: dy / distance }
+      const facingDot = facing.x * dir.x + facing.y * dir.y
+      const score = facingDot * 180 - distance * 0.3
+      return { candidate, score, facingDot, dir }
     })
+    .filter((entry) => entry.facingDot >= PASS_ASSIST_CONE_DOT)
     .sort((a, b) => b.score - a.score)[0]?.candidate ?? null
+}
+
+/**
+ * Devuelve una dirección de pase asistida: respeta la mirada del jugador, pero
+ * se corrige parcialmente hacia un compañero válido dentro del cono frontal.
+ */
+export function getAssistedPassDirection(players: Player[], player: Player, fallbackDirection: Vector) {
+  const target = getBestPassTarget(players, player)
+  if (!target) return fallbackDirection
+
+  const raw = {
+    x: target.pos.x - player.pos.x,
+    y: target.pos.y - player.pos.y,
+  }
+  const rawLength = Math.hypot(raw.x, raw.y) || 1
+  const dirToMate = { x: raw.x / rawLength, y: raw.y / rawLength }
+
+  const blended = {
+    x: fallbackDirection.x * (1 - PASS_ASSIST_BLEND) + dirToMate.x * PASS_ASSIST_BLEND,
+    y: fallbackDirection.y * (1 - PASS_ASSIST_BLEND) + dirToMate.y * PASS_ASSIST_BLEND,
+  }
+  const length = Math.hypot(blended.x, blended.y) || 1
+  return { x: blended.x / length, y: blended.y / length }
 }
 
 /** Detecta si un rival está lo bastante cerca del portador como para forzar pérdida. */
@@ -193,6 +220,14 @@ export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector
   }
 
   return { saved: false, claimedBy: null, ballVelocity }
+}
+
+export function shouldCallBully(players: Player[], ball: Phaser.GameObjects.Arc, ballVelocity: Vector) {
+  const nearbyPlayers = players.filter((player) => Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y) < BULLY_CLUSTER_RADIUS)
+  const teams = new Set(nearbyPlayers.map((player) => player.team))
+  const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
+
+  return nearbyPlayers.length >= BULLY_MIN_PLAYERS && teams.size >= 2 && speed < 22
 }
 
 export function checkGoal(ball: Phaser.GameObjects.Arc) {
