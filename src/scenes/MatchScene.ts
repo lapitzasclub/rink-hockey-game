@@ -29,7 +29,7 @@ import {
   tryGoalieSave,
   updateBallPosition,
 } from '../game/systems/ball'
-import { getAimingDirection, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
+import { getAimingDirection, shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
 import { applySkating, resolvePlayerSpacing } from '../game/systems/movement'
 import {
   findPlayerById,
@@ -209,11 +209,18 @@ export class MatchScene extends Phaser.Scene {
 
       if (player.team === 'red') {
         if (hasBall) {
-          if (shouldAIShoot(player)) this.tryShot(player)
-          else if (Math.random() < 0.015) this.tryPass(player)
+          if (player.role === 'goalie' && shouldGoaliePass(player)) {
+            this.tryPass(player)
+          } else if (shouldAIShoot(player)) {
+            this.tryShot(player)
+          } else if (Math.random() < 0.015) {
+            this.tryPass(player)
+          }
         } else if (distToBall < 34 && this.ballCarrierId === null) {
           this.claimBallFor(player)
         }
+      } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player)) {
+        this.tryPass(player)
       } else if (!hasBall && distToBall < 34 && this.ballCarrierId === null) {
         this.claimBallFor(player)
       }
@@ -415,6 +422,13 @@ export class MatchScene extends Phaser.Scene {
     this.restartAt = time + 1800
     this.ballCarrierId = null
     this.ballVelocity = { x: 0, y: 0 }
+
+    if (message.includes('azul')) {
+      this.ball.setPosition(GAME_WIDTH - 62, GAME_HEIGHT / 2)
+    } else {
+      this.ball.setPosition(62, GAME_HEIGHT / 2)
+    }
+
     for (const player of this.players) {
       player.velocity = { x: 0, y: 0 }
     }

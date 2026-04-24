@@ -36,3 +36,6 @@
 - Se rehízo el criterio del bully para depender del apelotonamiento real de jugadores alrededor de una bola bloqueada.
 - Se corrigió la recaptura inmediata tras pase/tiro introduciendo una ventana corta de cooldown de posesión para el jugador que acaba de soltar la bola.
 - Se redibujó la pista para acercarla más al patrón visual esperado por la referencia compartida.
+- Se añadió salida simple del portero con pase cuando controla la bola.
+- Se fijó la bola dentro de la red al marcar gol para evitar que atraviese visualmente la portería.
+- Se reajustaron proporciones del rink para dejar más espacio detrás de portería y acercarlo mejor a la estructura de referencia.

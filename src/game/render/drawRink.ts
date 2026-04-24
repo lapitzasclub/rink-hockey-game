@@ -1,13 +1,12 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
+import { BLUE_LINE_OFFSET, GAME_HEIGHT, GAME_WIDTH, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOAL_LINE_OFFSET, RINK } from '../constants'
 
 export function drawRink(scene: Phaser.Scene) {
   const g = scene.add.graphics()
   const centerX = GAME_WIDTH / 2
   const centerY = GAME_HEIGHT / 2
-  const leftGoalLineX = RINK.x + 70
-  const rightGoalLineX = RINK.x + RINK.width - 70
-  const blueLineOffset = 255
+  const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
+  const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
   const faceoffTopY = centerY - 155
   const faceoffBottomY = centerY + 155
   const faceoffCircleRadius = 66
@@ -18,8 +17,8 @@ export function drawRink(scene: Phaser.Scene) {
   g.strokeRoundedRect(RINK.x, RINK.y, RINK.width, RINK.height, 86)
 
   g.lineStyle(4, 0x174ca8, 1)
-  g.strokeLineShape(new Phaser.Geom.Line(centerX - blueLineOffset, RINK.y + 8, centerX - blueLineOffset, RINK.y + RINK.height - 8))
-  g.strokeLineShape(new Phaser.Geom.Line(centerX + blueLineOffset, RINK.y + 8, centerX + blueLineOffset, RINK.y + RINK.height - 8))
+  g.strokeLineShape(new Phaser.Geom.Line(centerX - BLUE_LINE_OFFSET, RINK.y + 8, centerX - BLUE_LINE_OFFSET, RINK.y + RINK.height - 8))
+  g.strokeLineShape(new Phaser.Geom.Line(centerX + BLUE_LINE_OFFSET, RINK.y + 8, centerX + BLUE_LINE_OFFSET, RINK.y + RINK.height - 8))
   g.strokeCircle(centerX, centerY, 72)
 
   g.lineStyle(4, 0xe02626, 1)
@@ -40,14 +39,27 @@ export function drawRink(scene: Phaser.Scene) {
   g.fillCircle(centerX - 132, centerY + 84, 6)
   g.fillCircle(centerX + 132, centerY + 84, 6)
 
+  drawGoalFrame(g, leftGoalLineX, centerY, true)
+  drawGoalFrame(g, rightGoalLineX, centerY, false)
   drawGoalCrease(g, leftGoalLineX, centerY, true)
   drawGoalCrease(g, rightGoalLineX, centerY, false)
 
-  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'Prototype build 0.5  •  captura, robo y pista revisada', {
+  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'Prototype build 0.6  •  portería, proporciones y salidas del portero', {
     fontFamily: 'Arial',
     fontSize: '16px',
     color: '#6f86a8',
   }).setOrigin(0.5)
+}
+
+function drawGoalFrame(g: Phaser.GameObjects.Graphics, goalLineX: number, centerY: number, leftSide: boolean) {
+  g.lineStyle(3, 0x8c9199, 1)
+  g.fillStyle(0xe8edf3, 0.55)
+  const top = centerY - GOAL_HEIGHT / 2
+  const leftX = leftSide ? goalLineX - GOAL_BACK_DEPTH : goalLineX
+  const width = GOAL_BACK_DEPTH
+
+  g.fillRect(leftX, top, width, GOAL_HEIGHT)
+  g.strokeRect(leftX, top, width, GOAL_HEIGHT)
 }
 
 function drawGoalCrease(g: Phaser.GameObjects.Graphics, goalLineX: number, centerY: number, leftSide: boolean) {

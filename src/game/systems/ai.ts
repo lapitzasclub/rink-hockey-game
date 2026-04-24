@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GOALIE_SAVE_RADIUS, RINK } from '../constants'
+import { GAME_HEIGHT, GOALIE_SAVE_RADIUS, PASS_ASSIST_CONE_DOT, RINK } from '../constants'
 import { seek } from './movement'
 import { findPlayerById, getClosestPlayerToBall } from './playerHelpers'
 import type { Player } from '../types'
@@ -68,4 +68,11 @@ export function getAimingDirection(player: Player) {
   return player.facing.x === 0 && player.facing.y === 0
     ? { x: player.side === 'left' ? 1 : -1, y: 0 }
     : player.facing
+}
+
+/** Portero con bola: busca salida frontal simple y la usa para soltar rápido. */
+export function shouldGoaliePass(player: Player) {
+  const aim = getAimingDirection(player)
+  const forwardDot = aim.x * (player.side === 'left' ? 1 : -1)
+  return forwardDot >= PASS_ASSIST_CONE_DOT
 }

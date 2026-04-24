@@ -12,7 +12,7 @@ Se empieza con assets placeholder propios, minimalistas y coherentes.
 - [x] Jugador equipo rojo como shape renderizada
 - [x] Bola como shape renderizada
 - [x] Stick como shape renderizada
-- [x] Pista dibujada por código, revisada para acercarse más al marcaje real de la referencia
+- [x] Pista dibujada por código, revisada de nuevo para reflejar mejor proporciones, líneas y espacio tras portería según referencias
 - [x] Portería dibujada por código
 - [x] HUD básico con marcador, tiempo e instrucciones
 
