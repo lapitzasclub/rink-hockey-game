@@ -623,7 +623,7 @@ export class MatchScene extends Phaser.Scene {
       takerPlayerId: foul.victimPlayerId,
       x: foul.restartX,
       y: foul.restartY,
-      releaseAt: this.time.now + FOUL_SETUP_MS,
+      readyAt: this.time.now + FOUL_SETUP_MS,
     }
   }
 
@@ -668,14 +668,37 @@ export class MatchScene extends Phaser.Scene {
     if (taker) {
       taker.pos = { x: foul.x + (taker.side === 'left' ? -18 : 18), y: foul.y }
       taker.velocity = { x: 0, y: 0 }
-      taker.facing = { x: taker.side === 'left' ? 1 : -1, y: 0 }
     }
 
     this.ball.setPosition(foul.x, foul.y)
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
 
-    if (time >= foul.releaseAt) {
+    if (time < foul.readyAt) return
+
+    this.centerText.setText('Falta, elige dirección y saca').setVisible(true)
+
+    if (!taker) return
+
+    const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    if (controlled.id !== taker.id) {
+      const options = this.players.filter((player) => player.team === 'blue' && player.role !== 'goalie')
+      const index = options.findIndex((player) => player.id === taker.id)
+      if (index >= 0) this.controlledPlayerIndex = index
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.passKey)) {
+      this.ballCarrierId = taker.id
+      this.tryPass(taker)
+      this.centerText.setVisible(false)
+      this.ballIgnoreContactsUntil = 0
+      this.activeFoulRestart = null
+      return
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) {
+      this.ballCarrierId = taker.id
+      this.tryShot(taker)
       this.centerText.setVisible(false)
       this.ballIgnoreContactsUntil = 0
       this.activeFoulRestart = null

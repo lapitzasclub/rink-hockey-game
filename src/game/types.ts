@@ -44,5 +44,5 @@ export type ActiveFoulRestart = {
   takerPlayerId: string
   x: number
   y: number
-  releaseAt: number
+  readyAt: number
 }
