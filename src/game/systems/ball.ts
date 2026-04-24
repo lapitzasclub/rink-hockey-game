@@ -187,7 +187,8 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
       const dy = candidate.pos.y - player.pos.y
       const distance = Math.hypot(dx, dy) || 1
       const forward = player.side === 'left' ? dx / distance : -dx / distance
-      const score = forward * 220 - Math.abs(dy) * 0.22 - distance * 0.08
+      const tooClosePenalty = distance < 140 ? (140 - distance) * 2.2 : 0
+      const score = forward * 240 - Math.abs(dy) * 0.2 - distance * 0.05 - tooClosePenalty
       return { candidate, dx, dy, distance, score }
     })
     .sort((a, b) => b.score - a.score)[0]
