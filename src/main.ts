@@ -50,28 +50,12 @@ const touchState = { x: 0, y: 0, pass: false, shoot: false, switch: false }
 ;(window as typeof window & { __RINK_TOUCH__?: typeof touchState }).__RINK_TOUCH__ = touchState
 
 let nipplejsModule: any = null
-let activeTouchPointerId: number | null = null
 
 const resetTouchStick = (diag = 'touch reset') => {
   touchLeft.classList.remove('active')
   touchState.x = 0
   touchState.y = 0
-  activeTouchPointerId = null
   ;(window as any).__RINK_TOUCH_DIAG__ = diag
-}
-
-const updateTouchStickFromPoint = (clientX: number, clientY: number, diagPrefix = 'manual') => {
-  const rect = touchLeft.getBoundingClientRect()
-  const centerX = rect.left + rect.width / 2
-  const centerY = rect.top + rect.height / 2
-  const dx = clientX - centerX
-  const dy = clientY - centerY
-  const radius = Math.max(1, Math.min(rect.width, rect.height) / 2)
-  const normalizedX = Phaser.Math.Clamp(dx / radius, -1, 1)
-  const normalizedY = Phaser.Math.Clamp(dy / radius, -1, 1)
-  touchState.x = normalizedX
-  touchState.y = normalizedY
-  ;(window as any).__RINK_TOUCH_DIAG__ = `${diagPrefix} ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
 }
 
 async function setupTouchJoystick() {
@@ -83,9 +67,8 @@ async function setupTouchJoystick() {
 
     const manager = nipplejsModule.create({
       zone: touchLeft,
-      mode: 'static',
-      position: { left: '66px', bottom: '66px' },
       multitouch: false,
+      maxNumberOfNipples: 1,
       color: 'white',
       size: 120,
       threshold: 0.05,
@@ -93,21 +76,17 @@ async function setupTouchJoystick() {
       restOpacity: 0.25,
     })
 
-    const syncFromData = (data: any) => {
-      const vectorX = Number(data?.vector?.x ?? 0)
-      const vectorY = Number(data?.vector?.y ?? 0)
-      touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
-      touchState.y = Phaser.Math.Clamp(-vectorY, -1, 1)
-      ;(window as any).__RINK_TOUCH_DIAG__ = `mgr ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
-    }
-
     manager.on('start', () => {
       touchLeft.classList.add('active')
       ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr start'
     })
 
     manager.on('move', (_evt: any, data: any) => {
-      syncFromData(data)
+      const force = Math.min(Number(data?.force ?? 0), 1)
+      const angle = Number(data?.angle?.radian ?? 0)
+      touchState.x = Phaser.Math.Clamp(Math.cos(angle) * force, -1, 1)
+      touchState.y = Phaser.Math.Clamp(-Math.sin(angle) * force, -1, 1)
+      ;(window as any).__RINK_TOUCH_DIAG__ = `mgr ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)} f${force.toFixed(2)}`
     })
 
     manager.on('end hidden removed', () => {
@@ -119,31 +98,6 @@ async function setupTouchJoystick() {
 }
 
 void setupTouchJoystick()
-
-touchLeft.addEventListener('pointerdown', (event) => {
-  activeTouchPointerId = event.pointerId
-  touchLeft.classList.add('active')
-  updateTouchStickFromPoint(event.clientX, event.clientY, 'ptr down')
-})
-
-touchLeft.addEventListener('pointermove', (event) => {
-  if (activeTouchPointerId !== event.pointerId) return
-  updateTouchStickFromPoint(event.clientX, event.clientY, 'ptr move')
-})
-
-touchLeft.addEventListener('pointerup', (event) => {
-  if (activeTouchPointerId !== event.pointerId) return
-  resetTouchStick('ptr up')
-})
-
-touchLeft.addEventListener('pointercancel', (event) => {
-  if (activeTouchPointerId !== event.pointerId) return
-  resetTouchStick('ptr cancel')
-})
-
-touchLeft.addEventListener('lostpointercapture', () => {
-  resetTouchStick('ptr lost')
-})
 
 for (const [id, key] of [['touch-pass', 'pass'], ['touch-shoot', 'shoot'], ['touch-switch', 'switch']] as const) {
   const el = document.getElementById(id)!
