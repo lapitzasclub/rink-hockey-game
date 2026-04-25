@@ -86,3 +86,5 @@
 - Limitación actual de esta reintroducción: el movimiento táctil vuelve a existir, pero los botones táctiles de pase, tiro/robo y cambio no han sido reimplantados todavía en esta versión.
 - Se inició un refactor más serio de `MatchScene` orientado por responsabilidad, no solo por tamaño. Se extrajeron módulos específicos para joystick móvil, HUD/debug, flujo del partido, acciones de partido y control de jugador.
 - La meta explícita pasa a ser que `MatchScene` quede como orquestador del ciclo del partido, con la lógica detallada repartida en systems y helpers con fronteras más claras.
+- Tras aislar por fin `nipplejs` en una zona overlay dedicada `#left-zone`, el joystick móvil pasó a funcionar correctamente y se confirmó que el problema anterior venía de la integración/capa, no de la librería en sí.
+- A continuación se añadieron tres botones táctiles a la derecha (`P`, `T`, `C`) conectados a las mismas acciones del teclado: pase, tiro/robo y cambio de jugador.

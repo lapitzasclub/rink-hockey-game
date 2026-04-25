@@ -9,6 +9,11 @@ app.innerHTML = `
     <div id="game-host"></div>
     <div id="mobile-controls" aria-hidden="true">
       <div id="left-zone"></div>
+      <div id="right-buttons">
+        <button id="btn-pass" class="touch-btn">P</button>
+        <button id="btn-shoot" class="touch-btn">T</button>
+        <button id="btn-switch" class="touch-btn">C</button>
+      </div>
     </div>
   </div>
 `

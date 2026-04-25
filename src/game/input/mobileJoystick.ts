@@ -1,24 +1,63 @@
 import nipplejs from 'nipplejs'
 
-export type MobileJoystickState = { x: number, y: number, debug?: string, build?: string }
+export type MobileJoystickState = {
+  x: number
+  y: number
+  pass?: boolean
+  shoot?: boolean
+  switch?: boolean
+  debug?: string
+  build?: string
+}
 
 export function createMobileJoystick(options: {
   isTouchDevice: boolean
   zone: HTMLElement | null
+  passButton: HTMLElement | null
+  shootButton: HTMLElement | null
+  switchButton: HTMLElement | null
   state: MobileJoystickState
 }) {
-  const { isTouchDevice, zone, state } = options
-  state.build = 'overlay-nipple-v2'
+  const { isTouchDevice, zone, passButton, shootButton, switchButton, state } = options
+  state.build = 'overlay-nipple-v3'
   if (!isTouchDevice || !zone) {
     state.debug = 'touch-disabled-or-no-zone'
     return null
   }
 
   state.debug = 'zone-ready'
+  state.pass = false
+  state.shoot = false
+  state.switch = false
 
-  const reset = () => {
+  const resetStick = () => {
     state.x = 0
     state.y = 0
+  }
+
+  const bindButton = (element: HTMLElement | null, key: 'pass' | 'shoot' | 'switch') => {
+    if (!element) return () => {}
+    const press = (event: Event) => {
+      event.preventDefault()
+      state[key] = true
+      state.debug = `btn-${key}-down`
+      element.classList.add('pressed')
+    }
+    const release = (event: Event) => {
+      event.preventDefault()
+      state[key] = false
+      element.classList.remove('pressed')
+    }
+    element.addEventListener('pointerdown', press)
+    element.addEventListener('pointerup', release)
+    element.addEventListener('pointercancel', release)
+    element.addEventListener('pointerleave', release)
+    return () => {
+      element.removeEventListener('pointerdown', press)
+      element.removeEventListener('pointerup', release)
+      element.removeEventListener('pointercancel', release)
+      element.removeEventListener('pointerleave', release)
+    }
   }
 
   const onPointerDown = () => {
@@ -30,6 +69,10 @@ export function createMobileJoystick(options: {
 
   zone.addEventListener('pointerdown', onPointerDown)
   zone.addEventListener('touchstart', onTouchStart, { passive: true })
+
+  const unbindPass = bindButton(passButton, 'pass')
+  const unbindShoot = bindButton(shootButton, 'shoot')
+  const unbindSwitch = bindButton(switchButton, 'switch')
 
   const manager = nipplejs.create({
     zone,
@@ -59,15 +102,21 @@ export function createMobileJoystick(options: {
   })
 
   ;(manager as any).on('end removed hidden', () => {
-    reset()
+    resetStick()
     state.debug = 'nipple-end'
   })
 
   return {
     destroy() {
-      reset()
+      resetStick()
+      state.pass = false
+      state.shoot = false
+      state.switch = false
       zone.removeEventListener('pointerdown', onPointerDown)
       zone.removeEventListener('touchstart', onTouchStart)
+      unbindPass()
+      unbindShoot()
+      unbindSwitch()
       manager?.destroy?.()
     },
   }

@@ -57,7 +57,8 @@ export class MatchScene extends Phaser.Scene {
   private passKey!: Phaser.Input.Keyboard.Key
   private switchKey!: Phaser.Input.Keyboard.Key
   private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
-  private joystickInput = { x: 0, y: 0 }
+  private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
+  private prevTouchButtons = { pass: false, shoot: false, switch: false }
   private mobileJoystick: { destroy(): void } | null = null
   private ball!: Phaser.GameObjects.Arc
   private ballVelocity: Vector = { x: 0, y: 0 }
@@ -102,6 +103,9 @@ export class MatchScene extends Phaser.Scene {
     this.mobileJoystick = createMobileJoystick({
       isTouchDevice: this.isTouchDevice,
       zone: document.getElementById('left-zone'),
+      passButton: document.getElementById('btn-pass'),
+      shootButton: document.getElementById('btn-shoot'),
+      switchButton: document.getElementById('btn-switch'),
       state: this.joystickInput,
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -176,8 +180,9 @@ export class MatchScene extends Phaser.Scene {
       updateHud: () => this.updateHud(),
     })) return
 
+    const touchSwitchPressed = this.joystickInput.switch && !this.prevTouchButtons.switch
     this.controlledPlayerIndex = maybeSwitchControlledPlayer({
-      justDown: Phaser.Input.Keyboard.JustDown(this.switchKey),
+      justDown: Phaser.Input.Keyboard.JustDown(this.switchKey) || touchSwitchPressed,
       players: this.players,
       controlledPlayerIndex: this.controlledPlayerIndex,
       ballCarrierId: this.ballCarrierId,
@@ -239,10 +244,19 @@ export class MatchScene extends Phaser.Scene {
       dt,
     })
 
-    if (Phaser.Input.Keyboard.JustDown(this.passKey)) this.tryPass(player)
-    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) {
+    const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
+    const touchShootPressed = this.joystickInput.shoot && !this.prevTouchButtons.shoot
+
+    if (Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed) this.tryPass(player)
+    if (Phaser.Input.Keyboard.JustDown(this.shootKey) || touchShootPressed) {
       if (this.ballCarrierId === player.id) this.tryShot(player)
       else this.tryManualSteal(player)
+    }
+
+    this.prevTouchButtons = {
+      pass: !!this.joystickInput.pass,
+      shoot: !!this.joystickInput.shoot,
+      switch: !!this.joystickInput.switch,
     }
   }
 
