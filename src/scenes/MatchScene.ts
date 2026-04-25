@@ -254,16 +254,16 @@ export class MatchScene extends Phaser.Scene {
   private updateControlledPlayer(dt: number) {
     const player = getControlledPlayer(this.players, this.controlledPlayerIndex)
 
-    let inputX = 0
-    let inputY = 0
+    const keyboardInputX =
+      (this.cursors.left.isDown || this.wasd.A.isDown ? -1 : 0) +
+      (this.cursors.right.isDown || this.wasd.D.isDown ? 1 : 0)
+    const keyboardInputY =
+      (this.cursors.up.isDown || this.wasd.W.isDown ? -1 : 0) +
+      (this.cursors.down.isDown || this.wasd.S.isDown ? 1 : 0)
 
-    if (this.cursors.left.isDown || this.wasd.A.isDown) inputX -= 1
-    if (this.cursors.right.isDown || this.wasd.D.isDown) inputX += 1
-    if (this.cursors.up.isDown || this.wasd.W.isDown) inputY -= 1
-    if (this.cursors.down.isDown || this.wasd.S.isDown) inputY += 1
-
-    if (Math.abs(this.touchInput.x) > Math.abs(inputX)) inputX = this.touchInput.x
-    if (Math.abs(this.touchInput.y) > Math.abs(inputY)) inputY = this.touchInput.y
+    const usingTouchStick = Math.hypot(this.touchInput.x, this.touchInput.y) > 0.08
+    const inputX = usingTouchStick ? this.touchInput.x : keyboardInputX
+    const inputY = usingTouchStick ? this.touchInput.y : keyboardInputY
 
     const len = Math.hypot(inputX, inputY)
     if (len > 0) {

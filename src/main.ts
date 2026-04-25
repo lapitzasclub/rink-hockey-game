@@ -69,12 +69,11 @@ async function setupTouchJoystick() {
     restOpacity: 0.25,
   })
 
-  const syncFromEvent = (evt: any) => {
-    const data = evt?.data
+  const syncFromData = (data: any) => {
     const vectorX = Number(data?.vector?.x ?? 0)
     const vectorY = Number(data?.vector?.y ?? 0)
     touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
-    touchState.y = Phaser.Math.Clamp(vectorY, -1, 1)
+    touchState.y = Phaser.Math.Clamp(-vectorY, -1, 1)
     ;(window as any).__RINK_TOUCH_DIAG__ = `mgr ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
   }
 
@@ -83,8 +82,12 @@ async function setupTouchJoystick() {
     ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr start'
   })
 
-  manager.on('move dir plain', (evt: any) => {
-    syncFromEvent(evt)
+  manager.on('move', (_evt: any, data: any) => {
+    syncFromData(data)
+  })
+
+  manager.on('dir plain', (_evt: any, data: any) => {
+    syncFromData(data)
   })
 
   manager.on('end hidden removed', () => {
