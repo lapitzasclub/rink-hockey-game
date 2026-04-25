@@ -7,6 +7,9 @@ const app = document.querySelector<HTMLDivElement>('#app')!
 app.innerHTML = `
   <div id="game-shell">
     <div id="game-host"></div>
+    <div id="mobile-controls" aria-hidden="true">
+      <div id="left-zone"></div>
+    </div>
   </div>
 `
 

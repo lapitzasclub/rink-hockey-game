@@ -20,6 +20,25 @@ body,
   height: 100%;
 }
 
+#mobile-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+#left-zone {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 70%, rgba(255,255,255,0) 100%);
+}
+
 body {
   display: flex;
   align-items: center;
