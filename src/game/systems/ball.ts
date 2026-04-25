@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, GOAL_POST_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
+import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
 import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -18,8 +18,27 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
     const velocityDir = speed > 1 ? { x: carrier.velocity.x / speed, y: carrier.velocity.y / speed } : { x: 0, y: 0 }
     const lateral = { x: -carrier.facing.y, y: carrier.facing.x }
     const lateralSign = carrier.side === 'left' ? 1 : -1
-    ball.x = carrier.pos.x + carrier.facing.x * carryOffset + lateral.x * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.x * BALL_PROTECT_VELOCITY_BLEND * speed
-    ball.y = carrier.pos.y + carrier.facing.y * carryOffset + lateral.y * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.y * BALL_PROTECT_VELOCITY_BLEND * speed
+    let nextBallX = carrier.pos.x + carrier.facing.x * carryOffset + lateral.x * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.x * BALL_PROTECT_VELOCITY_BLEND * speed
+    let nextBallY = carrier.pos.y + carrier.facing.y * carryOffset + lateral.y * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.y * BALL_PROTECT_VELOCITY_BLEND * speed
+
+    const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
+    const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+    const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
+    const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
+    const leftNetBackX = leftGoalLineX - GOAL_BACK_DEPTH
+    const rightNetBackX = rightGoalLineX + GOAL_BACK_DEPTH
+    const insideLeftGoalCage = nextBallX >= leftNetBackX && nextBallX <= leftGoalLineX && nextBallY >= goalTop && nextBallY <= goalBottom
+    const insideRightGoalCage = nextBallX >= rightGoalLineX && nextBallX <= rightNetBackX && nextBallY >= goalTop && nextBallY <= goalBottom
+
+    if (carrier.pos.x < leftGoalLineX + PLAYER_RADIUS && !insideLeftGoalCage && nextBallX < leftGoalLineX) {
+      nextBallX = leftGoalLineX + BALL_RADIUS
+    }
+    if (carrier.pos.x > rightGoalLineX - PLAYER_RADIUS && !insideRightGoalCage && nextBallX > rightGoalLineX) {
+      nextBallX = rightGoalLineX - BALL_RADIUS
+    }
+
+    ball.x = nextBallX
+    ball.y = nextBallY
     return { x: carrier.velocity.x * 0.35, y: carrier.velocity.y * 0.35 }
   }
 
@@ -78,6 +97,11 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
     else ball.y = goalBottom + BALL_RADIUS
   }
 
+  const insideLeftGoalCage = ball.x >= leftNetBackX && ball.x <= leftGoalLineX && ball.y >= goalTop && ball.y <= goalBottom
+  const insideRightGoalCage = ball.x >= rightGoalLineX && ball.x <= rightNetBackX && ball.y >= goalTop && ball.y <= goalBottom
+  const behindLeftGoal = ball.x < leftGoalLineX && !insideLeftGoalCage
+  const behindRightGoal = ball.x > rightGoalLineX && !insideRightGoalCage
+
   if (inGoalMouth && ball.x <= leftNetBackX + BALL_RADIUS) {
     nextVelocity.x = Math.abs(nextVelocity.x) * GOAL_POST_REBOUND
     ball.x = leftNetBackX + BALL_RADIUS
@@ -86,6 +110,46 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
   if (inGoalMouth && ball.x >= rightNetBackX - BALL_RADIUS) {
     nextVelocity.x = -Math.abs(nextVelocity.x) * GOAL_POST_REBOUND
     ball.x = rightNetBackX - BALL_RADIUS
+  }
+
+  if (behindLeftGoal) {
+    if (ball.x <= leftNetBackX + BALL_RADIUS) {
+      nextVelocity.x = Math.abs(nextVelocity.x) * GOAL_SIDE_REBOUND
+      ball.x = leftNetBackX + BALL_RADIUS
+    }
+    if (ball.y > GAME_HEIGHT / 2) {
+      const rearBaseY = goalBottom + BALL_RADIUS
+      if (ball.y >= rearBaseY) {
+        nextVelocity.y = -Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+        ball.y = rearBaseY
+      }
+    } else {
+      const rearTopY = goalTop - BALL_RADIUS
+      if (ball.y <= rearTopY) {
+        nextVelocity.y = Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+        ball.y = rearTopY
+      }
+    }
+  }
+
+  if (behindRightGoal) {
+    if (ball.x >= rightNetBackX - BALL_RADIUS) {
+      nextVelocity.x = -Math.abs(nextVelocity.x) * GOAL_SIDE_REBOUND
+      ball.x = rightNetBackX - BALL_RADIUS
+    }
+    if (ball.y > GAME_HEIGHT / 2) {
+      const rearBaseY = goalBottom + BALL_RADIUS
+      if (ball.y >= rearBaseY) {
+        nextVelocity.y = -Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+        ball.y = rearBaseY
+      }
+    } else {
+      const rearTopY = goalTop - BALL_RADIUS
+      if (ball.y <= rearTopY) {
+        nextVelocity.y = Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+        ball.y = rearTopY
+      }
+    }
   }
 
   return nextVelocity
