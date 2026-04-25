@@ -46,6 +46,9 @@ body,
   display: flex;
   gap: 12px;
   pointer-events: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 220px;
 }
 
 .touch-btn {

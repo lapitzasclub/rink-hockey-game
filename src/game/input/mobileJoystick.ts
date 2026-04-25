@@ -6,8 +6,6 @@ export type MobileJoystickState = {
   pass?: boolean
   shoot?: boolean
   switch?: boolean
-  debug?: string
-  build?: string
 }
 
 export function createMobileJoystick(options: {
@@ -16,16 +14,12 @@ export function createMobileJoystick(options: {
   passButton: HTMLElement | null
   shootButton: HTMLElement | null
   switchButton: HTMLElement | null
+  fullscreenButton: HTMLElement | null
   state: MobileJoystickState
 }) {
-  const { isTouchDevice, zone, passButton, shootButton, switchButton, state } = options
-  state.build = 'overlay-nipple-v3'
-  if (!isTouchDevice || !zone) {
-    state.debug = 'touch-disabled-or-no-zone'
-    return null
-  }
+  const { isTouchDevice, zone, passButton, shootButton, switchButton, fullscreenButton, state } = options
+  if (!isTouchDevice || !zone) return null
 
-  state.debug = 'zone-ready'
   state.pass = false
   state.shoot = false
   state.switch = false
@@ -40,7 +34,6 @@ export function createMobileJoystick(options: {
     const press = (event: Event) => {
       event.preventDefault()
       state[key] = true
-      state.debug = `btn-${key}-down`
       element.classList.add('pressed')
     }
     const release = (event: Event) => {
@@ -60,19 +53,17 @@ export function createMobileJoystick(options: {
     }
   }
 
-  const onPointerDown = () => {
-    state.debug = 'raw-pointerdown'
-  }
-  const onTouchStart = () => {
-    state.debug = 'raw-touchstart'
-  }
-
-  zone.addEventListener('pointerdown', onPointerDown)
-  zone.addEventListener('touchstart', onTouchStart, { passive: true })
-
   const unbindPass = bindButton(passButton, 'pass')
   const unbindShoot = bindButton(shootButton, 'shoot')
   const unbindSwitch = bindButton(switchButton, 'switch')
+
+  const onFullscreen = async (event: Event) => {
+    event.preventDefault()
+    const root = document.documentElement
+    if (!document.fullscreenElement) await root.requestFullscreen?.()
+    else await document.exitFullscreen?.()
+  }
+  fullscreenButton?.addEventListener('pointerdown', onFullscreen)
 
   const manager = nipplejs.create({
     zone,
@@ -85,25 +76,16 @@ export function createMobileJoystick(options: {
     multitouch: false,
   })
 
-  ;(manager as any).on('start', () => {
-    state.debug = 'nipple-start'
-  })
-
   ;(manager as any).on('move', (evt: any, data: any) => {
     const payload = data ?? evt?.data
     const vector = payload?.vector
-    if (!vector) {
-      state.debug = 'nipple-move-no-vector'
-      return
-    }
+    if (!vector) return
     state.x = Number(vector.x ?? 0)
     state.y = -Number(vector.y ?? 0)
-    state.debug = `nipple-move ${state.x.toFixed(2)},${state.y.toFixed(2)}`
   })
 
   ;(manager as any).on('end removed hidden', () => {
     resetStick()
-    state.debug = 'nipple-end'
   })
 
   return {
@@ -112,11 +94,10 @@ export function createMobileJoystick(options: {
       state.pass = false
       state.shoot = false
       state.switch = false
-      zone.removeEventListener('pointerdown', onPointerDown)
-      zone.removeEventListener('touchstart', onTouchStart)
       unbindPass()
       unbindShoot()
       unbindSwitch()
+      fullscreenButton?.removeEventListener('pointerdown', onFullscreen)
       manager?.destroy?.()
     },
   }

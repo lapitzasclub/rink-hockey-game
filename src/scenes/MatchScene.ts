@@ -20,7 +20,7 @@ import {
 import { updateVisuals } from '../game/systems/visuals'
 import type { ActiveBully, ActiveFoulRestart, Player, TeamColor, Vector } from '../game/types'
 import { createHud } from '../game/ui/createHud'
-import { createTouchDebugText, updateMatchHud, updateTouchDebugText } from '../game/ui/matchHud'
+import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
 import { createRuleState, type RuleState } from '../game/systems/rules'
 import {
@@ -68,7 +68,6 @@ export class MatchScene extends Phaser.Scene {
   private hudText!: Phaser.GameObjects.Text
   private subHudText!: Phaser.GameObjects.Text
   private centerText!: Phaser.GameObjects.Text
-  private touchDebugText!: Phaser.GameObjects.Text
   private blueScore = 0
   private redScore = 0
   private remainingSeconds = MATCH_DURATION
@@ -99,13 +98,13 @@ export class MatchScene extends Phaser.Scene {
     this.hudText = hud.hudText
     this.subHudText = hud.subHudText
     this.centerText = hud.centerText
-    this.touchDebugText = createTouchDebugText(this)
     this.mobileJoystick = createMobileJoystick({
       isTouchDevice: this.isTouchDevice,
       zone: document.getElementById('left-zone'),
       passButton: document.getElementById('btn-pass'),
       shootButton: document.getElementById('btn-shoot'),
       switchButton: document.getElementById('btn-switch'),
+      fullscreenButton: document.getElementById('btn-fullscreen'),
       state: this.joystickInput,
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -200,17 +199,6 @@ export class MatchScene extends Phaser.Scene {
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
     this.checkGoalState(time)
     this.updateHud()
-    this.updateTouchDebug()
-  }
-
-  private updateTouchDebug() {
-    updateTouchDebugText({
-      text: this.touchDebugText,
-      players: this.players,
-      controlledPlayerIndex: this.controlledPlayerIndex,
-      joystickInput: this.joystickInput,
-      isTouchDevice: this.isTouchDevice,
-    })
   }
 
   private createInput() {
@@ -515,10 +503,15 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       controlledPlayerIndex: this.controlledPlayerIndex,
       centerText: this.centerText,
-      passJustDown: Phaser.Input.Keyboard.JustDown(this.passKey),
-      shootJustDown: Phaser.Input.Keyboard.JustDown(this.shootKey),
+      passJustDown: Phaser.Input.Keyboard.JustDown(this.passKey) || (this.joystickInput.pass && !this.prevTouchButtons.pass),
+      shootJustDown: Phaser.Input.Keyboard.JustDown(this.shootKey) || (this.joystickInput.shoot && !this.prevTouchButtons.shoot),
     })
     if (!state) return
+
+    const stickLen = Math.hypot(this.joystickInput.x, this.joystickInput.y)
+    if (state.taker && stickLen > 0.15) {
+      state.taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
+    }
 
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
@@ -532,6 +525,11 @@ export class MatchScene extends Phaser.Scene {
     this.centerText.setVisible(false)
     this.ballIgnoreContactsUntil = 0
     this.activeFoulRestart = null
+    this.prevTouchButtons = {
+      pass: !!this.joystickInput.pass,
+      shoot: !!this.joystickInput.shoot,
+      switch: !!this.joystickInput.switch,
+    }
   }
 
   private updateBullyState(time: number) {

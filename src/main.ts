@@ -13,6 +13,7 @@ app.innerHTML = `
         <button id="btn-pass" class="touch-btn">P</button>
         <button id="btn-shoot" class="touch-btn">T</button>
         <button id="btn-switch" class="touch-btn">C</button>
+        <button id="btn-fullscreen" class="touch-btn">⛶</button>
       </div>
     </div>
   </div>
