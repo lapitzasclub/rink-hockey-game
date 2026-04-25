@@ -101,3 +101,4 @@
 - Se detectó y corrigió un bug donde `Y` sí pasaba con posesión pero no cambiaba de jugador sin posesión; la intención contextual ahora se propaga correctamente.
 - Los controles táctiles también se alinearon hacia un esquema contextual similar: botón principal `A` para tiro/robo y botón secundario `B` para pase/cambio, eliminando el tercer botón dedicado de cambio.
 - Más tarde se detectó que móvil se había quedado sin equivalente de sprint. Se añadió un botón táctil dedicado `S` conectado al mismo sistema de sprint y estamina que usa teclado.
+- Se corrigió la detección de gol para que no baste con quedar detrás de la línea dentro del alto de portería: ahora el gol solo cuenta si la bola entra desde la boca mirando al centro del campo, y se reforzaron los rebotes en postes/cantos de la portería.

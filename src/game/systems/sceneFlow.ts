@@ -69,7 +69,7 @@ export function checkAndApplyGoal(options: {
   centerText: Phaser.GameObjects.Text
   time: number
 }) {
-  const goal = checkGoal(options.ball)
+  const goal = checkGoal(options.ball, options.ballVelocity)
   if (!goal) return null
 
   options.ball.setPosition(goal.holdX, goal.holdY)

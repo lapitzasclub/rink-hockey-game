@@ -60,10 +60,22 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
 
   const hitLeftPostFace = ball.x <= leftGoalLineX + BALL_RADIUS && ball.x >= leftGoalLineX - BALL_RADIUS && !inGoalMouth
   const hitRightPostFace = ball.x >= rightGoalLineX - BALL_RADIUS && ball.x <= rightGoalLineX + BALL_RADIUS && !inGoalMouth
+  const nearLeftGoalMouth = ball.x >= leftGoalLineX - BALL_RADIUS - 2 && ball.x <= leftGoalLineX + BALL_RADIUS + 2
+  const nearRightGoalMouth = ball.x >= rightGoalLineX - BALL_RADIUS - 2 && ball.x <= rightGoalLineX + BALL_RADIUS + 2
+  const hitLeftTopPost = nearLeftGoalMouth && ball.y >= goalTop - BALL_RADIUS && ball.y <= goalTop + BALL_RADIUS
+  const hitLeftBottomPost = nearLeftGoalMouth && ball.y >= goalBottom - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
+  const hitRightTopPost = nearRightGoalMouth && ball.y >= goalTop - BALL_RADIUS && ball.y <= goalTop + BALL_RADIUS
+  const hitRightBottomPost = nearRightGoalMouth && ball.y >= goalBottom - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
 
   if (hitLeftPostFace || hitRightPostFace) {
     nextVelocity.x *= -GOAL_POST_REBOUND
     ball.x = hitLeftPostFace ? leftGoalLineX + BALL_RADIUS : rightGoalLineX - BALL_RADIUS
+  }
+
+  if (hitLeftTopPost || hitLeftBottomPost || hitRightTopPost || hitRightBottomPost) {
+    nextVelocity.y *= -GOAL_POST_REBOUND
+    if (hitLeftTopPost || hitRightTopPost) ball.y = goalTop - BALL_RADIUS
+    else ball.y = goalBottom + BALL_RADIUS
   }
 
   if (inGoalMouth && ball.x <= leftNetBackX + BALL_RADIUS) {
@@ -361,7 +373,7 @@ export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Ar
   }
 }
 
-export function checkGoal(ball: Phaser.GameObjects.Arc) {
+export function checkGoal(ball: Phaser.GameObjects.Arc, ballVelocity: Vector) {
   const top = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 + BALL_RADIUS
   const bottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2 - BALL_RADIUS
   const inGoalY = ball.y >= top && ball.y <= bottom
@@ -370,7 +382,8 @@ export function checkGoal(ball: Phaser.GameObjects.Arc) {
   const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
   const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
 
-  if (ball.x <= leftGoalLineX - BALL_RADIUS - 6) {
+  const enteredLeftGoalFromFront = ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS - 6
+  if (enteredLeftGoalFromFront) {
     return {
       scorer: 'red' as TeamColor,
       holdX: leftGoalLineX - 10,
@@ -378,7 +391,8 @@ export function checkGoal(ball: Phaser.GameObjects.Arc) {
     }
   }
 
-  if (ball.x >= rightGoalLineX + BALL_RADIUS + 6) {
+  const enteredRightGoalFromFront = ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS + 6
+  if (enteredRightGoalFromFront) {
     return {
       scorer: 'blue' as TeamColor,
       holdX: rightGoalLineX + 10,

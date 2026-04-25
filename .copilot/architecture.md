@@ -92,4 +92,5 @@ El objetivo no es solo bajar líneas, sino hacer que cada módulo tenga una raz�
 - Controles táctiles alineados con la misma filosofía contextual: botón principal para tiro/robo, botón secundario para pase/cambio y botón dedicado de sprint.
 - Cada jugador mantiene su propia estamina y el sprint ya afecta a aceleración, velocidad punta y recuperación.
 - La lógica de robo distingue frontal, lateral y espalda, con castigo mucho más fuerte a entradas por detrás y más resultados de bola suelta en vez de posesión instantánea.
+- La detección de gol ya no acepta entradas por detrás de la portería: exige cruce desde la boca del arco y convive con rebotes más explícitos en postes.
 - La reanudación de faltas ya funciona tanto para humano como para IA rival.
