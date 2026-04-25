@@ -50,62 +50,99 @@ const touchState = { x: 0, y: 0, pass: false, shoot: false, switch: false }
 ;(window as typeof window & { __RINK_TOUCH__?: typeof touchState }).__RINK_TOUCH__ = touchState
 
 let nipplejsModule: any = null
+let activeTouchPointerId: number | null = null
+
+const resetTouchStick = (diag = 'touch reset') => {
+  touchLeft.classList.remove('active')
+  touchState.x = 0
+  touchState.y = 0
+  activeTouchPointerId = null
+  ;(window as any).__RINK_TOUCH_DIAG__ = diag
+}
+
+const updateTouchStickFromPoint = (clientX: number, clientY: number, diagPrefix = 'manual') => {
+  const rect = touchLeft.getBoundingClientRect()
+  const centerX = rect.left + rect.width / 2
+  const centerY = rect.top + rect.height / 2
+  const dx = clientX - centerX
+  const dy = clientY - centerY
+  const radius = Math.max(1, Math.min(rect.width, rect.height) / 2)
+  const normalizedX = Phaser.Math.Clamp(dx / radius, -1, 1)
+  const normalizedY = Phaser.Math.Clamp(dy / radius, -1, 1)
+  touchState.x = normalizedX
+  touchState.y = normalizedY
+  ;(window as any).__RINK_TOUCH_DIAG__ = `${diagPrefix} ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
+}
 
 async function setupTouchJoystick() {
   if (!isTouchPrimary) return
 
-  const mod = await import('nipplejs')
-  nipplejsModule = mod.default ?? mod
+  try {
+    const mod = await import('nipplejs')
+    nipplejsModule = mod.default ?? mod
 
-  const manager = nipplejsModule.create({
-    zone: touchLeft,
-    mode: 'static',
-    position: { left: '66px', bottom: '66px' },
-    multitouch: false,
-    color: 'white',
-    size: 120,
-    threshold: 0.05,
-    fadeTime: 0,
-    restOpacity: 0.25,
-  })
+    const manager = nipplejsModule.create({
+      zone: touchLeft,
+      mode: 'static',
+      position: { left: '66px', bottom: '66px' },
+      multitouch: false,
+      color: 'white',
+      size: 120,
+      threshold: 0.05,
+      fadeTime: 0,
+      restOpacity: 0.25,
+    })
 
-  const syncFromData = (data: any) => {
-    const vectorX = Number(data?.vector?.x ?? 0)
-    const vectorY = Number(data?.vector?.y ?? 0)
-    touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
-    touchState.y = Phaser.Math.Clamp(-vectorY, -1, 1)
-    ;(window as any).__RINK_TOUCH_DIAG__ = `mgr ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
+    const syncFromData = (data: any) => {
+      const vectorX = Number(data?.vector?.x ?? 0)
+      const vectorY = Number(data?.vector?.y ?? 0)
+      touchState.x = Phaser.Math.Clamp(vectorX, -1, 1)
+      touchState.y = Phaser.Math.Clamp(-vectorY, -1, 1)
+      ;(window as any).__RINK_TOUCH_DIAG__ = `mgr ${touchState.x.toFixed(2)},${touchState.y.toFixed(2)}`
+    }
+
+    manager.on('start', () => {
+      touchLeft.classList.add('active')
+      ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr start'
+    })
+
+    manager.on('move', (_evt: any, data: any) => {
+      syncFromData(data)
+    })
+
+    manager.on('end hidden removed', () => {
+      resetTouchStick('mgr end')
+    })
+  } catch {
+    ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr unavailable'
   }
-
-  manager.on('start', () => {
-    touchLeft.classList.add('active')
-    ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr start'
-  })
-
-  manager.on('move', (_evt: any, data: any) => {
-    syncFromData(data)
-  })
-
-  manager.on('dir plain', (_evt: any, data: any) => {
-    syncFromData(data)
-  })
-
-  manager.on('end hidden removed', () => {
-    touchLeft.classList.remove('active')
-    touchState.x = 0
-    touchState.y = 0
-    ;(window as any).__RINK_TOUCH_DIAG__ = 'mgr end'
-  })
 }
 
 void setupTouchJoystick()
 
-touchLeft.addEventListener('touchstart', () => {
-  ;(window as any).__RINK_TOUCH_DIAG__ = 'touchstart-left'
-}, { passive: true })
+touchLeft.addEventListener('pointerdown', (event) => {
+  activeTouchPointerId = event.pointerId
+  touchLeft.classList.add('active')
+  updateTouchStickFromPoint(event.clientX, event.clientY, 'ptr down')
+})
 
-touchLeft.addEventListener('pointerdown', () => {
-  ;(window as any).__RINK_TOUCH_DIAG__ = 'pointerdown-left'
+touchLeft.addEventListener('pointermove', (event) => {
+  if (activeTouchPointerId !== event.pointerId) return
+  updateTouchStickFromPoint(event.clientX, event.clientY, 'ptr move')
+})
+
+touchLeft.addEventListener('pointerup', (event) => {
+  if (activeTouchPointerId !== event.pointerId) return
+  resetTouchStick('ptr up')
+})
+
+touchLeft.addEventListener('pointercancel', (event) => {
+  if (activeTouchPointerId !== event.pointerId) return
+  resetTouchStick('ptr cancel')
+})
+
+touchLeft.addEventListener('lostpointercapture', () => {
+  resetTouchStick('ptr lost')
 })
 
 for (const [id, key] of [['touch-pass', 'pass'], ['touch-shoot', 'shoot'], ['touch-switch', 'switch']] as const) {
