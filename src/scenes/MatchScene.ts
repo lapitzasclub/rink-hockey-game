@@ -105,6 +105,7 @@ export class MatchScene extends Phaser.Scene {
       zone: document.getElementById('left-zone'),
       passButton: document.getElementById('btn-pass'),
       shootButton: document.getElementById('btn-shoot'),
+      sprintButton: document.getElementById('btn-sprint'),
       switchButton: document.getElementById('btn-switch'),
       fullscreenButton: document.getElementById('btn-fullscreen'),
       state: this.joystickInput,

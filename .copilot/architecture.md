@@ -89,7 +89,7 @@ El objetivo no es solo bajar líneas, sino hacer que cada módulo tenga una raz�
 ## Estado jugable actual
 
 - Controles de teclado actuales orientados a ergonomía y contexto: `WASD` mover, `SHIFT` sprint, `U` tiro/robo y `Y` pase o cambio de jugador según posesión.
-- Controles táctiles alineados con la misma filosofía contextual: botón principal para tiro/robo y botón secundario para pase/cambio.
+- Controles táctiles alineados con la misma filosofía contextual: botón principal para tiro/robo, botón secundario para pase/cambio y botón dedicado de sprint.
 - Cada jugador mantiene su propia estamina y el sprint ya afecta a aceleración, velocidad punta y recuperación.
 - La lógica de robo distingue frontal, lateral y espalda, con castigo mucho más fuerte a entradas por detrás y más resultados de bola suelta en vez de posesión instantánea.
 - La reanudación de faltas ya funciona tanto para humano como para IA rival.

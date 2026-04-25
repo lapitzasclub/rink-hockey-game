@@ -9,7 +9,7 @@ export function updateControlledPlayerMotion(options: {
   controlledPlayerIndex: number
   cursors: Phaser.Types.Input.Keyboard.CursorKeys
   wasd: Record<string, Phaser.Input.Keyboard.Key>
-  joystickInput: { x: number, y: number }
+  joystickInput: { x: number, y: number, sprint?: boolean }
   sprintKey: Phaser.Input.Keyboard.Key
   isTouchDevice: boolean
   dt: number
@@ -28,7 +28,7 @@ export function updateControlledPlayerMotion(options: {
   const inputY = usingJoystick ? options.joystickInput.y : keyboardInputY
   const len = Math.hypot(inputX, inputY)
 
-  const wantsSprint = !!options.sprintKey?.isDown && lenientCanSprint(player)
+  const wantsSprint = (!!options.sprintKey?.isDown || !!options.joystickInput.sprint) && lenientCanSprint(player)
   player.sprinting = wantsSprint && len > 0
 
   if (player.sprinting) player.stamina = Math.max(0, (player.stamina ?? STAMINA_MAX) - STAMINA_SPRINT_DRAIN_PER_SECOND * options.dt)

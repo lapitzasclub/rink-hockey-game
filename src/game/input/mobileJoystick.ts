@@ -6,6 +6,7 @@ export type MobileJoystickState = {
   pass?: boolean
   shoot?: boolean
   switch?: boolean
+  sprint?: boolean
 }
 
 export function createMobileJoystick(options: {
@@ -13,23 +14,25 @@ export function createMobileJoystick(options: {
   zone: HTMLElement | null
   passButton: HTMLElement | null
   shootButton: HTMLElement | null
+  sprintButton: HTMLElement | null
   switchButton: HTMLElement | null
   fullscreenButton: HTMLElement | null
   state: MobileJoystickState
 }) {
-  const { isTouchDevice, zone, passButton, shootButton, fullscreenButton, state } = options
+  const { isTouchDevice, zone, passButton, shootButton, sprintButton, fullscreenButton, state } = options
   if (!isTouchDevice || !zone) return null
 
   state.pass = false
   state.shoot = false
   state.switch = false
+  state.sprint = false
 
   const resetStick = () => {
     state.x = 0
     state.y = 0
   }
 
-  const bindButton = (element: HTMLElement | null, key: 'pass' | 'shoot' | 'switch') => {
+  const bindButton = (element: HTMLElement | null, key: 'pass' | 'shoot' | 'switch' | 'sprint') => {
     if (!element) return () => {}
     const press = (event: Event) => {
       event.preventDefault()
@@ -55,6 +58,7 @@ export function createMobileJoystick(options: {
 
   const unbindPass = bindButton(passButton, 'pass')
   const unbindShoot = bindButton(shootButton, 'shoot')
+  const unbindSprint = bindButton(sprintButton, 'sprint')
 
   const onFullscreen = async (event: Event) => {
     event.preventDefault()
@@ -93,8 +97,10 @@ export function createMobileJoystick(options: {
       state.pass = false
       state.shoot = false
       state.switch = false
+      state.sprint = false
       unbindPass()
       unbindShoot()
+      unbindSprint()
       fullscreenButton?.removeEventListener('pointerdown', onFullscreen)
       manager?.destroy?.()
     },

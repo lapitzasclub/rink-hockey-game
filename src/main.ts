@@ -15,6 +15,7 @@ app.innerHTML = `
       <div id="right-buttons">
         <button id="btn-shoot" class="touch-btn">A</button>
         <button id="btn-pass" class="touch-btn">B</button>
+        <button id="btn-sprint" class="touch-btn">S</button>
       </div>
     </div>
   </div>

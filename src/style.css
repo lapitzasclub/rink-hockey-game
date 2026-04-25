@@ -52,7 +52,7 @@ body,
   pointer-events: auto;
   flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: 220px;
+  max-width: 240px;
 }
 
 .hud-btn {
