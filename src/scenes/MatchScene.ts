@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser'
+import nipplejs from 'nipplejs'
 import {
   BALL_CAPTURE_SHIELD_DISTANCE,
   BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
@@ -71,12 +72,9 @@ export class MatchScene extends Phaser.Scene {
   private shootKey!: Phaser.Input.Keyboard.Key
   private passKey!: Phaser.Input.Keyboard.Key
   private switchKey!: Phaser.Input.Keyboard.Key
-  private touchInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
-  private prevTouchButtons = { pass: false, shoot: false, switch: false }
   private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
-  private touchStickPointerId: number | null = null
-  private touchStickBase!: Phaser.GameObjects.Arc
-  private touchStickKnob!: Phaser.GameObjects.Arc
+  private joystickInput = { x: 0, y: 0 }
+  private nippleManager: any = null
   private ball!: Phaser.GameObjects.Arc
   private ballVelocity: Vector = { x: 0, y: 0 }
   private ballCarrierId: string | null = null
@@ -123,7 +121,7 @@ export class MatchScene extends Phaser.Scene {
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 6, y: 4 },
     }).setDepth(30)
-    this.createTouchControls()
+    this.createNippleJoystick()
     this.resetKickoff('blue')
 
     this.time.addEvent({
@@ -162,7 +160,7 @@ export class MatchScene extends Phaser.Scene {
    */
   update(time: number, delta: number) {
     const dt = Math.min(delta / 1000, 0.033)
-    this.readTouchInput()
+    // joystickInput ya se actualiza por nipplejs
 
     if (this.matchEnded) {
       if (Phaser.Input.Keyboard.JustDown(this.shootKey)) this.scene.restart()
@@ -191,8 +189,7 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
-    const touchSwitchPressed = this.touchInput.switch && !this.prevTouchButtons.switch
-    if (Phaser.Input.Keyboard.JustDown(this.switchKey) || touchSwitchPressed) {
+    if (Phaser.Input.Keyboard.JustDown(this.switchKey)) {
       this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, this.ballCarrierId, this.ball.x, this.ball.y)
     }
 
@@ -213,7 +210,7 @@ export class MatchScene extends Phaser.Scene {
   private updateTouchDebug() {
     const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
     this.touchDebugText.setText(
-      `touch ${this.touchInput.x.toFixed(2)},${this.touchInput.y.toFixed(2)} | ` +
+      `joystick ${this.joystickInput.x.toFixed(2)},${this.joystickInput.y.toFixed(2)} | ` +
       `vel ${controlled.velocity.x.toFixed(1)},${controlled.velocity.y.toFixed(1)} | ` +
       `pos ${controlled.pos.x.toFixed(0)},${controlled.pos.y.toFixed(0)} | ` +
       `touch-ui ${this.isTouchDevice ? 'on' : 'off'}`
@@ -228,103 +225,40 @@ export class MatchScene extends Phaser.Scene {
     this.switchKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
   }
 
-  private readTouchInput() {
-    this.touchInput.x = Math.abs(this.touchInput.x) > 0.08 ? this.touchInput.x : 0
-    this.touchInput.y = Math.abs(this.touchInput.y) > 0.08 ? this.touchInput.y : 0
-  }
 
-  private createTouchControls() {
+  private createNippleJoystick() {
     if (!this.isTouchDevice) return
-
-    const baseX = 92
-    const baseY = GAME_HEIGHT - 92
-    this.touchStickBase = this.add.circle(baseX, baseY, 56, 0xffffff, 0.10).setDepth(40).setScrollFactor(0)
-    this.touchStickKnob = this.add.circle(baseX, baseY, 24, 0xffffff, 0.22).setDepth(41).setScrollFactor(0)
-
-    const stickHitArea = new Phaser.Geom.Circle(baseX, baseY, 82)
-    this.touchStickBase.setInteractive(stickHitArea, Phaser.Geom.Circle.Contains)
-
-    const updateStick = (pointer: Phaser.Input.Pointer) => {
-      const dx = pointer.x - baseX
-      const dy = pointer.y - baseY
-      const distance = Math.hypot(dx, dy)
-      const maxRadius = 42
-      const clamped = distance > maxRadius ? maxRadius / distance : 1
-      const knobX = baseX + dx * clamped
-      const knobY = baseY + dy * clamped
-      this.touchStickKnob.setPosition(knobX, knobY)
-      this.touchInput.x = Phaser.Math.Clamp((knobX - baseX) / maxRadius, -1, 1)
-      this.touchInput.y = Phaser.Math.Clamp((knobY - baseY) / maxRadius, -1, 1)
-    }
-
-    const releaseStick = () => {
-      this.touchStickPointerId = null
-      this.touchStickKnob.setPosition(baseX, baseY)
-      this.touchInput.x = 0
-      this.touchInput.y = 0
-    }
-
-    this.touchStickBase.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      this.touchStickPointerId = pointer.id
-      updateStick(pointer)
-    })
-
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.touchStickPointerId !== pointer.id) return
-      updateStick(pointer)
-    })
-
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      if (this.touchStickPointerId !== pointer.id) return
-      releaseStick()
-    })
-
-    this.input.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => {
-      if (this.touchStickPointerId !== pointer.id) return
-      releaseStick()
-    })
-
-    this.input.on('gameout', () => {
-      releaseStick()
-      this.touchInput.pass = false
-      this.touchInput.shoot = false
-      this.touchInput.switch = false
-    })
-
-    this.createTouchButton(GAME_WIDTH - 208, GAME_HEIGHT - 88, 'P', 'pass')
-    this.createTouchButton(GAME_WIDTH - 136, GAME_HEIGHT - 128, 'T', 'shoot')
-    this.createTouchButton(GAME_WIDTH - 64, GAME_HEIGHT - 88, 'C', 'switch')
+    // Espera a que el canvas esté en el DOM
+    setTimeout(() => {
+      const gameHost = document.getElementById('game-host')
+      if (!gameHost) return
+      this.nippleManager = nipplejs.create({
+        zone: gameHost,
+        mode: 'static',
+        position: { left: '80px', bottom: '80px' },
+        color: 'white',
+        size: 100,
+        restOpacity: 0.3,
+        multitouch: false,
+      })
+      this.nippleManager.on('move', (_evt: any, data: any) => {
+        if (data?.vector) {
+          this.joystickInput.x = data.vector.x
+          this.joystickInput.y = -data.vector.y
+        }
+      })
+      this.nippleManager.on('end', () => {
+        this.joystickInput.x = 0
+        this.joystickInput.y = 0
+      })
+    }, 300)
   }
 
-  private createTouchButton(x: number, y: number, label: string, key: 'pass' | 'shoot' | 'switch') {
-    const circle = this.add.circle(0, 0, 30, 0xffffff, 0.16).setStrokeStyle(2, 0xffffff, 0.25)
-    const text = this.add.text(0, 0, label, {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5)
 
-    const container = this.add.container(x, y, [circle, text]).setDepth(40).setScrollFactor(0)
-    container.setSize(60, 60)
-    container.setInteractive(new Phaser.Geom.Circle(0, 0, 30), Phaser.Geom.Circle.Contains)
+  // Eliminado: createTouchControls y joystick táctil propio
 
-    const press = () => {
-      this.touchInput[key] = true
-      circle.setFillStyle(0xffffff, 0.28)
-    }
-    const release = () => {
-      this.touchInput[key] = false
-      circle.setFillStyle(0xffffff, 0.16)
-    }
 
-    container.on('pointerdown', press)
-    container.on('pointerup', release)
-    container.on('pointerout', release)
-    container.on('pointerupoutside', release)
-
-    return container
-  }
+  // Eliminado: createTouchButton y referencias a touchInput
 
   private createTeams() {
     const blueLayout = getFormation('left')
@@ -347,9 +281,9 @@ export class MatchScene extends Phaser.Scene {
       (this.cursors.up.isDown || this.wasd.W.isDown ? -1 : 0) +
       (this.cursors.down.isDown || this.wasd.S.isDown ? 1 : 0)
 
-    const usingTouchStick = Math.hypot(this.touchInput.x, this.touchInput.y) > 0.08
-    const inputX = usingTouchStick ? this.touchInput.x : keyboardInputX
-    const inputY = usingTouchStick ? this.touchInput.y : keyboardInputY
+    const usingJoystick = this.isTouchDevice && Math.hypot(this.joystickInput.x, this.joystickInput.y) > 0.08
+    const inputX = usingJoystick ? this.joystickInput.x : keyboardInputX
+    const inputY = usingJoystick ? this.joystickInput.y : keyboardInputY
 
     const len = Math.hypot(inputX, inputY)
     if (len > 0) {
@@ -360,19 +294,11 @@ export class MatchScene extends Phaser.Scene {
 
     applySkating(player, dt)
 
-    const touchPassPressed = this.touchInput.pass && !this.prevTouchButtons.pass
-    const touchShootPressed = this.touchInput.shoot && !this.prevTouchButtons.shoot
-
-    if (Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed) this.tryPass(player)
-    if (Phaser.Input.Keyboard.JustDown(this.shootKey) || touchShootPressed) {
+    // Los botones táctiles (pase, tiro, cambio) pueden implementarse con overlays DOM o eventos adicionales si se desea
+    if (Phaser.Input.Keyboard.JustDown(this.passKey)) this.tryPass(player)
+    if (Phaser.Input.Keyboard.JustDown(this.shootKey)) {
       if (this.ballCarrierId === player.id) this.tryShot(player)
       else this.tryManualSteal(player)
-    }
-
-    this.prevTouchButtons = {
-      pass: this.touchInput.pass,
-      shoot: this.touchInput.shoot,
-      switch: this.touchInput.switch,
     }
   }
 

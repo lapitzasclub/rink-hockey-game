@@ -81,3 +81,6 @@
 - Tras comprobar en pruebas remotas que el valor de `touch` seguía clavado en `0`, incluso simplificando la lectura del joystick, se concluyó que el problema probable no estaba en la fórmula del vector sino en la propia capa DOM o en la recepción de eventos del overlay táctil.
 - Se decidió abandonar el enfoque de overlay DOM para el stick principal y pasar a controles táctiles nativos dentro de Phaser, con base, knob y botones interactivos creados como game objects dentro de la escena.
 - Esta decisión deja toda la depuración del input móvil dentro del mismo runtime del juego y evita depender de `window.__RINK_TOUCH__`, `nipplejs` o z-index/captura de eventos por encima del canvas.
+- Más tarde, el usuario reintrodujo `nipplejs` directamente dentro de `MatchScene`, anclándolo al `game-host` y usando un joystick estático para recuperar primero el movimiento analógico básico.
+- En esta vuelta se ajustó el eje vertical del vector (`y`) para alinearlo con el sistema de coordenadas en pantalla del juego.
+- Limitación actual de esta reintroducción: el movimiento táctil vuelve a existir, pero los botones táctiles de pase, tiro/robo y cambio no han sido reimplantados todavía en esta versión.
