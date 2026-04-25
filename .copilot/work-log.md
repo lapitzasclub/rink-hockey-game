@@ -78,3 +78,6 @@
 - Tras detectar que el input táctil seguía sin mover ni accionar al jugador, se reforzó la integración leyendo el estado táctil al inicio de cada frame, corrigiendo el eje vertical del joystick y robusteciendo los eventos de los botones táctiles.
 - Como el joystick seguía sin mover al jugador en móvil, se añadió instrumentación visual temporal en escena para ver el estado táctil y la velocidad real aplicada al jugador controlado.
 - Se continuó instrumentando la integración de `nipplejs` para distinguir entre fallo del propio joystick y pérdida de eventos táctiles en el contenedor/DOM del overlay.
+- Tras comprobar en pruebas remotas que el valor de `touch` seguía clavado en `0`, incluso simplificando la lectura del joystick, se concluyó que el problema probable no estaba en la fórmula del vector sino en la propia capa DOM o en la recepción de eventos del overlay táctil.
+- Se decidió abandonar el enfoque de overlay DOM para el stick principal y pasar a controles táctiles nativos dentro de Phaser, con base, knob y botones interactivos creados como game objects dentro de la escena.
+- Esta decisión deja toda la depuración del input móvil dentro del mismo runtime del juego y evita depender de `window.__RINK_TOUCH__`, `nipplejs` o z-index/captura de eventos por encima del canvas.

@@ -73,6 +73,10 @@ export class MatchScene extends Phaser.Scene {
   private switchKey!: Phaser.Input.Keyboard.Key
   private touchInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
   private prevTouchButtons = { pass: false, shoot: false, switch: false }
+  private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
+  private touchStickPointerId: number | null = null
+  private touchStickBase!: Phaser.GameObjects.Arc
+  private touchStickKnob!: Phaser.GameObjects.Arc
   private ball!: Phaser.GameObjects.Arc
   private ballVelocity: Vector = { x: 0, y: 0 }
   private ballCarrierId: string | null = null
@@ -119,6 +123,7 @@ export class MatchScene extends Phaser.Scene {
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 6, y: 4 },
     }).setDepth(30)
+    this.createTouchControls()
     this.resetKickoff('blue')
 
     this.time.addEvent({
@@ -207,12 +212,11 @@ export class MatchScene extends Phaser.Scene {
 
   private updateTouchDebug() {
     const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
-    const diag = (window as Window & { __RINK_TOUCH_DIAG__?: string }).__RINK_TOUCH_DIAG__ ?? '-'
     this.touchDebugText.setText(
       `touch ${this.touchInput.x.toFixed(2)},${this.touchInput.y.toFixed(2)} | ` +
       `vel ${controlled.velocity.x.toFixed(1)},${controlled.velocity.y.toFixed(1)} | ` +
       `pos ${controlled.pos.x.toFixed(0)},${controlled.pos.y.toFixed(0)} | ` +
-      `diag ${diag}`
+      `touch-ui ${this.isTouchDevice ? 'on' : 'off'}`
     )
   }
 
@@ -225,19 +229,101 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private readTouchInput() {
-    const state = (window as Window & { __RINK_TOUCH__?: { x: number, y: number, pass: boolean, shoot: boolean, switch: boolean } }).__RINK_TOUCH__
-    if (!state) {
-      this.touchInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
-      return
+    this.touchInput.x = Math.abs(this.touchInput.x) > 0.08 ? this.touchInput.x : 0
+    this.touchInput.y = Math.abs(this.touchInput.y) > 0.08 ? this.touchInput.y : 0
+  }
+
+  private createTouchControls() {
+    if (!this.isTouchDevice) return
+
+    const baseX = 92
+    const baseY = GAME_HEIGHT - 92
+    this.touchStickBase = this.add.circle(baseX, baseY, 56, 0xffffff, 0.10).setDepth(40).setScrollFactor(0)
+    this.touchStickKnob = this.add.circle(baseX, baseY, 24, 0xffffff, 0.22).setDepth(41).setScrollFactor(0)
+
+    const stickHitArea = new Phaser.Geom.Circle(baseX, baseY, 82)
+    this.touchStickBase.setInteractive(stickHitArea, Phaser.Geom.Circle.Contains)
+
+    const updateStick = (pointer: Phaser.Input.Pointer) => {
+      const dx = pointer.x - baseX
+      const dy = pointer.y - baseY
+      const distance = Math.hypot(dx, dy)
+      const maxRadius = 42
+      const clamped = distance > maxRadius ? maxRadius / distance : 1
+      const knobX = baseX + dx * clamped
+      const knobY = baseY + dy * clamped
+      this.touchStickKnob.setPosition(knobX, knobY)
+      this.touchInput.x = Phaser.Math.Clamp((knobX - baseX) / maxRadius, -1, 1)
+      this.touchInput.y = Phaser.Math.Clamp((knobY - baseY) / maxRadius, -1, 1)
     }
 
-    this.touchInput = {
-      x: Math.abs(state.x) > 0.08 ? state.x : 0,
-      y: Math.abs(state.y) > 0.08 ? state.y : 0,
-      pass: state.pass,
-      shoot: state.shoot,
-      switch: state.switch,
+    const releaseStick = () => {
+      this.touchStickPointerId = null
+      this.touchStickKnob.setPosition(baseX, baseY)
+      this.touchInput.x = 0
+      this.touchInput.y = 0
     }
+
+    this.touchStickBase.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.touchStickPointerId = pointer.id
+      updateStick(pointer)
+    })
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.touchStickPointerId !== pointer.id) return
+      updateStick(pointer)
+    })
+
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (this.touchStickPointerId !== pointer.id) return
+      releaseStick()
+    })
+
+    this.input.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => {
+      if (this.touchStickPointerId !== pointer.id) return
+      releaseStick()
+    })
+
+    this.input.on('gameout', () => {
+      releaseStick()
+      this.touchInput.pass = false
+      this.touchInput.shoot = false
+      this.touchInput.switch = false
+    })
+
+    this.createTouchButton(GAME_WIDTH - 208, GAME_HEIGHT - 88, 'P', 'pass')
+    this.createTouchButton(GAME_WIDTH - 136, GAME_HEIGHT - 128, 'T', 'shoot')
+    this.createTouchButton(GAME_WIDTH - 64, GAME_HEIGHT - 88, 'C', 'switch')
+  }
+
+  private createTouchButton(x: number, y: number, label: string, key: 'pass' | 'shoot' | 'switch') {
+    const circle = this.add.circle(0, 0, 30, 0xffffff, 0.16).setStrokeStyle(2, 0xffffff, 0.25)
+    const text = this.add.text(0, 0, label, {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+
+    const container = this.add.container(x, y, [circle, text]).setDepth(40).setScrollFactor(0)
+    container.setSize(60, 60)
+    container.setInteractive(new Phaser.Geom.Circle(0, 0, 30), Phaser.Geom.Circle.Contains)
+
+    const press = () => {
+      this.touchInput[key] = true
+      circle.setFillStyle(0xffffff, 0.28)
+    }
+    const release = () => {
+      this.touchInput[key] = false
+      circle.setFillStyle(0xffffff, 0.16)
+    }
+
+    container.on('pointerdown', press)
+    container.on('pointerup', release)
+    container.on('pointerout', release)
+    container.on('pointerupoutside', release)
+
+    return container
   }
 
   private createTeams() {

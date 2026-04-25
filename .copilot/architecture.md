@@ -66,3 +66,8 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 - La sensación de patinaje puede requerir varios ajustes finos.
 - La IA rival inicial será simple.
 - Los assets iniciales serán funcionales antes que artísticos.
+- El input móvil con overlays DOM encima del canvas resultó frágil en despliegues reales, así que se prefiere mover controles táctiles críticos dentro de la propia escena Phaser.
+
+## Decisión reciente sobre input móvil
+
+Tras varios intentos con overlay DOM y `nipplejs`, el proyecto pasa a priorizar controles táctiles dibujados y gestionados dentro de Phaser. La razón no es solo compatibilidad, sino también simplificar depuración, evitar problemas de capas/z-index y mantener toda la lógica de input en el mismo runtime que el juego.
