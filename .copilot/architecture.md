@@ -71,3 +71,16 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 ## Decisión reciente sobre input móvil
 
 Tras varios intentos con overlay DOM y `nipplejs`, el proyecto pasa a priorizar controles táctiles dibujados y gestionados dentro de Phaser. La razón no es solo compatibilidad, sino también simplificar depuración, evitar problemas de capas/z-index y mantener toda la lógica de input en el mismo runtime que el juego.
+
+## Dirección actual del refactor
+
+La escena principal se está reduciendo para actuar como orquestador, no como contenedor de toda la lógica. La agrupación buscada es por responsabilidades reales:
+
+- `input/` para lectura de joystick y otras fuentes de control
+- `systems/playerControl.ts` para control humano e integración básica del movimiento
+- `systems/matchActions.ts` para acciones del jugador y contactos de balón
+- `systems/matchFlow.ts` para reinicios, goles, bully y faltas
+- `systems/matchClock.ts` para progreso temporal del partido
+- `ui/matchHud.ts` para HUD y texto de depuración
+
+El objetivo no es solo bajar líneas, sino hacer que cada módulo tenga una razón clara para cambiar.

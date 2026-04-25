@@ -84,3 +84,5 @@
 - Más tarde, el usuario reintrodujo `nipplejs` directamente dentro de `MatchScene`, anclándolo al `game-host` y usando un joystick estático para recuperar primero el movimiento analógico básico.
 - En esta vuelta se ajustó el eje vertical del vector (`y`) para alinearlo con el sistema de coordenadas en pantalla del juego.
 - Limitación actual de esta reintroducción: el movimiento táctil vuelve a existir, pero los botones táctiles de pase, tiro/robo y cambio no han sido reimplantados todavía en esta versión.
+- Se inició un refactor más serio de `MatchScene` orientado por responsabilidad, no solo por tamaño. Se extrajeron módulos específicos para joystick móvil, HUD/debug, flujo del partido, acciones de partido y control de jugador.
+- La meta explícita pasa a ser que `MatchScene` quede como orquestador del ciclo del partido, con la lógica detallada repartida en systems y helpers con fronteras más claras.
