@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, RINK } from '../constants'
+import { GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
 import type { Player, Vector } from '../types'
 
 /**
@@ -28,9 +28,10 @@ export function applySkating(player: Player, dt: number) {
   player.velocity.y *= PLAYER_FRICTION
 
   const speed = Math.hypot(player.velocity.x, player.velocity.y)
-  if (speed > PLAYER_MAX_SPEED) {
-    player.velocity.x = (player.velocity.x / speed) * PLAYER_MAX_SPEED
-    player.velocity.y = (player.velocity.y / speed) * PLAYER_MAX_SPEED
+  const maxSpeed = player.sprinting ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED
+  if (speed > maxSpeed) {
+    player.velocity.x = (player.velocity.x / speed) * maxSpeed
+    player.velocity.y = (player.velocity.y / speed) * maxSpeed
   }
 
   player.pos.x += player.velocity.x * dt

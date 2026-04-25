@@ -67,6 +67,7 @@ Permite arranque rápido, build sencillo y buen flujo para prototipado web.
 - La IA rival inicial será simple.
 - Los assets iniciales serán funcionales antes que artísticos.
 - El input móvil con overlays DOM encima del canvas resultó frágil en despliegues reales, así que se prefiere mover controles táctiles críticos dentro de la propia escena Phaser.
+- El equilibrio entre conservar la bola, robar limpiamente y sancionar entradas por detrás sigue siendo una zona de tuning sensible y debe validarse mucho por sensaciones reales.
 
 ## Decisión reciente sobre input móvil
 
@@ -84,3 +85,11 @@ La escena principal se está reduciendo para actuar como orquestador, no como co
 - `ui/matchHud.ts` para HUD y texto de depuración
 
 El objetivo no es solo bajar líneas, sino hacer que cada módulo tenga una razón clara para cambiar.
+
+## Estado jugable actual
+
+- Controles de teclado actuales orientados a ergonomía y contexto: `WASD` mover, `SHIFT` sprint, `U` tiro/robo y `Y` pase o cambio de jugador según posesión.
+- Controles táctiles alineados con la misma filosofía contextual: botón principal para tiro/robo y botón secundario para pase/cambio.
+- Cada jugador mantiene su propia estamina y el sprint ya afecta a aceleración, velocidad punta y recuperación.
+- La lógica de robo distingue frontal, lateral y espalda, con castigo mucho más fuerte a entradas por detrás y más resultados de bola suelta en vez de posesión instantánea.
+- La reanudación de faltas ya funciona tanto para humano como para IA rival.

@@ -23,6 +23,9 @@ export type Player = {
   goalieCatchTime?: number
   ignoreBallUntil?: number
   goalieRecoverUntil?: number
+  stamina?: number
+  sprinting?: boolean
+  ballProtectionUntil?: number
 }
 
 export type BullyCandidate = {

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CONTROL_DISTANCE, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, GOAL_POST_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
+import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, GOAL_POST_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
 import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -14,8 +14,12 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
 
   if (carrier) {
     const carryOffset = carrier.role === 'goalie' ? GOALIE_RADIUS + 8 : PLAYER_RADIUS + 8
-    ball.x = carrier.pos.x + carrier.facing.x * carryOffset
-    ball.y = carrier.pos.y + carrier.facing.y * carryOffset
+    const speed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
+    const velocityDir = speed > 1 ? { x: carrier.velocity.x / speed, y: carrier.velocity.y / speed } : { x: 0, y: 0 }
+    const lateral = { x: -carrier.facing.y, y: carrier.facing.x }
+    const lateralSign = carrier.side === 'left' ? 1 : -1
+    ball.x = carrier.pos.x + carrier.facing.x * carryOffset + lateral.x * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.x * BALL_PROTECT_VELOCITY_BLEND * speed
+    ball.y = carrier.pos.y + carrier.facing.y * carryOffset + lateral.y * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.y * BALL_PROTECT_VELOCITY_BLEND * speed
     return { x: carrier.velocity.x * 0.35, y: carrier.velocity.y * 0.35 }
   }
 
@@ -86,7 +90,20 @@ export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballC
   if ((player.possessionCooldownUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   if ((player.ignoreBallUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
-  const claimRadius = player.role === 'goalie' ? GOALIE_CLAIM_RADIUS : BALL_PICKUP_DISTANCE
+  let claimRadius = player.role === 'goalie' ? GOALIE_CLAIM_RADIUS : BALL_PICKUP_DISTANCE
+  const toBallX = ball.x - player.pos.x
+  const toBallY = ball.y - player.pos.y
+  const toBallLength = Math.hypot(toBallX, toBallY) || 1
+  const toBallDir = { x: toBallX / toBallLength, y: toBallY / toBallLength }
+  const facingLength = Math.hypot(player.facing.x, player.facing.y) || 1
+  const facingDir = { x: player.facing.x / facingLength, y: player.facing.y / facingLength }
+  const facingDot = facingDir.x * toBallDir.x + facingDir.y * toBallDir.y
+
+  if (player.role !== 'goalie') {
+    if (facingDot >= BALL_CLAIM_FRONT_DOT) claimRadius += BALL_CLAIM_FACING_BONUS
+    else claimRadius -= BALL_CLAIM_FACING_PENALTY
+  }
+
   if (distance > claimRadius) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
 
   let nextControlledIndex = controlledPlayerIndex
@@ -95,6 +112,9 @@ export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballC
     const index = options.findIndex((candidate) => candidate.id === player.id)
     if (index >= 0) nextControlledIndex = index
   }
+
+  const protectionBonus = facingDot < -0.2 ? BALL_CONTROL_PROTECTION_BACK_EXTRA_MS : 0
+  player.ballProtectionUntil = now + BALL_CONTROL_PROTECTION_MS + protectionBonus
 
   return {
     claimed: true,

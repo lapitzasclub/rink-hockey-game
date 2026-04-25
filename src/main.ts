@@ -3,17 +3,18 @@ import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MatchScene } from './scenes/MatchScene'
 
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
+
 const app = document.querySelector<HTMLDivElement>('#app')!
 app.innerHTML = `
-  <div id="game-shell">
+  <div id="game-shell" class="${isTouchDevice ? 'is-touch' : 'is-desktop'}">
     <div id="game-host"></div>
+    <button id="btn-fullscreen" class="hud-btn" aria-label="Alternar pantalla completa">⛶</button>
     <div id="mobile-controls" aria-hidden="true">
       <div id="left-zone"></div>
       <div id="right-buttons">
-        <button id="btn-pass" class="touch-btn">P</button>
-        <button id="btn-shoot" class="touch-btn">T</button>
-        <button id="btn-switch" class="touch-btn">C</button>
-        <button id="btn-fullscreen" class="touch-btn">⛶</button>
+        <button id="btn-shoot" class="touch-btn">A</button>
+        <button id="btn-pass" class="touch-btn">B</button>
       </div>
     </div>
   </div>
@@ -30,6 +31,15 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+})
+
+const fullscreenButton = document.querySelector<HTMLButtonElement>('#btn-fullscreen')
+fullscreenButton?.addEventListener('click', async () => {
+  const shell = document.querySelector<HTMLElement>('#game-shell')
+  if (!shell) return
+
+  if (document.fullscreenElement) await document.exitFullscreen()
+  else await shell.requestFullscreen()
 })
 
 window.addEventListener('resize', () => game.scale.refresh())

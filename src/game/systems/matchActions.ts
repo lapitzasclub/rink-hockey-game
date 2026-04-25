@@ -6,9 +6,22 @@ import {
   GOALIE_RADIUS,
   GOALIE_RELEASE_COOLDOWN_MS,
   GOALIE_RELEASE_DISTANCE,
+  BALL_CARRIER_SHIELD_BONUS,
+  BALL_CARRIER_SHIELD_FRONT_DOT,
   MANUAL_STEAL_FOUL_CHANCE,
   MANUAL_STEAL_RANGE,
   MANUAL_STEAL_SUCCESS_CHANCE,
+  STEAL_BACK_FOUL_CHANCE,
+  STEAL_BACK_LOOSE_CHANCE,
+  STEAL_BACK_SUCCESS_CHANCE,
+  STEAL_FRONT_FOUL_CHANCE,
+  STEAL_FRONT_LOOSE_CHANCE,
+  STEAL_FRONT_SUCCESS_CHANCE,
+  STEAL_LOOSE_BALL_IGNORE_MS,
+  STEAL_LOOSE_BALL_POWER,
+  STEAL_SIDE_FOUL_CHANCE,
+  STEAL_SIDE_LOOSE_CHANCE,
+  STEAL_SIDE_SUCCESS_CHANCE,
   PASS_POWER,
   PLAYER_RADIUS,
   POSSESSION_RELEASE_COOLDOWN_MS,
@@ -263,17 +276,92 @@ export function tryManualStealAction(options: {
   if (!carrier || carrier.team === options.player.team) return null
   const distance = Phaser.Math.Distance.Between(options.player.pos.x, options.player.pos.y, carrier.pos.x, carrier.pos.y)
   if (distance > MANUAL_STEAL_RANGE) return null
+  if ((carrier.ballProtectionUntil ?? 0) > options.timeNow) return null
+
+  const toCarrierX = carrier.pos.x - options.player.pos.x
+  const toCarrierY = carrier.pos.y - options.player.pos.y
+  const len = Math.hypot(toCarrierX, toCarrierY) || 1
+  const attackDirX = toCarrierX / len
+  const attackDirY = toCarrierY / len
+  const carrierFacing = getAimingDirection(carrier)
+  const facingDot = attackDirX * carrierFacing.x + attackDirY * carrierFacing.y
+
+  let successChance = MANUAL_STEAL_SUCCESS_CHANCE
+  let looseChance = 0.22
+  let foulChance = MANUAL_STEAL_FOUL_CHANCE
+
+  if (facingDot >= 0.35) {
+    successChance = STEAL_FRONT_SUCCESS_CHANCE
+    looseChance = STEAL_FRONT_LOOSE_CHANCE
+    foulChance = STEAL_FRONT_FOUL_CHANCE
+  } else if (facingDot <= -0.35) {
+    successChance = STEAL_BACK_SUCCESS_CHANCE
+    looseChance = STEAL_BACK_LOOSE_CHANCE
+    foulChance = STEAL_BACK_FOUL_CHANCE
+  } else {
+    successChance = STEAL_SIDE_SUCCESS_CHANCE
+    looseChance = STEAL_SIDE_LOOSE_CHANCE
+    foulChance = STEAL_SIDE_FOUL_CHANCE
+  }
+
+  const defenderFacing = getAimingDirection(options.player)
+  const defenderDot = defenderFacing.x * attackDirX + defenderFacing.y * attackDirY
+  if (defenderDot < 0.1) {
+    successChance *= 0.78
+    looseChance *= 0.9
+  } else if (defenderDot > 0.55) {
+    successChance *= 1.08
+    looseChance *= 1.08
+  }
+
+  const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
+  if (carrierSpeed < 90 && facingDot >= 0.2) {
+    successChance += 0.02
+    looseChance += 0.06
+  }
+  if (carrierSpeed > 180) {
+    foulChance += 0.04
+    successChance -= 0.03
+    looseChance += 0.02
+  }
+
+  const protectorDot = carrierFacing.x * defenderFacing.x + carrierFacing.y * defenderFacing.y
+  if (protectorDot > BALL_CARRIER_SHIELD_FRONT_DOT && facingDot > 0.2) {
+    successChance = Math.max(0.02, successChance - BALL_CARRIER_SHIELD_BONUS)
+    looseChance += 0.03
+  }
+
+  successChance = Phaser.Math.Clamp(successChance, 0.01, 0.45)
+  looseChance = Phaser.Math.Clamp(looseChance, 0.1, 0.56)
+  foulChance = Phaser.Math.Clamp(foulChance, 0.02, 0.65)
 
   const roll = Math.random()
-  if (roll < MANUAL_STEAL_FOUL_CHANCE) {
+  if (roll < foulChance) {
     registerStealFoul(options.ruleState, options.player, carrier, carrier.pos.x, carrier.pos.y)
     return { ballCarrierId: null, ballVelocity: { x: 0, y: 0 } }
   }
 
-  if (roll < MANUAL_STEAL_FOUL_CHANCE + MANUAL_STEAL_SUCCESS_CHANCE) {
+  if (roll < foulChance + successChance) {
     const stealDirection = getAimingDirection(options.player)
     const released = releaseBall(options.ball, options.players, options.ballCarrierId, stealDirection, STEAL_RELEASE_POWER, options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
     return { ballCarrierId: options.player.id, ballVelocity: released.ballVelocity, lastTouch: options.player.team }
+  }
+
+  if (roll < foulChance + successChance + looseChance) {
+    const pokeBase = getAimingDirection(options.player)
+    const lateralSign = carrier.pos.y >= options.player.pos.y ? 1 : -1
+    const lateralX = -pokeBase.y * lateralSign
+    const lateralY = pokeBase.x * lateralSign
+    const pokeDirectionRaw = {
+      x: pokeBase.x * 0.72 + lateralX * 0.46 + carrierFacing.x * 0.18,
+      y: pokeBase.y * 0.72 + lateralY * 0.46 + carrierFacing.y * 0.18,
+    }
+    const pokeLength = Math.hypot(pokeDirectionRaw.x, pokeDirectionRaw.y) || 1
+    const pokeDirection = { x: pokeDirectionRaw.x / pokeLength, y: pokeDirectionRaw.y / pokeLength }
+    const released = releaseBall(options.ball, options.players, options.ballCarrierId, pokeDirection, STEAL_LOOSE_BALL_POWER, options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
+    options.player.ignoreBallUntil = options.timeNow + STEAL_LOOSE_BALL_IGNORE_MS
+    carrier.ignoreBallUntil = options.timeNow + Math.floor(STEAL_LOOSE_BALL_IGNORE_MS * 0.75)
+    return { ballCarrierId: null, ballVelocity: released.ballVelocity, lastTouch: options.player.team }
   }
 
   return null

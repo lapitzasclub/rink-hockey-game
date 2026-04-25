@@ -42,5 +42,8 @@ export function createPlayer(
     goalieCatchTime: 0,
     ignoreBallUntil: 0,
     goalieRecoverUntil: 0,
+    stamina: 100,
+    sprinting: false,
+    ballProtectionUntil: 0,
   }
 }

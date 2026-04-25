@@ -193,10 +193,10 @@ export function updateFoulRestartState(options: {
   }
 
   ball.setPosition(foul.x, foul.y)
-  if (time < foul.readyAt) return { controlledPlayerIndex, taker, shouldPass: false, shouldShot: false, release: false }
+  if (time < foul.readyAt) return { controlledPlayerIndex, taker, shouldPass: false, shouldShot: false, release: false, autoFacing: null as Vector | null }
 
   centerText.setText(foul.sanction === 'direct-free-hit' ? 'Falta directa, prepara el lanzamiento' : 'Falta, elige dirección y saca').setVisible(true)
-  if (!taker) return { controlledPlayerIndex, taker: null, shouldPass: false, shouldShot: false, release: false }
+  if (!taker) return { controlledPlayerIndex, taker: null, shouldPass: false, shouldShot: false, release: false, autoFacing: null as Vector | null }
 
   let nextControlledIndex = controlledPlayerIndex
   const controlled = getControlledPlayer(players, controlledPlayerIndex)
@@ -204,6 +204,26 @@ export function updateFoulRestartState(options: {
     const options = players.filter((player) => player.team === 'blue' && player.role !== 'goalie')
     const index = options.findIndex((player) => player.id === taker.id)
     if (index >= 0) nextControlledIndex = index
+  }
+
+  if (taker.team === 'red') {
+    const targetX = foul.sanction === 'free-hit'
+      ? taker.pos.x + (taker.side === 'left' ? 220 : -220)
+      : (taker.side === 'left' ? GAME_WIDTH - 24 : 24)
+    const targetY = foul.sanction === 'free-hit'
+      ? GAME_HEIGHT / 2 + Phaser.Math.Clamp((taker.home.y - GAME_HEIGHT / 2) * 0.55, -90, 90)
+      : GAME_HEIGHT / 2 + Phaser.Math.Clamp(taker.pos.y - GAME_HEIGHT / 2, -34, 34)
+    const raw = { x: targetX - taker.pos.x, y: targetY - taker.pos.y }
+    const length = Math.hypot(raw.x, raw.y) || 1
+    const autoFacing = { x: raw.x / length, y: raw.y / length }
+    return {
+      controlledPlayerIndex,
+      taker,
+      shouldPass: foul.sanction === 'free-hit',
+      shouldShot: foul.sanction !== 'free-hit',
+      release: true,
+      autoFacing,
+    }
   }
 
   const shouldPass = foul.sanction === 'free-hit' && passJustDown
@@ -214,6 +234,7 @@ export function updateFoulRestartState(options: {
     shouldPass,
     shouldShot,
     release: shouldPass || shouldShot,
+    autoFacing: null as Vector | null,
   }
 }
 

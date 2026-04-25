@@ -88,3 +88,15 @@
 - La meta explícita pasa a ser que `MatchScene` quede como orquestador del ciclo del partido, con la lógica detallada repartida en systems y helpers con fronteras más claras.
 - Tras aislar por fin `nipplejs` en una zona overlay dedicada `#left-zone`, el joystick móvil pasó a funcionar correctamente y se confirmó que el problema anterior venía de la integración/capa, no de la librería en sí.
 - A continuación se añadieron tres botones táctiles a la derecha (`P`, `T`, `C`) conectados a las mismas acciones del teclado: pase, tiro/robo y cambio de jugador.
+- El usuario detectó después que el marcado de la pista que se estaba usando seguía pareciéndose más a hockey hielo que a hockey patines. Se rehízo `drawRink.ts` para acercarlo al esquema correcto de hockey patines: línea central negra, dos líneas rojas de zona, áreas rectangulares grandes, semicírculos de portería y puntos de falta laterales.
+- Se rehízo la lógica del robo manual y del robo IA para que dependan más del ángulo de entrada: de frente se permite más desarme/robo limpio, lateral se prioriza bola suelta y por detrás se castiga mucho más con falta.
+- Se añadió explícitamente un cuarto resultado en intentos de robo: desarme con bola suelta, para evitar que casi todo robo exitoso termine en posesión instantánea del defensor.
+- Se ajustó el sistema para que la IA rival no intente robar tan a menudo ni desde ángulos tan malos, reduciendo la sensación de que cualquier roce acaba automáticamente en robo, falta o despeje.
+- Se añadió una primera capa de protección del portador al recibir/controlar la bola: anclaje más protegido del balón, captura más dependiente del facing y ventana breve de protección tras control, ampliada además para situaciones de presión por detrás.
+- Se afinó la IA táctica para repartir mejor presión, coberturas y líneas de ayuda, evitando persecuciones redundantes y haciendo que el primer defensor cierre más de cara.
+- Se corrigió un bug importante de reanudaciones: la IA roja ahora puede ejecutar sus propias faltas automáticamente, eligiendo orientación y acción sin esperar input del jugador humano.
+- Se pulió la interfaz web: separación real entre layout táctil y escritorio, botón de pantalla completa disponible también en desktop y HUD remaquetado para evitar solapes.
+- Se introdujo un primer sistema de estamina individual por jugador con sprint, drenaje/recuperación y HUD mostrando la estamina del jugador controlado.
+- El esquema de controles de teclado se rediseñó varias veces hacia una versión contextual más ergonómica: `SHIFT` sprint, `U` acción de tiro/robo y `Y` contextual para pase con posesión o cambio de jugador sin posesión.
+- Se detectó y corrigió un bug donde `Y` sí pasaba con posesión pero no cambiaba de jugador sin posesión; la intención contextual ahora se propaga correctamente.
+- Los controles táctiles también se alinearon hacia un esquema contextual similar: botón principal `A` para tiro/robo y botón secundario `B` para pase/cambio, eliminando el tercer botón dedicado de cambio.

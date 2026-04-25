@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import {
   AI_STEAL_ATTEMPT_CHANCE,
+  AI_STEAL_ENGAGE_FRONT_DOT,
   MANUAL_STEAL_RANGE,
   MATCH_DURATION,
 } from '../game/constants'
@@ -56,6 +57,7 @@ export class MatchScene extends Phaser.Scene {
   private shootKey!: Phaser.Input.Keyboard.Key
   private passKey!: Phaser.Input.Keyboard.Key
   private switchKey!: Phaser.Input.Keyboard.Key
+  private sprintKey!: Phaser.Input.Keyboard.Key
   private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
   private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
   private prevTouchButtons = { pass: false, shoot: false, switch: false }
@@ -179,16 +181,18 @@ export class MatchScene extends Phaser.Scene {
       updateHud: () => this.updateHud(),
     })) return
 
+    const controlIntent = this.updateControlledPlayer(dt)
+
     const touchSwitchPressed = this.joystickInput.switch && !this.prevTouchButtons.switch
+    const controlledAfterInput = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    const contextualSwitchPressed = controlIntent.switchPressed || ((Phaser.Input.Keyboard.JustDown(this.switchKey) && this.ballCarrierId !== controlledAfterInput.id) || touchSwitchPressed)
     this.controlledPlayerIndex = maybeSwitchControlledPlayer({
-      justDown: Phaser.Input.Keyboard.JustDown(this.switchKey) || touchSwitchPressed,
+      justDown: contextualSwitchPressed,
       players: this.players,
       controlledPlayerIndex: this.controlledPlayerIndex,
       ballCarrierId: this.ballCarrierId,
       ball: this.ball,
     })
-
-    this.updateControlledPlayer(dt)
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
@@ -204,9 +208,10 @@ export class MatchScene extends Phaser.Scene {
   private createInput() {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as Record<string, Phaser.Input.Keyboard.Key>
-    this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-    this.passKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X)
-    this.switchKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+    this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.U)
+    this.passKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Y)
+    this.switchKey = this.passKey
+    this.sprintKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
   }
 
 
@@ -228,6 +233,7 @@ export class MatchScene extends Phaser.Scene {
       cursors: this.cursors,
       wasd: this.wasd,
       joystickInput: this.joystickInput,
+      sprintKey: this.sprintKey,
       isTouchDevice: this.isTouchDevice,
       dt,
     })
@@ -235,10 +241,17 @@ export class MatchScene extends Phaser.Scene {
     const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
     const touchShootPressed = this.joystickInput.shoot && !this.prevTouchButtons.shoot
 
-    if (Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed) this.tryPass(player)
-    if (Phaser.Input.Keyboard.JustDown(this.shootKey) || touchShootPressed) {
+    const actionPressed = Phaser.Input.Keyboard.JustDown(this.shootKey) || touchShootPressed
+    const passPressed = Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed
+    let switchPressed = false
+
+    if (actionPressed) {
       if (this.ballCarrierId === player.id) this.tryShot(player)
       else this.tryManualSteal(player)
+    }
+    if (passPressed) {
+      if (this.ballCarrierId === player.id) this.tryPass(player)
+      else switchPressed = true
     }
 
     this.prevTouchButtons = {
@@ -246,6 +259,8 @@ export class MatchScene extends Phaser.Scene {
       shoot: !!this.joystickInput.shoot,
       switch: !!this.joystickInput.switch,
     }
+
+    return { switchPressed }
   }
 
   /**
@@ -280,7 +295,22 @@ export class MatchScene extends Phaser.Scene {
           const inStealRange = carrier
             ? Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y) <= MANUAL_STEAL_RANGE
             : false
-          if (inStealRange && Math.random() < AI_STEAL_ATTEMPT_CHANCE) this.tryManualSteal(player)
+
+          if (carrier && inStealRange) {
+            const toCarrierX = carrier.pos.x - player.pos.x
+            const toCarrierY = carrier.pos.y - player.pos.y
+            const len = Math.hypot(toCarrierX, toCarrierY) || 1
+            const engageDirX = toCarrierX / len
+            const engageDirY = toCarrierY / len
+            const facingLen = Math.hypot(player.facing.x, player.facing.y) || 1
+            const facingX = player.facing.x / facingLen
+            const facingY = player.facing.y / facingLen
+            const engageDot = facingX * engageDirX + facingY * engageDirY
+            const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
+            const attemptChance = carrierSpeed > 150 ? AI_STEAL_ATTEMPT_CHANCE * 0.7 : AI_STEAL_ATTEMPT_CHANCE
+
+            if (engageDot >= AI_STEAL_ENGAGE_FRONT_DOT && Math.random() < attemptChance) this.tryManualSteal(player)
+          }
         }
       } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.time.now)) {
         this.tryPass(player)
@@ -509,7 +539,9 @@ export class MatchScene extends Phaser.Scene {
     if (!state) return
 
     const stickLen = Math.hypot(this.joystickInput.x, this.joystickInput.y)
-    if (state.taker && stickLen > 0.15) {
+    if (state.taker?.team === 'red' && state.autoFacing) {
+      state.taker.facing = state.autoFacing
+    } else if (state.taker && stickLen > 0.15) {
       state.taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
     }
 

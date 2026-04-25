@@ -18,7 +18,8 @@ export function updateMatchHud(options: {
 }) {
   const minutes = Math.floor(options.remainingSeconds / 60)
   const seconds = options.remainingSeconds % 60
-  options.hudText.setText(`Azul ${options.blueScore}  -  ${options.redScore} Rojo   |   T${options.currentPeriod} ${minutes}:${seconds.toString().padStart(2, '0')}   |   Faltas ${options.ruleState.teamFouls.blue}-${options.ruleState.teamFouls.red}`)
+  options.hudText.setText(`Azul ${options.blueScore} - ${options.redScore} Rojo   ·   T${options.currentPeriod} ${minutes}:${seconds.toString().padStart(2, '0')}   ·   Faltas ${options.ruleState.teamFouls.blue}-${options.ruleState.teamFouls.red}`)
   const controlled = getControlledPlayer(options.players, options.controlledPlayerIndex)
-  options.subHudText.setText(`Controlas: ${getRoleName(controlled.role)} azul | WASD mover | X pase | ESPACIO tiro | SHIFT cambia jugador`)
+  const stamina = Math.round(controlled.stamina ?? 100)
+  options.subHudText.setText(`Controlas: ${getRoleName(controlled.role)} azul · Estamina propia ${stamina}%${controlled.sprinting ? ' · Sprint' : ''}\nWASD mover · SHIFT sprint · U acción (tiro / robo) · Y pase o cambio jugador`)
 }

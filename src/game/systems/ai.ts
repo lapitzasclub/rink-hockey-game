@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GOALIE_DISTRIBUTION_DELAY_MS, GOALIE_SAVE_RADIUS, RINK } from '../constants'
+import { GAME_HEIGHT, GOALIE_DISTRIBUTION_DELAY_MS, GOALIE_SAVE_RADIUS, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, RINK } from '../constants'
 import { seek } from './movement'
 import { findPlayerById, getClosestPlayerToBall } from './playerHelpers'
 import type { Player } from '../types'
@@ -46,6 +46,7 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
   const pressureIndex = teamChaserOrder.findIndex((candidate) => candidate.id === player.id)
 
   let target = { ...player.home }
+  let intensity = 1
 
   if (hasBall) {
     const advance = player.side === 'left' ? 1 : -1
@@ -56,16 +57,19 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
   } else if (ballCarrierId === null) {
     if (nearest?.id === player.id) {
       target = { x: ballX, y: ballY }
+      intensity = 1
     } else if (pressureIndex === 1) {
       target = {
         x: ballX + (player.side === 'left' ? -42 : 42),
         y: ballY + (player.home.y < GAME_HEIGHT / 2 ? -28 : 28),
       }
+      intensity = 0.92
     } else {
       target = {
         x: player.home.x + Phaser.Math.Clamp(ballX - player.home.x, -110, 110),
         y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -90, 90),
       }
+      intensity = 0.82
     }
   } else if (sameTeamHasBall) {
     const attackShift = player.side === 'left' ? 90 : -90
@@ -75,30 +79,49 @@ export function updateFieldPlayerAI(players: Player[], player: Player, ballX: nu
       y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -80, 80) + laneSpread,
     }
 
-    if (pressureIndex === 0) {
-      target.x -= attackShift * 0.35
-      target.y = ballY + (player.home.y < GAME_HEIGHT / 2 ? -22 : 22)
+    if (pressureIndex === 0 && carrier) {
+      const supportOffset = player.side === 'left' ? -34 : 34
+      target.x = carrier.pos.x + supportOffset
+      target.y = carrier.pos.y + (player.home.y < GAME_HEIGHT / 2 ? -26 : 26)
+      intensity = 0.94
+    } else {
+      intensity = 0.86
     }
   } else {
     const rivalCarrier = carrier && carrier.team !== player.team ? carrier : null
 
     if (rivalCarrier && pressureIndex === 0) {
-      const engageOffset = player.side === 'left' ? 10 : -10
-      target = { x: rivalCarrier.pos.x + engageOffset, y: rivalCarrier.pos.y }
+      const carrierFacing = normalizedVector(rivalCarrier.facing.x, rivalCarrier.facing.y, { x: rivalCarrier.side === 'left' ? 1 : -1, y: 0 })
+      const frontBlockX = rivalCarrier.pos.x + carrierFacing.x * (player.side === 'left' ? -28 : 28)
+      const frontBlockY = rivalCarrier.pos.y + carrierFacing.y * 18
+      target = { x: frontBlockX, y: frontBlockY }
+      intensity = 1
     } else if (rivalCarrier && pressureIndex === 1) {
-      const protectX = rivalCarrier.pos.x + (player.side === 'left' ? -54 : 54)
-      const protectY = rivalCarrier.pos.y + (player.home.y < GAME_HEIGHT / 2 ? -34 : 34)
+      const laneX = rivalCarrier.pos.x + (player.side === 'left' ? -78 : 78)
+      const laneY = rivalCarrier.pos.y + (player.home.y < GAME_HEIGHT / 2 ? -46 : 46)
+      target = { x: laneX, y: laneY }
+      intensity = 0.9
+    } else if (rivalCarrier && pressureIndex === 2) {
+      const protectX = rivalCarrier.pos.x + (player.side === 'left' ? -132 : 132)
+      const protectY = GAME_HEIGHT / 2 + Phaser.Math.Clamp(rivalCarrier.pos.y - GAME_HEIGHT / 2, -90, 90)
       target = { x: protectX, y: protectY }
+      intensity = 0.82
     } else {
-      const fallbackBias = rivals.length > 0 ? Phaser.Math.Clamp(ballX - player.home.x, -90, 90) : 0
+      const fallbackBias = rivals.length > 0 ? Phaser.Math.Clamp(ballX - player.home.x, -70, 70) : 0
       target = {
         x: player.home.x + fallbackBias,
-        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -80, 80),
+        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -70, 70),
       }
+      intensity = 0.76
     }
   }
 
-  seek(player, target, 1, dt)
+  const distanceToTarget = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, target.x, target.y)
+  const canSprint = (player.stamina ?? 100) > STAMINA_LOW_THRESHOLD
+  const shouldSprint = canSprint && ((ballCarrierId === null && pressureIndex <= 1 && distanceToTarget > 80) || (!sameTeamHasBall && pressureIndex === 0 && distanceToTarget > 70) || (hasBall && distanceToTarget > 90))
+  player.sprinting = shouldSprint
+
+  seek(player, target, shouldSprint ? intensity * PLAYER_SPRINT_ACCEL_MULTIPLIER : intensity, dt)
   player.facing = normalizedVector(target.x - player.pos.x, target.y - player.pos.y, player.facing)
 }
 

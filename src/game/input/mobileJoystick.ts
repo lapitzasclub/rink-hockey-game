@@ -17,7 +17,7 @@ export function createMobileJoystick(options: {
   fullscreenButton: HTMLElement | null
   state: MobileJoystickState
 }) {
-  const { isTouchDevice, zone, passButton, shootButton, switchButton, fullscreenButton, state } = options
+  const { isTouchDevice, zone, passButton, shootButton, fullscreenButton, state } = options
   if (!isTouchDevice || !zone) return null
 
   state.pass = false
@@ -55,7 +55,6 @@ export function createMobileJoystick(options: {
 
   const unbindPass = bindButton(passButton, 'pass')
   const unbindShoot = bindButton(shootButton, 'shoot')
-  const unbindSwitch = bindButton(switchButton, 'switch')
 
   const onFullscreen = async (event: Event) => {
     event.preventDefault()
@@ -96,7 +95,6 @@ export function createMobileJoystick(options: {
       state.switch = false
       unbindPass()
       unbindShoot()
-      unbindSwitch()
       fullscreenButton?.removeEventListener('pointerdown', onFullscreen)
       manager?.destroy?.()
     },
