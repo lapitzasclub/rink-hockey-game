@@ -2,8 +2,12 @@ import * as Phaser from 'phaser'
 import {
   AI_STEAL_ATTEMPT_CHANCE,
   AI_STEAL_ENGAGE_FRONT_DOT,
+  GAME_HEIGHT,
+  GOAL_HEIGHT,
   MANUAL_STEAL_RANGE,
   MATCH_DURATION,
+  PENALTY_AREA_DEPTH,
+  STICK_SWING_MS,
 } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
@@ -12,8 +16,8 @@ import { drawRink } from '../game/render/drawRink'
 import {
   updateBallPosition,
 } from '../game/systems/ball'
-import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot } from '../game/systems/ai'
-import { resolvePlayerSpacing } from '../game/systems/movement'
+import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot, shouldAIPassToOpenMate } from '../game/systems/ai'
+import { resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
 import {
   findPlayerById,
   getControlledPlayer,
@@ -23,7 +27,8 @@ import type { ActiveBully, ActiveFoulRestart, Player, TeamColor, Vector } from '
 import { createHud } from '../game/ui/createHud'
 import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
-import { createRuleState, type RuleState } from '../game/systems/rules'
+import { createRuleState, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
+import { getGoalLineX } from '../game/utils'
 import {
   refreshKickoffVisuals,
   resetKickoffState,
@@ -43,6 +48,7 @@ import {
 import { tickMatchClock } from '../game/systems/matchClock'
 import { updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
+import { playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle } from '../game/audio/sounds'
 
 /**
  * Escena principal del partido.
@@ -84,6 +90,12 @@ export class MatchScene extends Phaser.Scene {
   private activeFoulRestart: ActiveFoulRestart | null = null
   private stuckCarrierStartTime = 0
   private stuckCarrierOrigin: Vector | null = null
+  private goalFlash!: Phaser.GameObjects.Rectangle
+  private aimIndicator!: Phaser.GameObjects.Graphics
+  // Flag persistente: la pelota cruzó la línea de portería desde el lado campo (boca abierta).
+  // Se resetea cuando la pelota sale de la zona de portería. Evita goles falsos por detrás.
+  private ballEnteredGoalFromFront = { left: false, right: false }
+  private prevBallX = 0
 
   constructor() {
     super('match')
@@ -96,6 +108,12 @@ export class MatchScene extends Phaser.Scene {
     this.createInput()
     this.createTeams()
     this.ball = createBall(this)
+    this.goalFlash = this.add.rectangle(
+      this.cameras.main.width / 2, this.cameras.main.height / 2,
+      this.cameras.main.width, this.cameras.main.height,
+      0xffec88,
+    ).setAlpha(0).setDepth(45)
+    this.aimIndicator = this.add.graphics().setDepth(42)
     const hud = createHud(this)
     this.hudText = hud.hudText
     this.subHudText = hud.subHudText
@@ -107,7 +125,6 @@ export class MatchScene extends Phaser.Scene {
       shootButton: document.getElementById('btn-shoot'),
       sprintButton: document.getElementById('btn-sprint'),
       switchButton: document.getElementById('btn-switch'),
-      fullscreenButton: document.getElementById('btn-fullscreen'),
       state: this.joystickInput,
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -156,7 +173,16 @@ export class MatchScene extends Phaser.Scene {
     // joystickInput ya se actualiza por nipplejs
 
     if (this.matchEnded) {
-      if (Phaser.Input.Keyboard.JustDown(this.shootKey)) this.scene.restart()
+      const touchReturn = this.joystickInput.shoot && !this.prevTouchButtons.shoot
+      this.prevTouchButtons = { pass: !!this.joystickInput.pass, shoot: !!this.joystickInput.shoot, switch: !!this.joystickInput.switch }
+      if (Phaser.Input.Keyboard.JustDown(this.shootKey) || touchReturn) {
+        this.scene.start('menu', {
+          blueScore: this.blueScore,
+          redScore: this.redScore,
+          blueFouls: this.ruleState.teamFouls.blue,
+          redFouls: this.ruleState.teamFouls.red,
+        })
+      }
       return
     }
 
@@ -177,10 +203,22 @@ export class MatchScene extends Phaser.Scene {
       controlledPlayerIndex: this.controlledPlayerIndex,
       ball: this.ball,
       ballCarrierId: this.ballCarrierId,
-      updateBullyState: () => this.updateBullyState(time),
-      updateFoulRestartState: () => this.updateFoulRestartState(time),
+      timeNow: time,
+      updateBullyState: () => this.updateBullyState(time, dt),
+      updateFoulRestartState: () => this.updateFoulRestartState(time, dt),
       updateHud: () => this.updateHud(),
     })) return
+
+    updateSuspendedPlayers(this.players, time, dt)
+
+    // Si el jugador controlado está suspendido, ceder control al siguiente disponible
+    const currentControlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    if (currentControlled.suspendedUntil && currentControlled.suspendedUntil > time) {
+      const bluePlayers = this.players.filter(p => p.team === 'blue' && p.role !== 'goalie' && !(p.suspendedUntil && p.suspendedUntil > time))
+      if (bluePlayers.length > 0) {
+        this.controlledPlayerIndex = this.players.indexOf(bluePlayers[0])
+      }
+    }
 
     const controlIntent = this.updateControlledPlayer(dt)
 
@@ -196,12 +234,16 @@ export class MatchScene extends Phaser.Scene {
     })
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)
+    const prevBallX = this.prevBallX || this.ball.x
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
+    this.updateGoalEntryFlag(prevBallX)
+    this.prevBallX = this.ball.x
     this.handleGoalieSave()
     this.handleBallControl(time)
     this.handleLooseBallContacts()
+    this.checkGoalieZoneFoul(time)
     this.handleRuleRestarts()
-    updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId)
+    updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId, time)
     this.checkGoalState(time)
     this.updateHud()
   }
@@ -237,6 +279,7 @@ export class MatchScene extends Phaser.Scene {
       sprintKey: this.sprintKey,
       isTouchDevice: this.isTouchDevice,
       dt,
+      timeNow: this.time.now,
     })
 
     const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
@@ -283,6 +326,7 @@ export class MatchScene extends Phaser.Scene {
     })
 
     for (const player of this.players) {
+      if (player.suspendedUntil && player.suspendedUntil > this.time.now) continue
       if (player.team === 'blue' && player.role !== 'goalie') continue
       const hasBall = this.ballCarrierId === player.id
 
@@ -290,7 +334,11 @@ export class MatchScene extends Phaser.Scene {
         if (hasBall) {
           if (player.role === 'goalie' && shouldGoaliePass(player, this.time.now)) this.tryPass(player)
           else if (shouldAIShoot(player)) this.tryShot(player)
-          else if (Math.random() < 0.015) this.tryPass(player)
+          else {
+            // Pasa con más frecuencia si hay un compañero libre más cerca del gol
+            const passChance = shouldAIPassToOpenMate(player, this.players) ? 0.042 : 0.012
+            if (Math.random() < passChance) this.tryPass(player)
+          }
         } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
           const carrier = findPlayerById(this.players, this.ballCarrierId)
           const inStealRange = carrier
@@ -308,7 +356,12 @@ export class MatchScene extends Phaser.Scene {
             const facingY = player.facing.y / facingLen
             const engageDot = facingX * engageDirX + facingY * engageDirY
             const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
-            const attemptChance = carrierSpeed > 150 ? AI_STEAL_ATTEMPT_CHANCE * 0.7 : AI_STEAL_ATTEMPT_CHANCE
+            // Perseguir desde atrás (engageDot alto = ambos van en la misma dirección):
+            // intentos mucho menos frecuentes; lo normal es que el portador conserve la pelota
+            const chasingFromBehind = engageDot > 0.6
+            const attemptChance = chasingFromBehind
+              ? AI_STEAL_ATTEMPT_CHANCE * 0.18
+              : carrierSpeed > 150 ? AI_STEAL_ATTEMPT_CHANCE * 0.7 : AI_STEAL_ATTEMPT_CHANCE
 
             if (engageDot >= AI_STEAL_ENGAGE_FRONT_DOT && Math.random() < attemptChance) this.tryManualSteal(player)
           }
@@ -331,6 +384,7 @@ export class MatchScene extends Phaser.Scene {
       timeNow: this.time.now,
     })
     if (!result) return
+    if (result.ballCarrierId) playSave()
     this.ballVelocity = result.ballVelocity
     this.ballCarrierId = result.ballCarrierId
     if (result.lastTouch) this.lastTouch = result.lastTouch
@@ -343,6 +397,7 @@ export class MatchScene extends Phaser.Scene {
    * Si no lo hay, se intenta asignar la posesión al jugador válido más cercano.
    */
   private handleBallControl(time: number) {
+    const prevCarrierId = this.ballCarrierId
     const result = handleBallControlAction({
       time,
       ball: this.ball,
@@ -357,6 +412,7 @@ export class MatchScene extends Phaser.Scene {
       stuckCarrierOrigin: this.stuckCarrierOrigin,
     })
 
+    if (!prevCarrierId && result.ballCarrierId) playPickup()
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.controlledPlayerIndex = result.controlledPlayerIndex
@@ -397,6 +453,8 @@ export class MatchScene extends Phaser.Scene {
       timeNow: this.time.now,
     })
     if (!result) return
+    playPass()
+    player.stickSwingUntil = this.time.now + STICK_SWING_MS
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
@@ -413,6 +471,8 @@ export class MatchScene extends Phaser.Scene {
       timeNow: this.time.now,
     })
     if (!result) return
+    playShot()
+    player.stickSwingUntil = this.time.now + STICK_SWING_MS
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
@@ -428,6 +488,10 @@ export class MatchScene extends Phaser.Scene {
       ruleState: this.ruleState,
     })
     if (!result) return
+    if (result.lastTouch) {
+      playSteal()
+      player.stickSwingUntil = this.time.now + STICK_SWING_MS
+    }
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     if (result.lastTouch) this.lastTouch = result.lastTouch
@@ -437,6 +501,7 @@ export class MatchScene extends Phaser.Scene {
   private handleRuleRestarts() {
     if (this.ruleState.pendingFoul) {
       const foul = this.ruleState.pendingFoul
+      playFoul()
       this.centerText.setText(foul.message).setVisible(true)
       this.startFoulRestart(foul)
       this.ruleState.pendingFoul = null
@@ -445,9 +510,39 @@ export class MatchScene extends Phaser.Scene {
 
     if (this.ruleState.pendingBully) {
       const bully = this.ruleState.pendingBully
+      playWhistle()
       this.centerText.setText(bully.message).setVisible(true)
       this.startBully(bully.x, bully.y, bully.participants.bluePlayerId, bully.participants.redPlayerId)
       this.ruleState.pendingBully = null
+    }
+  }
+
+  /**
+   * Actualiza el flag que indica si la bola entró a la portería desde el frente.
+   * Se activa al cruzar la línea con inGoalMouth=true y se apaga al salir de la zona.
+   */
+  private updateGoalEntryFlag(prevBallX: number) {
+    const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
+    const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+    const inGoalMouth = this.ball.y > goalTop && this.ball.y < goalBottom
+    const leftGoalLineX = getGoalLineX('left')
+    const rightGoalLineX = getGoalLineX('right')
+
+    // Cruce de izquierda: pelota venía de delante (x ≥ línea) y ahora está detrás, con boca abierta
+    if (inGoalMouth && prevBallX >= leftGoalLineX && this.ball.x < leftGoalLineX) {
+      this.ballEnteredGoalFromFront.left = true
+    }
+    // Resetear si la pelota sale de la zona de portería izquierda
+    if (this.ball.x >= leftGoalLineX || !inGoalMouth) {
+      this.ballEnteredGoalFromFront.left = false
+    }
+
+    // Cruce de derecha
+    if (inGoalMouth && prevBallX <= rightGoalLineX && this.ball.x > rightGoalLineX) {
+      this.ballEnteredGoalFromFront.right = true
+    }
+    if (this.ball.x <= rightGoalLineX || !inGoalMouth) {
+      this.ballEnteredGoalFromFront.right = false
     }
   }
 
@@ -462,8 +557,12 @@ export class MatchScene extends Phaser.Scene {
       redScore: this.redScore,
       centerText: this.centerText,
       time,
+      enteredFromFront: this.ballEnteredGoalFromFront,
     })
     if (!next) return
+    playGoal()
+    this.cameras.main.shake(300, 0.011)
+    this.tweens.add({ targets: this.goalFlash, alpha: { from: 0.42, to: 0 }, duration: 460, ease: 'Expo.Out' })
     this.ballVelocity = next.ballVelocity
     this.ballCarrierId = next.ballCarrierId
     this.blueScore = next.blueScore
@@ -473,6 +572,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Recoloca a todos los jugadores y reinicia la bola tras gol o al comienzo. */
   private resetKickoff(team: TeamColor) {
+    this.aimIndicator.clear()
     const nextState = resetKickoffState({
       team,
       players: this.players,
@@ -494,7 +594,8 @@ export class MatchScene extends Phaser.Scene {
     this.stuckCarrierStartTime = nextState.stuckCarrierStartTime
     this.stuckCarrierOrigin = nextState.stuckCarrierOrigin
     this.ruleState = nextState.ruleState
-    refreshKickoffVisuals(this.players, this.controlledPlayerIndex, this.ball, this.ballCarrierId)
+    refreshKickoffVisuals(this.players, this.controlledPlayerIndex, this.ball, this.ballCarrierId, this.time.now)
+    playWhistle()
   }
 
   private startFoulRestart(foul: RuleState['pendingFoul'] extends infer T ? Exclude<T, null> : never) {
@@ -526,9 +627,10 @@ export class MatchScene extends Phaser.Scene {
     this.activeBully = nextState.activeBully
   }
 
-  private updateFoulRestartState(time: number) {
+  private updateFoulRestartState(time: number, dt: number) {
     const state = updateFoulRestartPhase({
       time,
+      dt,
       activeFoulRestart: this.activeFoulRestart,
       players: this.players,
       ball: this.ball,
@@ -539,11 +641,29 @@ export class MatchScene extends Phaser.Scene {
     })
     if (!state) return
 
+    // Apuntería: IA auto, joystick táctil o teclado WASD/flechas
     const stickLen = Math.hypot(this.joystickInput.x, this.joystickInput.y)
     if (state.taker?.team === 'red' && state.autoFacing) {
       state.taker.facing = state.autoFacing
-    } else if (state.taker && stickLen > 0.15) {
-      state.taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
+    } else if (state.taker && state.taker.team === 'blue') {
+      if (stickLen > 0.15) {
+        state.taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
+      } else {
+        let kx = 0, ky = 0
+        if (this.cursors.left?.isDown || this.wasd['A']?.isDown) kx -= 1
+        if (this.cursors.right?.isDown || this.wasd['D']?.isDown) kx += 1
+        if (this.cursors.up?.isDown || this.wasd['W']?.isDown) ky -= 1
+        if (this.cursors.down?.isDown || this.wasd['S']?.isDown) ky += 1
+        const kLen = Math.hypot(kx, ky)
+        if (kLen > 0) state.taker.facing = { x: kx / kLen, y: ky / kLen }
+      }
+    }
+
+    // Indicador de puntería: visible cuando ya se puede actuar y no se ha soltado aún
+    if (state.taker && this.activeFoulRestart && time >= this.activeFoulRestart.readyAt && !state.release) {
+      this.drawAimIndicator(state.taker, this.activeFoulRestart.sanction, time)
+    } else {
+      this.aimIndicator.clear()
     }
 
     this.ballVelocity = { x: 0, y: 0 }
@@ -555,6 +675,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = state.taker.id
     if (state.shouldPass && this.activeFoulRestart?.sanction === 'free-hit') this.tryPass(state.taker)
     else if (state.shouldShot) this.tryShot(state.taker)
+    this.aimIndicator.clear()
     this.centerText.setVisible(false)
     this.ballIgnoreContactsUntil = 0
     this.activeFoulRestart = null
@@ -565,9 +686,35 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private updateBullyState(time: number) {
+  /** Dibuja un rastro punteado en la dirección de puntería del ejecutante. */
+  private drawAimIndicator(taker: Player, sanction: string, timeNow: number) {
+    this.aimIndicator.clear()
+    const maxDist = sanction === 'penalty' ? 265 : 195
+    const color = sanction === 'penalty' ? 0xff8833 : sanction === 'direct-free-hit' ? 0xffdd55 : 0xe0ecff
+    const pulse = 0.35 + 0.22 * Math.sin(timeNow * 0.007)
+
+    for (let d = 22; d <= maxDist; d += 15) {
+      const t = d / maxDist
+      this.aimIndicator.fillStyle(color, pulse * (1 - t * 0.65))
+      this.aimIndicator.fillCircle(
+        taker.pos.x + taker.facing.x * d,
+        taker.pos.y + taker.facing.y * d,
+        Math.max(1.2, 3.5 * (1 - t * 0.4)),
+      )
+    }
+    // Marcador en el extremo
+    this.aimIndicator.lineStyle(1.5, color, pulse * 0.9)
+    this.aimIndicator.strokeCircle(
+      taker.pos.x + taker.facing.x * maxDist,
+      taker.pos.y + taker.facing.y * maxDist,
+      8,
+    )
+  }
+
+  private updateBullyState(time: number, dt: number) {
     const released = updateBullyPhase({
       time,
+      dt,
       activeBully: this.activeBully,
       players: this.players,
       ball: this.ball,
@@ -580,10 +727,43 @@ export class MatchScene extends Phaser.Scene {
     this.activeBully = null
   }
 
+  /**
+   * Falta automática si un jugador rival (no portero) entra en la zona D
+   * mientras el portero tiene la posesión del balón.
+   */
+  private checkGoalieZoneFoul(time: number) {
+    if (this.ruleState.pendingFoul || this.ruleState.pendingBully) return
+    const centerY = GAME_HEIGHT / 2
+    const foulRadius = GOAL_HEIGHT
+
+    for (const goalie of this.players) {
+      if (goalie.role !== 'goalie') continue
+      if (this.ballCarrierId !== goalie.id) continue
+
+      const gx = getGoalLineX(goalie.side)
+      // Centro de la zona = punto de penalti (PENALTY_AREA_DEPTH desde la línea de portería)
+      const spotX = goalie.side === 'left' ? gx + PENALTY_AREA_DEPTH : gx - PENALTY_AREA_DEPTH
+      const rivalTeam = goalie.team === 'blue' ? 'red' : 'blue'
+
+      for (const rival of this.players) {
+        if (rival.team !== rivalTeam || rival.role === 'goalie') continue
+        if (rival.suspendedUntil && rival.suspendedUntil > time) continue
+        const dist = Math.hypot(rival.pos.x - spotX, rival.pos.y - centerY)
+        if (dist < foulRadius) {
+          registerGoalieZoneFoul(this.ruleState, rival, goalie, time)
+          return
+        }
+      }
+    }
+  }
+
   private finishMatch() {
     this.matchEnded = true
-    const result = this.blueScore === this.redScore ? 'Empate' : this.blueScore > this.redScore ? 'Gana azul' : 'Gana rojo'
-    this.centerText.setText(`${result}\nPulsa ESPACIO para reiniciar`).setVisible(true)
+    const result = this.blueScore === this.redScore ? 'Empate'
+      : this.blueScore > this.redScore ? '¡Gana el azul!'
+      : '¡Gana el rojo!'
+    const hint = this.isTouchDevice ? 'Pulsa A para continuar' : 'Pulsa U para continuar'
+    this.centerText.setText(`${result}\n${hint}`).setVisible(true)
   }
 
   /** Refresca marcador, tiempo y ayuda contextual del jugador controlado. */
@@ -598,6 +778,7 @@ export class MatchScene extends Phaser.Scene {
       ruleState: this.ruleState,
       players: this.players,
       controlledPlayerIndex: this.controlledPlayerIndex,
+      timeNow: this.time.now,
     })
   }
 }

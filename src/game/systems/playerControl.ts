@@ -13,8 +13,15 @@ export function updateControlledPlayerMotion(options: {
   sprintKey: Phaser.Input.Keyboard.Key
   isTouchDevice: boolean
   dt: number
+  timeNow: number
 }) {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
+
+  // Si el jugador controlado está suspendido, solo aplicar rozamiento (sin input)
+  if (player.suspendedUntil && player.suspendedUntil > options.timeNow) {
+    applySkating(player, options.dt)
+    return player
+  }
 
   const keyboardInputX =
     (options.cursors.left.isDown || options.wasd.A.isDown ? -1 : 0) +
@@ -63,6 +70,8 @@ export function updateTeamAIPlayers(options: {
 
   for (const player of options.players) {
     if (player.id === controlled.id) continue
+    // Jugador suspendido: no actualizar IA ni física (lo gestiona updateSuspendedPlayers)
+    if (player.suspendedUntil && player.suspendedUntil > options.timeNow) continue
     player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * options.dt * 0.8)
     if (player.role === 'goalie') {
       player.sprinting = false

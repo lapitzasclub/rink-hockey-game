@@ -27,20 +27,21 @@ export function handleSpecialMatchStates(options: {
   controlledPlayerIndex: number
   ball: Phaser.GameObjects.Arc
   ballCarrierId: string | null
+  timeNow: number
   updateBullyState: () => void
   updateFoulRestartState: () => void
   updateHud: () => void
 }) {
   if (options.activeBully) {
     options.updateBullyState()
-    updateVisuals(options.players, getControlledPlayer(options.players, options.controlledPlayerIndex), options.ball, options.ballCarrierId)
+    updateVisuals(options.players, getControlledPlayer(options.players, options.controlledPlayerIndex), options.ball, options.ballCarrierId, options.timeNow)
     options.updateHud()
     return true
   }
 
   if (options.activeFoulRestart) {
     options.updateFoulRestartState()
-    updateVisuals(options.players, getControlledPlayer(options.players, options.controlledPlayerIndex), options.ball, options.ballCarrierId)
+    updateVisuals(options.players, getControlledPlayer(options.players, options.controlledPlayerIndex), options.ball, options.ballCarrierId, options.timeNow)
     options.updateHud()
     return true
   }
@@ -68,8 +69,9 @@ export function checkAndApplyGoal(options: {
   redScore: number
   centerText: Phaser.GameObjects.Text
   time: number
+  enteredFromFront: { left: boolean; right: boolean }
 }) {
-  const goal = checkGoal(options.ball, options.ballVelocity)
+  const goal = checkGoal(options.ball, options.ballVelocity, options.enteredFromFront)
   if (!goal) return null
 
   options.ball.setPosition(goal.holdX, goal.holdY)
@@ -84,11 +86,11 @@ export function checkAndApplyGoal(options: {
   if (goal.scorer === 'red') {
     next.redScore += 1
     options.centerText.setText('¡Gol rojo!').setVisible(true)
-    applyGoalReset({ message: '¡Gol rojo!', players: options.players, ball: options.ball })
+    applyGoalReset({ scorer: goal.scorer, players: options.players, ball: options.ball })
   } else {
     next.blueScore += 1
     options.centerText.setText('¡Gol azul!').setVisible(true)
-    applyGoalReset({ message: '¡Gol azul!', players: options.players, ball: options.ball })
+    applyGoalReset({ scorer: goal.scorer, players: options.players, ball: options.ball })
   }
 
   return next

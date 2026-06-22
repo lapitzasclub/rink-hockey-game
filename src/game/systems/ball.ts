@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
-import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_LINE_OFFSET, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
+import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
 import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
+import { getGoalLineX } from '../utils'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
 /**
@@ -23,17 +24,19 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
 
     const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
     const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
-    const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
-    const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
+    const leftGoalLineX = getGoalLineX('left')
+    const rightGoalLineX = getGoalLineX('right')
     const leftNetBackX = leftGoalLineX - GOAL_BACK_DEPTH
     const rightNetBackX = rightGoalLineX + GOAL_BACK_DEPTH
     const insideLeftGoalCage = nextBallX >= leftNetBackX && nextBallX <= leftGoalLineX && nextBallY >= goalTop && nextBallY <= goalBottom
     const insideRightGoalCage = nextBallX >= rightGoalLineX && nextBallX <= rightNetBackX && nextBallY >= goalTop && nextBallY <= goalBottom
 
-    if (carrier.pos.x < leftGoalLineX + PLAYER_RADIUS && !insideLeftGoalCage && nextBallX < leftGoalLineX) {
+    const carrierInGoalHeight = carrier.pos.y >= goalTop - PLAYER_RADIUS && carrier.pos.y <= goalBottom + PLAYER_RADIUS
+    // Solo clampear cuando el portador está en el lado campo (no cuando ya pasó por detrás de la red)
+    if (carrier.pos.x > leftNetBackX && carrier.pos.x < leftGoalLineX + PLAYER_RADIUS && !insideLeftGoalCage && nextBallX < leftGoalLineX && carrierInGoalHeight) {
       nextBallX = leftGoalLineX + BALL_RADIUS
     }
-    if (carrier.pos.x > rightGoalLineX - PLAYER_RADIUS && !insideRightGoalCage && nextBallX > rightGoalLineX) {
+    if (carrier.pos.x < rightNetBackX && carrier.pos.x > rightGoalLineX - PLAYER_RADIUS && !insideRightGoalCage && nextBallX > rightGoalLineX && carrierInGoalHeight) {
       nextBallX = rightGoalLineX - BALL_RADIUS
     }
 
@@ -57,8 +60,8 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
   const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
   const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
   const inGoalMouth = ball.y > goalTop && ball.y < goalBottom
-  const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
-  const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
+  const leftGoalLineX = getGoalLineX('left')
+  const rightGoalLineX = getGoalLineX('right')
   const leftNetBackX = leftGoalLineX - GOAL_BACK_DEPTH
   const rightNetBackX = rightGoalLineX + GOAL_BACK_DEPTH
 
@@ -77,8 +80,12 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
     ball.x = right
   }
 
-  const hitLeftPostFace = ball.x <= leftGoalLineX + BALL_RADIUS && ball.x >= leftGoalLineX - BALL_RADIUS && !inGoalMouth
-  const hitRightPostFace = ball.x >= rightGoalLineX - BALL_RADIUS && ball.x <= rightGoalLineX + BALL_RADIUS && !inGoalMouth
+  // Solo bloqueamos la cara del palo dentro de la franja de altura de la portería
+  // (BALL_RADIUS desde el palo hacia arriba/abajo) y solo cuando la pelota viene del lado campo.
+  // Así puede rodear la portería por arriba o abajo libremente.
+  const atGoalHeight = ball.y >= goalTop - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
+  const hitLeftPostFace = ball.x >= leftGoalLineX && ball.x <= leftGoalLineX + BALL_RADIUS && atGoalHeight && !inGoalMouth
+  const hitRightPostFace = ball.x <= rightGoalLineX && ball.x >= rightGoalLineX - BALL_RADIUS && atGoalHeight && !inGoalMouth
   const nearLeftGoalMouth = ball.x >= leftGoalLineX - BALL_RADIUS - 2 && ball.x <= leftGoalLineX + BALL_RADIUS + 2
   const nearRightGoalMouth = ball.x >= rightGoalLineX - BALL_RADIUS - 2 && ball.x <= rightGoalLineX + BALL_RADIUS + 2
   const hitLeftTopPost = nearLeftGoalMouth && ball.y >= goalTop - BALL_RADIUS && ball.y <= goalTop + BALL_RADIUS
@@ -113,41 +120,51 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
   }
 
   if (behindLeftGoal) {
-    if (ball.x <= leftNetBackX + BALL_RADIUS) {
-      nextVelocity.x = Math.abs(nextVelocity.x) * GOAL_SIDE_REBOUND
-      ball.x = leftNetBackX + BALL_RADIUS
-    }
-    if (ball.y > GAME_HEIGHT / 2) {
-      const rearBaseY = goalBottom + BALL_RADIUS
-      if (ball.y >= rearBaseY) {
-        nextVelocity.y = -Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
-        ball.y = rearBaseY
+    // Las paredes de la red solo existen dentro de la caja de la portería (no fuera de su altura).
+    // Fuera del rectángulo de red la pelota puede moverse libremente (juego por detrás de portería).
+    const inNetZoneX = ball.x >= leftNetBackX && ball.x <= leftGoalLineX
+    const inNetZoneY = ball.y >= goalTop - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
+    if (inNetZoneX && inNetZoneY) {
+      if (ball.x <= leftNetBackX + BALL_RADIUS) {
+        nextVelocity.x = Math.abs(nextVelocity.x) * GOAL_SIDE_REBOUND
+        ball.x = leftNetBackX + BALL_RADIUS
       }
-    } else {
-      const rearTopY = goalTop - BALL_RADIUS
-      if (ball.y <= rearTopY) {
-        nextVelocity.y = Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
-        ball.y = rearTopY
+      if (ball.y > GAME_HEIGHT / 2) {
+        const rearBaseY = goalBottom + BALL_RADIUS
+        if (ball.y >= rearBaseY) {
+          nextVelocity.y = -Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+          ball.y = rearBaseY
+        }
+      } else {
+        const rearTopY = goalTop - BALL_RADIUS
+        if (ball.y <= rearTopY) {
+          nextVelocity.y = Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+          ball.y = rearTopY
+        }
       }
     }
   }
 
   if (behindRightGoal) {
-    if (ball.x >= rightNetBackX - BALL_RADIUS) {
-      nextVelocity.x = -Math.abs(nextVelocity.x) * GOAL_SIDE_REBOUND
-      ball.x = rightNetBackX - BALL_RADIUS
-    }
-    if (ball.y > GAME_HEIGHT / 2) {
-      const rearBaseY = goalBottom + BALL_RADIUS
-      if (ball.y >= rearBaseY) {
-        nextVelocity.y = -Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
-        ball.y = rearBaseY
+    const inNetZoneX = ball.x >= rightGoalLineX && ball.x <= rightNetBackX
+    const inNetZoneY = ball.y >= goalTop - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
+    if (inNetZoneX && inNetZoneY) {
+      if (ball.x >= rightNetBackX - BALL_RADIUS) {
+        nextVelocity.x = -Math.abs(nextVelocity.x) * GOAL_SIDE_REBOUND
+        ball.x = rightNetBackX - BALL_RADIUS
       }
-    } else {
-      const rearTopY = goalTop - BALL_RADIUS
-      if (ball.y <= rearTopY) {
-        nextVelocity.y = Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
-        ball.y = rearTopY
+      if (ball.y > GAME_HEIGHT / 2) {
+        const rearBaseY = goalBottom + BALL_RADIUS
+        if (ball.y >= rearBaseY) {
+          nextVelocity.y = -Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+          ball.y = rearBaseY
+        }
+      } else {
+        const rearTopY = goalTop - BALL_RADIUS
+        if (ball.y <= rearTopY) {
+          nextVelocity.y = Math.abs(nextVelocity.y) * GOAL_SIDE_REBOUND
+          ball.y = rearTopY
+        }
       }
     }
   }
@@ -358,14 +375,13 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
   }
 }
 
-/** Devuelve qué equipo ha marcado si la bola ha cruzado la línea de gol. */
 /**
  * Comprueba si un portero consigue bloquear o desviar una bola cercana a su arco.
  *
  * La parada no necesita posesión inmediata: puede convertirse en desvío o en
  * captura según velocidad y distancia.
  */
-export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, players: Player[]) {
+export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, players: Player[], now: number) {
   for (const player of players) {
     if (player.role !== 'goalie') continue
 
@@ -377,7 +393,7 @@ export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector
     if (!towardGoal) continue
 
     if (speed < 260 && distance < GOALIE_CLAIM_RADIUS + 4) {
-      player.goalieCatchTime = Date.now()
+      player.goalieCatchTime = now
       return {
         saved: true,
         claimedBy: player.id,
@@ -437,17 +453,26 @@ export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Ar
   }
 }
 
-export function checkGoal(ball: Phaser.GameObjects.Arc, ballVelocity: Vector) {
+/**
+ * Devuelve qué equipo ha marcado si la bola ha cruzado la línea de gol.
+ *
+ * Solo cuenta gol si la bola entró por el frente (flag persistente que se
+ * activa cuando la bola cruza la línea mientras está en la boca de portería).
+ */
+export function checkGoal(
+  ball: Phaser.GameObjects.Arc,
+  ballVelocity: Vector,
+  enteredFromFront: { left: boolean; right: boolean },
+) {
   const top = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 + BALL_RADIUS
   const bottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2 - BALL_RADIUS
   const inGoalY = ball.y >= top && ball.y <= bottom
   if (!inGoalY) return null
 
-  const leftGoalLineX = RINK.x + GOAL_LINE_OFFSET
-  const rightGoalLineX = RINK.x + RINK.width - GOAL_LINE_OFFSET
+  const leftGoalLineX = getGoalLineX('left')
+  const rightGoalLineX = getGoalLineX('right')
 
-  const enteredLeftGoalFromFront = ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS - 6
-  if (enteredLeftGoalFromFront) {
+  if (enteredFromFront.left && ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS - 6) {
     return {
       scorer: 'red' as TeamColor,
       holdX: leftGoalLineX - 10,
@@ -455,8 +480,7 @@ export function checkGoal(ball: Phaser.GameObjects.Arc, ballVelocity: Vector) {
     }
   }
 
-  const enteredRightGoalFromFront = ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS + 6
-  if (enteredRightGoalFromFront) {
+  if (enteredFromFront.right && ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS + 6) {
     return {
       scorer: 'blue' as TeamColor,
       holdX: rightGoalLineX + 10,

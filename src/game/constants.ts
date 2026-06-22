@@ -7,17 +7,17 @@ export const BALL_RADIUS = 6
 export const GOAL_WIDTH = 28
 export const GOAL_HEIGHT = 150
 export const GOAL_BACK_DEPTH = 34
-export const GOAL_LINE_OFFSET = 96
+export const GOAL_LINE_OFFSET = 86
 export const GOAL_NET_HOLD_X = 10
 export const GOAL_POST_REBOUND = 0.82
 export const GOAL_SIDE_REBOUND = 0.78
 export const BLUE_LINE_OFFSET = 210
 export const PLAYER_MAX_SPEED = 320
-export const PLAYER_SPRINT_MAX_SPEED = 410
+export const PLAYER_SPRINT_MAX_SPEED = 500
 export const PLAYER_ACCEL = 860
-export const PLAYER_SPRINT_ACCEL_MULTIPLIER = 1.16
-export const PLAYER_FRICTION = 0.9
-export const BALL_FRICTION = 0.988
+export const PLAYER_SPRINT_ACCEL_MULTIPLIER = 1.42
+export const PLAYER_FRICTION = 0.925
+export const BALL_FRICTION = 0.989
 export const BALL_CONTROL_DISTANCE = 30
 export const BALL_PICKUP_DISTANCE = 38
 export const BALL_CAPTURE_SHIELD_DISTANCE = 46
@@ -47,9 +47,9 @@ export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
 export const MANUAL_STEAL_FOUL_CHANCE = 0.12
 export const AI_STEAL_ATTEMPT_CHANCE = 0.08
 export const AI_STEAL_ENGAGE_FRONT_DOT = 0.08
-export const STEAL_FRONT_SUCCESS_CHANCE = 0.18
-export const STEAL_FRONT_LOOSE_CHANCE = 0.4
-export const STEAL_FRONT_FOUL_CHANCE = 0.08
+export const STEAL_FRONT_SUCCESS_CHANCE = 0.03
+export const STEAL_FRONT_LOOSE_CHANCE = 0.05
+export const STEAL_FRONT_FOUL_CHANCE = 0.07
 export const STEAL_SIDE_SUCCESS_CHANCE = 0.08
 export const STEAL_SIDE_LOOSE_CHANCE = 0.38
 export const STEAL_SIDE_FOUL_CHANCE = 0.16
@@ -81,3 +81,35 @@ export const RINK = {
   width: 1140,
   height: 600,
 }
+
+export const PERIOD_COUNT = 4
+export const PERIOD_RESTART_DELAY_MS = 1400
+export const BULLY_PLAYER_OFFSET = 26
+export const MAX_BALL_SPEED = 760
+export const DIRECT_FREE_HIT_FOUL_THRESHOLD = 10
+/** Factor de velocidad máxima cuando la stamina está por debajo del umbral bajo */
+export const STAMINA_EXHAUSTED_SPEED_FACTOR = 0.78
+export const STICK_SWING_MS = 160
+/**
+ * Radio del semicírculo D del portero (0,85 m × 30 px/m = 25,5 → 26 px).
+ * Diámetro visual = apertura interior de la portería (1,70 m).
+ * Nota: la zona de foul se comprueba con un radio mayor (GOAL_HEIGHT) en MatchScene.
+ */
+export const GOALIE_ZONE_RADIUS = 26
+/** Profundidad del área de portería desde la línea de gol (5,40 m × 28,5 px/m) */
+export const PENALTY_AREA_DEPTH = 154
+/** Altura del área de portería (9 m × 30 px/m) */
+export const PENALTY_AREA_HEIGHT = 270
+/** Duración de la tarjeta azul en ms (2 minutos reglamentarios) */
+export const BLUE_CARD_DURATION_MS = 120_000
+/** Posición Y del banquillo de expulsiones (encima de la pista) */
+export const BENCH_Y_TOP = 30
+/** Posición Y del banquillo del equipo rojo (debajo de la pista) */
+export const BENCH_Y_BOTTOM = 690
+
+/** Distancia máxima al gol rival para que la IA intente disparar */
+export const AI_SHOOT_DISTANCE = 370
+/** Radio de marcaje: distancia rival→compañero que lo considera cubierto */
+export const AI_MARK_RADIUS = 72
+/** Ventaja mínima de distancia al gol para preferir pase a compañero libre */
+export const AI_OPEN_MATE_GAP = 80

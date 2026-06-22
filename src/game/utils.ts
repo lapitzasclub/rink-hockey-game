@@ -1,4 +1,5 @@
-import type { Player, Vector } from './types'
+import { GOAL_LINE_OFFSET, RINK } from './constants'
+import type { Player, TeamSide, Vector } from './types'
 
 export function normalizedVector(x: number, y: number, fallback: Vector): Vector {
   const length = Math.hypot(x, y)
@@ -6,20 +7,26 @@ export function normalizedVector(x: number, y: number, fallback: Vector): Vector
   return { x: x / length, y: y / length }
 }
 
-export function getRoleShort(role: Player['role']) {
-  switch (role) {
-    case 'goalie': return 'POR'
-    case 'defender': return 'DEF'
-    case 'wing': return 'ALA'
-    case 'pivot': return 'PIV'
-  }
+/** Coordenada X de la línea de portería según el lado de la pista. */
+export function getGoalLineX(side: TeamSide): number {
+  return side === 'left'
+    ? RINK.x + GOAL_LINE_OFFSET
+    : RINK.x + RINK.width - GOAL_LINE_OFFSET
 }
 
-export function getRoleName(role: Player['role']) {
-  switch (role) {
-    case 'goalie': return 'portero'
-    case 'defender': return 'defensa'
-    case 'wing': return 'ala'
-    case 'pivot': return 'pivote'
-  }
+const ROLE_SHORT: Record<Player['role'], string> = {
+  goalie: 'POR',
+  defender: 'DEF',
+  wing: 'ALA',
+  pivot: 'PIV',
 }
+
+const ROLE_NAME: Record<Player['role'], string> = {
+  goalie: 'portero',
+  defender: 'defensa',
+  wing: 'ala',
+  pivot: 'pivote',
+}
+
+export function getRoleShort(role: Player['role']) { return ROLE_SHORT[role] }
+export function getRoleName(role: Player['role']) { return ROLE_NAME[role] }

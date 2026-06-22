@@ -56,7 +56,7 @@ export function handleGoalieSaveAction(options: {
   timeNow: number
 }) {
   if (options.ballCarrierId) return null
-  const result = tryGoalieSave(options.ball, options.ballVelocity, options.players)
+  const result = tryGoalieSave(options.ball, options.ballVelocity, options.players, options.timeNow)
   if (!result.saved) return null
 
   let lastTouch: Player['team'] | null = null
@@ -135,7 +135,9 @@ export function handleBallControlAction(options: {
   state.stuckCarrierOrigin = null
   if (options.time < options.ballIgnoreContactsUntil) return state
 
-  const candidates = [...options.players].sort((a, b) => Phaser.Math.Distance.Between(a.pos.x, a.pos.y, options.ball.x, options.ball.y) - Phaser.Math.Distance.Between(b.pos.x, b.pos.y, options.ball.x, options.ball.y))
+  const candidates = [...options.players]
+    .filter(p => !(p.suspendedUntil && p.suspendedUntil > options.time))
+    .sort((a, b) => Phaser.Math.Distance.Between(a.pos.x, a.pos.y, options.ball.x, options.ball.y) - Phaser.Math.Distance.Between(b.pos.x, b.pos.y, options.ball.x, options.ball.y))
   let claimed = false
 
   for (const player of candidates) {
@@ -315,6 +317,7 @@ export function tryManualStealAction(options: {
   }
 
   const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
+  const thiefSpeed = Math.hypot(options.player.velocity.x, options.player.velocity.y)
   if (carrierSpeed < 90 && facingDot >= 0.2) {
     successChance += 0.02
     looseChance += 0.06
@@ -323,6 +326,11 @@ export function tryManualStealAction(options: {
     foulChance += 0.04
     successChance -= 0.03
     looseChance += 0.02
+  }
+  // Si el portador se aleja claramente más rápido (ya le has superado), robar desde atrás es casi imposible
+  if (facingDot >= 0.35 && carrierSpeed - thiefSpeed > 55) {
+    successChance *= 0.25
+    looseChance *= 0.35
   }
 
   const protectorDot = carrierFacing.x * defenderFacing.x + carrierFacing.y * defenderFacing.y
@@ -337,7 +345,7 @@ export function tryManualStealAction(options: {
 
   const roll = Math.random()
   if (roll < foulChance) {
-    registerStealFoul(options.ruleState, options.player, carrier, carrier.pos.x, carrier.pos.y)
+    registerStealFoul(options.ruleState, options.player, carrier, carrier.pos.x, carrier.pos.y, options.timeNow)
     return { ballCarrierId: null, ballVelocity: { x: 0, y: 0 } }
   }
 

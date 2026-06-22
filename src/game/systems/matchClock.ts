@@ -1,3 +1,4 @@
+import { PERIOD_COUNT, PERIOD_RESTART_DELAY_MS } from '../constants'
 import type { RuleState } from './rules'
 
 export function tickMatchClock(options: {
@@ -28,7 +29,7 @@ export function tickMatchClock(options: {
     }
   }
 
-  if (options.currentPeriod < 4) {
+  if (options.currentPeriod < PERIOD_COUNT) {
     const currentPeriod = options.currentPeriod + 1
     const ruleState = {
       ...options.ruleState,
@@ -40,7 +41,7 @@ export function tickMatchClock(options: {
       remainingSeconds: options.matchDuration,
       currentPeriod,
       ruleState,
-      restartAt: options.timeNow + 1400,
+      restartAt: options.timeNow + PERIOD_RESTART_DELAY_MS,
     }
   }
 

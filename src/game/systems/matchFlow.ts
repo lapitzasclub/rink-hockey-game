@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
-import { BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_LINE_OFFSET, GOAL_NET_HOLD_X } from '../constants'
+import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
 import { getFormation } from '../formation'
+import { getGoalLineX } from '../utils'
 import { findPlayerById, getControlledPlayer } from './playerHelpers'
 import { updateVisuals } from './visuals'
 import type { ActiveBully, ActiveFoulRestart, Player, TeamColor, Vector } from '../types'
@@ -50,18 +51,15 @@ export function resetKickoffState(options: {
 }
 
 export function applyGoalReset(options: {
-  message: string
+  scorer: TeamColor
   players: Player[]
   ball: Phaser.GameObjects.Arc
 }) {
-  const { message, players, ball } = options
-  const leftGoalLineX = 70 + GOAL_LINE_OFFSET
-  const rightGoalLineX = 70 + (GAME_WIDTH - 140) - GOAL_LINE_OFFSET
-
-  if (message.includes('azul')) {
-    ball.setPosition(rightGoalLineX + GOAL_NET_HOLD_X, Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
+  const { scorer, players, ball } = options
+  if (scorer === 'blue') {
+    ball.setPosition(getGoalLineX('right') + GOAL_NET_HOLD_X, Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
   } else {
-    ball.setPosition(leftGoalLineX - GOAL_NET_HOLD_X, Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
+    ball.setPosition(getGoalLineX('left') - GOAL_NET_HOLD_X, Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
   }
 
   const blue = getFormation('left')
@@ -86,33 +84,13 @@ export function startFoulRestartState(options: {
   const taker = findPlayerById(players, foul.victimPlayerId)
   const isDirect = foul.sanction === 'direct-free-hit' || foul.sanction === 'penalty'
   const restartX = isDirect ? (taker?.side === 'left' ? GAME_WIDTH - DIRECT_FREE_HIT_SPOT_OFFSET : DIRECT_FREE_HIT_SPOT_OFFSET) : foul.restartX
-  const restartY = GAME_HEIGHT / 2
+  const restartY = isDirect ? GAME_HEIGHT / 2 : foul.restartY
 
   ball.setPosition(restartX, restartY)
 
+  // Parar a todos; posiciones las ajusta updateFoulRestartState con lerp (sin snap)
   for (const player of players) {
     player.velocity = { x: 0, y: 0 }
-  }
-
-  if (taker) {
-    taker.pos = { x: restartX + (taker.side === 'left' ? -18 : 18), y: restartY }
-    taker.facing = { x: taker.side === 'left' ? 1 : -1, y: 0 }
-  }
-
-  if (isDirect) {
-    for (const player of players) {
-      if (player.role !== 'goalie' && player.id !== taker?.id) {
-        player.pos = { x: player.home.x, y: player.home.y }
-        player.velocity = { x: 0, y: 0 }
-      }
-    }
-
-    const defendingGoalie = players.find((player) => player.role === 'goalie' && player.team !== taker?.team)
-    if (defendingGoalie) {
-      defendingGoalie.pos = { x: defendingGoalie.home.x, y: GAME_HEIGHT / 2 }
-      defendingGoalie.velocity = { x: 0, y: 0 }
-      defendingGoalie.facing = { x: defendingGoalie.side === 'left' ? 1 : -1, y: 0 }
-    }
   }
 
   return {
@@ -147,17 +125,10 @@ export function startBullyState(options: {
 
   const blue = findPlayerById(players, bluePlayerId)
   const red = findPlayerById(players, redPlayerId)
-  const offset = 26
 
-  if (blue) {
-    blue.pos = { x: x - offset, y }
-    blue.facing = { x: 1, y: 0 }
-  }
-
-  if (red) {
-    red.pos = { x: x + offset, y }
-    red.facing = { x: -1, y: 0 }
-  }
+  // Facing inmediato; la posición la alcanza updateBullyState con lerp
+  if (blue) blue.facing = { x: 1, y: 0 }
+  if (red) red.facing = { x: -1, y: 0 }
 
   return {
     ballVelocity: { x: 0, y: 0 },
@@ -173,8 +144,23 @@ export function startBullyState(options: {
   }
 }
 
+/** Mueve un jugador hacia (tx, ty) a velocidad de sprint máxima, sin exceder la distancia restante. */
+function movePlayerToward(player: Player, tx: number, ty: number, dt: number) {
+  const dx = tx - player.pos.x
+  const dy = ty - player.pos.y
+  const dist = Math.hypot(dx, dy)
+  if (dist < 2) { player.velocity = { x: 0, y: 0 }; return }
+  const step = Math.min(dist, PLAYER_SPRINT_MAX_SPEED * dt)
+  player.pos.x += (dx / dist) * step
+  player.pos.y += (dy / dist) * step
+  player.velocity.x = (dx / dist) * PLAYER_SPRINT_MAX_SPEED
+  player.velocity.y = (dy / dist) * PLAYER_SPRINT_MAX_SPEED
+  player.facing = { x: dx / dist, y: dy / dist }
+}
+
 export function updateFoulRestartState(options: {
   time: number
+  dt: number
   activeFoulRestart: ActiveFoulRestart | null
   players: Player[]
   ball: Phaser.GameObjects.Arc
@@ -183,19 +169,66 @@ export function updateFoulRestartState(options: {
   passJustDown: boolean
   shootJustDown: boolean
 }) {
-  const { time, activeFoulRestart: foul, players, ball, controlledPlayerIndex, centerText, passJustDown, shootJustDown } = options
+  const { time, dt, activeFoulRestart: foul, players, ball, controlledPlayerIndex, centerText, passJustDown, shootJustDown } = options
   if (!foul) return null
 
   const taker = findPlayerById(players, foul.takerPlayerId)
   if (taker) {
-    taker.pos = { x: foul.x + (taker.side === 'left' ? -18 : 18), y: foul.y }
-    taker.velocity = { x: 0, y: 0 }
+    const takerTargetX = foul.x + (taker.side === 'left' ? -18 : 18)
+    if (time < foul.readyAt) {
+      movePlayerToward(taker, takerTargetX, foul.y, dt)
+
+      if (foul.sanction === 'free-hit') {
+        // Posicionamiento táctico: aliados abren espacio, rivales se ajustan
+        const advance = taker.side === 'left' ? 1 : -1
+        for (const p of players) {
+          if (p.id === taker.id || p.role === 'goalie') continue
+          let tx: number, ty: number
+          if (p.team === taker.team) {
+            if (p.role === 'wing') {
+              tx = Phaser.Math.Clamp(foul.x + advance * 185, RINK.x + 60, RINK.x + RINK.width - 60)
+              ty = p.home.y
+            } else if (p.role === 'pivot') {
+              tx = Phaser.Math.Clamp(foul.x + advance * 95, RINK.x + 60, RINK.x + RINK.width - 60)
+              ty = GAME_HEIGHT / 2 + (p.home.y < GAME_HEIGHT / 2 ? -55 : 55)
+            } else {
+              tx = Phaser.Math.Clamp(foul.x - advance * 85, RINK.x + 60, RINK.x + RINK.width - 60)
+              ty = p.home.y
+            }
+          } else {
+            // Rivales: posición defensiva desplazada hacia la bola
+            tx = p.home.x + Phaser.Math.Clamp((foul.x - p.home.x) * 0.32, -95, 95)
+            ty = p.home.y + Phaser.Math.Clamp((foul.y - p.home.y) * 0.42, -95, 95)
+            // Distancia mínima reglamentaria al balón
+            const bx = tx - foul.x
+            const by = ty - foul.y
+            const bd = Math.hypot(bx, by)
+            if (bd < 60) { const s = 60 / (bd || 1); tx = foul.x + bx * s; ty = foul.y + by * s }
+          }
+          movePlayerToward(p, tx, ty, dt)
+        }
+      } else {
+        // Directa / penalti: todos a home, portero defensor al centro
+        for (const p of players) {
+          if (p.id === taker.id) continue
+          if (p.role === 'goalie' && p.team !== taker.team) {
+            movePlayerToward(p, p.home.x, GAME_HEIGHT / 2, dt)
+          } else if (p.role !== 'goalie') {
+            movePlayerToward(p, p.home.x, p.home.y, dt)
+          }
+        }
+      }
+    } else {
+      taker.pos = { x: takerTargetX, y: foul.y }
+      taker.velocity = { x: 0, y: 0 }
+    }
   }
 
   ball.setPosition(foul.x, foul.y)
   if (time < foul.readyAt) return { controlledPlayerIndex, taker, shouldPass: false, shouldShot: false, release: false, autoFacing: null as Vector | null }
 
-  centerText.setText(foul.sanction === 'direct-free-hit' ? 'Falta directa, prepara el lanzamiento' : 'Falta, elige dirección y saca').setVisible(true)
+  // El indicador de puntería es suficiente; ocultar el letrero durante la acción
+  centerText.setVisible(false)
   if (!taker) return { controlledPlayerIndex, taker: null, shouldPass: false, shouldShot: false, release: false, autoFacing: null as Vector | null }
 
   let nextControlledIndex = controlledPlayerIndex
@@ -227,7 +260,8 @@ export function updateFoulRestartState(options: {
   }
 
   const shouldPass = foul.sanction === 'free-hit' && passJustDown
-  const shouldShot = shootJustDown || shouldPass
+  // Libre indirecto: no puede disparar directo a portería; solo pase válido
+  const shouldShot = foul.sanction === 'free-hit' ? shouldPass : (shootJustDown || passJustDown)
   return {
     controlledPlayerIndex: nextControlledIndex,
     taker,
@@ -240,27 +274,25 @@ export function updateFoulRestartState(options: {
 
 export function updateBullyState(options: {
   time: number
+  dt: number
   activeBully: ActiveBully | null
   players: Player[]
   ball: Phaser.GameObjects.Arc
   centerText: Phaser.GameObjects.Text
 }) {
-  const { time, activeBully: bully, players, ball, centerText } = options
+  const { time, dt, activeBully: bully, players, ball, centerText } = options
   if (!bully) return false
 
   const blue = findPlayerById(players, bully.bluePlayerId)
   const red = findPlayerById(players, bully.redPlayerId)
-  const offset = 26
 
+  // Jugadores se acercan a la posición de bully a velocidad de sprint
   if (blue) {
-    blue.pos = { x: bully.x - offset, y: bully.y }
-    blue.velocity = { x: 0, y: 0 }
+    movePlayerToward(blue, bully.x - BULLY_PLAYER_OFFSET, bully.y, dt)
     blue.facing = { x: 1, y: 0 }
   }
-
   if (red) {
-    red.pos = { x: bully.x + offset, y: bully.y }
-    red.velocity = { x: 0, y: 0 }
+    movePlayerToward(red, bully.x + BULLY_PLAYER_OFFSET, bully.y, dt)
     red.facing = { x: -1, y: 0 }
   }
 
@@ -270,9 +302,12 @@ export function updateBullyState(options: {
     return true
   }
 
+  // Countdown visual del bully
+  const remaining = Math.ceil((bully.releaseAt - time) / 1000)
+  centerText.setText(remaining > 0 ? `Bully — ${remaining}` : 'Bully — ¡Ya!').setVisible(true)
   return false
 }
 
-export function refreshKickoffVisuals(scenePlayers: Player[], controlledPlayerIndex: number, ball: Phaser.GameObjects.Arc, ballCarrierId: string | null) {
-  updateVisuals(scenePlayers, getControlledPlayer(scenePlayers, controlledPlayerIndex), ball, ballCarrierId)
+export function refreshKickoffVisuals(scenePlayers: Player[], controlledPlayerIndex: number, ball: Phaser.GameObjects.Arc, ballCarrierId: string | null, timeNow: number) {
+  updateVisuals(scenePlayers, getControlledPlayer(scenePlayers, controlledPlayerIndex), ball, ballCarrierId, timeNow)
 }

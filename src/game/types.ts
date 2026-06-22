@@ -11,7 +11,9 @@ export type Player = {
   team: TeamColor
   side: TeamSide
   role: Role
-  body: Phaser.GameObjects.Arc
+  body: Phaser.GameObjects.Image
+  shadow: Phaser.GameObjects.Ellipse
+  selectionRing: Phaser.GameObjects.Arc
   stick: Phaser.GameObjects.Rectangle
   label: Phaser.GameObjects.Text
   pos: Vector
@@ -26,6 +28,10 @@ export type Player = {
   stamina?: number
   sprinting?: boolean
   ballProtectionUntil?: number
+  staminaBar?: Phaser.GameObjects.Rectangle | null
+  stickSwingUntil?: number
+  /** Timestamp hasta el que el jugador está expulsado (tarjeta azul). 0 o ausente = activo. */
+  suspendedUntil?: number
 }
 
 export type BullyCandidate = {
@@ -50,3 +56,26 @@ export type ActiveFoulRestart = {
   readyAt: number
   sanction: 'free-hit' | 'direct-free-hit' | 'penalty'
 }
+
+export const ROLE = {
+  GOALIE: 'goalie',
+  DEFENDER: 'defender',
+  WING: 'wing',
+  PIVOT: 'pivot',
+} as const
+
+export const TEAM = {
+  BLUE: 'blue',
+  RED: 'red',
+} as const
+
+export const SIDE = {
+  LEFT: 'left',
+  RIGHT: 'right',
+} as const
+
+export const SANCTION = {
+  FREE_HIT: 'free-hit',
+  DIRECT_FREE_HIT: 'direct-free-hit',
+  PENALTY: 'penalty',
+} as const

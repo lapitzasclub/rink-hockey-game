@@ -4,6 +4,11 @@ import { getRoleName } from '../utils'
 import type { Player } from '../types'
 import type { RuleState } from '../systems/rules'
 
+function formatClock(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
 
 export function updateMatchHud(options: {
   hudText: Phaser.GameObjects.Text
@@ -15,11 +20,24 @@ export function updateMatchHud(options: {
   ruleState: RuleState
   players: Player[]
   controlledPlayerIndex: number
+  timeNow: number
 }) {
-  const minutes = Math.floor(options.remainingSeconds / 60)
-  const seconds = options.remainingSeconds % 60
-  options.hudText.setText(`Azul ${options.blueScore} - ${options.redScore} Rojo   ·   T${options.currentPeriod} ${minutes}:${seconds.toString().padStart(2, '0')}   ·   Faltas ${options.ruleState.teamFouls.blue}-${options.ruleState.teamFouls.red}`)
+  options.hudText.setText(
+    `Azul ${options.blueScore} — ${options.redScore} Rojo   ·   T${options.currentPeriod}  ${formatClock(options.remainingSeconds)}   ·   F ${options.ruleState.teamFouls.blue}-${options.ruleState.teamFouls.red}`
+  )
   const controlled = getControlledPlayer(options.players, options.controlledPlayerIndex)
   const stamina = Math.round(controlled.stamina ?? 100)
-  options.subHudText.setText(`Controlas: ${getRoleName(controlled.role)} azul · Estamina propia ${stamina}%${controlled.sprinting ? ' · Sprint' : ''}\nWASD mover · SHIFT sprint · U acción (tiro / robo) · Y pase o cambio jugador`)
+
+  // Suspensiones activas (tarjeta azul)
+  const suspensions = options.players
+    .filter(p => p.suspendedUntil && p.suspendedUntil > options.timeNow)
+    .map(p => {
+      const secsLeft = Math.ceil((p.suspendedUntil! - options.timeNow) / 1000)
+      return `${p.team === 'blue' ? 'AZ' : 'RJ'} ${secsLeft}s`
+    })
+  const suspText = suspensions.length > 0 ? `  ·  ⬛ ${suspensions.join(' ')}` : ''
+
+  options.subHudText.setText(
+    `${getRoleName(controlled.role)} azul · Stam ${stamina}%${controlled.sprinting ? ' · SPRINT' : ''}${suspText}`
+  )
 }

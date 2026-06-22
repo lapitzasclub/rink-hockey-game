@@ -16,10 +16,9 @@ export function createMobileJoystick(options: {
   shootButton: HTMLElement | null
   sprintButton: HTMLElement | null
   switchButton: HTMLElement | null
-  fullscreenButton: HTMLElement | null
   state: MobileJoystickState
 }) {
-  const { isTouchDevice, zone, passButton, shootButton, sprintButton, fullscreenButton, state } = options
+  const { isTouchDevice, zone, passButton, shootButton, sprintButton, state } = options
   if (!isTouchDevice || !zone) return null
 
   state.pass = false
@@ -60,14 +59,6 @@ export function createMobileJoystick(options: {
   const unbindShoot = bindButton(shootButton, 'shoot')
   const unbindSprint = bindButton(sprintButton, 'sprint')
 
-  const onFullscreen = async (event: Event) => {
-    event.preventDefault()
-    const root = document.documentElement
-    if (!document.fullscreenElement) await root.requestFullscreen?.()
-    else await document.exitFullscreen?.()
-  }
-  fullscreenButton?.addEventListener('pointerdown', onFullscreen)
-
   const manager = nipplejs.create({
     zone,
     mode: 'static',
@@ -101,7 +92,6 @@ export function createMobileJoystick(options: {
       unbindPass()
       unbindShoot()
       unbindSprint()
-      fullscreenButton?.removeEventListener('pointerdown', onFullscreen)
       manager?.destroy?.()
     },
   }

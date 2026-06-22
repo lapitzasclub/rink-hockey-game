@@ -1,3 +1,20 @@
+:root {
+  --c-bg: #08111b;
+  --c-overlay: rgba(8, 17, 27, 0.78);
+  --c-border: rgba(255, 255, 255, 0.18);
+  --c-touch-idle: rgba(255, 255, 255, 0.14);
+  --c-touch-pressed: rgba(255, 255, 255, 0.30);
+  --c-accent: #4da3ff;
+  --c-text: #c8dff7;
+  --c-text-dim: #6a9cc4;
+  --c-text-muted: #2a4060;
+  --z-controls: 20;
+  --z-hud-btn: 25;
+  --z-settings: 50;
+  --radius-hud-btn: 14px;
+  --font-mono: "Courier New", Courier, monospace;
+}
+
 html,
 body,
 #app {
@@ -5,8 +22,11 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #09111d;
+  background: var(--c-bg);
   font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #game-shell {
@@ -20,11 +40,13 @@ body,
   height: 100%;
 }
 
+/* ── Mobile controls ───────────────────────────────────── */
+
 #mobile-controls {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 20;
+  z-index: var(--z-controls);
 }
 
 #game-shell.is-desktop #mobile-controls {
@@ -55,37 +77,12 @@ body,
   max-width: 240px;
 }
 
-.hud-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(8, 17, 29, 0.72);
-  color: #fff;
-  font-size: 26px;
-  font-weight: 700;
-  cursor: pointer;
-  z-index: 25;
-}
-
-.hud-btn:hover {
-  background: rgba(18, 33, 54, 0.88);
-}
-
-#game-shell.is-touch .hud-btn {
-  top: 18px;
-  right: 18px;
-}
-
 .touch-btn {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.24);
-  background: rgba(255,255,255,0.14);
+  border: 2px solid var(--c-border);
+  background: var(--c-touch-idle);
   color: #fff;
   font-size: 22px;
   font-weight: 700;
@@ -93,15 +90,166 @@ body,
 }
 
 .touch-btn.pressed {
-  background: rgba(255,255,255,0.30);
+  background: var(--c-touch-pressed);
   transform: scale(0.96);
 }
 
-body {
+/* ── HUD button (settings gear) ────────────────────────── */
+
+.hud-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-hud-btn);
+  border: 1px solid var(--c-border);
+  background: var(--c-overlay);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: var(--z-hud-btn);
+}
+
+.hud-btn:hover {
+  background: rgba(18, 33, 54, 0.88);
+  border-color: rgba(77, 163, 255, 0.35);
+}
+
+#game-shell.is-touch .hud-btn {
+  top: 18px;
+  right: 18px;
+}
+
+/* ── Settings panel ─────────────────────────────────────── */
+
+.settings-panel {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-settings);
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(4, 8, 18, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-card {
+  background: #0c1a2e;
+  border: 1px solid rgba(77, 163, 255, 0.22);
+  border-radius: 18px;
+  padding: 32px;
+  min-width: 320px;
+  max-width: 460px;
+  width: 90%;
+  font-family: var(--font-mono);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.settings-title {
+  font-size: 20px;
+  color: var(--c-accent);
+  letter-spacing: 4px;
+  font-weight: bold;
+}
+
+.settings-close {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--c-text-dim);
+  font-size: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.settings-close:hover {
+  border-color: rgba(77, 163, 255, 0.4);
+  color: var(--c-text);
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section-title {
+  font-size: 10px;
+  color: var(--c-text-muted);
+  letter-spacing: 3px;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(77, 163, 255, 0.1);
+  font-family: var(--font-mono);
+  font-weight: normal;
+}
+
+.settings-action-btn {
+  background: rgba(77, 163, 255, 0.06);
+  border: 1px solid rgba(77, 163, 255, 0.2);
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-action-btn:hover {
+  background: rgba(77, 163, 255, 0.14);
+  border-color: rgba(77, 163, 255, 0.4);
+}
+
+.settings-controls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 24px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.settings-controls div {
+  display: contents;
+}
+
+.settings-controls dt {
+  color: var(--c-accent);
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.settings-controls dd {
+  color: var(--c-text-dim);
+  margin: 0;
+}
+
+/* ── Canvas ─────────────────────────────────────────────── */
 
 canvas {
   display: block;
@@ -109,7 +257,6 @@ canvas {
   max-height: 100vh;
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
   touch-action: none;
-  -ms-touch-action: none;
 }
 
 @media (max-width: 900px) {

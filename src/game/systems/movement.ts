@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
+import { BENCH_Y_BOTTOM, BENCH_Y_TOP, GAME_WIDTH, GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK, STAMINA_EXHAUSTED_SPEED_FACTOR, STAMINA_LOW_THRESHOLD } from '../constants'
 import type { Player, Vector } from '../types'
 
 /**
@@ -28,7 +28,9 @@ export function applySkating(player: Player, dt: number) {
   player.velocity.y *= PLAYER_FRICTION
 
   const speed = Math.hypot(player.velocity.x, player.velocity.y)
-  const maxSpeed = player.sprinting ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED
+  const stamina = player.stamina ?? 100
+  const staminaMod = stamina < STAMINA_LOW_THRESHOLD && player.role !== 'goalie' ? STAMINA_EXHAUSTED_SPEED_FACTOR : 1
+  const maxSpeed = (player.sprinting ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED) * staminaMod
   if (speed > maxSpeed) {
     player.velocity.x = (player.velocity.x / speed) * maxSpeed
     player.velocity.y = (player.velocity.y / speed) * maxSpeed
@@ -49,6 +51,32 @@ export function applySkating(player: Player, dt: number) {
 }
 
 /**
+ * Mueve los jugadores suspendidos (tarjeta azul) al banquillo y los devuelve
+ * a su posición home cuando termina la sanción.
+ */
+export function updateSuspendedPlayers(players: Player[], timeNow: number, dt: number) {
+  for (const player of players) {
+    if (!player.suspendedUntil) continue
+    if (timeNow >= player.suspendedUntil) {
+      player.suspendedUntil = 0
+      continue
+    }
+    // Mover al banquillo (fuera de la pista, a la altura central)
+    const benchX = GAME_WIDTH / 2
+    const benchY = player.team === 'blue' ? BENCH_Y_TOP : BENCH_Y_BOTTOM
+    const dx = benchX - player.pos.x
+    const dy = benchY - player.pos.y
+    const dist = Math.hypot(dx, dy)
+    if (dist > 2) {
+      const step = Math.min(dist, PLAYER_SPRINT_MAX_SPEED * dt)
+      player.pos.x += (dx / dist) * step
+      player.pos.y += (dy / dist) * step
+    }
+    player.velocity = { x: 0, y: 0 }
+  }
+}
+
+/**
  * Separa jugadores solapados para que la lectura visual y la colisión básica
  * no se degraden cuando varios convergen sobre la misma zona.
  */
@@ -57,6 +85,8 @@ export function resolvePlayerSpacing(players: Player[]) {
     for (let j = i + 1; j < players.length; j += 1) {
       const a = players[i]
       const b = players[j]
+      // Los jugadores en el banquillo no colisionan con los de la pista
+      if ((a.suspendedUntil && a.suspendedUntil > 0) || (b.suspendedUntil && b.suspendedUntil > 0)) continue
       const ar = a.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
       const br = b.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
       const dx = b.pos.x - a.pos.x
