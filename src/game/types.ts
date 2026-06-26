@@ -6,15 +6,27 @@ export type Role = 'goalie' | 'defender' | 'wing' | 'pivot'
 
 export type Vector = { x: number, y: number }
 
+export type Ball = {
+  x: number           // coordenada X mundo — usada por física
+  y: number           // coordenada Y mundo — usada por física
+  visual: Phaser.GameObjects.Image  // posicionado en worldToScreen(x, y) cada frame
+}
+
 export type Player = {
   id: string
   team: TeamColor
   side: TeamSide
   role: Role
+  container: Phaser.GameObjects.Container
   body: Phaser.GameObjects.Image
+  head: Phaser.GameObjects.Image
+  leftArm: Phaser.GameObjects.Image
+  rightArm: Phaser.GameObjects.Image
+  leftSkate: Phaser.GameObjects.Image
+  rightSkate: Phaser.GameObjects.Image
   shadow: Phaser.GameObjects.Ellipse
   selectionRing: Phaser.GameObjects.Arc
-  stick: Phaser.GameObjects.Rectangle
+  stick: Phaser.GameObjects.Image
   label: Phaser.GameObjects.Text
   pos: Vector
   velocity: Vector
@@ -30,6 +42,8 @@ export type Player = {
   ballProtectionUntil?: number
   staminaBar?: Phaser.GameObjects.Rectangle | null
   stickSwingUntil?: number
+  /** Angulo del stick en coordenadas mundo; el render puede usar otro por perspectiva. */
+  stickWorldAngle?: number
   /** Timestamp hasta el que el jugador está expulsado (tarjeta azul). 0 o ausente = activo. */
   suspendedUntil?: number
 }

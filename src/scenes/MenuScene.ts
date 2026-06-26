@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import { GAME_WIDTH, GAME_HEIGHT } from '../game/constants'
+import { createProceduralPuppetTextures } from '../game/render/createProceduralPuppetTextures'
 
 type MenuData = { blueScore?: number; redScore?: number; blueFouls?: number; redFouls?: number }
 
@@ -9,29 +10,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   preload() {
-    // Cargamos el PNG sin frames; procesamos el alpha en create() antes de usarlo
-    if (!this.textures.exists('players_raw')) {
-      this.load.image('players_raw', 'assets/players.png')
-    }
-    if (!this.textures.exists('goalie-blue-raw')) {
-      this.load.image('goalie-blue-raw', 'assets/goalie-blue.png')
-    }
-    if (!this.textures.exists('goalie-red-raw')) {
-      this.load.image('goalie-red-raw', 'assets/goalie-red.png')
-    }
   }
 
   create(data: MenuData = {}) {
-    // Registrar texturas con alpha procesado solo la primera vez
-    if (!this.textures.exists('players')) {
-      this.processPlayersSprite()
-    }
-    if (!this.textures.exists('goalie-blue')) {
-      this.processAlphaImage('goalie-blue-raw', 'goalie-blue')
-    }
-    if (!this.textures.exists('goalie-red')) {
-      this.processAlphaImage('goalie-red-raw', 'goalie-red')
-    }
+    createProceduralPuppetTextures(this)
     this.cameras.main.setBackgroundColor('#08111b')
 
     const cx = GAME_WIDTH / 2
@@ -175,66 +157,6 @@ export class MenuScene extends Phaser.Scene {
         puck.setPosition(px, py)
       },
     })
-  }
-
-  /**
-   * Elimina el fondo blanco del sprite sheet por threshold per-pixel.
-   * Pixels con minChannel > THRESHOLD y saturación baja → transparentes.
-   */
-  private processPlayersSprite() {
-    const src = this.textures.get('players_raw').getSourceImage() as HTMLImageElement
-    const sw = src.naturalWidth || (src as any).width || 1254
-    const sh = src.naturalHeight || (src as any).height || 1254
-    const fw = sw >> 1, fh = sh >> 1
-
-    const canvasTex = this.textures.createCanvas('players', sw, sh)!
-    const ctx = canvasTex.context as CanvasRenderingContext2D
-    ctx.drawImage(src as CanvasImageSource, 0, 0)
-
-    const imgData = ctx.getImageData(0, 0, sw, sh)
-    const d = imgData.data
-    const n = d.length
-
-    for (let i = 0; i < n; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2]
-      const minCh = r < g ? (r < b ? r : b) : (g < b ? g : b)
-      const maxCh = r > g ? (r > b ? r : b) : (g > b ? g : b)
-      // minCh > 160: blanco puro y grises claros de antialiasing
-      // maxCh - minCh < 40: poco colorido (fondo, no ilustración)
-      if (minCh > 128 && maxCh - minCh < 40) {
-        d[i + 3] = 0
-      }
-    }
-
-    ctx.putImageData(imgData, 0, 0)
-    canvasTex.add(0, 0, 0, 0, fw, fh)
-    canvasTex.add(1, 0, fw, 0, fw, fh)
-    canvasTex.add(2, 0, 0, fh, fw, fh)
-    canvasTex.add(3, 0, fw, fh, fw, fh)
-    canvasTex.refresh()
-  }
-
-  /** Mismo threshold de alpha que processPlayersSprite, para imágenes individuales (sin grid de frames). */
-  private processAlphaImage(rawKey: string, outKey: string) {
-    const src = this.textures.get(rawKey).getSourceImage() as HTMLImageElement
-    const sw = src.naturalWidth || (src as any).width
-    const sh = src.naturalHeight || (src as any).height
-
-    const canvasTex = this.textures.createCanvas(outKey, sw, sh)!
-    const ctx = canvasTex.context as CanvasRenderingContext2D
-    ctx.drawImage(src as CanvasImageSource, 0, 0)
-
-    const imgData = ctx.getImageData(0, 0, sw, sh)
-    const d = imgData.data
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2]
-      const minCh = r < g ? (r < b ? r : b) : (g < b ? g : b)
-      const maxCh = r > g ? (r > b ? r : b) : (g > b ? g : b)
-      if (minCh > 128 && maxCh - minCh < 40) d[i + 3] = 0
-    }
-
-    ctx.putImageData(imgData, 0, 0)
-    canvasTex.refresh()
   }
 
   private setupInput() {

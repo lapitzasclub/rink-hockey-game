@@ -2,7 +2,7 @@ import * as Phaser from 'phaser'
 import { PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND } from '../constants'
 import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
-import type { Player } from '../types'
+import type { Ball, Player } from '../types'
 
 export function updateControlledPlayerMotion(options: {
   players: Player[]
@@ -59,7 +59,7 @@ function lenientCanSprint(player: Player) {
 export function updateTeamAIPlayers(options: {
   players: Player[]
   controlledPlayerIndex: number
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballCarrierId: string | null
   dt: number
   timeNow: number

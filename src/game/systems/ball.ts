@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
-import type { BullyCandidate, Player, TeamColor, Vector } from '../types'
+import type { Ball, BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -10,7 +10,7 @@ import { findPlayerById, getControllablePlayers } from './playerHelpers'
  * Si existe portador, el balón queda anclado delante del jugador. Si no,
  * avanza con inercia, rebote en bandas y apertura del área de portería.
  */
-export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, ballCarrierId: string | null, players: Player[], dt: number) {
+export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrierId: string | null, players: Player[], dt: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
 
   if (carrier) {
@@ -178,7 +178,7 @@ export function updateBallPosition(ball: Phaser.GameObjects.Arc, ballVelocity: V
  * También actualiza el índice del jugador controlado cuando la posesión azul
  * cambia a otro compañero de campo.
  */
-export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[], now: number) {
+export function tryClaimBall(ball: Ball, player: Player, ballCarrierId: string | null, ballVelocity: Vector, controlledPlayerIndex: number, players: Player[], now: number) {
   if (ballCarrierId) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   if ((player.possessionCooldownUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   if ((player.ignoreBallUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
@@ -221,7 +221,7 @@ export function tryClaimBall(ball: Phaser.GameObjects.Arc, player: Player, ballC
  * Atrae ligeramente una bola libre hacia un jugador cercano para que la captura
  * se sienta menos torpe y menos dependiente de rebotes diminutos.
  */
-export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, player: Player) {
+export function magnetBallTowardsPlayer(ball: Ball, ballVelocity: Vector, player: Player) {
   const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
   if (speed > BALL_MAGNET_MAX_SPEED) return ballVelocity
 
@@ -239,7 +239,7 @@ export function magnetBallTowardsPlayer(ball: Phaser.GameObjects.Arc, ballVeloci
 }
 
 /** Libera la bola desde el portador en una dirección y potencia concretas. */
-export function releaseBall(ball: Phaser.GameObjects.Arc, players: Player[], ballCarrierId: string | null, direction: Vector, power: number, now: number, cooldownMs: number, releaseDistance = BALL_CONTROL_DISTANCE) {
+export function releaseBall(ball: Ball, players: Player[], ballCarrierId: string | null, direction: Vector, power: number, now: number, cooldownMs: number, releaseDistance = BALL_CONTROL_DISTANCE) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
   if (carrier) {
     ball.x = carrier.pos.x + direction.x * releaseDistance
@@ -381,7 +381,7 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
  * La parada no necesita posesión inmediata: puede convertirse en desvío o en
  * captura según velocidad y distancia.
  */
-export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector, players: Player[], now: number) {
+export function tryGoalieSave(ball: Ball, ballVelocity: Vector, players: Player[], now: number) {
   for (const player of players) {
     if (player.role !== 'goalie') continue
 
@@ -415,11 +415,11 @@ export function tryGoalieSave(ball: Phaser.GameObjects.Arc, ballVelocity: Vector
   return { saved: false, claimedBy: null, ballVelocity }
 }
 
-export function shouldCallBully(players: Player[], ball: Phaser.GameObjects.Arc, ballVelocity: Vector) {
+export function shouldCallBully(players: Player[], ball: Ball, ballVelocity: Vector) {
   return getBullyCandidate(players, ball, ballVelocity) !== null
 }
 
-export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Arc, ballVelocity: Vector): BullyCandidate | null {
+export function getBullyCandidate(players: Player[], ball: Ball, ballVelocity: Vector): BullyCandidate | null {
   const nearbyPlayers = players.filter((player) => {
     if (player.role === 'goalie') return false
     return Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y) < BULLY_CLUSTER_RADIUS
@@ -460,7 +460,7 @@ export function getBullyCandidate(players: Player[], ball: Phaser.GameObjects.Ar
  * activa cuando la bola cruza la línea mientras está en la boca de portería).
  */
 export function checkGoal(
-  ball: Phaser.GameObjects.Arc,
+  ball: Ball,
   ballVelocity: Vector,
   enteredFromFront: { left: boolean; right: boolean },
 ) {

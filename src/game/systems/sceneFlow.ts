@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import type { ActiveBully, ActiveFoulRestart, TeamColor, Player } from '../types'
+import type { ActiveBully, ActiveFoulRestart, Ball, TeamColor, Player } from '../types'
 import { getControlledPlayer, selectBestControlledPlayer } from './playerHelpers'
 import { updateVisuals } from './visuals'
 import { checkGoal } from './ball'
@@ -25,7 +25,7 @@ export function handleSpecialMatchStates(options: {
   activeFoulRestart: ActiveFoulRestart | null
   players: Player[]
   controlledPlayerIndex: number
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballCarrierId: string | null
   timeNow: number
   updateBullyState: () => void
@@ -54,14 +54,14 @@ export function maybeSwitchControlledPlayer(options: {
   players: Player[]
   controlledPlayerIndex: number
   ballCarrierId: string | null
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
 }) {
   if (!options.justDown) return options.controlledPlayerIndex
   return selectBestControlledPlayer(options.players, options.controlledPlayerIndex, options.ballCarrierId, options.ball.x, options.ball.y)
 }
 
 export function checkAndApplyGoal(options: {
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballVelocity: { x: number, y: number }
   ballCarrierId: string | null
   players: Player[]
@@ -74,7 +74,8 @@ export function checkAndApplyGoal(options: {
   const goal = checkGoal(options.ball, options.ballVelocity, options.enteredFromFront)
   if (!goal) return null
 
-  options.ball.setPosition(goal.holdX, goal.holdY)
+  options.ball.x = goal.holdX
+  options.ball.y = goal.holdY
   const next = {
     ballVelocity: { x: 0, y: 0 },
     ballCarrierId: null,

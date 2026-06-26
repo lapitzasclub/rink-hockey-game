@@ -23,7 +23,8 @@ import {
   getControlledPlayer,
 } from '../game/systems/playerHelpers'
 import { updateVisuals } from '../game/systems/visuals'
-import type { ActiveBully, ActiveFoulRestart, Player, TeamColor, Vector } from '../game/types'
+import type { ActiveBully, ActiveFoulRestart, Ball, Player, TeamColor, Vector } from '../game/types'
+import { worldToScreen } from '../game/render/viewTransform'
 import { createHud } from '../game/ui/createHud'
 import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
@@ -68,7 +69,7 @@ export class MatchScene extends Phaser.Scene {
   private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
   private prevTouchButtons = { pass: false, shoot: false, switch: false }
   private mobileJoystick: { destroy(): void } | null = null
-  private ball!: Phaser.GameObjects.Arc
+  private ball!: Ball
   private ballVelocity: Vector = { x: 0, y: 0 }
   private ballCarrierId: string | null = null
   private players: Player[] = []
@@ -194,7 +195,10 @@ export class MatchScene extends Phaser.Scene {
       resetKickoff: (team) => this.resetKickoff(team),
     })
 
-    if (this.restartAt > 0) return
+    if (this.restartAt > 0) {
+      this.syncBallVisual()  // mantener balón visible en red durante la celebración
+      return
+    }
 
     if (handleSpecialMatchStates({
       activeBully: this.activeBully,
@@ -245,6 +249,7 @@ export class MatchScene extends Phaser.Scene {
     this.handleRuleRestarts()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId, time)
     this.checkGoalState(time)
+    this.syncBallVisual()  // re-sincronizar si el gol recolocó el balón tras updateVisuals
     this.updateHud()
   }
 
@@ -686,6 +691,12 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** Sincroniza el visual del balón con su posición mundo → pantalla. */
+  private syncBallVisual() {
+    const s = worldToScreen(this.ball.x, this.ball.y)
+    this.ball.visual.setPosition(s.x, s.y)
+  }
+
   /** Dibuja un rastro punteado en la dirección de puntería del ejecutante. */
   private drawAimIndicator(taker: Player, sanction: string, timeNow: number) {
     this.aimIndicator.clear()
@@ -695,20 +706,14 @@ export class MatchScene extends Phaser.Scene {
 
     for (let d = 22; d <= maxDist; d += 15) {
       const t = d / maxDist
+      const sp = worldToScreen(taker.pos.x + taker.facing.x * d, taker.pos.y + taker.facing.y * d)
       this.aimIndicator.fillStyle(color, pulse * (1 - t * 0.65))
-      this.aimIndicator.fillCircle(
-        taker.pos.x + taker.facing.x * d,
-        taker.pos.y + taker.facing.y * d,
-        Math.max(1.2, 3.5 * (1 - t * 0.4)),
-      )
+      this.aimIndicator.fillCircle(sp.x, sp.y, Math.max(1.2, 3.5 * (1 - t * 0.4)))
     }
     // Marcador en el extremo
+    const ep = worldToScreen(taker.pos.x + taker.facing.x * maxDist, taker.pos.y + taker.facing.y * maxDist)
     this.aimIndicator.lineStyle(1.5, color, pulse * 0.9)
-    this.aimIndicator.strokeCircle(
-      taker.pos.x + taker.facing.x * maxDist,
-      taker.pos.y + taker.facing.y * maxDist,
-      8,
-    )
+    this.aimIndicator.strokeCircle(ep.x, ep.y, 8)
   }
 
   private updateBullyState(time: number, dt: number) {

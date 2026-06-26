@@ -4,13 +4,13 @@ import { getFormation } from '../formation'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControlledPlayer } from './playerHelpers'
 import { updateVisuals } from './visuals'
-import type { ActiveBully, ActiveFoulRestart, Player, TeamColor, Vector } from '../types'
+import type { ActiveBully, ActiveFoulRestart, Ball, Player, TeamColor, Vector } from '../types'
 import { createRuleState, type RuleState } from './rules'
 
 export function resetKickoffState(options: {
   team: TeamColor
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   currentPeriod: number
   controlledPlayerIndex: number
   ballCarrierId: string | null
@@ -33,7 +33,8 @@ export function resetKickoffState(options: {
     player.goalieRecoverUntil = 0
   }
 
-  ball.setPosition(GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22), GAME_HEIGHT / 2)
+  ball.x = GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22)
+  ball.y = GAME_HEIGHT / 2
 
   return {
     ballCarrierId: null,
@@ -53,13 +54,15 @@ export function resetKickoffState(options: {
 export function applyGoalReset(options: {
   scorer: TeamColor
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
 }) {
   const { scorer, players, ball } = options
   if (scorer === 'blue') {
-    ball.setPosition(getGoalLineX('right') + GOAL_NET_HOLD_X, Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
+    ball.x = getGoalLineX('right') + GOAL_NET_HOLD_X
+    ball.y = Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54)
   } else {
-    ball.setPosition(getGoalLineX('left') - GOAL_NET_HOLD_X, Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54))
+    ball.x = getGoalLineX('left') - GOAL_NET_HOLD_X
+    ball.y = Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54)
   }
 
   const blue = getFormation('left')
@@ -77,7 +80,7 @@ export function applyGoalReset(options: {
 export function startFoulRestartState(options: {
   foul: NonNullable<RuleState['pendingFoul']>
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   timeNow: number
 }) {
   const { foul, players, ball, timeNow } = options
@@ -86,7 +89,8 @@ export function startFoulRestartState(options: {
   const restartX = isDirect ? (taker?.side === 'left' ? GAME_WIDTH - DIRECT_FREE_HIT_SPOT_OFFSET : DIRECT_FREE_HIT_SPOT_OFFSET) : foul.restartX
   const restartY = isDirect ? GAME_HEIGHT / 2 : foul.restartY
 
-  ball.setPosition(restartX, restartY)
+  ball.x = restartX
+  ball.y = restartY
 
   // Parar a todos; posiciones las ajusta updateFoulRestartState con lerp (sin snap)
   for (const player of players) {
@@ -113,11 +117,12 @@ export function startBullyState(options: {
   bluePlayerId: string
   redPlayerId: string
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   timeNow: number
 }) {
   const { x, y, bluePlayerId, redPlayerId, players, ball, timeNow } = options
-  ball.setPosition(x, y)
+  ball.x = x
+  ball.y = y
 
   for (const player of players) {
     player.velocity = { x: 0, y: 0 }
@@ -163,7 +168,7 @@ export function updateFoulRestartState(options: {
   dt: number
   activeFoulRestart: ActiveFoulRestart | null
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   controlledPlayerIndex: number
   centerText: Phaser.GameObjects.Text
   passJustDown: boolean
@@ -224,7 +229,8 @@ export function updateFoulRestartState(options: {
     }
   }
 
-  ball.setPosition(foul.x, foul.y)
+  ball.x = foul.x
+  ball.y = foul.y
   if (time < foul.readyAt) return { controlledPlayerIndex, taker, shouldPass: false, shouldShot: false, release: false, autoFacing: null as Vector | null }
 
   // El indicador de puntería es suficiente; ocultar el letrero durante la acción
@@ -277,7 +283,7 @@ export function updateBullyState(options: {
   dt: number
   activeBully: ActiveBully | null
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   centerText: Phaser.GameObjects.Text
 }) {
   const { time, dt, activeBully: bully, players, ball, centerText } = options
@@ -296,7 +302,8 @@ export function updateBullyState(options: {
     red.facing = { x: -1, y: 0 }
   }
 
-  ball.setPosition(bully.x, bully.y)
+  ball.x = bully.x
+  ball.y = bully.y
   if (time >= bully.releaseAt) {
     centerText.setVisible(false)
     return true
@@ -308,6 +315,6 @@ export function updateBullyState(options: {
   return false
 }
 
-export function refreshKickoffVisuals(scenePlayers: Player[], controlledPlayerIndex: number, ball: Phaser.GameObjects.Arc, ballCarrierId: string | null, timeNow: number) {
+export function refreshKickoffVisuals(scenePlayers: Player[], controlledPlayerIndex: number, ball: Ball, ballCarrierId: string | null, timeNow: number) {
   updateVisuals(scenePlayers, getControlledPlayer(scenePlayers, controlledPlayerIndex), ball, ballCarrierId, timeNow)
 }

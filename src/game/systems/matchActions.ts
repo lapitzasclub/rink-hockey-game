@@ -46,10 +46,10 @@ import { clearGoalieCatch, getAimingDirection, markGoalieCaughtBall } from './ai
 import { findPlayerById } from './playerHelpers'
 import { getStickTip } from './visuals'
 import { registerBully, registerStealFoul, type RuleState } from './rules'
-import type { Player, Vector } from '../types'
+import type { Ball, Player, Vector } from '../types'
 
 export function handleGoalieSaveAction(options: {
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballVelocity: Vector
   players: Player[]
   ballCarrierId: string | null
@@ -77,7 +77,7 @@ export function handleGoalieSaveAction(options: {
 
 export function handleBallControlAction(options: {
   time: number
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballVelocity: Vector
   ballCarrierId: string | null
   players: Player[]
@@ -177,7 +177,7 @@ export function handleLooseBallContactsAction(options: {
   timeNow: number
   ballIgnoreContactsUntil: number
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballVelocity: Vector
   lastTouch: Player['team']
 }) {
@@ -210,7 +210,7 @@ export function handleLooseBallContactsAction(options: {
 
 export function tryPassAction(options: {
   player: Player
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   players: Player[]
   ballCarrierId: string | null
   timeNow: number
@@ -224,10 +224,8 @@ export function tryPassAction(options: {
     const target = getGoalieDistributionTarget(options.players, options.player)
     if (target) {
       const lead = 28
-      options.ball.setPosition(
-        options.player.pos.x + direction.x * GOALIE_RELEASE_DISTANCE + (target.pos.x - options.player.pos.x) * 0.18 + direction.x * lead,
-        options.player.pos.y + direction.y * GOALIE_RELEASE_DISTANCE + (target.pos.y - options.player.pos.y) * 0.18 + direction.y * lead,
-      )
+      options.ball.x = options.player.pos.x + direction.x * GOALIE_RELEASE_DISTANCE + (target.pos.x - options.player.pos.x) * 0.18 + direction.x * lead
+      options.ball.y = options.player.pos.y + direction.y * GOALIE_RELEASE_DISTANCE + (target.pos.y - options.player.pos.y) * 0.18 + direction.y * lead
     }
   }
 
@@ -250,7 +248,7 @@ export function tryPassAction(options: {
 
 export function tryShotAction(options: {
   player: Player
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   players: Player[]
   ballCarrierId: string | null
   timeNow: number
@@ -269,7 +267,7 @@ export function tryShotAction(options: {
 export function tryManualStealAction(options: {
   player: Player
   players: Player[]
-  ball: Phaser.GameObjects.Arc
+  ball: Ball
   ballCarrierId: string | null
   timeNow: number
   ruleState: RuleState

@@ -35,6 +35,8 @@ src/
       createPlayer.ts
     render/
       drawRink.ts            Pista, porterías y marcas (todo por código, sin assets)
+      viewTransform.ts       Transform mundo→pantalla para perspectiva 3/4
+      createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
     systems/
       ai.ts                  IA de portero y jugadores de campo
       ball.ts                Física y posición de la pelota
@@ -52,6 +54,17 @@ src/
       matchHud.ts
     input/
       mobileJoystick.ts      nipplejs + botones táctiles (A/B/S)
+tools/
+  generate-comfy-asset.ps1   Helper para generar borradores 2D con ComfyUI local
+.openclaw/
+  skills/
+    comfyui-asset-generation/SKILL.md
+public/
+  assets/
+    players.png              Sprites ilustrados de jugadores y bola
+    goalie-blue.png          Sprite ilustrado del portero azul
+    goalie-red.png           Sprite ilustrado del portero rojo
+    generated/               Borradores IA; revisar antes de integrar
 ```
 
 `MatchScene.ts` actúa como orquestador puro. La lógica detallada vive en `systems/`. Las constantes de gameplay van siempre en `constants.ts`, no inline.
@@ -125,13 +138,15 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Libre indirecto auténtico (solo pase válido para el saque)
 - Zona de protección del portero con falta automática + tarjeta azul
 - Sprites ilustrados para jugadores y porteros, hielo texturizado
+- Render 3/4 por transform de mundo a pantalla (`viewTransform.ts`)
+- Jugadores, porteros, sticks y pelota con puppet procedural por piezas tintables
 - Menú inicial, panel de ajustes, audio procedural, animación de stick
+- Animación de patinaje procedural v3: fase acumulada, contrafase 180°, zancada por dirección, `sideFactor`, texturas de espalda, sprint
 
 ### Pendiente
 
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
 - [ ] Separar sistema de reglas en módulo propio (`systems/rules.ts` puede crecer)
-- [ ] Animación de patinaje
 - [ ] UI definitiva, sprites finales
 
 ### Backlog
@@ -143,19 +158,142 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 
 ## Assets
 
-Todo renderizado por código, sin archivos de imagen o audio externos.
+El juego empezó renderizado por código, pero ya admite assets visuales en `public/assets/`. Los borradores IA se generan en `public/assets/generated/` y solo deben convertirse en assets definitivos tras revisión visual.
 
 | Asset | Estado |
 |---|---|
-| Jugadores (shapes por equipo + stick) | Implementado |
-| Bola | Implementada |
+| Jugadores y porteros | Puppet procedural por piezas: cuerpo, casco, brazos, patines y stick |
+| Bola | Textura procedural `puck-pixel` |
 | Pista y porterías | Implementadas en `drawRink.ts` |
 | HUD | Implementado |
-| Sprites ilustrados definitivos | Pendiente |
-| Audio (golpeo, gol, silbato, ambiente) | Pendiente |
-| Animación de patinaje | Pendiente |
+| Sprites ilustrados antiguos | Conservados en `public/assets/`, no usados por el puppet actual |
+| Audio (golpeo, gol, silbato, ambiente) | Implementado de forma procedural |
+| Animación de patinaje | V2 procedural: deslizamiento de patines, cadencia acelerada en sprint, lean y escala por profundidad |
+
+### Generación IA local
+
+- Runtime: ComfyUI portable NVIDIA en `D:\AI\ComfyUI`.
+- API local: `http://127.0.0.1:8188`.
+- Arranque: `powershell -NoProfile -ExecutionPolicy Bypass -File D:\AI\ComfyUI\launch-openclaw-detached.ps1`.
+- Parada: `powershell -NoProfile -ExecutionPolicy Bypass -File D:\AI\ComfyUI\stop-openclaw.ps1`.
+- Token Hugging Face local: `D:\AI\huggingface_token.txt`. Los scripts de arranque lo cargan como `HF_TOKEN` / `HUGGING_FACE_HUB_TOKEN`; no imprimirlo ni copiarlo al repo.
+- Modelos disponibles:
+  - `sd_xl_base_1.0.safetensors` — checkpoint principal para assets.
+  - `pixel-art-xl.safetensors` — LoRA principal para sprites 2D/pixel art.
+  - `spritesheet.safetensors` — LoRA auxiliar para borradores de hojas de animación.
+  - `v1-5-pruned-emaonly-fp16.safetensors` — legacy/smoke tests; no usar para jugadores/porteros finales.
+- Helper del proyecto: `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\generate-comfy-asset.ps1 -Profile pixel-sprite -Prompt "<prompt>" -Prefix "<nombre>" -BatchSize 4`.
+- Skill local: `.openclaw/skills/comfyui-asset-generation/SKILL.md`.
+- Perfiles del helper:
+  - `pixel-sprite`: SDXL + `pixel-art-xl`; usar por defecto para personajes, porteros, pelota, iconos y props.
+  - `spritesheet`: SDXL + `pixel-art-xl` + `spritesheet`; usar solo para explorar animaciones, siempre revisando antes.
+  - `legacy-sd15`: ruta antigua de SD 1.5; no usar para assets finales de personajes.
+- Para personajes, usar `roller hockey skater` en prompts y evitar `rink hockey skater`; `rink` tiende a generar pista/vallas/fondo en vez de un sprite aislado.
+- No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-06-26 (sesión 20) — animación de patinaje completa, texturas de espalda y 0.3.0
+
+**Mejoras de animación en `visuals.ts`** (iteración continuada durante la sesión):
+
+- **Fase acumulada por frame** (`'sp'`, `'pt'` en container data): el `skatePhase` ya no depende de `timeNow * cycleSpeed`; solo avanza `frameDt / cycleMs * cycleSpeed` por frame. Esto elimina el salto de fase al cambiar velocidad (`Δphase = T1*(v2-v1)/ms` crecía enorme cuando T1 era grande), que se manifestaba como "convulsión" cada vez que se pulsaba una tecla de movimiento.
+- **Contrafase 180° real**: `lSin = -rSin`. El patín izquierdo es exactamente el opuesto al derecho en todo el ciclo.
+- **Zancada alineada a la dirección**: se calcula el vector de facing normalizado en espacio contenedor (con compresión `VIEW_Y_SCALE` en Y) y su perpendicular. La separación de patines sigue el eje perpendicular a la dirección de movimiento, no siempre horizontal.
+- **`sideFactor` blend**: cuando el jugador va de lado (`sideFactor → 1`), el spread se interpola de perpendicular a +Y puro, evitando que un patín quede por encima del cuerpo y oculto por z-order.
+- **Sprint**: `cycleMs` 130 → 52 ms, amplitud extra de stride y spread via `sprintBoost`. A mayor velocidad, patines más separados y ciclo más rápido.
+- **`animBlend`** suaviza la amplitud con lerp 0.1/frame; el jugador no arranca a máxima amplitud instantáneamente.
+
+**Texturas de espalda en `createProceduralPuppetTextures.ts`**:
+- Añadidos `paintFieldBodyBack`, `paintGoalieBodyBack`, `paintFieldHeadBack`, `paintGoalieHeadBack`.
+- Mismo sistema de paleta `OUTLINE/WHITE/SHADE/MID`; sin jaula ni peto frontal — collar trasero, dorsal, domo de casco.
+- `visuals.ts` cambia textura en runtime (`setTexture`) cuando `forwardY < -0.35` (jugador alejándose de cámara).
+
+**Pendiente de roadmap actualizado**:
+- Animación de patinaje procedural v3: COMPLETADA → movida a completado.
+
+**Validación**: `npm run build` pasa.
+
+### 2026-06-23 (sesión 19) — patinaje procedural y profundidad por dirección
+
+**Problema**: la animación del puppet se leía más como caminar que como patinar; el sprint no aceleraba visualmente y las proporciones no ayudaban a sugerir profundidad.
+
+**Cambio visual**:
+- `visuals.ts` liga el ciclo de animación a la velocidad real y a `player.sprinting`.
+- Se reduce casi a cero el bob vertical y se reemplaza por deslizamiento lateral/diagonal de patines.
+- El sprint aumenta cadencia, separación de patines, lean corporal y alargamiento de la sombra.
+- Las piezas del puppet cambian escala/posición según dirección: hacia cámara se ven algo más anchas/altas; alejándose se comprimen; en lateral se estrechan.
+
+**Validación**: `npm run build` pasa.
+
+### 2026-06-23 (sesión 18) — corrección de lectura 3/4 del puppet
+
+**Problema**: la primera versión procedural por piezas seguía pareciendo full top-down. Aunque las piezas estaban separadas, el container completo rotaba en 360º y el torso/casco se leían como una ficha sobre la pista.
+
+**Cambio visual**:
+- `createProceduralPuppetTextures.ts` redibuja cuerpos y cascos con silueta vertical tipo sticker: torso frontal, peto/jersey visible, casco con máscara frontal y base de patines.
+- `createPlayer.ts` recoloca el puppet con root en el suelo: patines abajo, cuerpo encima y casco solapando el torso.
+- `visuals.ts` deja de rotar el container completo. El personaje funciona como billboard 3/4 con flip/offsets según dirección; el stick mantiene ángulo visual en pantalla y ángulo físico separado (`stickWorldAngle`) para contactos.
+
+**Validación**: `npm run build` pasa. El dev server sigue activo en `http://127.0.0.1:5180/`. No se añadieron dependencias nuevas para capturas automáticas.
+
+### 2026-06-23 (sesión 17) — puppet procedural por piezas
+
+**Decisión**: se abandona la integración de sprites completos generados por IA para jugadores/porteros. Los candidatos no eran coherentes entre equipos, mezclaban perspectivas laterales con pista 3/4 y rompían proporciones. Para mantener consistencia estilo SMOL, el personaje se construye por partes tintables compartidas.
+
+**Limpieza**: retirados `public/assets/skaters-arcade.png`, `public/assets/goalies-arcade.png` y los PNG generados de `public/assets/generated/`. Se conservan los assets antiguos (`players.png`, `goalie-blue.png`, `goalie-red.png`) como histórico/fallback no activo.
+
+**Runtime nuevo**:
+- `src/game/render/createProceduralPuppetTextures.ts` genera texturas para cuerpo, casco, brazos, patines, stick y pelota.
+- `createPlayer.ts` monta cada jugador como `Container` con piezas independientes.
+- `visuals.ts` anima patines, brazos, bob corporal y stick en espacio local del container.
+- `createBall.ts` usa textura `puck-pixel` y mantiene coordenadas de física separadas del visual.
+
+**Validación**: `npm run build` pasa. Edge headless/CDP se quedó colgado al intentar sacar captura automática; se limpiaron los procesos temporales de Edge.
+
+### 2026-06-23 (sesión 16) — sprites arcade 3/4 animados (rechazado)
+
+**Dirección visual**: se adopta una cámara `three-quarter top-down arcade sports` para personajes. Es menos ortográfica que el top-down puro, pero mejora presencia y lectura arcade sin tocar radios de colisión.
+
+**Assets generados e integrados inicialmente, luego retirados**:
+- `public/assets/skaters-arcade.png`: spritesheet 2048×256, frames 0-3 azul y 4-7 rojo.
+- `public/assets/goalies-arcade.png`: spritesheet 2048×256, frames 0-3 azul y 4-7 rojo.
+
+**Selección visual**: los sprites fuente salieron de ComfyUI SDXL + `pixel-art-xl.safetensors`. Candidatos revisados en `public/assets/generated/candidate-contact-sheet.png` y `candidate-extra-contact-sheet.png`. Seleccionados: `candidate-player-blue-standing_00001_`, `candidate-player-red_00002_`, `candidate-goalie-blue_00003_`, `candidate-goalie-red-compact_00001_`.
+
+**Runtime histórico**: `Player.body` pasó temporalmente a `Phaser.GameObjects.Sprite`; `MenuScene` cargaba `skaters-arcade` y `goalies-arcade`; `createPlayer.ts` elegía textura según rol y frame base por equipo; `visuals.ts` animaba frames por velocidad. Este enfoque fue reemplazado por puppet procedural en la sesión 17.
+
+**Motivo de rechazo**: incoherencia entre equipos, perspectiva demasiado lateral y mala integración con la pista 3/4.
+
+### 2026-06-23 (sesión 15) — actualización del pipeline ComfyUI para sprites utilizables
+
+**Problema detectado**: el pipeline inicial usaba `v1-5-pruned-emaonly-fp16.safetensors`, demasiado genérico para generar jugadores/porteros top-down con calidad consistente. Ese modelo queda como legacy/smoke test, no como fuente de assets finales.
+
+**Modelos instalados en D:** descargados en `D:\AI\ComfyUI\ComfyUI\models\`: `sd_xl_base_1.0.safetensors` en `checkpoints`, `pixel-art-xl.safetensors` y `spritesheet.safetensors` en `loras`.
+
+**Helper actualizado** (`tools/generate-comfy-asset.ps1`): añade perfiles `pixel-sprite`, `spritesheet` y `legacy-sd15`; soporte de LoRA; `BatchSize`; prompts positivos enriquecidos por perfil; negativos explícitos contra escena/pista/vallas para personajes; resultado JSON con perfil, checkpoint, LoRAs, prompt final y lista de imágenes copiadas.
+
+**Validación smoke**: `pixel-sprite` generó `public/assets/generated/smoke-player-blue-single_00001_.png`, un sprite aislado razonable como borrador de personaje, aunque no top-down puro. `spritesheet` generó `smoke-player-blue-sheet-sdxl_00001_.png`, técnicamente correcto como ejecución del workflow pero no válido todavía como hoja de 4 frames; requerirá más tuning, imagen de referencia o ControlNet antes de integrarse.
+
+**Regla nueva**: generar tandas de candidatos y revisar visualmente antes de tocar runtime. Ningún asset de personaje se integra solo porque ComfyUI haya generado un PNG.
+
+### 2026-06-23 (sesión 14) — intento de spritesheets rechazado
+
+**Resultado**: se intentó sustituir los sprites ilustrados actuales por spritesheets animados procedurales (`skaters-anim.png`, `goalies-anim.png`), pero la revisión visual mostró una calidad artística claramente inferior. Los PNG fueron retirados del proyecto y el juego vuelve a usar `players.png`, `goalie-blue.png` y `goalie-red.png`.
+
+**Estado técnico**: se deshizo la integración runtime de los spritesheets. `Player.body` vuelve a ser `Phaser.GameObjects.Image`; `MenuScene.ts` vuelve a cargar/procesar los PNG ilustrados existentes; `visuals.ts` conserva rotación, lean lateral, sombra, stick, selección y stamina sin cambio de frames.
+
+**Lección**: ningún asset generado, procedural o IA, debe pasar a asset final sin revisión visual en el juego. Para el siguiente intento de animación, generar primero borradores en `public/assets/generated/`, revisar el PNG aislado y una captura in-game antes de tocar `createPlayer.ts` o `visuals.ts`.
+
+### 2026-06-23 (sesión 13) — ComfyUI local para assets 2D
+
+**ComfyUI portable en D:** instalado en `D:\AI\ComfyUI` desde la release oficial Windows portable NVIDIA (`v0.25.1`). Se configuró para escuchar solo en `127.0.0.1:8188`, con salida en `D:\AI\ComfyUI\output\`, cachés en `D:\AI\ComfyUI\.cache\` y temporales en `D:\AI\ComfyUI\tmp\`. Modelo base descargado: `v1-5-pruned-emaonly-fp16.safetensors`.
+
+**Scripts de operación** (`D:\AI\ComfyUI`): `launch-openclaw-detached.ps1` arranca ComfyUI en segundo plano con logs locales; `start-openclaw.ps1` mantiene sesión adjunta; `stop-openclaw.ps1` detiene el proceso asociado al portable. `OPENCLAW-README.md` documenta rutas y desinstalación limpia borrando `D:\AI\ComfyUI` y opcionalmente `D:\AI\downloads\ComfyUI_windows_portable_nvidia_v0.25.1.7z`.
+
+**Helper de assets** (`tools/generate-comfy-asset.ps1`): envía un workflow SD 1.5 mínimo a ComfyUI, arranca el servidor si no responde, espera el historial del prompt, deja el PNG crudo en `D:\AI\ComfyUI\output\rink_hockey_game\` y copia una versión no destructiva a `public/assets/generated/`.
+
+**Skill local** (`.openclaw/skills/comfyui-asset-generation/SKILL.md`): recoge prompts recomendados, rutas, naming, límites de revisión y ejemplos para jugadores, porteros y pelota. Prueba validada con `ball-orange-test_00001_.png`.
 
 ### 2026-06-22 (sesión 12) — refactoring 0.2.0
 
