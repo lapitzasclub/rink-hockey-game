@@ -4,12 +4,17 @@ import { getRoleName } from '../utils'
 import type { Player } from '../types'
 import type { RuleState } from '../systems/rules'
 
+/** Formatea segundos totales como M:SS (ej. 90 → "1:30"). */
 function formatClock(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+/**
+ * Refresca el HUD superior (marcador, tiempo, faltas) y el subtexto del jugador
+ * controlado (rol, stamina, sprint, suspensiones activas).
+ */
 export function updateMatchHud(options: {
   hudText: Phaser.GameObjects.Text
   subHudText: Phaser.GameObjects.Text

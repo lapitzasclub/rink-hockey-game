@@ -1,6 +1,10 @@
 import { GOAL_LINE_OFFSET, RINK } from './constants'
 import type { Player, TeamSide, Vector } from './types'
 
+/**
+ * Normaliza un vector (x, y). Si la magnitud es prácticamente cero devuelve
+ * el fallback, evitando división por cero en estados de reposo o de inicio.
+ */
 export function normalizedVector(x: number, y: number, fallback: Vector): Vector {
   const length = Math.hypot(x, y)
   if (length < 0.001) return fallback
@@ -28,5 +32,8 @@ const ROLE_NAME: Record<Player['role'], string> = {
   pivot: 'pivote',
 }
 
+/** Abreviatura de tres letras del rol, para etiquetas en pista. */
 export function getRoleShort(role: Player['role']) { return ROLE_SHORT[role] }
+
+/** Nombre completo del rol en español, para el HUD del jugador controlado. */
 export function getRoleName(role: Player['role']) { return ROLE_NAME[role] }

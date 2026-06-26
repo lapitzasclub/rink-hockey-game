@@ -5,6 +5,11 @@ import { updateVisuals } from './visuals'
 import { checkGoal } from './ball'
 import { applyGoalReset } from './matchFlow'
 
+/**
+ * Espera el retardo de celebración de gol y lanza el kickoff cuando expira.
+ *
+ * Devuelve 0 si el reinicio ya se ejecutó, o el mismo restartAt si aún no.
+ */
 export function handlePendingRestart(options: {
   time: number
   restartAt: number
@@ -20,6 +25,12 @@ export function handlePendingRestart(options: {
   return options.restartAt
 }
 
+/**
+ * Cortocircuita el tick normal del partido durante bully o falta.
+ *
+ * Actualiza el modo especial activo, refresca visuales y HUD, y devuelve true
+ * para que la escena omita el resto de la lógica del frame.
+ */
 export function handleSpecialMatchStates(options: {
   activeBully: ActiveBully | null
   activeFoulRestart: ActiveFoulRestart | null
@@ -49,6 +60,12 @@ export function handleSpecialMatchStates(options: {
   return false
 }
 
+/**
+ * Transfiere el control al mejor candidato azul cuando el jugador pulsa switch.
+ *
+ * Si el equipo azul tiene la bola, se cambia al portador. Si no, al más cercano
+ * a la bola. No hace nada si justDown es false.
+ */
 export function maybeSwitchControlledPlayer(options: {
   justDown: boolean
   players: Player[]
@@ -60,6 +77,12 @@ export function maybeSwitchControlledPlayer(options: {
   return selectBestControlledPlayer(options.players, options.controlledPlayerIndex, options.ballCarrierId, options.ball.x, options.ball.y)
 }
 
+/**
+ * Valida si la bola cruzó la portería por el frente, actualiza el marcador,
+ * congela la bola en la red y devuelve el estado para la celebración.
+ *
+ * Devuelve null si no se ha marcado ningún gol este frame.
+ */
 export function checkAndApplyGoal(options: {
   ball: Ball
   ballVelocity: { x: number, y: number }

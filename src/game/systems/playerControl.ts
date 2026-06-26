@@ -4,6 +4,12 @@ import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
 import type { Ball, Player } from '../types'
 
+/**
+ * Lee el input del jugador humano (teclado o joystick táctil), actualiza el
+ * sprint y la stamina, aplica aceleración y delega el movimiento a applySkating.
+ *
+ * @returns El jugador controlado después de aplicar el movimiento.
+ */
 export function updateControlledPlayerMotion(options: {
   players: Player[]
   controlledPlayerIndex: number
@@ -52,10 +58,17 @@ export function updateControlledPlayerMotion(options: {
   return player
 }
 
+/** Permite sprint mientras la stamina supere el umbral bajo, sin cortar en seco al agotarla. */
 function lenientCanSprint(player: Player) {
   return (player.stamina ?? STAMINA_MAX) > STAMINA_LOW_THRESHOLD
 }
 
+/**
+ * Actualiza IA y movimiento de todos los jugadores no controlados por el humano.
+ *
+ * Los jugadores suspendidos solo recuperan stamina; su movimiento lo gestiona
+ * updateSuspendedPlayers en movement.ts.
+ */
 export function updateTeamAIPlayers(options: {
   players: Player[]
   controlledPlayerIndex: number

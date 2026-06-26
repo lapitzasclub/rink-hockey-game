@@ -30,11 +30,7 @@ import {
   STUCK_BALL_TIMEOUT_MS,
 } from '../constants'
 import {
-  getAssistedPassDirection,
-  getAssistedShotDirection,
   getBullyCandidate,
-  getGoalieDistributionDirection,
-  getGoalieDistributionTarget,
   kickBall,
   magnetBallTowardsPlayer,
   releaseBall,
@@ -42,12 +38,25 @@ import {
   tryClaimBall,
   tryGoalieSave,
 } from './ball'
+import {
+  getAssistedPassDirection,
+  getAssistedShotDirection,
+  getGoalieDistributionDirection,
+  getGoalieDistributionTarget,
+} from './targeting'
 import { clearGoalieCatch, getAimingDirection, markGoalieCaughtBall } from './ai'
 import { findPlayerById } from './playerHelpers'
 import { getStickTip } from './visuals'
 import { registerBully, registerStealFoul, type RuleState } from './rules'
 import type { Ball, Player, Vector } from '../types'
 
+/**
+ * Delega al sistema de paradas del portero y aplica el estado resultante.
+ *
+ * Si la bola fue bloqueada devuelve velocidad y portador actualizados; si fue
+ * capturada también marca al portero para forzar distribución posterior.
+ * Devuelve null si no hay portada que procesar.
+ */
 export function handleGoalieSaveAction(options: {
   ball: Ball
   ballVelocity: Vector
@@ -75,6 +84,14 @@ export function handleGoalieSaveAction(options: {
   }
 }
 
+/**
+ * Gestiona la posesión de la bola en cada frame.
+ *
+ * Si hay portador, detecta si lleva demasiado tiempo atascado con rivales cerca
+ * y fuerza un bully. Si no hay portador, intenta que el jugador más cercano
+ * reclame la bola; si nadie puede, evalúa si procede convocar un bully por
+ * disputa prolongada.
+ */
 export function handleBallControlAction(options: {
   time: number
   ball: Ball
@@ -172,6 +189,11 @@ export function handleBallControlAction(options: {
   return state
 }
 
+/**
+ * Aplica micro-empujes al balón suelto cuando el cuerpo o el stick de un
+ * jugador lo roza. Ignora la interacción si la bola acaba de ser liberada
+ * (ballIgnoreContactsUntil activo) o si ya tiene portador.
+ */
 export function handleLooseBallContactsAction(options: {
   ballCarrierId: string | null
   timeNow: number
@@ -208,6 +230,12 @@ export function handleLooseBallContactsAction(options: {
   return { ballVelocity: nextVelocity, lastTouch: nextLastTouch }
 }
 
+/**
+ * Ejecuta el pase desde el portador hacia el mejor receptor disponible.
+ *
+ * El portero usa su propia lógica de dirección y potencia. Los jugadores de
+ * campo usan la dirección asistida. Devuelve null si el jugador no tiene la bola.
+ */
 export function tryPassAction(options: {
   player: Player
   ball: Ball
@@ -246,6 +274,10 @@ export function tryPassAction(options: {
   return next
 }
 
+/**
+ * Ejecuta el tiro con asistencia automática de dirección hacia la portería
+ * rival. Devuelve null si el jugador no tiene la bola.
+ */
 export function tryShotAction(options: {
   player: Player
   ball: Ball
@@ -264,6 +296,13 @@ export function tryShotAction(options: {
   }
 }
 
+/**
+ * Intenta robar la bola al portador rival.
+ *
+ * Las probabilidades de éxito, bola suelta y falta se modulan por el ángulo
+ * de ataque (frontal / lateral / trasero), velocidades relativas y escudo del
+ * portador. Devuelve null si no se cumple ninguna condición de contacto.
+ */
 export function tryManualStealAction(options: {
   player: Player
   players: Player[]

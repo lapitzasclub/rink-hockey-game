@@ -3,9 +3,12 @@ import {
   AI_MARK_RADIUS,
   AI_OPEN_MATE_GAP,
   AI_SHOOT_DISTANCE,
+  AI_STEAL_ATTEMPT_CHANCE,
+  AI_STEAL_ENGAGE_FRONT_DOT,
   GAME_HEIGHT,
   GOALIE_DISTRIBUTION_DELAY_MS,
   GOALIE_SAVE_RADIUS,
+  MANUAL_STEAL_RANGE,
   PLAYER_SPRINT_ACCEL_MULTIPLIER,
   STAMINA_LOW_THRESHOLD,
 } from '../constants'
@@ -253,6 +256,10 @@ export function shouldAIShoot(player: Player): boolean {
   return dot > 0.28
 }
 
+/**
+ * Dirección de apuntería del jugador. Si facing es el vector cero (estado
+ * de inicio), usa el eje natural de su lado para evitar división por cero.
+ */
 export function getAimingDirection(player: Player) {
   return player.facing.x === 0 && player.facing.y === 0
     ? { x: player.side === 'left' ? 1 : -1, y: 0 }
@@ -292,10 +299,40 @@ export function shouldAIPassToOpenMate(player: Player, players: Player[]): boole
   return false
 }
 
+/**
+ * Determina si un jugador IA debe intentar un robo este frame.
+ *
+ * Modula la probabilidad de intento según si el defensor persigue desde atrás
+ * (muy bajo éxito) o si el portador va lento. Devuelve false si el portador
+ * está fuera de rango o el ángulo de enganche es desfavorable.
+ */
+export function shouldAIAttemptSteal(player: Player, carrier: Player): boolean {
+  const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y)
+  if (distance > MANUAL_STEAL_RANGE) return false
+
+  const toCarrierX = carrier.pos.x - player.pos.x
+  const toCarrierY = carrier.pos.y - player.pos.y
+  const len = Math.hypot(toCarrierX, toCarrierY) || 1
+  const facingDir = normalizedVector(player.facing.x, player.facing.y, { x: player.side === 'left' ? 1 : -1, y: 0 })
+  const engageDot = facingDir.x * (toCarrierX / len) + facingDir.y * (toCarrierY / len)
+  if (engageDot < AI_STEAL_ENGAGE_FRONT_DOT) return false
+
+  const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
+  // Desde atrás (ambos van en la misma dirección): porcentaje drásticamente reducido
+  const chasingFromBehind = engageDot > 0.6
+  const attemptChance = chasingFromBehind
+    ? AI_STEAL_ATTEMPT_CHANCE * 0.18
+    : carrierSpeed > 150 ? AI_STEAL_ATTEMPT_CHANCE * 0.7 : AI_STEAL_ATTEMPT_CHANCE
+
+  return Math.random() < attemptChance
+}
+
+/** Registra el momento en que el portero capturó la bola para el temporizador de distribución. */
 export function markGoalieCaughtBall(player: Player, now: number) {
   player.goalieCatchTime = now
 }
 
+/** Cancela el temporizador de distribución al completar un pase o tiro. */
 export function clearGoalieCatch(player: Player) {
   player.goalieCatchTime = 0
 }

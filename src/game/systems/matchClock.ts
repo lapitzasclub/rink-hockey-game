@@ -1,6 +1,13 @@
 import { PERIOD_COUNT, PERIOD_RESTART_DELAY_MS } from '../constants'
 import type { RuleState } from './rules'
 
+/**
+ * Decrementa el reloj en 1 segundo y gestiona el cambio de periodo.
+ *
+ * Si el tiempo llega a cero y quedan periodos, inicia el siguiente con un
+ * retardo de celebración. Si era el último periodo, llama a finishMatch.
+ * Las faltas por equipo se resetean al inicio de cada nuevo periodo.
+ */
 export function tickMatchClock(options: {
   matchEnded: boolean
   restartAt: number

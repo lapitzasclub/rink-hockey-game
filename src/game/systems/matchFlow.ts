@@ -7,6 +7,11 @@ import { updateVisuals } from './visuals'
 import type { ActiveBully, ActiveFoulRestart, Ball, Player, TeamColor, Vector } from '../types'
 import { createRuleState, type RuleState } from './rules'
 
+/**
+ * Recoloca todos los jugadores en formación y reinicia el estado completo del
+ * partido para el equipo que saca. La bola queda ligeramente desplazada hacia
+ * el lado del equipo receptor para marcar visualmente quién saca.
+ */
 export function resetKickoffState(options: {
   team: TeamColor
   players: Player[]
@@ -51,6 +56,11 @@ export function resetKickoffState(options: {
   }
 }
 
+/**
+ * Congela la bola dentro de la red tras un gol y devuelve a todos los jugadores
+ * a su posición de formación. No resetea el estado de reglas — eso ocurre en
+ * resetKickoffState, que se llama después del retardo de celebración.
+ */
 export function applyGoalReset(options: {
   scorer: TeamColor
   players: Player[]
@@ -77,6 +87,13 @@ export function applyGoalReset(options: {
   }
 }
 
+/**
+ * Coloca la bola en la posición de falta, detiene a todos los jugadores y
+ * devuelve el estado inicial del módulo de ejecución diferida.
+ *
+ * El ejecutante aún no puede actuar hasta que se agote ballIgnoreContactsUntil
+ * (ventana de posicionamiento previo a la acción).
+ */
 export function startFoulRestartState(options: {
   foul: NonNullable<RuleState['pendingFoul']>
   players: Player[]
@@ -111,6 +128,10 @@ export function startFoulRestartState(options: {
   }
 }
 
+/**
+ * Inicia el ritual de bully: fija la bola en el punto de disputa y enfrenta
+ * a los dos participantes uno a cada lado antes de liberar el juego.
+ */
 export function startBullyState(options: {
   x: number
   y: number
@@ -163,6 +184,15 @@ function movePlayerToward(player: Player, tx: number, ty: number, dt: number) {
   player.facing = { x: dx / dist, y: dy / dist }
 }
 
+/**
+ * Tick del ciclo de falta.
+ *
+ * Mientras time < readyAt: mueve a todos a su posición táctica. Una vez listo,
+ * devuelve el estado de puntería del ejecutante y, cuando este pulsa la acción,
+ * señala release=true para que la escena resuelva el pase o el tiro.
+ *
+ * Para el equipo rojo calcula autoFacing y genera release automáticamente.
+ */
 export function updateFoulRestartState(options: {
   time: number
   dt: number
@@ -278,6 +308,10 @@ export function updateFoulRestartState(options: {
   }
 }
 
+/**
+ * Tick del ciclo de bully: desplaza a los dos participantes hacia sus posiciones
+ * enfrentadas. Devuelve true cuando el contador expira y el juego puede reanudarse.
+ */
 export function updateBullyState(options: {
   time: number
   dt: number
@@ -315,6 +349,10 @@ export function updateBullyState(options: {
   return false
 }
 
+/**
+ * Re-sincroniza los visuales inmediatamente después de un kickoff para que el
+ * primer frame no muestre posiciones residuales del estado anterior.
+ */
 export function refreshKickoffVisuals(scenePlayers: Player[], controlledPlayerIndex: number, ball: Ball, ballCarrierId: string | null, timeNow: number) {
   updateVisuals(scenePlayers, getControlledPlayer(scenePlayers, controlledPlayerIndex), ball, ballCarrierId, timeNow)
 }

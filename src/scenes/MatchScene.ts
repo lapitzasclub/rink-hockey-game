@@ -1,10 +1,7 @@
 import * as Phaser from 'phaser'
 import {
-  AI_STEAL_ATTEMPT_CHANCE,
-  AI_STEAL_ENGAGE_FRONT_DOT,
   GAME_HEIGHT,
   GOAL_HEIGHT,
-  MANUAL_STEAL_RANGE,
   MATCH_DURATION,
   PENALTY_AREA_DEPTH,
   STICK_SWING_MS,
@@ -16,7 +13,7 @@ import { drawRink } from '../game/render/drawRink'
 import {
   updateBallPosition,
 } from '../game/systems/ball'
-import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot, shouldAIPassToOpenMate } from '../game/systems/ai'
+import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot, shouldAIPassToOpenMate, shouldAIAttemptSteal } from '../game/systems/ai'
 import { resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
 import {
   findPlayerById,
@@ -253,6 +250,7 @@ export class MatchScene extends Phaser.Scene {
     this.updateHud()
   }
 
+  /** Registra todas las teclas de teclado usadas por el jugador humano. */
   private createInput() {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as Record<string, Phaser.Input.Keyboard.Key>
@@ -263,6 +261,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
 
+  /** Instancia los 10 jugadores (5v5) con sus formaciones de inicio. */
   private createTeams() {
     const blueLayout = getFormation('left')
     const redLayout = getFormation('right')
@@ -346,30 +345,7 @@ export class MatchScene extends Phaser.Scene {
           }
         } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
           const carrier = findPlayerById(this.players, this.ballCarrierId)
-          const inStealRange = carrier
-            ? Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y) <= MANUAL_STEAL_RANGE
-            : false
-
-          if (carrier && inStealRange) {
-            const toCarrierX = carrier.pos.x - player.pos.x
-            const toCarrierY = carrier.pos.y - player.pos.y
-            const len = Math.hypot(toCarrierX, toCarrierY) || 1
-            const engageDirX = toCarrierX / len
-            const engageDirY = toCarrierY / len
-            const facingLen = Math.hypot(player.facing.x, player.facing.y) || 1
-            const facingX = player.facing.x / facingLen
-            const facingY = player.facing.y / facingLen
-            const engageDot = facingX * engageDirX + facingY * engageDirY
-            const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
-            // Perseguir desde atrás (engageDot alto = ambos van en la misma dirección):
-            // intentos mucho menos frecuentes; lo normal es que el portador conserve la pelota
-            const chasingFromBehind = engageDot > 0.6
-            const attemptChance = chasingFromBehind
-              ? AI_STEAL_ATTEMPT_CHANCE * 0.18
-              : carrierSpeed > 150 ? AI_STEAL_ATTEMPT_CHANCE * 0.7 : AI_STEAL_ATTEMPT_CHANCE
-
-            if (engageDot >= AI_STEAL_ENGAGE_FRONT_DOT && Math.random() < attemptChance) this.tryManualSteal(player)
-          }
+          if (carrier && shouldAIAttemptSteal(player, carrier)) this.tryManualSteal(player)
         }
       } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.time.now)) {
         this.tryPass(player)
@@ -483,6 +459,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastTouch = result.lastTouch
   }
 
+  /** Delega el intento de robo y actualiza el estado de posesión si tuvo éxito. */
   private tryManualSteal(player: Player) {
     const result = tryManualStealAction({
       player,
@@ -603,6 +580,7 @@ export class MatchScene extends Phaser.Scene {
     playWhistle()
   }
 
+  /** Inicia el estado de ejecución de falta delegando a matchFlow. */
   private startFoulRestart(foul: RuleState['pendingFoul'] extends infer T ? Exclude<T, null> : never) {
     const nextState = startFoulRestartState({
       foul,
@@ -616,6 +594,7 @@ export class MatchScene extends Phaser.Scene {
     this.activeFoulRestart = nextState.activeFoulRestart
   }
 
+  /** Inicia el ritual de bully posicionando a los dos participantes. */
   private startBully(x: number, y: number, bluePlayerId: string, redPlayerId: string) {
     const nextState = startBullyState({
       x,
@@ -632,6 +611,11 @@ export class MatchScene extends Phaser.Scene {
     this.activeBully = nextState.activeBully
   }
 
+  /**
+   * Tick del estado de falta: mueve jugadores a posición, gestiona la puntería
+   * del ejecutante humano (joystick o teclado) y resuelve la acción cuando el
+   * jugador pulsa pasar o tirar.
+   */
   private updateFoulRestartState(time: number, dt: number) {
     const state = updateFoulRestartPhase({
       time,
@@ -716,6 +700,7 @@ export class MatchScene extends Phaser.Scene {
     this.aimIndicator.strokeCircle(ep.x, ep.y, 8)
   }
 
+  /** Tick del bully: acerca a los participantes y libera el juego al acabar el contador. */
   private updateBullyState(time: number, dt: number) {
     const released = updateBullyPhase({
       time,
@@ -762,6 +747,7 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** Congela el partido y muestra el resultado final con la pista de volver al menú. */
   private finishMatch() {
     this.matchEnded = true
     const result = this.blueScore === this.redScore ? 'Empate'
