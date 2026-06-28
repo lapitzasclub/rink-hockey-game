@@ -10,6 +10,7 @@ import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation } from '../game/formation'
 import { drawRink, createGoalNetFlash } from '../game/render/drawRink'
+import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../game/render/benchPlayers'
 import {
   updateBallPosition,
 } from '../game/systems/ball'
@@ -96,6 +97,7 @@ export class MatchScene extends Phaser.Scene {
   // Se resetea cuando la pelota sale de la zona de portería. Evita goles falsos por detrás.
   private ballEnteredGoalFromFront = { left: false, right: false }
   private prevBallX = 0
+  private benchPlayers: BenchPlayer[] = []
 
   constructor() {
     super('match')
@@ -105,6 +107,7 @@ export class MatchScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('#08111b')
     drawRink(this)
+    this.benchPlayers = createBenchPlayers(this)
     const nets = createGoalNetFlash(this)
     this.leftGoalNet  = nets.left
     this.rightGoalNet = nets.right
@@ -174,6 +177,7 @@ export class MatchScene extends Phaser.Scene {
   update(time: number, delta: number) {
     const dt = Math.min(delta / 1000, 0.033)
     // joystickInput ya se actualiza por nipplejs
+    updateBenchPlayers(this.benchPlayers, time)
 
     if (this.matchEnded) {
       const touchReturn = this.joystickInput.shoot && !this.prevTouchButtons.shoot

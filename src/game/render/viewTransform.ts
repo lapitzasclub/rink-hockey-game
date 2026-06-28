@@ -14,7 +14,12 @@ const X_FAR     = 0.82   // escala X en el extremo lejano
 const Y_POW     = 1.4    // exponente curva Y
 const SCREEN_H  = 490    // alto del campo en pantalla (px)
 
-export const VIEW_ANCHOR_Y = RINK.y   // el borde superior de la pista fijo en pantalla (60)
+/**
+ * Screen Y donde aparece el borde superior (lejano) de la pista.
+ * La zona de banquillos ocupa y = 0..VIEW_ANCHOR_Y en pantalla.
+ * Al ser 130, los tableros lejanos quedan a y≈121 y el área de banquillos tiene ~121px.
+ */
+export const VIEW_ANCHOR_Y = 130
 export const VIEW_Y_SCALE  = 0.72     // aproximación lineal media — solo para sombras y anillos
 
 export function worldToScreen(wx: number, wy: number): { x: number; y: number } {

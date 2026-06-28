@@ -30,6 +30,30 @@ function clamp01(value: number) {
   return Phaser.Math.Clamp(value, 0, 1)
 }
 
+// Zona de sancionados: entre los dos banquillos, en screen-space (bench area y=0..121)
+// Azul expulsa hacia la izquierda del centro, rojo hacia la derecha.
+const PEN_BASE_X: Record<'blue' | 'red', number> = { blue: 548, red: 732 }
+const PEN_STEP = 28   // separación horizontal entre sancionados del mismo equipo
+const PEN_Y   = 66   // pantalla Y dentro del área de banquillos
+
+/** Calcula la posición screen-space de cada jugador suspendido. */
+function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, { x: number; y: number }> {
+  const idxBlue = { n: 0 }
+  const idxRed  = { n: 0 }
+  const map = new Map<string, { x: number; y: number }>()
+  for (const p of players) {
+    if (!(p.suspendedUntil && p.suspendedUntil > timeNow)) continue
+    if (p.team === 'blue') {
+      map.set(p.id, { x: PEN_BASE_X.blue - idxBlue.n * PEN_STEP, y: PEN_Y })
+      idxBlue.n++
+    } else {
+      map.set(p.id, { x: PEN_BASE_X.red + idxRed.n * PEN_STEP, y: PEN_Y })
+      idxRed.n++
+    }
+  }
+  return map
+}
+
 /** Actualiza render de jugadores, bola y piezas puppet sin tocar la física. */
 export function updateVisuals(
   players: Player[],
@@ -40,6 +64,8 @@ export function updateVisuals(
 ) {
   const bs = worldToScreen(ball.x, ball.y)
   ball.visual.setPosition(bs.x, bs.y)
+
+  const penPos = buildPenaltyPositions(players, timeNow)
 
   for (const player of players) {
     const suspended = !!(player.suspendedUntil && player.suspendedUntil > timeNow)
@@ -62,6 +88,34 @@ export function updateVisuals(
     const depthScaleX = 1 + towardCamera * 0.11 - awayFromCamera * 0.06 - sideFactor * 0.03
     const depthScaleY = 1 + towardCamera * 0.08 - awayFromCamera * 0.08
 
+    if (suspended) {
+      // Colocar fuera del campo en screen-space (zona de sancionados, al otro lado de la valla)
+      const pp = penPos.get(player.id)!
+      player.container
+        .setPosition(pp.x, pp.y)
+        .setAlpha(1)
+        .setScale(PLAYER_PUPPET_VISUAL_SCALE)
+        .setRotation(0)
+      player.shadow.setVisible(false)
+      player.selectionRing.setVisible(false)
+      player.staminaBar?.setVisible(false)
+      // Pose neutral de pie (sin animación de carrera)
+      player.body.setPosition(sideSign * -1, BODY_Y[player.role]).setRotation(0).setScale(sideSign, 1)
+      player.head.setPosition(0, HEAD_Y[player.role]).setRotation(0).setScale(sideSign, 1)
+      player.leftArm.setPosition(-16, BASE_ARM_Y).setRotation(0.18).setScale(sideSign, 1)
+      player.rightArm.setPosition(16, BASE_ARM_Y).setRotation(-0.18).setScale(sideSign, 1)
+      player.leftSkate.setPosition(-8, BASE_SKATE_Y).setRotation(0).setScale(sideSign, 1)
+      player.rightSkate.setPosition(8, BASE_SKATE_Y).setRotation(0).setScale(sideSign, 1)
+      player.stick.setVisible(false)
+      const secsLeft = Math.ceil((player.suspendedUntil! - timeNow) / 1000)
+      player.label.setPosition(pp.x, pp.y - LABEL_Y_OFFSET).setText(`${secsLeft}s`).setAlpha(1)
+      continue
+    }
+
+    player.container.setAlpha(1)
+    player.shadow.setVisible(true).setAlpha(0.28)
+    player.stick.setVisible(true)
+
     player.container.setPosition(sp.x, sp.y).setRotation(0).setScale(PLAYER_PUPPET_VISUAL_SCALE)
     player.shadow
       .setPosition(sp.x, sp.y + 10 + towardCamera * 2)
@@ -69,18 +123,6 @@ export function updateVisuals(
     player.selectionRing.setPosition(sp.x, sp.y)
     player.selectionRing.setScale(depthScaleX, VIEW_Y_SCALE * depthScaleY)
     player.label.setPosition(sp.x, sp.y - LABEL_Y_OFFSET)
-
-    if (suspended) {
-      player.container.setAlpha(0.35)
-      player.shadow.setAlpha(0.15)
-      player.selectionRing.setVisible(false)
-      player.staminaBar?.setVisible(false)
-      player.label.setText('AZUL').setAlpha(0.5)
-      continue
-    }
-
-    player.container.setAlpha(1)
-    player.shadow.setAlpha(0.28)
     player.staminaBar?.setVisible(true)
     player.label.setAlpha(1)
 
