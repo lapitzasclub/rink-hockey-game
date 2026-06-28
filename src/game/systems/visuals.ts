@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser'
 import type { Ball, Player } from '../types'
 import { getRoleShort } from '../utils'
-import { PLAYER_MAX_SPEED, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
-import { VIEW_Y_SCALE, worldToScreen } from '../render/viewTransform'
+import { PLAYER_MAX_SPEED, PLAYER_PUPPET_VISUAL_SCALE, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
+import { VIEW_Y_SCALE, localYScale, worldToScreen } from '../render/viewTransform'
 
 const STAMINA_BAR_W = 36
 const STAMINA_BAR_H = 3
@@ -62,7 +62,7 @@ export function updateVisuals(
     const depthScaleX = 1 + towardCamera * 0.11 - awayFromCamera * 0.06 - sideFactor * 0.03
     const depthScaleY = 1 + towardCamera * 0.08 - awayFromCamera * 0.08
 
-    player.container.setPosition(sp.x, sp.y).setRotation(0).setScale(1)
+    player.container.setPosition(sp.x, sp.y).setRotation(0).setScale(PLAYER_PUPPET_VISUAL_SCALE)
     player.shadow
       .setPosition(sp.x, sp.y + 10 + towardCamera * 2)
       .setScale(1 + speedRatio * 0.18 + towardCamera * 0.12, 1 - speedRatio * 0.12)
@@ -105,7 +105,7 @@ export function updateVisuals(
 
     // Dirección del jugador en espacio contenedor (Y comprimida por perspectiva 3/4)
     const fcx = player.facing.x
-    const fcy = player.facing.y * VIEW_Y_SCALE
+    const fcy = player.facing.y * localYScale(player.pos.y)
     const fLen = Math.hypot(fcx, fcy) || 1
     const fnx = fcx / fLen   // forward normalizado X
     const fny = fcy / fLen   // forward normalizado Y

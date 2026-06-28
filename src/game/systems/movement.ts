@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BENCH_Y_BOTTOM, BENCH_Y_TOP, GAME_WIDTH, GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK, STAMINA_EXHAUSTED_SPEED_FACTOR, STAMINA_LOW_THRESHOLD } from '../constants'
+import { BENCH_Y_BOTTOM, BENCH_Y_TOP, FIELD_PLAYER_BOTTOM_BOARD_MARGIN, GAME_WIDTH, GOALIE_RADIUS, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK, STAMINA_EXHAUSTED_SPEED_FACTOR, STAMINA_LOW_THRESHOLD } from '../constants'
 import type { Player, Vector } from '../types'
 
 /**
@@ -41,7 +41,8 @@ export function applySkating(player: Player, dt: number) {
 
   const radius = player.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
   player.pos.x = Phaser.Math.Clamp(player.pos.x, RINK.x + radius, RINK.x + RINK.width - radius)
-  player.pos.y = Phaser.Math.Clamp(player.pos.y, RINK.y + radius, RINK.y + RINK.height - radius)
+  const bottomMargin = player.role === 'goalie' ? 0 : FIELD_PLAYER_BOTTOM_BOARD_MARGIN
+  player.pos.y = Phaser.Math.Clamp(player.pos.y, RINK.y + radius, RINK.y + RINK.height - radius - bottomMargin)
 
   if (player.role === 'goalie') {
     const minX = player.side === 'left' ? RINK.x + 28 : RINK.x + RINK.width - 90

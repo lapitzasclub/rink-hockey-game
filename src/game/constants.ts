@@ -6,6 +6,8 @@ export const GOALIE_RADIUS = 20
 export const BALL_RADIUS = 6
 export const GOAL_WIDTH = 28
 export const GOAL_HEIGHT = 150
+/** Semialtura interior de la portería (apertura real entre postes). */
+export const GOAL_HALF_H = (GOAL_HEIGHT - 36) / 2   // = 57
 export const GOAL_BACK_DEPTH = 34
 export const GOAL_LINE_OFFSET = 86
 export const GOAL_NET_HOLD_X = 10
@@ -81,6 +83,18 @@ export const RINK = {
   width: 1140,
   height: 600,
 }
+
+/**
+ * Margen extra en mundo para evitar que los patines (que viven en screen-space)
+ * sobresalgan visualmente por debajo del borde inferior de la pista.
+ */
+export const FIELD_PLAYER_BOTTOM_BOARD_MARGIN = 30
+
+/**
+ * Escala visual global del puppet para que su tamaño percibido encaje mejor
+ * con la pista comprimida en perspectiva 3/4.
+ */
+export const PLAYER_PUPPET_VISUAL_SCALE = 0.84
 
 export const PERIOD_COUNT = 4
 export const PERIOD_RESTART_DELAY_MS = 1400

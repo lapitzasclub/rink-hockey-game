@@ -1,15 +1,15 @@
 import * as Phaser from 'phaser'
 import {
-  GAME_HEIGHT,
-  GOAL_HEIGHT,
+  GOAL_HALF_H,
   MATCH_DURATION,
   PENALTY_AREA_DEPTH,
+  RINK,
   STICK_SWING_MS,
 } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation } from '../game/formation'
-import { drawRink } from '../game/render/drawRink'
+import { drawRink, createGoalNetFlash } from '../game/render/drawRink'
 import {
   updateBallPosition,
 } from '../game/systems/ball'
@@ -89,6 +89,8 @@ export class MatchScene extends Phaser.Scene {
   private stuckCarrierStartTime = 0
   private stuckCarrierOrigin: Vector | null = null
   private goalFlash!: Phaser.GameObjects.Rectangle
+  private leftGoalNet!: Phaser.GameObjects.Graphics
+  private rightGoalNet!: Phaser.GameObjects.Graphics
   private aimIndicator!: Phaser.GameObjects.Graphics
   // Flag persistente: la pelota cruzó la línea de portería desde el lado campo (boca abierta).
   // Se resetea cuando la pelota sale de la zona de portería. Evita goles falsos por detrás.
@@ -103,6 +105,9 @@ export class MatchScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor('#08111b')
     drawRink(this)
+    const nets = createGoalNetFlash(this)
+    this.leftGoalNet  = nets.left
+    this.rightGoalNet = nets.right
     this.createInput()
     this.createTeams()
     this.ball = createBall(this)
@@ -504,8 +509,8 @@ export class MatchScene extends Phaser.Scene {
    * Se activa al cruzar la línea con inGoalMouth=true y se apaga al salir de la zona.
    */
   private updateGoalEntryFlag(prevBallX: number) {
-    const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
-    const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+    const goalTop    = RINK.y + RINK.height / 2 - GOAL_HALF_H
+    const goalBottom = RINK.y + RINK.height / 2 + GOAL_HALF_H
     const inGoalMouth = this.ball.y > goalTop && this.ball.y < goalBottom
     const leftGoalLineX = getGoalLineX('left')
     const rightGoalLineX = getGoalLineX('right')
@@ -545,6 +550,9 @@ export class MatchScene extends Phaser.Scene {
     playGoal()
     this.cameras.main.shake(300, 0.011)
     this.tweens.add({ targets: this.goalFlash, alpha: { from: 0.42, to: 0 }, duration: 460, ease: 'Expo.Out' })
+    // Flash de red: el equipo rojo marca en la portería izquierda, el azul en la derecha
+    const scoredNet = next.redScore > this.redScore ? this.leftGoalNet : this.rightGoalNet
+    this.tweens.add({ targets: scoredNet, alpha: { from: 0.9, to: 0 }, duration: 700, ease: 'Expo.Out' })
     this.ballVelocity = next.ballVelocity
     this.ballCarrierId = next.ballCarrierId
     this.blueScore = next.blueScore
@@ -723,8 +731,8 @@ export class MatchScene extends Phaser.Scene {
    */
   private checkGoalieZoneFoul(time: number) {
     if (this.ruleState.pendingFoul || this.ruleState.pendingBully) return
-    const centerY = GAME_HEIGHT / 2
-    const foulRadius = GOAL_HEIGHT
+    const centerY = RINK.y + RINK.height / 2
+    const foulRadius = GOAL_HALF_H * 2
 
     for (const goalie of this.players) {
       if (goalie.role !== 'goalie') continue

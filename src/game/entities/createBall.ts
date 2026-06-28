@@ -8,5 +8,6 @@ export function createBall(scene: Phaser.Scene): Ball {
   createProceduralPuppetTextures(scene)
   const visual = scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'puck-pixel')
   visual.setDisplaySize(BALL_RADIUS * 2.6, BALL_RADIUS * 2.6)
+  visual.setDepth(3)
   return { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2, visual }
 }

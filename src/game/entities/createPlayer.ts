@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GOALIE_RADIUS, PLAYER_RADIUS } from '../constants'
+import { GOALIE_RADIUS, PLAYER_PUPPET_VISUAL_SCALE, PLAYER_RADIUS } from '../constants'
 import { createProceduralPuppetTextures } from '../render/createProceduralPuppetTextures'
 import type { Player, Role, TeamColor, TeamSide } from '../types'
 import { getRoleShort } from '../utils'
@@ -36,7 +36,7 @@ export function createPlayer(
   const shadow = scene.add.ellipse(x, y + 10, radius * 2.6, radius * 0.82 * VIEW_Y_SCALE, 0x000000, 0.22)
 
   // Container: todo el personaje se mueve aquí
-  const container = scene.add.container(x, y)
+  const container = scene.add.container(x, y).setScale(PLAYER_PUPPET_VISUAL_SCALE)
 
   const leftSkate = scene.add.image(-8, 27, `${prefix}-skate`).setTint(SKATE_TINT[team])
   const rightSkate = scene.add.image(8, 27, `${prefix}-skate`).setTint(SKATE_TINT[team])

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HEIGHT, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
 import type { Ball, BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
@@ -22,8 +22,8 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
     let nextBallX = carrier.pos.x + carrier.facing.x * carryOffset + lateral.x * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.x * BALL_PROTECT_VELOCITY_BLEND * speed
     let nextBallY = carrier.pos.y + carrier.facing.y * carryOffset + lateral.y * BALL_PROTECT_OFFSET_SIDE * lateralSign + velocityDir.y * BALL_PROTECT_VELOCITY_BLEND * speed
 
-    const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
-    const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+    const goalTop = RINK.y + RINK.height / 2 - GOAL_HALF_H
+    const goalBottom = RINK.y + RINK.height / 2 + GOAL_HALF_H
     const leftGoalLineX = getGoalLineX('left')
     const rightGoalLineX = getGoalLineX('right')
     const leftNetBackX = leftGoalLineX - GOAL_BACK_DEPTH
@@ -57,8 +57,8 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
   const bottom = RINK.y + RINK.height - 9
   const left = RINK.x + 9
   const right = RINK.x + RINK.width - 9
-  const goalTop = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2
-  const goalBottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2
+  const goalTop = RINK.y + RINK.height / 2 - GOAL_HALF_H
+  const goalBottom = RINK.y + RINK.height / 2 + GOAL_HALF_H
   const inGoalMouth = ball.y > goalTop && ball.y < goalBottom
   const leftGoalLineX = getGoalLineX('left')
   const rightGoalLineX = getGoalLineX('right')
@@ -378,8 +378,8 @@ export function checkGoal(
   ballVelocity: Vector,
   enteredFromFront: { left: boolean; right: boolean },
 ) {
-  const top = GAME_HEIGHT / 2 - GOAL_HEIGHT / 2 + BALL_RADIUS
-  const bottom = GAME_HEIGHT / 2 + GOAL_HEIGHT / 2 - BALL_RADIUS
+  const top = RINK.y + RINK.height / 2 - GOAL_HALF_H + BALL_RADIUS
+  const bottom = RINK.y + RINK.height / 2 + GOAL_HALF_H - BALL_RADIUS
   const inGoalY = ball.y >= top && ball.y <= bottom
   if (!inGoalY) return null
 
