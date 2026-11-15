@@ -13,16 +13,18 @@ Paquetes de trabajo (WP) para la renovación gráfica.
 |---|---|---|---|---|---|
 | D1 | Estilo de arte | A cartoon limpio · B pixel-art HD · C semirrealista TV | A | Gate B (WP-30) | ⬜ |
 | D2 | Tamaño de la portería | **Real** (1,70 × 1,05 m visual y física, con reajuste del portero y la IA) · **Exagerada** (visual real ×1,5 y física actual) | Real | WP-40 | ✅ Real (2026-11-15) |
-| D3 | Árbitros en arcade | sí (silbato y gol, sin tarjetas) · no | sí | WP-50 | ⬜ |
+| D3 | Árbitros en arcade | sí (silbato y gol, sin tarjetas) · no | sí | WP-50 | ✅ sí (2026-11-15, coordinador por delegación) |
 | D4 | Casco de jugador de campo | casco ligero sin rejilla · sin casco | casco ligero | WP-20 (se enseñan ambos) | ⬜ |
 | D5 | Commitear las sesiones 21–22 pendientes antes de empezar | sí · no | sí (los worktrees parten de HEAD) | primer `/gfx` | ✅ sí — commits b14abd2, c78de1a (2026-11-15) |
 | D6 | Commit automático por WP aceptado (`gfx(WP-XX): ...`, sin autoría) | sí · no (todo en secuencia, sin worktrees) | sí | primer WP en paralelo | ✅ sí (2026-11-15) |
 | D7 | Archivar el work log antiguo de AGENTS.md en `docs/worklog-archive.md` | sí · no | sí (ahorra ~8 k tokens por agente) | WP-01 | ✅ sí (2026-11-15) |
-| D8 | Fondo de portería y zona de falta del portero a escala real | sí: `GOAL_BACK_DEPTH` 34 → ~18 px y zona de falta con el radio del semicírculo (26 px) en vez de `GOAL_HEIGHT` · no | sí | WP-44 | ⬜ |
-| D9 | Punto de libre directo a 7,40 m reglamentarios | sí: `DIRECT_FREE_HIT_SPOT_OFFSET` 160 → 211 px · no | sí | WP-42 | ⬜ |
-| D10 | Línea azul (no existe en rink hockey) | retirar · mantener como marca decorativa | retirar | WP-42 | ⬜ |
+| D8 | Fondo de portería y zona de falta del portero a escala real | sí: `GOAL_BACK_DEPTH` 34 → ~18 px y zona de falta con el radio del semicírculo (26 px) en vez de `GOAL_HEIGHT` · no | sí | WP-44 | ✅ sí (2026-11-15, coordinador por delegación) |
+| D9 | Punto de libre directo a 7,40 m reglamentarios | sí: `DIRECT_FREE_HIT_SPOT_OFFSET` 160 → 211 px · no | sí | WP-42 | ✅ sí (2026-11-15, coordinador por delegación) |
+| D10 | Línea azul (no existe en rink hockey) | retirar · mantener como marca decorativa | retirar | WP-42 | ✅ retirar (2026-11-15, coordinador por delegación) |
 
 D8–D10 salen de WP-02: ver `docs/graphics/REGLAMENTO-MEDIDAS.md` §3.
+
+Desde el 2026-11-15 el usuario delega las decisiones y los gates pendientes en el coordinador. D1 y D4 se deciden en el Gate B, tras ver los prototipos.
 
 ## Mapa de fases
 
