@@ -60,8 +60,21 @@ Reglas de paralelismo:
 
 - Solo puede haber WPs en paralelo si sus **archivos propios** (tabla de BACKLOG) no se solapan.
 - **`MatchScene.ts` es un recurso serializado:** solo un WP activo a la vez puede tocarlo, y el encargo dice exactamente qué enganches añadir.
-- En paralelo, cada agente trabaja con `isolation: "worktree"`. Esto exige que HEAD contenga todo el trabajo previo (ver §9, pre-flight) y que D6 (commits) esté autorizado para poder fusionar.
-- Sin D6, se trabaja **en secuencia** sobre el árbol de trabajo principal.
+- **Integrar en `main` cuanto antes.** Un WP solo se hace directamente en `main`. En paralelo, cada WP aceptado se integra en `main` en el acto, sin esperar al resto de la tanda.
+- En paralelo, cada agente trabaja en un **worktree creado a mano desde `main` local**:
+  - `git worktree add -b gfx/wp-XX .claude/worktrees/wp-XX main`;
+  - se despacha **sin** `isolation`, con la ruta absoluta en el encargo;
+  - el encargo exige que `git log --oneline -1` muestre el último commit de `main`.
+  - **No uses `isolation: "worktree"` del Agent:** crea el worktree desde `origin/main`, que va por detrás porque no se hace push (pasó en la sesión 24).
+  - `node_modules` no hace falta: Node lo resuelve desde el repo principal subiendo de carpeta. **Nunca crees uniones**, porque al borrar el worktree se puede llevar por delante el `node_modules` real.
+  - `.claude/worktrees/` va en `.git/info/exclude`.
+- **Integración:**
+  1. commit `wip` en la rama del worktree;
+  2. si `main` ha avanzado y el WP lo necesita para verificarse, `git rebase main`;
+  3. en `main`: `git cherry-pick -n gfx/wp-XX`, papeleo y commit `gfx(WP-XX): ...`;
+  4. `git worktree remove` y `git branch -D`.
+- **Servidor dev por worktree:** `npx vite --port 517X --strictPort`. Los puertos 5173 y 5174 pueden estar ocupados por otros proyectos. Vite escucha en IPv6, así que se captura con `-BaseUrl 'http://[::1]:517X/'`.
+- Requiere D5 y D6. Sin D6, se trabaja **en secuencia** sobre el árbol de trabajo principal.
 
 ## 4. Plantilla de encargo (la rellena el coordinador)
 
@@ -132,7 +145,7 @@ El coordinador **no** salta un gate. Lo que depende de él espera.
 
 1. **Reiniciar Claude Code** (o abrir `/agents`) y comprobar que aparecen `gfx-engineer`, `gfx-builder` y `gfx-qa`.
 2. **Trabajo sin commitear:** las sesiones 21–22 (modo arcade, pabellón) están sin commitear.
-   - Los worktrees parten de HEAD, así que hay que commitearlas antes de cualquier trabajo en paralelo.
+   - Los worktrees se crean a mano desde `main` (§3), así que hay que commitearlas antes de cualquier trabajo en paralelo.
    - Lo decide el usuario (D5).
 3. **Servidor de desarrollo** arrancado y `tools/gfx-shot.ps1 -Query "" -Out <tmp>.jpg` devuelve imagen.
 4. Decisiones D1–D7 de BACKLOG revisadas (al menos D2, D5, D6 y D7 antes de empezar; D1 y D4 llegan en el Gate B).

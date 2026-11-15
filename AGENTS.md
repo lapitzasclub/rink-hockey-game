@@ -241,6 +241,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-02: medidas oficiales verificadas contra el *Rink Hockey Rulebook* 2027 de World Skate (`docs/graphics/REGLAMENTO-MEDIDAS.md`); SPEC §1/§9 sin VERIFICAR; propuestas D8–D10.
 - WP-00: escena de laboratorio `?lab=` (solo DEV): rink, scale, goal, players, strip, officials, style y match; capturas deterministas con PRNG con semilla y tiempo fijo `t`.
 - WP-12: `drawRink.ts` partido en `render/rink/{geometry,markings,boards,ads,goal,benches}.ts` con fachada; captura idéntica (hash) a la de WP-00.
+- Workflow gfx: integrar cada WP en `main` en cuanto se acepta; WPs en paralelo con worktrees manuales desde `main` (no `isolation: "worktree"`, que parte de `origin/main`). Ver WORKFLOW §3 y `/gfx` guarda 3.
 
 ### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
 
