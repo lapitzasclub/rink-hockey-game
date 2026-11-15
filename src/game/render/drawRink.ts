@@ -3,6 +3,38 @@ import { BLUE_LINE_OFFSET, GAME_WIDTH, GOAL_HALF_H, GOAL_HEIGHT, RINK } from '..
 import { getGoalLineX } from '../utils'
 import { worldToScreen, worldToScreenExt } from './viewTransform'
 
+/** Radio de esquina de la valla (mundo). */
+export const RINK_CORNER_R = 86
+/** Grosor físico del tablero en unidades mundo. */
+export const BOARD_W = 17
+/** Alto visual del tablero lejano en px de pantalla (compensa la curva de potencia). */
+export const BOARD_FAR_H = 14
+
+const LINE_WHITE = 0xf2f6fb
+const LINE_RED = 0xe0363c
+
+// Publicidad ficticia de las vallas: [texto, fondo, color texto]
+const ADS: [string, number, string][] = [
+  ['RINK TV', 0x0d1b2e, '#3ee8ff'],
+  ['PATÍN PRO', 0xf0c43a, '#14213a'],
+  ['BOLA 23', 0xd8343a, '#ffffff'],
+  ['STICK & CO', 0xf2f6fb, '#14213a'],
+  ['ARCADE CUP', 0xff8a1a, '#14213a'],
+  ['HOCKEY+', 0x2f6fe0, '#ffffff'],
+  ['RUEDA LIBRE', 0x1d2a3e, '#f0c43a'],
+  ['¡GOL!', 0x3a9a5a, '#ffffff'],
+]
+
+const BENCH_XS = 0.82
+const benchX = (wx: number) => RINK.x + RINK.width / 2 + (wx - (RINK.x + RINK.width / 2)) * BENCH_XS
+
+/** Franja de pantalla ocupada por banquillos y mesa (el público no se pinta ahí). */
+export const BENCH_SCREEN_RANGE = {
+  left: benchX(RINK.x + 110) - 6,
+  right: benchX(RINK.x + RINK.width - 110) + 6,
+  bottom: 123,
+}
+
 /**
  * Pista con perspectiva 3/4 real: todos los elementos se proyectan
  * explícitamente con worldToScreen (convergencia X + curva Y no-lineal).
@@ -29,17 +61,8 @@ export function drawRink(scene: Phaser.Scene) {
   const leftBlueX  = cx - BLUE_LINE_OFFSET
   const rightBlueX = cx + BLUE_LINE_OFFSET
 
-  // ── Superficie de hielo ───────────────────────────────────────────────────
-  g.fillStyle(0xe4f2fb, 1)
-  projFill(g, roundedRectPts(RINK.x, RINK.y, RINK.width, RINK.height, 86, 10))
-
-  // Rayaduras horizontales de hielo
-  g.lineStyle(1, 0x9ec8de, 0.09)
-  for (let iy = RINK.y + 22; iy < RINK.y + RINK.height; iy += 26) {
-    const l = worldToScreen(RINK.x + 40, iy)
-    const r = worldToScreen(RINK.x + RINK.width - 40, iy)
-    g.lineBetween(l.x, l.y, r.x, r.y)
-  }
+  // El suelo pintado (azul, con reflejos) lo pone arena.ts por debajo de estas líneas
+  drawAds(scene)
 
   // ── Áreas de penalti ─────────────────────────────────────────────────────
   drawPenaltyArea(g, leftGoalX,  cy, true,  sx, sy)
@@ -54,17 +77,18 @@ export function drawRink(scene: Phaser.Scene) {
   drawGoal3D(g, rightGoalX, cy, false)
 
   // ── Línea central y círculo ───────────────────────────────────────────────
-  g.lineStyle(4, 0x0a1525, 1)
+  g.fillStyle(0xffffff, 0.06)
+  projFillCircle(g, cx, cy, 3 * sy)
+  g.lineStyle(4, LINE_WHITE, 0.95)
   projStrokePath(g, [worldToScreen(cx, RINK.y + 8), worldToScreen(cx, RINK.y + RINK.height - 8)])
-  g.lineStyle(4, 0x0a1525, 1)
   projStrokeCircle(g, cx, cy, 3 * sy)
 
   const cc = worldToScreen(cx, cy)
-  g.fillStyle(0x0a1525, 1)
-  g.fillCircle(cc.x, cc.y, 7)
+  g.fillStyle(LINE_WHITE, 1)
+  g.fillCircle(cc.x, cc.y, 6)
 
-  // ── Líneas azules de zona ─────────────────────────────────────────────────
-  g.lineStyle(4, 0x2060cc, 1)
+  // ── Líneas de anti-juego ──────────────────────────────────────────────────
+  g.lineStyle(3, LINE_WHITE, 0.6)
   projStrokePath(g, [worldToScreen(leftBlueX,  RINK.y + 8), worldToScreen(leftBlueX,  RINK.y + RINK.height - 8)])
   projStrokePath(g, [worldToScreen(rightBlueX, RINK.y + 8), worldToScreen(rightBlueX, RINK.y + RINK.height - 8)])
 
@@ -72,14 +96,14 @@ export function drawRink(scene: Phaser.Scene) {
   drawFieldDots(g, leftGoalX, rightGoalX, cy, sx)
 
   // ── Borde perimetral ──────────────────────────────────────────────────────
-  g.lineStyle(7, 0x0a1525, 1)
-  projStrokePoly(g, roundedRectPts(RINK.x, RINK.y, RINK.width, RINK.height, 86, 10))
+  g.lineStyle(3, LINE_WHITE, 0.85)
+  projStrokePoly(g, roundedRectPts(RINK.x, RINK.y, RINK.width, RINK.height, RINK_CORNER_R, 10))
 }
 
 // ─── Helpers de proyección ────────────────────────────────────────────────────
 
 /** Genera puntos del contorno redondeado en coordenadas MUNDO (sin proyectar, CW). */
-function roundedRectWorldPts(
+export function roundedRectWorldPts(
   rx: number, ry: number, rw: number, rh: number, cr: number, segs: number,
 ): { x: number; y: number }[] {
   const corners = [
@@ -146,6 +170,16 @@ function projStrokePath(g: Phaser.GameObjects.Graphics, pts: { x: number; y: num
   g.strokePath()
 }
 
+/** Rellena un círculo en coords mundo proyectado como polígono. */
+function projFillCircle(g: Phaser.GameObjects.Graphics, wx: number, wy: number, wr: number, N = 32) {
+  const pts: { x: number; y: number }[] = []
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2
+    pts.push(worldToScreen(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr))
+  }
+  projFill(g, pts)
+}
+
 /** Dibuja un círculo en coords mundo proyectado como polígono. */
 function projStrokeCircle(g: Phaser.GameObjects.Graphics, wx: number, wy: number, wr: number, N = 32) {
   g.beginPath()
@@ -172,10 +206,9 @@ function projStrokeCircle(g: Phaser.GameObjects.Graphics, wx: number, wy: number
  * no necesitan compensación: worldToScreenExt los proyecta correctamente.
  */
 function drawPerspectiveBoards(back: Phaser.GameObjects.Graphics, front: Phaser.GameObjects.Graphics) {
-  const CORNER_R = 86
+  const CORNER_R = RINK_CORNER_R
   const SEGS     = 12
-  const BOARD_W  = 17   // ancho físico del tablero en unidades mundo
-  const FAR_H    = 9    // altura visual tablero lejano en px pantalla (compens. curva potencia)
+  const FAR_H    = BOARD_FAR_H
 
   const topY    = worldToScreen(RINK.x, RINK.y).y
   const bottomY = worldToScreen(RINK.x, RINK.y + RINK.height).y
@@ -214,7 +247,7 @@ function drawPerspectiveBoards(back: Phaser.GameObjects.Graphics, front: Phaser.
     const isBack = avgY < midY
     const isSide = Math.abs(nwx) > Math.abs(nwy)
     const g = isBack ? back : front
-    const color = isBack ? 0x0f2841 : (isSide ? 0x163a5d : 0x12304d)
+    const color = isBack ? 0x1a2a40 : (isSide ? 0x24364f : 0x1c2c44)
     g.fillStyle(color, 1)
     fillQuad(g, ib0.x, ib0.y, ib1.x, ib1.y, ob1.x, ob1.y, ob0.x, ob0.y)
   }
@@ -227,8 +260,23 @@ function drawPerspectiveBoards(back: Phaser.GameObjects.Graphics, front: Phaser.
     if (ib.y < midY && ib1.y < midY) back.lineBetween(ib.x, ib.y + 1, ib1.x, ib1.y + 1)
   }
 
+  // Remate superior del tablero lejano
+  back.lineStyle(2, 0xdfe8f2, 0.9)
+  for (let i = 0; i < n; i++) {
+    const w0 = wpts[i]
+    const w1 = wpts[(i + 1) % n]
+    const li = Math.hypot(w1.x - w0.x, w1.y - w0.y)
+    if (li < 0.5) continue
+    const nwx = (w1.y - w0.y) / li
+    const nwy = -(w1.x - w0.x) / li
+    const a = worldToScreenExt(w0.x + nwx * BOARD_W, w0.y + nwy * BOARD_W)
+    const b = worldToScreenExt(w1.x + nwx * BOARD_W, w1.y + nwy * BOARD_W)
+    const far = Math.max(0, -nwy) * FAR_H
+    if ((a.y + b.y) * 0.5 < midY) back.lineBetween(a.x, a.y - far, b.x, b.y - far)
+  }
+
   // Canto superior del tablero cercano (cara interior visible)
-  front.lineStyle(3, 0x254f79, 0.95)
+  front.lineStyle(3, 0xdfe8f2, 0.95)
   for (let i = 0; i < n; i++) {
     const ib  = worldToScreen(wpts[i].x, wpts[i].y)
     const ib1 = worldToScreen(wpts[(i + 1) % n].x, wpts[(i + 1) % n].y)
@@ -294,7 +342,7 @@ function drawPenaltyArea(
     bl = worldToScreen(goalLineX - depth, bot)
   }
 
-  g.lineStyle(3, 0xcc2020, 0.80)
+  g.lineStyle(3, LINE_WHITE, 0.9)
   g.beginPath()
   g.moveTo(tl.x, tl.y); g.lineTo(tr.x, tr.y)
   g.lineTo(br.x, br.y); g.lineTo(bl.x, bl.y)
@@ -311,14 +359,14 @@ function drawGoalCrease(g: Phaser.GameObjects.Graphics, goalLineX: number, cy: n
   const arc = arcPts(goalLineX, cy, r, startDeg, endDeg, 24)
   const gpt = worldToScreen(goalLineX, cy)
 
-  g.fillStyle(0xee2222, 0.07)
+  g.fillStyle(0x7fb4ff, 0.22)
   g.beginPath()
   g.moveTo(gpt.x, gpt.y)
   for (const p of arc) g.lineTo(p.x, p.y)
   g.closePath()
   g.fillPath()
 
-  g.lineStyle(2, 0xcc2020, 0.70)
+  g.lineStyle(3, LINE_RED, 0.9)
   g.beginPath()
   g.moveTo(arc[0].x, arc[0].y)
   for (let i = 1; i < arc.length; i++) g.lineTo(arc[i].x, arc[i].y)
@@ -493,9 +541,7 @@ function drawGoal3D(g: Phaser.GameObjects.Graphics, goalLineX: number, centerY: 
  * responsiva dependiendo del tamaño de ventana disponible.
  */
 function drawBenches(g: Phaser.GameObjects.Graphics) {
-  const XS = 0.82
-  const CX = RINK.x + RINK.width / 2
-  const wx2 = (wx: number) => CX + (wx - CX) * XS
+  const wx2 = benchX
 
   const blueL = wx2(RINK.x + 110)
   const blueR = wx2(RINK.x + RINK.width / 2 - 70)
@@ -632,7 +678,7 @@ function drawFieldDots(
   const penaltyDepth  = 5.40 * sx
   const freeHitDepth  = 7.40 * sx
 
-  g.fillStyle(0xcc2020, 0.85)
+  g.fillStyle(LINE_WHITE, 0.95)
   const dots = [
     worldToScreen(leftGoalX  + penaltyDepth,  cy),
     worldToScreen(rightGoalX - penaltyDepth,  cy),
@@ -640,4 +686,46 @@ function drawFieldDots(
     worldToScreen(rightGoalX - freeHitDepth,  cy),
   ]
   for (const d of dots) g.fillCircle(d.x, d.y, 5)
+}
+
+// ─── Publicidad ───────────────────────────────────────────────────────────────
+
+/**
+ * Paneles de publicidad en las caras de los tableros que miran a cámara:
+ * el lejano (cara interior) y el cercano (cara exterior, por delante del juego).
+ */
+function drawAds(scene: Phaser.Scene) {
+  const x0 = RINK.x + RINK_CORNER_R
+  const x1 = RINK.x + RINK.width - RINK_CORNER_R
+
+  const farY = worldToScreen(0, RINK.y).y
+  paintAdRow(scene, x0, x1, RINK.y, farY - BOARD_FAR_H + 2, farY - 1, -1.9, 9, 9)
+
+  const nearIn = worldToScreen(0, RINK.y + RINK.height).y
+  const nearOut = worldToScreenExt(0, RINK.y + RINK.height + BOARD_W).y
+  paintAdRow(scene, x0, x1, RINK.y + RINK.height, nearIn + 3, nearOut - 1, 20.5, 8, 12)
+}
+
+function paintAdRow(
+  scene: Phaser.Scene,
+  wx0: number, wx1: number, wy: number,
+  top: number, bottom: number,
+  depth: number, count: number, fontPx: number,
+) {
+  const g = scene.add.graphics().setDepth(depth)
+  const step = (wx1 - wx0) / count
+  for (let i = 0; i < count; i++) {
+    const [text, bg, fg] = ADS[(i * 3 + (fontPx > 10 ? 1 : 0)) % ADS.length]
+    const a = worldToScreen(wx0 + step * i + 3, wy)
+    const b = worldToScreen(wx0 + step * (i + 1) - 3, wy)
+    g.fillStyle(bg, 1)
+    g.fillRect(a.x, top, b.x - a.x, bottom - top)
+    g.fillStyle(0xffffff, 0.12)
+    g.fillRect(a.x, top, b.x - a.x, Math.max(1, (bottom - top) * 0.3))
+    scene.add.text((a.x + b.x) / 2, (top + bottom) / 2, text, {
+      fontFamily: '"Russo One", sans-serif',
+      fontSize: `${fontPx}px`,
+      color: fg,
+    }).setOrigin(0.5).setDepth(depth + 0.01)
+  }
 }

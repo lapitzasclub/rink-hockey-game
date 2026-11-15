@@ -3,6 +3,7 @@ import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MenuScene } from './scenes/MenuScene'
 import { MatchScene } from './scenes/MatchScene'
+import { isAnnouncerEnabled, setAnnouncerEnabled } from './game/audio/announcer'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
@@ -28,11 +29,19 @@ app.innerHTML = `
         </section>
 
         <section class="settings-section">
+          <h3 class="settings-section-title">SONIDO</h3>
+          <button id="btn-announcer" class="settings-action-btn">
+            <span>Locutor (arcade)</span><span id="announcer-state"></span>
+          </button>
+        </section>
+
+        <section class="settings-section">
           <h3 class="settings-section-title">TECLADO</h3>
           <dl class="settings-controls">
             <div><dt>WASD / Flechas</dt><dd>Mover</dd></div>
-            <div><dt>Shift</dt><dd>Sprint</dd></div>
+            <div><dt>Shift</dt><dd>Sprint / turbo</dd></div>
             <div><dt>U</dt><dd>Disparar · Robar</dd></div>
+            <div><dt>Shift + U</dt><dd>Tiro turbo · Carga (arcade)</dd></div>
             <div><dt>Y</dt><dd>Pasar · Cambiar jugador</dd></div>
           </dl>
         </section>
@@ -44,7 +53,8 @@ app.innerHTML = `
             <div><dt>Joystick</dt><dd>Mover</dd></div>
             <div><dt>A</dt><dd>Disparar · Robar</dd></div>
             <div><dt>B</dt><dd>Pasar · Cambiar jugador</dd></div>
-            <div><dt>S</dt><dd>Sprint</dd></div>
+            <div><dt>S</dt><dd>Sprint / turbo</dd></div>
+            <div><dt>S + A</dt><dd>Tiro turbo · Carga (arcade)</dd></div>
           </dl>
         </section>
         ` : ''}
@@ -62,17 +72,31 @@ app.innerHTML = `
   </div>
 `
 
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
-  parent: 'game-host',
-  backgroundColor: '#08111b',
-  scene: [MenuScene, MatchScene],
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
+let game: Phaser.Game | null = null
+
+// Phaser rasteriza los textos al crearlos: hay que esperar a la fuente arcade
+// (con tope, para no bloquear el arranque si Google Fonts no responde)
+const fontReady = Promise.race([
+  document.fonts.load('32px "Russo One"'),
+  new Promise(resolve => setTimeout(resolve, 1500)),
+]).catch(() => undefined)
+
+void fontReady.then(() => {
+  game = new Phaser.Game({
+    type: Phaser.AUTO,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    parent: 'game-host',
+    backgroundColor: '#08111b',
+    scene: [MenuScene, MatchScene],
+    scale: {
+      // EXPAND: el lienzo ocupa toda la ventana; el pabellón rellena lo que sobra de 16:9
+      mode: Phaser.Scale.EXPAND,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
+  })
+  // Acceso para depurar y simular desde la consola; no llega a producción
+  if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game
 })
 
 // --- Settings panel ---
@@ -85,12 +109,12 @@ const fullscreenBtn = document.querySelector<HTMLButtonElement>('#btn-fullscreen
 const openSettings = () => {
   settingsPanel.hidden = false
   settingsPanel.focus()
-  if (game.scene.isActive('match')) game.scene.pause('match')
+  if (game?.scene.isActive('match')) game.scene.pause('match')
 }
 
 const closeSettings = () => {
   settingsPanel.hidden = true
-  if (game.scene.isPaused('match')) game.scene.resume('match')
+  if (game?.scene.isPaused('match')) game.scene.resume('match')
 }
 
 settingsBtn.addEventListener('click', openSettings)
@@ -122,7 +146,20 @@ fullscreenBtn.addEventListener('click', async () => {
 // Reajustar escala tras entrar/salir de fullscreen (evita imagen estirada)
 document.addEventListener('fullscreenchange', () => {
   updateFullscreenLabel()
-  requestAnimationFrame(() => game.scale.refresh())
+  requestAnimationFrame(() => game?.scale.refresh())
 })
 
-window.addEventListener('resize', () => game.scale.refresh())
+window.addEventListener('resize', () => game?.scale.refresh())
+
+// --- Locutor ---
+
+const announcerBtn = document.querySelector<HTMLButtonElement>('#btn-announcer')!
+const announcerState = document.querySelector<HTMLElement>('#announcer-state')!
+const updateAnnouncerLabel = () => {
+  announcerState.textContent = isAnnouncerEnabled() ? 'ON' : 'OFF'
+}
+announcerBtn.addEventListener('click', () => {
+  setAnnouncerEnabled(!isAnnouncerEnabled())
+  updateAnnouncerLabel()
+})
+updateAnnouncerLabel()

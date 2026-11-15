@@ -2,6 +2,9 @@ import * as Phaser from 'phaser'
 
 export type TeamSide = 'left' | 'right'
 export type TeamColor = 'blue' | 'red'
+/** arcade: reglas relajadas, turbo, cargas, powerups y cámara dinámica. classic: reglamento. */
+export type GameMode = 'arcade' | 'classic'
+export type PowerupKind = 'fire' | 'turbo' | 'freeze' | 'magnet' | 'wall'
 export type Role = 'goalie' | 'defender' | 'wing' | 'pivot'
 
 export type Vector = { x: number, y: number }
@@ -22,6 +25,8 @@ export type Player = {
   head: Phaser.GameObjects.Image
   leftArm: Phaser.GameObjects.Image
   rightArm: Phaser.GameObjects.Image
+  leftLeg: Phaser.GameObjects.Image
+  rightLeg: Phaser.GameObjects.Image
   leftSkate: Phaser.GameObjects.Image
   rightSkate: Phaser.GameObjects.Image
   shadow: Phaser.GameObjects.Ellipse
@@ -46,6 +51,23 @@ export type Player = {
   stickWorldAngle?: number
   /** Timestamp hasta el que el jugador está expulsado (tarjeta azul). 0 o ausente = activo. */
   suspendedUntil?: number
+  // ─── Estado arcade (ausente en modo reglamento) ───
+  /** Aturdido por carga o congelado: sin input ni IA hasta este instante. */
+  stunUntil?: number
+  stunKind?: 'check' | 'freeze'
+  /** Multiplicador de velocidad máxima (rubber-banding, powerup turbo). */
+  speedMultiplier?: number
+  /** Escala del radio de parada del portero (powerup muro). */
+  saveRadiusScale?: number
+  /** El portero no puede parar ni atrapar la bola hasta este instante (tiro que le supera). */
+  saveDisabledUntil?: number
+  checkCooldownUntil?: number
+  turboUntil?: number
+  magnetUntil?: number
+  wallUntil?: number
+  /** El siguiente tiro sale como bola de fuego (powerup). */
+  fireShotReady?: boolean
+  onFire?: boolean
 }
 
 export type BullyCandidate = {

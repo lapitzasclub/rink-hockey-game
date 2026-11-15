@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import {
+  AI_PRESS_DISTANCE,
   AI_MARK_RADIUS,
   AI_OPEN_MATE_GAP,
   AI_SHOOT_DISTANCE,
@@ -219,6 +220,17 @@ export function updateFieldPlayerAI(
         target = { ...player.home }
         intensity = 0.78
       }
+    }
+
+    // El más cercano siempre encima del portador, sea cual sea su rol: si se
+    // queda a distancia de cobertura (> alcance de robo) el juego se congela
+    if (rivalCarrier && pressureIndex === 0) {
+      const dir = normalizedVector(rivalCarrier.facing.x, rivalCarrier.facing.y, { x: rivalCarrier.side === 'left' ? 1 : -1, y: 0 })
+      target = {
+        x: rivalCarrier.pos.x + dir.x * AI_PRESS_DISTANCE,
+        y: rivalCarrier.pos.y + dir.y * AI_PRESS_DISTANCE,
+      }
+      intensity = 1
     }
   }
 

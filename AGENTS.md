@@ -23,22 +23,27 @@ Juego de rink hockey 2D top-down para navegador. Formato 5v5 simplificado. El ju
 
 ```
 src/
-  main.ts                    Bootstrap Phaser, HTML shell, botón fullscreen
+  main.ts                    Bootstrap Phaser (espera a la fuente Russo One), HTML shell, ajustes
+  scenes/MenuScene.ts        Menú con selección de modo ARCADE / REGLAMENTO (localStorage `rh-mode`)
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
   game/
     constants.ts             Todas las constantes de física y gameplay (tuning aquí)
-    types.ts                 Tipos: Player, Vector, ActiveBully, ActiveFoulRestart
+    types.ts                 Tipos: Player, Vector, ActiveBully, ActiveFoulRestart, GameMode, PowerupKind
     formation.ts             Posiciones iniciales por formación
     utils.ts                 Helpers generales
     entities/
       createBall.ts
       createPlayer.ts
     render/
-      drawRink.ts            Pista, porterías y marcas (todo por código, sin assets)
+      drawRink.ts            Vallas, líneas blancas, porterías y vallas publicitarias (todo por código)
+      arena.ts               Pabellón: suelo azul pintado, gradas en anfiteatro con perspectiva y público animado
       viewTransform.ts       Transform mundo→pantalla para perspectiva 3/4
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
+      arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
     systems/
       ai.ts                  IA de portero y jugadores de campo
+      arcade.ts              ArcadeController: turbo, tiros turbo/fuego, cargas, rachas, powerups, rubber-band
+      cameraDirector.ts      Cámara dinámica (seguimiento con anticipación, zoom contextual, punch)
       ball.ts                Física y posición de la pelota
       matchActions.ts        Acciones: pase, tiro, robo, contactos, parada portero
       matchClock.ts          Reloj del partido y periodos
@@ -52,6 +57,10 @@ src/
     ui/
       createHud.ts
       matchHud.ts
+      arcadeHud.ts           Videomarcador, barra de turbo y línea de estado (arcade)
+    audio/
+      sounds.ts              Audio procedural Web Audio (incluye público, cargas, powerups)
+      announcer.ts           Locutor con Web Speech API (voz española si existe; on/off en ajustes)
     input/
       mobileJoystick.ts      nipplejs + botones táctiles (A/B/S)
 tools/
@@ -73,6 +82,12 @@ public/
 
 - Los controles táctiles usan nipplejs anclado a `#left-zone` (zona DOM separada del canvas). Esta solución funciona correctamente; no migrar a controles Phaser nativos salvo decisión explícita.
 - `btn-switch` se pasa a `createMobileJoystick` pero no tiene elemento HTML ni binding; en móvil el cambio de jugador se gestiona con B (botón de pase) cuando no hay posesión — comportamiento contextual intencional.
+- **Dos cámaras en MatchScene**: la principal (mundo, con zoom en arcade) y una de UI fija. Todo objeto nuevo se enruta en `ADDED_TO_SCENE`: lo creado dentro de `withUi(() => ...)` lo ignora la principal; el resto lo ignora la UI. Cualquier HUD/overlay nuevo debe crearse dentro de `withUi`.
+- La cámara trabaja en coordenadas de pantalla ya proyectadas (`worldToScreen`); la física sigue en mundo.
+- **Scale.EXPAND**: el lienzo ocupa toda la ventana (sin bandas negras). El área de juego sigue siendo 1280×720 centrada; el pabellón (`ARENA_BOUNDS` en `arena.ts`) rellena lo que sobra. Las cámaras se reajustan en `MatchScene.fitCameras` (evento `RESIZE`) y `CameraDirector.refit`; el HUD queda dentro del área 16:9.
+- **Gradas** (`arena.ts`): anillos concéntricos alrededor de la valla (`roundedRectWorldPts` desplazado) proyectados con `standToScreen` (misma perspectiva que la pista + retroceso tras el fondo + altura del escalón). Se pintan una vez en canvas: estructura (profundidad -6), dos capas de público que se mecen (-5) y filas cercanas de espaldas (21, delante del tablero).
+- `MatchScene.init(data)` resetea todo el estado: Phaser reutiliza la instancia de escena entre partidos.
+- Modo arcade vs reglamento: `this.mode` en MatchScene; con `classic` no se crean `ArcadeController`/`ArcadeFx`/cámara dinámica y el juego se comporta como antes.
 - La portería se trata como jaula: boca frontal válida para gol, estructura trasera/lateral hace rebotar la pelota. El anclaje del balón al portador está blindado cerca de la portería para evitar goles fantasma.
 
 ## Reglas de trabajo
@@ -107,18 +122,32 @@ Formato preferido: `/** ... */` en funciones o módulos clave. Inline solo cuand
 - Física de portería como jaula
 - Fullscreen, controles táctiles y teclado
 
+### Modo arcade (por defecto)
+
+Estilo NBA Jam manteniendo el 5v5 y relajando las reglas. Se elige en el menú; REGLAMENTO conserva las reglas oficiales.
+
+- Periodos de 90 s (`ARCADE_PERIOD_DURATION`), cabezones (`ARCADE_HEAD_SCALE`), cámara dinámica con zoom y celebración de gol de 2,6 s.
+- **Sin faltas**: el robo nunca pita falta (el resultado se convierte en bola suelta), no hay falta de zona del portero y el bully se sustituye por una melé: la bola sale disparada en dirección aleatoria.
+- **Turbo**: Shift/S gasta stamina con más velocidad. **Shift+U con bola** = tiro turbo (más potencia, puede batir al portero). **Shift+U sin bola** = carga: derriba al rival cercano y, si es el portador, suelta la bola.
+- **En racha (on fire)**: 2 goles seguidos del mismo jugador → turbo infinito y tiros de fuego hasta que el rival marca.
+- **Powerups** sobre la pista (máx. 2): fuego (siguiente tiro de fuego), turbo, congelar (2 rivales), imán (bola), muro (portero más grande). La IA también va a por ellos.
+- **Rubber-band**: el equipo que pierde recibe un pequeño bonus de velocidad.
+- La IA hace cargas (`ARCADE_AI_CHECK_CHANCE`) y tiros turbo.
+- Locutor por síntesis de voz y ambiente de público procedural cuya intensidad sube cerca de las porterías.
+
 ### Controles (teclado)
 
 | Acción | Tecla |
 |---|---|
 | Mover | WASD / flechas |
-| Sprint | Shift |
+| Sprint / turbo | Shift |
 | Tiro (con posesión) / robo (sin posesión) | U |
+| Tiro turbo (con posesión) / carga (sin posesión) — solo arcade | Shift + U |
 | Pase (con posesión) / cambio de jugador (sin posesión) | Y |
 
 ### Controles (móvil)
 
-Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio), S (sprint), ⛶ (fullscreen).
+Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio), S (sprint/turbo), S+A (tiro turbo/carga en arcade), ⛶ (fullscreen).
 
 ## Roadmap
 
@@ -142,9 +171,12 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Jugadores, porteros, sticks y pelota con puppet procedural por piezas tintables
 - Menú inicial, panel de ajustes, audio procedural, animación de stick
 - Animación de patinaje procedural v3: fase acumulada, contrafase 180°, zancada por dirección, `sideFactor`, texturas de espalda, sprint
+- Modo arcade estilo NBA Jam (cámara dinámica, turbo, cargas, powerups, racha de fuego, locutor, HUD arcade) con selección de modo en el menú
 
 ### Pendiente
 
+- [ ] Playtest y tuning del modo arcade (frecuencia de powerups, potencia de tiros turbo/fuego, probabilidad de batir al portero, zoom de cámara)
+- [ ] Verificar el modo arcade en móvil (S+A, legibilidad del HUD con zoom)
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
 - [ ] Separar sistema de reglas en módulo propio (`systems/rules.ts` puede crecer)
 - [ ] UI definitiva, sprites finales
@@ -192,6 +224,30 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-15 (sesión 22) — pabellón, gráficos y ajustes tras pruebas
+
+- Suelo azul de pista pintada (gradiente, juntas en perspectiva, grano, marcas de ruedas, reflejos de focos) en `render/arena.ts`; se quitó el hielo blanco. Líneas de la pista en blanco, área de portería azul claro con arco rojo, vallas oscuras y vallas publicitarias ficticias (`drawAds`).
+- Gradas rehechas con perspectiva real (anfiteatro de 22 escalones alrededor de toda la pista) y público por asiento, escalado por profundidad; vibra con la intensidad del partido y salta en los goles.
+- `Scale.FIT` → `Scale.EXPAND`: se eliminan las bandas negras; cámaras y límites se adaptan al tamaño de ventana.
+- Piernas en el puppet (`field-leg`/`goalie-leg`, `placeLeg` en `visuals.ts`); patines bajados a y=35 para que se vean.
+- IA: el defensor más cercano presiona al portador rival (`AI_PRESS_DISTANCE`). Antes, si el humano se quedaba quieto con la bola, nadie entraba a robar.
+- Nota: el análisis inicial de "98 % de posesión azul" era un artefacto del arnés de pruebas (en escritorio el joystick se ignora); simulando teclado el arcade sale equilibrado.
+
+**Validación**: `npm run build` pasa; verificado en Chrome en clásico y arcade, y con proporción forzada ultra-ancha.
+
+### 2026-11-15 (sesión 21) — modo arcade estilo NBA Jam
+
+**Objetivo**: dar al juego un giro arcade (zoom, turbo, powerups, "magias", exageración) manteniendo el 5v5 y relajando reglas. Sin dependencias nuevas: audio y gráficos procedurales.
+
+- Nuevos módulos: `systems/arcade.ts`, `systems/cameraDirector.ts`, `render/arcadeFx.ts`, `ui/arcadeHud.ts`, `audio/announcer.ts`; sonidos nuevos en `audio/sounds.ts` (carga, powerup, tiros turbo/fuego, congelar, rugido y ambiente de público).
+- Hooks mínimos en sistemas existentes: `speedMultiplier` en `movement.ts`, `saveDisabledUntil`/`saveRadiusScale` en `ball.ts`, `powerMultiplier` y `allowFouls` en `matchActions.ts`, aturdidos en `playerControl.ts`, `setVisualHeadScale` en `visuals.ts`.
+- `MatchScene`: cámara UI separada (`withUi`), `init(data)` con reseteo completo (corrige que al volver del menú el partido arrancase con estado del anterior, p. ej. `matchEnded`), integración arcade, celebración de gol, conversión de bully en melé.
+- `MenuScene`: tarjetas ARCADE / REGLAMENTO (←/→ o A/D, ESPACIO/ENTER o clic); el modo se guarda en `rh-mode`.
+- Fuente Russo One (Google Fonts) para HUD/menú; `main.ts` espera a la fuente (máx. 1,5 s). Botón de locutor ON/OFF en ajustes.
+- Constructores sin parameter properties: el tsconfig tiene `erasableSyntaxOnly`.
+
+**Validación**: `npm run build` pasa. Menú y arranque del modo arcade comprobados en navegador sin errores de consola (zoom, marcador, banner). El gameplay arcade completo (powerups, cargas, rachas, goles) **no se ha playtesteado** a velocidad real: queda pendiente de tuning.
 
 ### 2026-06-26 (sesión 20) — animación de patinaje completa, texturas de espalda y 0.3.0
 

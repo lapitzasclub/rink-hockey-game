@@ -8,7 +8,8 @@ const STAMINA_BAR_W = 36
 const STAMINA_BAR_H = 3
 const STAMINA_BAR_Y_OFFSET = 22
 const LABEL_Y_OFFSET = 52
-const BASE_SKATE_Y = 27
+// Por debajo del borde del torso (~y 31) para que asomen las piernas
+const BASE_SKATE_Y = 35
 const BASE_ARM_Y = 10
 
 const BODY_Y: Record<Player['role'], number> = {
@@ -52,6 +53,14 @@ function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, 
     }
   }
   return map
+}
+
+// Escala global del casco; la fija la escena según el modo (cabezones en arcade).
+let headScale = 1
+
+/** Fija la escala del casco para todos los jugadores (1 = reglamento). */
+export function setVisualHeadScale(scale: number) {
+  headScale = scale
 }
 
 /** Actualiza render de jugadores, bola y piezas puppet sin tocar la física. */
@@ -107,6 +116,8 @@ export function updateVisuals(
       player.leftSkate.setPosition(-8, BASE_SKATE_Y).setRotation(0).setScale(sideSign, 1)
       player.rightSkate.setPosition(8, BASE_SKATE_Y).setRotation(0).setScale(sideSign, 1)
       player.stick.setVisible(false)
+      placeLeg(player.leftLeg, -6, BODY_Y[player.role] + 12, -8, BASE_SKATE_Y)
+      placeLeg(player.rightLeg, 6, BODY_Y[player.role] + 12, 8, BASE_SKATE_Y)
       const secsLeft = Math.ceil((player.suspendedUntil! - timeNow) / 1000)
       player.label.setPosition(pp.x, pp.y - LABEL_Y_OFFSET).setText(`${secsLeft}s`).setAlpha(1)
       continue
@@ -183,15 +194,16 @@ export function updateVisuals(
 
     const weightShift = rSin * animBlend * 0.9
     const headX = sideSign * (1.5 - sideFactor * 0.5) + player.velocity.x * 0.004
-    const headY = HEAD_Y[player.role] + forwardY * 3 + glideDip * 0.3 + player.velocity.y * 0.003
+    // Con cabezón el casco sube para no tapar el torso
+    const headY = HEAD_Y[player.role] * (1 + (headScale - 1) * 0.55) + forwardY * 3 + glideDip * 0.3 + player.velocity.y * 0.003
     const bodyX = sideSign * -1 + player.velocity.x * 0.005 + weightShift
     const bodyY = BODY_Y[player.role] + towardCamera * 2 - awayFromCamera * 2 + glideDip
     const nearArmX = sideSign * (17 + sideFactor * 2)
     const farArmX = sideSign * (-15 + sideFactor * 1)
     const bodyScaleX = depthScaleX * (1 - sideFactor * 0.1 + speedRatio * 0.03)
     const bodyScaleY = depthScaleY * (1 + speedRatio * 0.02 - awayFromCamera * 0.03)
-    const headScaleX = depthScaleX * (1 - sideFactor * 0.05)
-    const headScaleY = depthScaleY * (1 + towardCamera * 0.03)
+    const headScaleX = depthScaleX * (1 - sideFactor * 0.05) * headScale
+    const headScaleY = depthScaleY * (1 + towardCamera * 0.03) * headScale
 
     // Textura frontal o de espalda según si el jugador se aleja o se acerca a cámara
     const dirPrefix = player.role === 'goalie' ? 'goalie' : 'field'
@@ -211,6 +223,11 @@ export function updateVisuals(
     player.rightSkate.setPosition(rSkateX, rSkateY)
     player.rightSkate.setScale(sideSign * (0.9 + sideFactor * 0.1 + speedRatio * 0.1), 1 + towardCamera * 0.08)
     player.rightSkate.setRotation(0.08 - rSin * animBlend * 0.18)
+    // Piernas de la cadera al patín; la cadera sigue al torso inclinado
+    const hipY = bodyY + (player.role === 'goalie' ? 14 : 12)
+    const hipSpread = player.role === 'goalie' ? 8 : 6
+    placeLeg(player.leftLeg, bodyX - hipSpread * (1 - sideFactor * 0.4), hipY, lSkateX, lSkateY - 2)
+    placeLeg(player.rightLeg, bodyX + hipSpread * (1 - sideFactor * 0.4), hipY, rSkateX, rSkateY - 2)
     // Swing contralateral de brazos (opuesto al pie adelantado)
     player.leftArm.setPosition(farArmX, BASE_ARM_Y + glideDip * 0.3 - rSin * animBlend * 1.5)
     player.leftArm.setScale(sideSign * (0.9 + depthScaleX * 0.08), depthScaleY)
@@ -266,6 +283,16 @@ export function updateVisuals(
       player.staminaBar.setDisplaySize(barW, STAMINA_BAR_H)
     }
   }
+}
+
+/** Estira una pierna (origen arriba) desde la cadera hasta el patín. */
+function placeLeg(leg: Phaser.GameObjects.Image, hipX: number, hipY: number, footX: number, footY: number) {
+  const dx = footX - hipX
+  const dy = footY - hipY
+  const len = Math.max(4, Math.hypot(dx, dy))
+  leg.setPosition(hipX, hipY)
+  leg.setRotation(Math.atan2(-dx, dy))
+  leg.setScale(1, len / leg.height)
 }
 
 /** Devuelve la punta del stick en coordenadas mundo para resolver contactos. */

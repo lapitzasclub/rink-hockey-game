@@ -182,6 +182,7 @@ export function tryClaimBall(ball: Ball, player: Player, ballCarrierId: string |
   if (ballCarrierId) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   if ((player.possessionCooldownUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   if ((player.ignoreBallUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
+  if ((player.stunUntil ?? 0) > now || (player.saveDisabledUntil ?? 0) > now) return { claimed: false, ballCarrierId, ballVelocity, controlledPlayerIndex }
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
   let claimRadius = player.role === 'goalie' ? GOALIE_CLAIM_RADIUS : BALL_PICKUP_DISTANCE
   const toBallX = ball.x - player.pos.x
@@ -289,9 +290,10 @@ export function kickBall(ballVelocity: Vector, angle: number, power: number) {
 export function tryGoalieSave(ball: Ball, ballVelocity: Vector, players: Player[], now: number) {
   for (const player of players) {
     if (player.role !== 'goalie') continue
+    if ((player.saveDisabledUntil ?? 0) > now) continue
 
     const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ball.x, ball.y)
-    if (distance > GOALIE_SAVE_RADIUS) continue
+    if (distance > GOALIE_SAVE_RADIUS * (player.saveRadiusScale ?? 1)) continue
 
     const speed = Math.hypot(ballVelocity.x, ballVelocity.y)
     const towardGoal = player.side === 'left' ? ballVelocity.x < 0 : ballVelocity.x > 0

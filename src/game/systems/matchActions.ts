@@ -208,6 +208,8 @@ export function handleLooseBallContactsAction(options: {
   let nextLastTouch = options.lastTouch
 
   for (const player of options.players) {
+    // Un portero superado por un tiro especial no debe desviarlo con el cuerpo
+    if ((player.saveDisabledUntil ?? 0) > options.timeNow) continue
     const radius = player.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
     const bodyDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, options.ball.x, options.ball.y)
     const stickTip = getStickTip(player)
@@ -284,10 +286,12 @@ export function tryShotAction(options: {
   players: Player[]
   ballCarrierId: string | null
   timeNow: number
+  /** Potencia extra de tiros especiales arcade (turbo / fuego). */
+  powerMultiplier?: number
 }) {
   if (options.ballCarrierId !== options.player.id) return null
   const direction = getAssistedShotDirection(options.player, getAimingDirection(options.player))
-  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, SHOT_POWER, options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
+  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, SHOT_POWER * (options.powerMultiplier ?? 1), options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
   if (options.player.role === 'goalie') clearGoalieCatch(options.player)
   return {
     ballCarrierId: released.ballCarrierId,
@@ -310,6 +314,8 @@ export function tryManualStealAction(options: {
   ballCarrierId: string | null
   timeNow: number
   ruleState: RuleState
+  /** false en arcade: el riesgo de falta se convierte en bola suelta. */
+  allowFouls?: boolean
 }) {
   const carrier = options.ballCarrierId ? findPlayerById(options.players, options.ballCarrierId) : null
   if (!carrier || carrier.team === options.player.team) return null
@@ -379,6 +385,10 @@ export function tryManualStealAction(options: {
   successChance = Phaser.Math.Clamp(successChance, 0.01, 0.45)
   looseChance = Phaser.Math.Clamp(looseChance, 0.1, 0.56)
   foulChance = Phaser.Math.Clamp(foulChance, 0.02, 0.65)
+  if (options.allowFouls === false) {
+    looseChance = Math.min(0.75, looseChance + foulChance * 0.6)
+    foulChance = 0
+  }
 
   const roll = Math.random()
   if (roll < foulChance) {

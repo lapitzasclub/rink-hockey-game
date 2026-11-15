@@ -24,7 +24,8 @@ export function updateControlledPlayerMotion(options: {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
 
   // Si el jugador controlado está suspendido, solo aplicar rozamiento (sin input)
-  if (player.suspendedUntil && player.suspendedUntil > options.timeNow) {
+  if ((player.suspendedUntil && player.suspendedUntil > options.timeNow) || (player.stunUntil ?? 0) > options.timeNow) {
+    player.sprinting = false
     applySkating(player, options.dt)
     return player
   }
@@ -85,6 +86,11 @@ export function updateTeamAIPlayers(options: {
     if (player.id === controlled.id) continue
     // Jugador suspendido: no actualizar IA ni física (lo gestiona updateSuspendedPlayers)
     if (player.suspendedUntil && player.suspendedUntil > options.timeNow) continue
+    if ((player.stunUntil ?? 0) > options.timeNow) {
+      player.sprinting = false
+      applySkating(player, options.dt)
+      continue
+    }
     player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * options.dt * 0.8)
     if (player.role === 'goalie') {
       player.sprinting = false

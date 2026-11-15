@@ -24,6 +24,8 @@ export function createProceduralPuppetTextures(scene: Phaser.Scene) {
   makeTexture(scene, 'field-arm', 14, 30, paintArm)
   makeTexture(scene, 'goalie-arm', 16, 34, paintArm)
   makeTexture(scene, 'field-skate', 18, 10, paintSkate)
+  makeTexture(scene, 'field-leg', 10, 20, paintLeg)
+  makeTexture(scene, 'goalie-leg', 14, 22, paintGoaliePad)
   makeTexture(scene, 'goalie-skate', 20, 11, paintSkate)
   makeTexture(scene, 'hockey-stick', 46, 9, paintStick)
   makeTexture(scene, 'puck-pixel', 20, 20, paintPuck)
@@ -130,6 +132,27 @@ function paintSkate(g: Phaser.GameObjects.Graphics) {
   g.fillRect(2, 7, 15, 1)
   g.fillCircle(5, 8, 1)
   g.fillCircle(13, 8, 1)
+}
+
+/** Pierna: pantalón arriba y espinillera/calcetín abajo; se estira de cadera a patín. */
+function paintLeg(g: Phaser.GameObjects.Graphics) {
+  g.fillStyle(OUTLINE, 1)
+  g.fillRoundedRect(1, 0, 8, 20, 3)
+  g.fillStyle(WHITE, 1)
+  g.fillRoundedRect(3, 1, 4, 17, 2)
+  g.fillStyle(SHADE, 1)
+  g.fillRect(3, 9, 4, 2)
+}
+
+/** Espinillera ancha del portero. */
+function paintGoaliePad(g: Phaser.GameObjects.Graphics) {
+  g.fillStyle(OUTLINE, 1)
+  g.fillRoundedRect(1, 0, 12, 22, 4)
+  g.fillStyle(WHITE, 1)
+  g.fillRoundedRect(3, 1, 8, 19, 3)
+  g.lineStyle(1, OUTLINE, 0.5)
+  g.lineBetween(3, 8, 11, 8)
+  g.lineBetween(3, 14, 11, 14)
 }
 
 /** Dibuja stick neutral sin tintado de equipo. */

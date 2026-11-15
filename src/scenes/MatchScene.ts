@@ -1,5 +1,11 @@
 import * as Phaser from 'phaser'
 import {
+  ARCADE_AI_CHECK_CHANCE,
+  ARCADE_GOAL_CELEBRATION_MS,
+  ARCADE_HEAD_SCALE,
+  ARCADE_PERIOD_DURATION,
+  GAME_HEIGHT,
+  GAME_WIDTH,
   GOAL_HALF_H,
   MATCH_DURATION,
   PENALTY_AREA_DEPTH,
@@ -10,6 +16,7 @@ import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation } from '../game/formation'
 import { drawRink, createGoalNetFlash } from '../game/render/drawRink'
+import { createArena, type Arena } from '../game/render/arena'
 import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../game/render/benchPlayers'
 import {
   updateBallPosition,
@@ -20,8 +27,8 @@ import {
   findPlayerById,
   getControlledPlayer,
 } from '../game/systems/playerHelpers'
-import { updateVisuals } from '../game/systems/visuals'
-import type { ActiveBully, ActiveFoulRestart, Ball, Player, TeamColor, Vector } from '../game/types'
+import { setVisualHeadScale, updateVisuals } from '../game/systems/visuals'
+import type { ActiveBully, ActiveFoulRestart, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
 import { worldToScreen } from '../game/render/viewTransform'
 import { createHud } from '../game/ui/createHud'
 import { updateMatchHud } from '../game/ui/matchHud'
@@ -47,7 +54,14 @@ import {
 import { tickMatchClock } from '../game/systems/matchClock'
 import { updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
-import { playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle } from '../game/audio/sounds'
+import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle, startCrowdAmbience } from '../game/audio/sounds'
+import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
+import { ArcadeController } from '../game/systems/arcade'
+import { CameraDirector } from '../game/systems/cameraDirector'
+import { ArcadeFx } from '../game/render/arcadeFx'
+import { createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
+
+export type MatchSceneData = { mode?: GameMode }
 
 /**
  * Escena principal del partido.
@@ -64,7 +78,7 @@ export class MatchScene extends Phaser.Scene {
   private switchKey!: Phaser.Input.Keyboard.Key
   private sprintKey!: Phaser.Input.Keyboard.Key
   private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
-  private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false }
+  private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
   private prevTouchButtons = { pass: false, shoot: false, switch: false }
   private mobileJoystick: { destroy(): void } | null = null
   private ball!: Ball
@@ -98,32 +112,135 @@ export class MatchScene extends Phaser.Scene {
   private ballEnteredGoalFromFront = { left: false, right: false }
   private prevBallX = 0
   private benchPlayers: BenchPlayer[] = []
+  private mode: GameMode = 'arcade'
+  private uiCamera!: Phaser.Cameras.Scene2D.Camera
+  private uiBuilding = false
+  private cameraDirector!: CameraDirector
+  private arcade: ArcadeController | null = null
+  private fx: ArcadeFx | null = null
+  private arcadeHud: ArcadeHud | null = null
+  private crowd: { setIntensity(v: number): void, stop(): void } | null = null
+  private arena!: Arena
 
   constructor() {
     super('match')
   }
 
+  /**
+   * Phaser reutiliza la instancia de la escena entre partidos: los campos no
+   * se reinician solos, así que se resetea aquí todo el estado de partido.
+   */
+  init(data: MatchSceneData = {}) {
+    this.mode = data.mode ?? 'arcade'
+    this.joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
+    this.prevTouchButtons = { pass: false, shoot: false, switch: false }
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+    this.players = []
+    this.controlledPlayerIndex = 0
+    this.blueScore = 0
+    this.redScore = 0
+    this.remainingSeconds = this.periodDuration
+    this.currentPeriod = 1
+    this.matchEnded = false
+    this.restartAt = 0
+    this.lastTouch = 'blue'
+    this.ruleState = createRuleState()
+    this.lastLooseBallTime = 0
+    this.ballIgnoreContactsUntil = 0
+    this.activeBully = null
+    this.activeFoulRestart = null
+    this.stuckCarrierStartTime = 0
+    this.stuckCarrierOrigin = null
+    this.ballEnteredGoalFromFront = { left: false, right: false }
+    this.prevBallX = 0
+    this.arcade = null
+    this.fx = null
+    this.arcadeHud = null
+    this.crowd = null
+  }
+
+  private get isArcade() {
+    return this.mode === 'arcade'
+  }
+
+  private get periodDuration() {
+    return this.mode === 'arcade' ? ARCADE_PERIOD_DURATION : MATCH_DURATION
+  }
+
+  /** Crea objetos de interfaz: los ve solo la cámara UI, sin zoom. */
+  private withUi<T>(build: () => T): T {
+    this.uiBuilding = true
+    try {
+      return build()
+    } finally {
+      this.uiBuilding = false
+    }
+  }
+
+  /**
+   * Dos cámaras: la principal (mundo, con zoom dinámico en arcade) y una de UI
+   * fija. Cada objeto nuevo se asigna a una de las dos al añadirse a la escena.
+   */
+  private setupCameras() {
+    this.cameras.main.setBackgroundColor('#08111b')
+    this.uiCamera = this.cameras.add(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    const route = (obj: Phaser.GameObjects.GameObject) => {
+      if (this.uiBuilding) this.cameras.main.ignore(obj)
+      else this.uiCamera.ignore(obj)
+    }
+    this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, route)
+    // Los listeners de la escena sobreviven al restart: quitarlo al salir
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.fitCameras, this)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, route)
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.fitCameras, this)
+    })
+  }
+
+  /** Con Scale.EXPAND el lienzo cambia de tamaño: la UI se mantiene centrada en el área 16:9. */
+  private fitCameras() {
+    const { width, height } = this.scale.gameSize
+    this.cameras.main.setSize(width, height)
+    this.uiCamera.setSize(width, height)
+    this.uiCamera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2)
+    this.cameraDirector?.refit()
+  }
+
   /** Inicializa escena, entidades, HUD y estado de saque inicial. */
   create() {
-    this.cameras.main.setBackgroundColor('#08111b')
+    this.setupCameras()
+    setVisualHeadScale(this.isArcade ? ARCADE_HEAD_SCALE : 1)
+    this.arena = createArena(this)
     drawRink(this)
     this.benchPlayers = createBenchPlayers(this)
     const nets = createGoalNetFlash(this)
     this.leftGoalNet  = nets.left
     this.rightGoalNet = nets.right
     this.createInput()
+    if (this.isArcade) {
+      this.fx = new ArcadeFx(this, (build) => this.withUi(build))
+      // Antes que los jugadores: la capa de powerups queda por debajo
+      this.arcade = new ArcadeController(this, this.fx)
+    }
     this.createTeams()
     this.ball = createBall(this)
-    this.goalFlash = this.add.rectangle(
-      this.cameras.main.width / 2, this.cameras.main.height / 2,
-      this.cameras.main.width, this.cameras.main.height,
-      0xffec88,
-    ).setAlpha(0).setDepth(45)
     this.aimIndicator = this.add.graphics().setDepth(42)
-    const hud = createHud(this)
-    this.hudText = hud.hudText
-    this.subHudText = hud.subHudText
-    this.centerText = hud.centerText
+    this.withUi(() => {
+      this.goalFlash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 3, GAME_HEIGHT * 3, 0xffec88)
+        .setAlpha(0).setDepth(45)
+      const hud = createHud(this)
+      this.hudText = hud.hudText
+      this.subHudText = hud.subHudText
+      this.centerText = hud.centerText.setDepth(55)
+      if (this.isArcade) {
+        this.hudText.setVisible(false)
+        this.subHudText.setVisible(false)
+        this.arcadeHud = createArcadeHud(this)
+      }
+    })
+    this.cameraDirector = new CameraDirector(this.cameras.main, this.isArcade)
+    this.fitCameras()
     this.mobileJoystick = createMobileJoystick({
       isTouchDevice: this.isTouchDevice,
       zone: document.getElementById('left-zone'),
@@ -136,8 +253,21 @@ export class MatchScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.mobileJoystick?.destroy()
       this.mobileJoystick = null
+      this.crowd?.stop()
+      this.crowd = null
+      this.arcade?.destroy()
+      this.fx?.destroy()
+      stopAnnouncer()
     })
     this.resetKickoff('blue')
+    this.cameraDirector.snapTo(this.ball)
+    if (this.arcade) {
+      this.arcade.start(this.players, this.time.now)
+      this.crowd = startCrowdAmbience()
+      this.crowd.setIntensity(0.3)
+      this.fx?.showBanner('¡A JUGAR!', '#ffe36a', 'MODO ARCADE', 1100)
+      announce('¡Bienvenidos al hockey arcade!', true)
+    }
 
     this.time.addEvent({
       delay: 1000,
@@ -151,7 +281,7 @@ export class MatchScene extends Phaser.Scene {
           ruleState: this.ruleState,
           centerText: this.centerText,
           timeNow: this.time.now,
-          matchDuration: MATCH_DURATION,
+          matchDuration: this.periodDuration,
           finishMatch: () => this.finishMatch(),
         })
         this.remainingSeconds = next.remainingSeconds
@@ -178,6 +308,14 @@ export class MatchScene extends Phaser.Scene {
     const dt = Math.min(delta / 1000, 0.033)
     // joystickInput ya se actualiza por nipplejs
     updateBenchPlayers(this.benchPlayers, time)
+    this.arena.update(time, this.matchEnded ? 0.9 : this.getCrowdIntensity())
+    this.cameraDirector.update({
+      dt,
+      timeNow: time,
+      ball: this.ball,
+      ballVelocity: this.ballVelocity,
+      controlled: this.players.length ? getControlledPlayer(this.players, this.controlledPlayerIndex) : null,
+    })
 
     if (this.matchEnded) {
       const touchReturn = this.joystickInput.shoot && !this.prevTouchButtons.shoot
@@ -188,6 +326,7 @@ export class MatchScene extends Phaser.Scene {
           redScore: this.redScore,
           blueFouls: this.ruleState.teamFouls.blue,
           redFouls: this.ruleState.teamFouls.red,
+          mode: this.mode,
         })
       }
       return
@@ -220,6 +359,20 @@ export class MatchScene extends Phaser.Scene {
     })) return
 
     updateSuspendedPlayers(this.players, time, dt)
+    if (this.arcade) {
+      const change = this.arcade.update({
+        timeNow: time,
+        dt,
+        players: this.players,
+        ballCarrierId: this.ballCarrierId,
+        ball: this.ball,
+        blueScore: this.blueScore,
+        redScore: this.redScore,
+        controlledId: getControlledPlayer(this.players, this.controlledPlayerIndex).id,
+      })
+      if (change) this.applyBallChange(change)
+      this.crowd?.setIntensity(this.getCrowdIntensity())
+    }
 
     // Si el jugador controlado está suspendido, ceder control al siguiente disponible
     const currentControlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
@@ -254,6 +407,7 @@ export class MatchScene extends Phaser.Scene {
     this.checkGoalieZoneFoul(time)
     this.handleRuleRestarts()
     updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId, time)
+    this.arcade?.postVisuals(this.players, this.ball, this.ballVelocity, time)
     this.checkGoalState(time)
     this.syncBallVisual()  // re-sincronizar si el gol recolocó el balón tras updateVisuals
     this.updateHud()
@@ -302,9 +456,10 @@ export class MatchScene extends Phaser.Scene {
     const passPressed = Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed
     let switchPressed = false
 
+    const turboHeld = !!this.sprintKey.isDown || !!this.joystickInput.sprint
     if (actionPressed) {
-      if (this.ballCarrierId === player.id) this.tryShot(player)
-      else this.tryManualSteal(player)
+      if (this.ballCarrierId === player.id) this.tryShot(player, turboHeld)
+      else if (!(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
     }
     if (passPressed) {
       if (this.ballCarrierId === player.id) this.tryPass(player)
@@ -346,7 +501,7 @@ export class MatchScene extends Phaser.Scene {
       if (player.team === 'red') {
         if (hasBall) {
           if (player.role === 'goalie' && shouldGoaliePass(player, this.time.now)) this.tryPass(player)
-          else if (shouldAIShoot(player)) this.tryShot(player)
+          else if (shouldAIShoot(player)) this.tryShot(player, (player.stamina ?? 0) > 45 && Math.random() < 0.45)
           else {
             // Pasa con más frecuencia si hay un compañero libre más cerca del gol
             const passChance = shouldAIPassToOpenMate(player, this.players) ? 0.042 : 0.012
@@ -354,7 +509,10 @@ export class MatchScene extends Phaser.Scene {
           }
         } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
           const carrier = findPlayerById(this.players, this.ballCarrierId)
-          if (carrier && shouldAIAttemptSteal(player, carrier)) this.tryManualSteal(player)
+          if (carrier && shouldAIAttemptSteal(player, carrier)) {
+            const checked = this.isArcade && Math.random() < ARCADE_AI_CHECK_CHANCE && this.tryCheck(player)
+            if (!checked) this.tryManualSteal(player)
+          }
         }
       } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.time.now)) {
         this.tryPass(player)
@@ -452,20 +610,56 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Ejecuta un tiro hacia una zona de portería con pequeña variación vertical. */
-  private tryShot(player: Player) {
+  private tryShot(player: Player, wantsTurbo = false) {
+    if (this.ballCarrierId !== player.id) return
+    // En arcade el tipo de tiro (normal / turbo / fuego) se decide antes de soltar
+    const shot = this.arcade?.prepareShot(player, wantsTurbo) ?? { power: 1, kind: null, beatChance: 0 }
     const result = tryShotAction({
       player,
       ball: this.ball,
       players: this.players,
       ballCarrierId: this.ballCarrierId,
       timeNow: this.time.now,
+      powerMultiplier: shot.power,
     })
     if (!result) return
-    playShot()
+    if (!shot.kind) playShot()
     player.stickSwingUntil = this.time.now + STICK_SWING_MS
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
+    if (this.arcade) {
+      this.arcade.onShotReleased(player, this.players, this.ball, this.ballVelocity, shot, this.time.now)
+      this.cameraDirector.punchZoom(shot.kind === 'fire' ? 0.16 : shot.kind === 'turbo' ? 0.09 : 0.04)
+      if (shot.kind === 'fire') this.cameras.main.shake(180, 0.005)
+    }
+  }
+
+  /** Carga arcade; devuelve true si se ejecutó. */
+  private tryCheck(player: Player) {
+    if (!this.arcade) return false
+    const result = this.arcade.tryCheck(player, this.players, this.ball, this.ballCarrierId, this.time.now)
+    if (!result) return false
+    if (result.ball) this.applyBallChange(result.ball)
+    this.cameraDirector.punchZoom(0.06)
+    return true
+  }
+
+  /** Aplica un cambio de posesión devuelto por el controlador arcade. */
+  private applyBallChange(change: { ballCarrierId: string | null, ballVelocity: Vector, lastTouch?: TeamColor }) {
+    this.ballCarrierId = change.ballCarrierId
+    this.ballVelocity = change.ballVelocity
+    if (change.lastTouch) this.lastTouch = change.lastTouch
+    this.stuckCarrierStartTime = 0
+    this.stuckCarrierOrigin = null
+  }
+
+  /** Intensidad del público: sube con la bola cerca de una portería y con rachas. */
+  private getCrowdIntensity() {
+    const fromGoal = Math.min(this.ball.x - RINK.x, RINK.x + RINK.width - this.ball.x)
+    const nearGoal = 1 - Phaser.Math.Clamp(fromGoal / (RINK.width / 2), 0, 1)
+    const onFire = this.players.some(p => p.onFire) ? 0.25 : 0
+    return Phaser.Math.Clamp(0.2 + nearGoal * 0.6 + onFire, 0, 1)
   }
 
   /** Delega el intento de robo y actualiza el estado de posesión si tuvo éxito. */
@@ -477,6 +671,7 @@ export class MatchScene extends Phaser.Scene {
       ballCarrierId: this.ballCarrierId,
       timeNow: this.time.now,
       ruleState: this.ruleState,
+      allowFouls: !this.isArcade,
     })
     if (!result) return
     if (result.lastTouch) {
@@ -490,6 +685,23 @@ export class MatchScene extends Phaser.Scene {
 
   /** Aplica reinicios simples de falta y bully. */
   private handleRuleRestarts() {
+    if (this.isArcade) {
+      // Arcade: sin faltas ni bully; la disputa se resuelve con la bola saltando
+      this.ruleState.pendingFoul = null
+      const bully = this.ruleState.pendingBully
+      if (bully) {
+        this.ruleState.pendingBully = null
+        const angle = Math.random() * Math.PI * 2
+        this.ball.x = bully.x
+        this.ball.y = bully.y
+        this.applyBallChange({ ballCarrierId: null, ballVelocity: { x: Math.cos(angle) * 280, y: Math.sin(angle) * 280 } })
+        this.ballIgnoreContactsUntil = this.time.now + 160
+        const sp = worldToScreen(bully.x, bully.y)
+        this.fx?.burst('white', sp.x, sp.y, 12)
+        this.fx?.floatText(sp.x, sp.y - 40, '¡MELÉ!', '#ffffff', 20)
+      }
+      return
+    }
     if (this.ruleState.pendingFoul) {
       const foul = this.ruleState.pendingFoul
       playFoul()
@@ -552,7 +764,9 @@ export class MatchScene extends Phaser.Scene {
     })
     if (!next) return
     playGoal()
-    this.cameras.main.shake(300, 0.011)
+    this.arena.cheer(time)
+    if (this.arcade) this.celebrateArcadeGoal(next.redScore > this.redScore ? 'red' : 'blue', time)
+    else this.cameras.main.shake(300, 0.011)
     this.tweens.add({ targets: this.goalFlash, alpha: { from: 0.42, to: 0 }, duration: 460, ease: 'Expo.Out' })
     // Flash de red: el equipo rojo marca en la portería izquierda, el azul en la derecha
     const scoredNet = next.redScore > this.redScore ? this.leftGoalNet : this.rightGoalNet
@@ -561,12 +775,38 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = next.ballCarrierId
     this.blueScore = next.blueScore
     this.redScore = next.redScore
-    this.restartAt = next.restartAt
+    this.restartAt = this.isArcade ? time + ARCADE_GOAL_CELEBRATION_MS : next.restartAt
+  }
+
+  /** Celebración arcade: banner, cámara a la red, partículas, público y locutor. */
+  private celebrateArcadeGoal(scorer: TeamColor, time: number) {
+    if (!this.arcade || !this.fx) return
+    const result = this.arcade.onGoal(scorer, this.players, time)
+    const netSide = scorer === 'red' ? 'left' : 'right'
+    const net = worldToScreen(getGoalLineX(netSide), RINK.y + RINK.height / 2)
+    this.centerText.setVisible(false)
+    this.cameraDirector.focusGoal(net.x, net.y, time + ARCADE_GOAL_CELEBRATION_MS - 700)
+    this.cameras.main.shake(420, 0.014)
+    this.fx.burst(scorer, net.x, net.y, 46)
+    this.fx.burst('gold', net.x, net.y, 30)
+    if (result.fireGoal) this.fx.burst('fire', net.x, net.y, 36)
+    const teamName = scorer === 'blue' ? 'AZUL' : 'ROJO'
+    this.fx.showBanner('¡GOOOL!', ArcadeController.teamHex(scorer), result.sub || `GOL ${teamName}`, 1700)
+    playCrowdRoar(result.onFireStarted || result.fireGoal ? 1 : 0.65)
+    if (!result.onFireStarted) {
+      announceOneOf(result.fireGoal
+        ? ['¡Gol de fuego!', '¡La red está ardiendo!']
+        : ['¡Goool!', '¡Qué golazo!', '¡Gol, gol, gol!', '¡Directo a la red!'], true)
+    }
   }
 
   /** Recoloca a todos los jugadores y reinicia la bola tras gol o al comienzo. */
   private resetKickoff(team: TeamColor) {
     this.aimIndicator.clear()
+    for (const player of this.players) {
+      player.stunUntil = 0
+      player.saveDisabledUntil = 0
+    }
     const nextState = resetKickoffState({
       team,
       players: this.players,
@@ -734,6 +974,7 @@ export class MatchScene extends Phaser.Scene {
    * mientras el portero tiene la posesión del balón.
    */
   private checkGoalieZoneFoul(time: number) {
+    if (this.isArcade) return
     if (this.ruleState.pendingFoul || this.ruleState.pendingBully) return
     const centerY = RINK.y + RINK.height / 2
     const foulRadius = GOAL_HALF_H * 2
@@ -766,11 +1007,32 @@ export class MatchScene extends Phaser.Scene {
       : this.blueScore > this.redScore ? '¡Gana el azul!'
       : '¡Gana el rojo!'
     const hint = this.isTouchDevice ? 'Pulsa A para continuar' : 'Pulsa U para continuar'
+    if (this.fx) {
+      const winner: TeamColor | null = this.blueScore === this.redScore ? null : this.blueScore > this.redScore ? 'blue' : 'red'
+      this.fx.showBanner('¡FINAL!', winner ? ArcadeController.teamHex(winner) : '#ffffff', result.toUpperCase(), 2200)
+      this.crowd?.setIntensity(0.9)
+      announce(winner ? `Final del partido. ${result}` : 'Final del partido. ¡Empate!', true)
+      this.time.delayedCall(2600, () => this.centerText.setText(hint).setVisible(true))
+      return
+    }
     this.centerText.setText(`${result}\n${hint}`).setVisible(true)
   }
 
   /** Refresca marcador, tiempo y ayuda contextual del jugador controlado. */
   private updateHud() {
+    if (this.arcadeHud && this.arcade) {
+      const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+      this.arcadeHud.update({
+        blueScore: this.blueScore,
+        redScore: this.redScore,
+        remainingSeconds: this.remainingSeconds,
+        currentPeriod: this.currentPeriod,
+        controlled,
+        statusLine: this.arcade.getStatusLine(controlled, this.players, this.time.now),
+        timeNow: this.time.now,
+      })
+      return
+    }
     updateMatchHud({
       hudText: this.hudText,
       subHudText: this.subHudText,

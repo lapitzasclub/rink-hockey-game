@@ -30,7 +30,7 @@ export function applySkating(player: Player, dt: number) {
   const speed = Math.hypot(player.velocity.x, player.velocity.y)
   const stamina = player.stamina ?? 100
   const staminaMod = stamina < STAMINA_LOW_THRESHOLD && player.role !== 'goalie' ? STAMINA_EXHAUSTED_SPEED_FACTOR : 1
-  const maxSpeed = (player.sprinting ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED) * staminaMod
+  const maxSpeed = (player.sprinting ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED) * staminaMod * (player.speedMultiplier ?? 1)
   if (speed > maxSpeed) {
     player.velocity.x = (player.velocity.x / speed) * maxSpeed
     player.velocity.y = (player.velocity.y / speed) * maxSpeed

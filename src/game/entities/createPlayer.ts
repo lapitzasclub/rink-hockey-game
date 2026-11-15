@@ -5,7 +5,7 @@ import type { Player, Role, TeamColor, TeamSide } from '../types'
 import { getRoleShort } from '../utils'
 import { VIEW_Y_SCALE } from '../render/viewTransform'
 
-const FONT = '"Courier New", Courier, monospace'
+const FONT = '"Russo One", sans-serif'
 const STAMINA_BAR_W = 36
 const STAMINA_BAR_H = 3
 
@@ -14,6 +14,7 @@ const BODY_TINT:   Record<TeamColor, number> = { blue: 0x3399ff, red: 0xff3333 }
 const HELMET_TINT: Record<TeamColor, number> = { blue: 0x1155cc, red: 0xcc1111 }
 const ARM_TINT:    Record<TeamColor, number> = { blue: 0x2277dd, red: 0xdd2222 }
 const SKATE_TINT:  Record<TeamColor, number> = { blue: 0xd9efff, red: 0xffe1e1 }
+const LEG_TINT:    Record<TeamColor, number> = { blue: 0x16336e, red: 0x6e1616 }
 
 /** Monta un jugador como puppet 2D por piezas tintables y proporciones fijas. */
 export function createPlayer(
@@ -38,8 +39,12 @@ export function createPlayer(
   // Container: todo el personaje se mueve aquí
   const container = scene.add.container(x, y).setScale(PLAYER_PUPPET_VISUAL_SCALE)
 
-  const leftSkate = scene.add.image(-8, 27, `${prefix}-skate`).setTint(SKATE_TINT[team])
-  const rightSkate = scene.add.image(8, 27, `${prefix}-skate`).setTint(SKATE_TINT[team])
+  // Piernas: origen en la cadera; visuals.ts las estira hasta cada patín
+  const leftLeg = scene.add.image(-6, 18, `${prefix}-leg`).setOrigin(0.5, 0).setTint(LEG_TINT[team])
+  const rightLeg = scene.add.image(6, 18, `${prefix}-leg`).setOrigin(0.5, 0).setTint(LEG_TINT[team])
+
+  const leftSkate = scene.add.image(-8, 35, `${prefix}-skate`).setTint(SKATE_TINT[team])
+  const rightSkate = scene.add.image(8, 35, `${prefix}-skate`).setTint(SKATE_TINT[team])
 
   // Torso / cuerpo principal
   const body = scene.add.image(0, isGoalie ? 7 : 8, `${prefix}-body`)
@@ -58,7 +63,7 @@ export function createPlayer(
   stick.setOrigin(0.08, 0.5)
 
   // Z-order: patines y brazos debajo; torso, casco y stick encima.
-  container.add([leftSkate, rightSkate, leftArm, rightArm, body, head, stick])
+  container.add([leftLeg, rightLeg, leftSkate, rightSkate, leftArm, rightArm, body, head, stick])
 
   // Anillo de selección — fuera del container
   const selectionRing = scene.add.circle(x, y, radius + 7)
@@ -83,7 +88,7 @@ export function createPlayer(
 
   return {
     id, team, side, role,
-    container, body, head, leftArm, rightArm, leftSkate, rightSkate,
+    container, body, head, leftArm, rightArm, leftLeg, rightLeg, leftSkate, rightSkate,
     shadow, selectionRing, stick, label, staminaBar,
     pos: { x, y },
     velocity: { x: 0, y: 0 },
