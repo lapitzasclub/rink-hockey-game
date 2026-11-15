@@ -38,6 +38,7 @@ src/
       createPlayer.ts
     render/
       drawRink.ts            Vallas, líneas blancas, porterías y vallas publicitarias (todo por código)
+      rink/                  Fachada `drawRink.ts` y módulos: geometry, markings, boards, ads, goal, benches
       arena.ts               Pabellón: suelo azul pintado, gradas en anfiteatro con perspectiva y público animado
       viewTransform.ts       Transform mundo→pantalla para perspectiva 3/4
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
@@ -239,6 +240,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-01: work log anterior a la sesión 20 archivado en `docs/worklog-archive.md`.
 - WP-02: medidas oficiales verificadas contra el *Rink Hockey Rulebook* 2027 de World Skate (`docs/graphics/REGLAMENTO-MEDIDAS.md`); SPEC §1/§9 sin VERIFICAR; propuestas D8–D10.
 - WP-00: escena de laboratorio `?lab=` (solo DEV): rink, scale, goal, players, strip, officials, style y match; capturas deterministas con PRNG con semilla y tiempo fijo `t`.
+- WP-12: `drawRink.ts` partido en `render/rink/{geometry,markings,boards,ads,goal,benches}.ts` con fachada; captura idéntica (hash) a la de WP-00.
 
 ### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
 
