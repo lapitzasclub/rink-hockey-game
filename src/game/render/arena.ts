@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
 import { BOARD_W, RINK_CORNER_R, roundedRectWorldPts } from './drawRink'
-import { worldToScreen, worldToScreenExt } from './viewTransform'
+import { DEPTH, FIGURE_EXAG, PX_PER_M, STANDS } from './artSpec'
+import { project } from './viewTransform'
 
 type Pt = { x: number, y: number }
 
@@ -24,11 +25,11 @@ export const ARENA_BOUNDS = { x: -340, y: -260, width: GAME_WIDTH + 680, height:
 const STAND_TIERS = 22
 const STAND_FIRST_OFFSET = 22   // pasillo entre valla y primera fila (mundo)
 const STAND_TIER_DEPTH = 26     // fondo de cada escalón (mundo)
-const STAND_FIRST_HEIGHT = 12   // altura de la primera fila (px pantalla a escala 1)
-const STAND_TIER_RISE = 15      // subida por escalón
-const FAR_RECESS = 0.42         // px de retroceso vertical por unidad de fondo tras la pista
-const FAN_SPACING = 15          // separación entre asientos (mundo)
-const FAN_SCALE = 1.05
+const STAND_FIRST_HEIGHT = STANDS.firstHeightM * PX_PER_M   // altura de la primera fila (px de mundo)
+const STAND_TIER_RISE = STANDS.tierRiseM * PX_PER_M          // subida por escalón (px de mundo)
+const FAN_SPACING = 20          // separación entre asientos (mundo)
+/** Alto del dibujo de un espectador en sus unidades locales (drawFan). */
+const FAN_LOCAL_H = 16.5
 
 const SHIRTS = [
   0x2f6fe0, 0x2f6fe0, 0x4a8cf0, 0xd8343a, 0xd8343a, 0xe85a50,
@@ -64,7 +65,7 @@ function tracePath(ctx: CanvasRenderingContext2D, pts: Pt[]) {
 
 function rinkScreenOutline() {
   return roundedRectWorldPts(RINK.x, RINK.y, RINK.width, RINK.height, RINK_CORNER_R, 14)
-    .map(p => worldToScreen(p.x, p.y))
+    .map(p => project(p.x, p.y, 0))
 }
 
 export function createArena(scene: Phaser.Scene): Arena {
@@ -92,17 +93,12 @@ export function createArena(scene: Phaser.Scene): Arena {
 // ─── Gradas ───────────────────────────────────────────────────────────────────
 
 /**
- * Proyecta un punto de grada: (wx, wy) en el plano del suelo fuera de la
- * pista y z = altura del escalón. Usa la misma perspectiva que la pista;
- * detrás del fondo (t < 0) la curva se aplana, así que la profundidad se
- * traduce en un retroceso vertical, igual que el tablero lejano.
+ * Proyecta un punto de grada con la cámara única: (wx, wy) en el plano del
+ * suelo fuera de la pista y wz = altura del escalón (px de mundo). `s` es la
+ * escala de figura en ese punto.
  */
-function standToScreen(wx: number, wy: number, z: number): Pt {
-  const p = worldToScreenExt(wx, wy)
-  const t = (wy - RINK.y) / RINK.height
-  const behindFar = Math.max(0, -t) * RINK.height
-  const depthScale = 0.72 + 0.28 * Phaser.Math.Clamp(t, 0, 1.15)
-  return { x: p.x, y: p.y - behindFar * FAR_RECESS - z * depthScale }
+function standToScreen(wx: number, wy: number, wz: number): Pt & { s: number } {
+  return project(wx, wy, wz)
 }
 
 /** Anillo de grada: contorno de la valla desplazado `offset` hacia fuera, a altura z. */
@@ -138,10 +134,10 @@ function buildStands(scene: Phaser.Scene): StandLayer[] {
   const add = (key: string, depth: number) =>
     scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDepth(depth)
   return [
-    { image: add(keys[0], -6), phase: 0, ampScale: 0 },
-    { image: add(keys[1], -5), phase: 0, ampScale: 1 },
-    { image: add(keys[2], -5), phase: 2.2, ampScale: 1 },
-    { image: add(keys[3], 21), phase: 1.1, ampScale: 1.4 },
+    { image: add(keys[0], DEPTH.STANDS_FAR), phase: 0, ampScale: 0 },
+    { image: add(keys[1], DEPTH.STANDS_FAR + 1), phase: 0, ampScale: 1 },
+    { image: add(keys[2], DEPTH.STANDS_FAR + 1), phase: 2.2, ampScale: 1 },
+    { image: add(keys[3], DEPTH.STANDS_NEAR), phase: 1.1, ampScale: 1.4 },
   ]
 }
 
@@ -226,7 +222,7 @@ function paintFans(far: CanvasRenderingContext2D[], near: CanvasRenderingContext
         const p = standToScreen(wx, wy, z)
         if (p.x < B.x - 10 || p.x > B.x + B.width + 10 || p.y < B.y - 10 || p.y > B.y + B.height + 30) continue
         const t = (wy - RINK.y) / RINK.height
-        const s = FAN_SCALE * (0.72 + 0.28 * Phaser.Math.Clamp(t, 0, 1.25)) * (1 + Math.max(0, t - 1) * 1.5)
+        const s = ((STANDS.fanHeightM * PX_PER_M) / FAN_LOCAL_H) * p.s * FIGURE_EXAG
         if (t > 1) drawFanBack(near, p.x, p.y, s, rand)
         else drawFan(far[rand() < 0.5 ? 0 : 1], p.x, p.y, s, shade, rand)
       }
@@ -283,8 +279,8 @@ function paintFloor(scene: Phaser.Scene) {
     const ctx = tex.getContext()
     const rand = mulberry32(23)
     const outline = rinkScreenOutline()
-    const top = worldToScreen(0, RINK.y).y
-    const bottom = worldToScreen(0, RINK.y + RINK.height).y
+    const top = project(0, RINK.y).y
+    const bottom = project(0, RINK.y + RINK.height).y
 
     ctx.save()
     tracePath(ctx, outline)
@@ -302,14 +298,14 @@ function paintFloor(scene: Phaser.Scene) {
     ctx.lineWidth = 1
     for (let i = 1; i < 24; i++) {
       const wx = RINK.x + (RINK.width / 24) * i
-      const a = worldToScreen(wx, RINK.y)
-      const b = worldToScreen(wx, RINK.y + RINK.height)
+      const a = project(wx, RINK.y)
+      const b = project(wx, RINK.y + RINK.height)
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
     }
     for (let i = 1; i < 12; i++) {
       const wy = RINK.y + (RINK.height / 12) * i
-      const a = worldToScreen(RINK.x, wy)
-      const b = worldToScreen(RINK.x + RINK.width, wy)
+      const a = project(RINK.x, wy)
+      const b = project(RINK.x + RINK.width, wy)
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
     }
 
@@ -324,7 +320,7 @@ function paintFloor(scene: Phaser.Scene) {
     // Marcas de ruedas: arcos suaves claros
     ctx.lineWidth = 1.2
     for (let i = 0; i < 90; i++) {
-      const c = worldToScreen(RINK.x + rand() * RINK.width, RINK.y + rand() * RINK.height)
+      const c = project(RINK.x + rand() * RINK.width, RINK.y + rand() * RINK.height)
       const r = 30 + rand() * 90
       const a0 = rand() * Math.PI * 2
       ctx.strokeStyle = `rgba(190,215,255,${0.025 + rand() * 0.035})`
@@ -336,7 +332,7 @@ function paintFloor(scene: Phaser.Scene) {
     // Reflejos de los focos (barniz brillante)
     for (const fy of [0.22, 0.72]) {
       for (const fx of [0.18, 0.5, 0.82]) {
-        const c = worldToScreen(RINK.x + RINK.width * fx, RINK.y + RINK.height * fy)
+        const c = project(RINK.x + RINK.width * fx, RINK.y + RINK.height * fy)
         const r = 120 + fy * 90
         ctx.save()
         ctx.translate(c.x, c.y)
@@ -361,5 +357,5 @@ function paintFloor(scene: Phaser.Scene) {
     ctx.restore()
     tex.refresh()
   }
-  scene.add.image(0, 0, FLOOR_KEY).setOrigin(0, 0).setDepth(-1)
+  scene.add.image(0, 0, FLOOR_KEY).setOrigin(0, 0).setDepth(DEPTH.FLOOR)
 }

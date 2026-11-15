@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../../game/constants'
 import { getFormation } from '../../game/formation'
-import { PX_PER_M, WORLD_PX_PER_M } from '../../game/render/artSpec'
+import { DEPTH, PX_PER_M, WORLD_PX_PER_M } from '../../game/render/artSpec'
 import { project, worldToScreen, type Projected } from '../../game/render/viewTransform'
 import { getGoalLineX } from '../../game/utils'
 import type { Ball, Role, TeamColor } from '../../game/types'
@@ -69,8 +69,8 @@ function rinkScene(ctx: LabBuildCtx): LabBuild {
 const RULER_OFFSET_X = 34
 /** Paso de la rejilla de suelo de depuración: 5 m por eje. */
 const GRID_STEP_M = 5
-/** Depth heredado del suelo (0) hasta que WP-11 mueva la pista a DEPTH.FLOOR. */
-const GRID_DEPTH = 0
+/** Justo por encima del suelo y por debajo de líneas y figuras. */
+const GRID_DEPTH = DEPTH.FLOOR + 1
 const GUIDE_DEPTH = 59
 
 /** Rejilla de suelo de 5 m, con una celda de margen fuera de la pista para ver la perspectiva detrás de las vallas. */

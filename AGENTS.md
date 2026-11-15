@@ -244,6 +244,8 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-12: `drawRink.ts` partido en `render/rink/{geometry,markings,boards,ads,goal,benches}.ts` con fachada; captura idéntica (hash) a la de WP-00.
 - Workflow gfx: integrar cada WP en `main` en cuanto se acepta; WPs en paralelo con worktrees manuales desde `main` (no `isolation: "worktree"`, que parte de `origin/main`). Ver WORKFLOW §3 y `/gfx` guarda 3.
 - WP-10: cámara de perspectiva única (`project` con escala `s`, sin asignar memoria) y `artSpec.ts` (PX_PER_M 28,5, FIGURE_EXAG 1,15, DEPTH); encuadre de la pista igual que antes; `?lab=scale` con reglas de 1 m y rejilla de 5 m.
+- WP-11: jugadores, bola, suplentes, público, valla (1 m con `wz`) y sancionados (en mundo, lado lejano) proyectados con `project` y `figureScale(s)`; profundidades con `DEPTH.*`; fuera `PLAYER_PUPPET_VISUAL_SCALE`, `SEAT_Y`, `PEN_BASE_X` y el `FAR_RECESS` doble. Jugador de pie: 53/57/62 px (lejos/centro/cerca).
+- Gate A ✅: una sola cámara y escalas coherentes. Pendientes asignados: el HUD de reglamento se solapa con el banquillo azul (WP-60); el público cercano tapa los anuncios de la valla cercana (WP-41/43); los depths de `drawRink.ts` siguen sin pasar a `DEPTH.*` (WP-40/42).
 
 ### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
 

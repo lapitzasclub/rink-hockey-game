@@ -1,13 +1,18 @@
 import * as Phaser from 'phaser'
 import type { Ball, Player } from '../types'
 import { getRoleShort } from '../utils'
-import { PLAYER_MAX_SPEED, PLAYER_PUPPET_VISUAL_SCALE, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
-import { VIEW_Y_SCALE, localYScale, worldToScreen } from '../render/viewTransform'
+import { PLAYER_MAX_SPEED, PLAYER_SPRINT_MAX_SPEED, RINK, STICK_SWING_MS } from '../constants'
+import { project, type Projected } from '../render/viewTransform'
+import { BOARD_W } from '../render/rink/geometry'
+import {
+  BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PENALTY_BOX, PUPPET_LOCAL, PX_PER_M, WORLD_PX_PER_M,
+  bandDepth, figureScale,
+} from '../render/artSpec'
 
 const STAMINA_BAR_W = 36
 const STAMINA_BAR_H = 3
-const STAMINA_BAR_Y_OFFSET = 22
-const LABEL_Y_OFFSET = 52
+const STAMINA_BAR_Y_OFFSET = 6   // px de pantalla bajo los pies
+const LABEL_GAP = 8              // px de pantalla sobre la coronilla
 // Por debajo del borde del torso (~y 31) para que asomen las piernas
 const BASE_SKATE_Y = 35
 const BASE_ARM_Y = 10
@@ -31,28 +36,44 @@ function clamp01(value: number) {
   return Phaser.Math.Clamp(value, 0, 1)
 }
 
-// Zona de sancionados: entre los dos banquillos, en screen-space (bench area y=0..121)
-// Azul expulsa hacia la izquierda del centro, rojo hacia la derecha.
-const PEN_BASE_X: Record<'blue' | 'red', number> = { blue: 548, red: 732 }
-const PEN_STEP = 28   // separación horizontal entre sancionados del mismo equipo
-const PEN_Y   = 66   // pantalla Y dentro del área de banquillos
+// Zona de sancionados: coordenadas de mundo detrás de la valla lejana, junto a la mesa.
+// Azul se coloca a la izquierda del centro, rojo a la derecha.
+const PEN_CENTER_X = RINK.x + RINK.width / 2
+const PEN_Y_WORLD = RINK.y - BOARD_W - PENALTY_BOX.setbackM * WORLD_PX_PER_M.y
 
-/** Calcula la posición screen-space de cada jugador suspendido. */
+/** Calcula la posición de mundo de cada jugador suspendido. */
 function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, { x: number; y: number }> {
   const idxBlue = { n: 0 }
   const idxRed  = { n: 0 }
   const map = new Map<string, { x: number; y: number }>()
+  const gap = PENALTY_BOX.centerGapM * WORLD_PX_PER_M.x
+  const step = PENALTY_BOX.stepM * WORLD_PX_PER_M.x
   for (const p of players) {
     if (!(p.suspendedUntil && p.suspendedUntil > timeNow)) continue
     if (p.team === 'blue') {
-      map.set(p.id, { x: PEN_BASE_X.blue - idxBlue.n * PEN_STEP, y: PEN_Y })
+      map.set(p.id, { x: PEN_CENTER_X - gap - idxBlue.n * step, y: PEN_Y_WORLD })
       idxBlue.n++
     } else {
-      map.set(p.id, { x: PEN_BASE_X.red + idxRed.n * PEN_STEP, y: PEN_Y })
+      map.set(p.id, { x: PEN_CENTER_X + gap + idxRed.n * step, y: PEN_Y_WORLD })
       idxRed.n++
     }
   }
   return map
+}
+
+const foot: Projected = { x: 0, y: 0, s: 0 }
+const probe: Projected = { x: 0, y: 0, s: 0 }
+/** Escala del suelo en el último punto proyectado: px de pantalla por px de mundo en X (gx) e Y (gy). */
+let gx = 1
+let gy = 1
+
+/** Proyecta (wx, wy) al suelo en `foot` y fija gx/gy con la perspectiva local. */
+function projectGround(wx: number, wy: number) {
+  project(wx, wy, 0, foot)
+  project(wx + 1, wy, 0, probe)
+  gx = probe.x - foot.x
+  project(wx, wy + 1, 0, probe)
+  gy = probe.y - foot.y
 }
 
 // Escala global del casco; la fija la escena según el modo (cabezones en arcade).
@@ -71,14 +92,28 @@ export function updateVisuals(
   ballCarrierId: string | null,
   timeNow: number,
 ) {
-  const bs = worldToScreen(ball.x, ball.y)
-  ball.visual.setPosition(bs.x, bs.y)
+  project(ball.x, ball.y, 0, foot)
+  const ballDiam = BALL_VISUAL_DIAMETER_M * PX_PER_M * foot.s * FIGURE_EXAG
+  const ballDepth = bandDepth('COURT', foot.y)
+  ball.visual.setPosition(foot.x, foot.y - ballDiam / 2).setDisplaySize(ballDiam, ballDiam).setDepth(ballDepth + 0.004)
+  const ballShadow = ball.visual.getData('shadow') as Phaser.GameObjects.Ellipse | undefined
+  if (ballShadow) {
+    projectGround(ball.x, ball.y)
+    ballShadow.setVisible(ball.visual.visible).setPosition(foot.x, foot.y)
+      .setSize(ballDiam * 1.1, ballDiam * 0.45).setDepth(ballDepth - 0.006)
+  }
 
   const penPos = buildPenaltyPositions(players, timeNow)
 
   for (const player of players) {
     const suspended = !!(player.suspendedUntil && player.suspendedUntil > timeNow)
-    const sp = worldToScreen(player.pos.x, player.pos.y)
+    const penWorld = suspended ? penPos.get(player.id)! : null
+    projectGround(penWorld ? penWorld.x : player.pos.x, penWorld ? penWorld.y : player.pos.y)
+    const sp = foot
+    const k = figureScale(sp.s)
+    const figH = (PUPPET_LOCAL.feetY - PUPPET_LOCAL.topY) * k
+    const depth = bandDepth('COURT', sp.y)
+    const centerY = sp.y - PUPPET_LOCAL.feetY * k   // el origen del contenedor es el torso; los pies quedan en sp.y
 
     const facingAngle = Math.atan2(player.facing.y, player.facing.x)
     const sideSign = Math.abs(player.facing.x) > 0.12
@@ -99,12 +134,12 @@ export function updateVisuals(
 
     if (suspended) {
       // Colocar fuera del campo en screen-space (zona de sancionados, al otro lado de la valla)
-      const pp = penPos.get(player.id)!
       player.container
-        .setPosition(pp.x, pp.y)
+        .setPosition(sp.x, centerY)
         .setAlpha(1)
-        .setScale(PLAYER_PUPPET_VISUAL_SCALE)
+        .setScale(k)
         .setRotation(0)
+        .setDepth(bandDepth('OFFCOURT_FAR', sp.y))
       player.shadow.setVisible(false)
       player.selectionRing.setVisible(false)
       player.staminaBar?.setVisible(false)
@@ -119,7 +154,7 @@ export function updateVisuals(
       placeLeg(player.leftLeg, -6, BODY_Y[player.role] + 12, -8, BASE_SKATE_Y)
       placeLeg(player.rightLeg, 6, BODY_Y[player.role] + 12, 8, BASE_SKATE_Y)
       const secsLeft = Math.ceil((player.suspendedUntil! - timeNow) / 1000)
-      player.label.setPosition(pp.x, pp.y - LABEL_Y_OFFSET).setText(`${secsLeft}s`).setAlpha(1)
+      player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setText(`${secsLeft}s`).setAlpha(1).setDepth(DEPTH.FX)
       continue
     }
 
@@ -127,13 +162,14 @@ export function updateVisuals(
     player.shadow.setVisible(true).setAlpha(0.28)
     player.stick.setVisible(true)
 
-    player.container.setPosition(sp.x, sp.y).setRotation(0).setScale(PLAYER_PUPPET_VISUAL_SCALE)
+    player.container.setPosition(sp.x, centerY).setRotation(0).setScale(k).setDepth(depth)
     player.shadow
-      .setPosition(sp.x, sp.y + 10 + towardCamera * 2)
-      .setScale(1 + speedRatio * 0.18 + towardCamera * 0.12, 1 - speedRatio * 0.12)
-    player.selectionRing.setPosition(sp.x, sp.y)
-    player.selectionRing.setScale(depthScaleX, VIEW_Y_SCALE * depthScaleY)
-    player.label.setPosition(sp.x, sp.y - LABEL_Y_OFFSET)
+      .setPosition(sp.x, sp.y)
+      .setScale(gx * (1 + speedRatio * 0.18 + towardCamera * 0.12), gy * (1 - speedRatio * 0.12))
+      .setDepth(depth - 0.006)
+    player.selectionRing.setPosition(sp.x, sp.y).setDepth(depth - 0.004)
+    player.selectionRing.setScale(gx * depthScaleX, gy * depthScaleY)
+    player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setDepth(DEPTH.FX)
     player.staminaBar?.setVisible(true)
     player.label.setAlpha(1)
 
@@ -157,8 +193,8 @@ export function updateVisuals(
     const sprintBoost = sprinting ? 1 : 0
 
     // Dirección del jugador en espacio contenedor (Y comprimida por perspectiva 3/4)
-    const fcx = player.facing.x
-    const fcy = player.facing.y * localYScale(player.pos.y)
+    const fcx = player.facing.x * gx
+    const fcy = player.facing.y * gy
     const fLen = Math.hypot(fcx, fcy) || 1
     const fnx = fcx / fLen   // forward normalizado X
     const fny = fcy / fLen   // forward normalizado Y
@@ -240,16 +276,18 @@ export function updateVisuals(
     const aimX = ballCarrierId === player.id ? player.pos.x + player.facing.x * 40 : ball.x
     const aimY = ballCarrierId === player.id ? player.pos.y + player.facing.y * 40 : ball.y
     const baseStickAngle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, aimX, aimY)
-    const aimScreen = worldToScreen(aimX, aimY)
-    const baseStickScreenAngle = Phaser.Math.Angle.Between(sp.x, sp.y, aimScreen.x, aimScreen.y)
+    const sx0 = sp.x
+    const sy0 = sp.y
+    project(aimX, aimY, 0, probe)
+    const baseStickScreenAngle = Phaser.Math.Angle.Between(sx0, sy0, probe.x, probe.y)
 
     let stickAngle = baseStickAngle
     let stickScreenAngle = baseStickScreenAngle
     if ((player.stickSwingUntil ?? 0) > timeNow) {
       const t = 1 - (player.stickSwingUntil! - timeNow) / STICK_SWING_MS
       stickAngle = facingAngle + Math.sin(t * Math.PI) * 1.1
-      const faceScreen = worldToScreen(player.pos.x + player.facing.x * 40, player.pos.y + player.facing.y * 40)
-      const facingScreenAngle = Phaser.Math.Angle.Between(sp.x, sp.y, faceScreen.x, faceScreen.y)
+      project(player.pos.x + player.facing.x * 40, player.pos.y + player.facing.y * 40, 0, probe)
+      const facingScreenAngle = Phaser.Math.Angle.Between(sx0, sy0, probe.x, probe.y)
       stickScreenAngle = facingScreenAngle + Math.sin(t * Math.PI) * 1.1
     }
 
@@ -279,7 +317,7 @@ export function updateVisuals(
       const barW = Math.max(1, Math.round(STAMINA_BAR_W * stamina))
       const color = stamina > 0.5 ? 0x4da3ff : stamina > 0.25 ? 0xf5c64f : 0xff4d5c
       player.staminaBar.setFillStyle(color)
-      player.staminaBar.setPosition(sp.x - STAMINA_BAR_W / 2, sp.y + STAMINA_BAR_Y_OFFSET)
+      player.staminaBar.setPosition(sp.x - STAMINA_BAR_W / 2, sp.y + STAMINA_BAR_Y_OFFSET).setDepth(DEPTH.FX)
       player.staminaBar.setDisplaySize(barW, STAMINA_BAR_H)
     }
   }

@@ -1,31 +1,28 @@
-/** Tableros 3D de la pista (paredes proyectadas en perspectiva). */
+/** Tableros 3D de la pista: paredes de ~1 m proyectadas con la cámara única. */
 import * as Phaser from 'phaser'
 import { RINK } from '../../constants'
-import { worldToScreen, worldToScreenExt } from '../viewTransform'
-import { BOARD_FAR_H, BOARD_W, RINK_CORNER_R, fillQuad, roundedRectWorldPts } from './geometry'
+import { BOARD_HEIGHT_M, CAMERA, PX_PER_M } from '../artSpec'
+import { project } from '../viewTransform'
+import { BOARD_W, RINK_CORNER_R, fillQuad, roundedRectWorldPts } from './geometry'
 
-// ─── Tableros ─────────────────────────────────────────────────────────────────
+/** Opacidad de las caras de la valla de la mitad cercana: no debe tapar jugadores (SPEC §3; el corte definitivo es de WP-41). */
+const NEAR_FACE_ALPHA = 0.35
 
 /**
- * Tableros como paredes 3D: el borde exterior se computa en espacio MUNDO
- * y se proyecta con worldToScreenExt (sin clamp de t).
+ * Tableros como paredes con altura real (`BOARD_HEIGHT_M`): cada tramo del
+ * contorno tiene cara interior, cara exterior y remate superior de espesor
+ * `BOARD_W`. Solo se pintan las caras que miran a la cámara.
  *
- * Para el tablero lejano la curva de potencia aplana la derivada Y en t≈0,
- * haciendo que el borde exterior proyecte al mismo Y que el interior.
- * Se compensa con un offset de pantalla proporcional a la fracción "lejana"
- * de la normal (farFrac = max(0, -nwy)).  Los tableros lateral y cercano
- * no necesitan compensación: worldToScreenExt los proyecta correctamente.
+ * Los tramos de la mitad lejana van en `back` (por debajo de los jugadores);
+ * los de la mitad cercana en `front` (por encima, con caras semitransparentes).
  */
 export function drawPerspectiveBoards(back: Phaser.GameObjects.Graphics, front: Phaser.GameObjects.Graphics) {
-  const CORNER_R = RINK_CORNER_R
-  const SEGS     = 12
-  const FAR_H    = BOARD_FAR_H
+  const H = BOARD_HEIGHT_M * PX_PER_M
+  const camX = RINK.x + RINK.width / 2
+  const camY = RINK.y + RINK.height + CAMERA.distance
 
-  const topY    = worldToScreen(RINK.x, RINK.y).y
-  const bottomY = worldToScreen(RINK.x, RINK.y + RINK.height).y
-  const midY    = (topY + bottomY) * 0.5
-
-  const wpts = roundedRectWorldPts(RINK.x, RINK.y, RINK.width, RINK.height, CORNER_R, SEGS)
+  const midY = (project(RINK.x, RINK.y).y + project(RINK.x, RINK.y + RINK.height).y) * 0.5
+  const wpts = roundedRectWorldPts(RINK.x, RINK.y, RINK.width, RINK.height, RINK_CORNER_R, 12)
   const n = wpts.length
 
   for (let i = 0; i < n; i++) {
@@ -33,83 +30,54 @@ export function drawPerspectiveBoards(back: Phaser.GameObjects.Graphics, front: 
     const w1 = wpts[(i + 1) % n]
     const dx = w1.x - w0.x
     const dy = w1.y - w0.y
-    const len = Math.sqrt(dx * dx + dy * dy)
+    const len = Math.hypot(dx, dy)
     if (len < 0.5) continue
 
-    // Normal exterior en espacio mundo (CW → apunta afuera del campo)
-    const nwx = dy / len
-    const nwy = -dx / len
+    // Normal exterior en espacio mundo (CW → apunta fuera de la pista)
+    const nx = dy / len
+    const ny = -dx / len
+    const o0x = w0.x + nx * BOARD_W
+    const o0y = w0.y + ny * BOARD_W
+    const o1x = w1.x + nx * BOARD_W
+    const o1y = w1.y + ny * BOARD_W
 
-    // Arista interior (borde del hielo) proyectada normalmente
-    const ib0 = worldToScreen(w0.x, w0.y)
-    const ib1 = worldToScreen(w1.x, w1.y)
+    const ib0 = project(w0.x, w0.y, 0)
+    const ib1 = project(w1.x, w1.y, 0)
+    const it0 = project(w0.x, w0.y, H)
+    const it1 = project(w1.x, w1.y, H)
+    const ot0 = project(o0x, o0y, H)
+    const ot1 = project(o1x, o1y, H)
+    const ob0 = project(o0x, o0y, 0)
+    const ob1 = project(o1x, o1y, 0)
 
-    // Arista exterior: offset en mundo, proyectada sin clamp
-    const rob0 = worldToScreenExt(w0.x + nwx * BOARD_W, w0.y + nwy * BOARD_W)
-    const rob1 = worldToScreenExt(w1.x + nwx * BOARD_W, w1.y + nwy * BOARD_W)
-
-    // Compensación para tablero lejano: cuánto de la normal apunta al borde lejano.
-    // La curva Y se aplana en t≈0 → añadir offset de pantalla proporcional.
-    const farFrac = Math.max(0, -nwy)
-    const ob0 = { x: rob0.x, y: rob0.y - FAR_H * farFrac }
-    const ob1 = { x: rob1.x, y: rob1.y - FAR_H * farFrac }
-
-    const avgY   = (ib0.y + ib1.y) * 0.5
-    const isBack = avgY < midY
-    const isSide = Math.abs(nwx) > Math.abs(nwy)
+    const isBack = (ib0.y + ib1.y) * 0.5 < midY
+    const isSide = Math.abs(nx) > Math.abs(ny)
     const g = isBack ? back : front
-    const color = isBack ? 0x1a2a40 : (isSide ? 0x24364f : 0x1c2c44)
-    g.fillStyle(color, 1)
-    fillQuad(g, ib0.x, ib0.y, ib1.x, ib1.y, ob1.x, ob1.y, ob0.x, ob0.y)
-  }
+    const faceAlpha = isBack ? 1 : NEAR_FACE_ALPHA
 
-  // Sombra de contacto tablero lejano–hielo
-  back.lineStyle(2, 0x06101b, 0.45)
-  for (let i = 0; i < n; i++) {
-    const ib  = worldToScreen(wpts[i].x, wpts[i].y)
-    const ib1 = worldToScreen(wpts[(i + 1) % n].x, wpts[(i + 1) % n].y)
-    if (ib.y < midY && ib1.y < midY) back.lineBetween(ib.x, ib.y + 1, ib1.x, ib1.y + 1)
-  }
+    // La cámara ve la cara interior si queda del lado interior del tramo
+    const mx = (w0.x + w1.x) * 0.5
+    const my = (w0.y + w1.y) * 0.5
+    const innerVisible = -(nx * (camX - mx) + ny * (camY - my)) > 0
 
-  // Remate superior del tablero lejano
-  back.lineStyle(2, 0xdfe8f2, 0.9)
-  for (let i = 0; i < n; i++) {
-    const w0 = wpts[i]
-    const w1 = wpts[(i + 1) % n]
-    const li = Math.hypot(w1.x - w0.x, w1.y - w0.y)
-    if (li < 0.5) continue
-    const nwx = (w1.y - w0.y) / li
-    const nwy = -(w1.x - w0.x) / li
-    const a = worldToScreenExt(w0.x + nwx * BOARD_W, w0.y + nwy * BOARD_W)
-    const b = worldToScreenExt(w1.x + nwx * BOARD_W, w1.y + nwy * BOARD_W)
-    const far = Math.max(0, -nwy) * FAR_H
-    if ((a.y + b.y) * 0.5 < midY) back.lineBetween(a.x, a.y - far, b.x, b.y - far)
-  }
+    if (innerVisible) {
+      g.fillStyle(isBack ? 0x2a3d58 : 0x24364f, faceAlpha)
+      fillQuad(g, ib0.x, ib0.y, ib1.x, ib1.y, it1.x, it1.y, it0.x, it0.y)
+    } else {
+      g.fillStyle(isSide ? 0x16253b : 0x142238, faceAlpha)
+      fillQuad(g, ob0.x, ob0.y, ob1.x, ob1.y, ot1.x, ot1.y, ot0.x, ot0.y)
+    }
+    // Remate superior
+    g.fillStyle(isBack ? 0x1a2a40 : 0x2b4160, 1)
+    fillQuad(g, it0.x, it0.y, it1.x, it1.y, ot1.x, ot1.y, ot0.x, ot0.y)
+    // Canto del remate
+    g.lineStyle(2, 0xdfe8f2, isBack ? 0.9 : 0.95)
+    g.lineBetween(it0.x, it0.y, it1.x, it1.y)
 
-  // Canto superior del tablero cercano (cara interior visible)
-  front.lineStyle(3, 0xdfe8f2, 0.95)
-  for (let i = 0; i < n; i++) {
-    const ib  = worldToScreen(wpts[i].x, wpts[i].y)
-    const ib1 = worldToScreen(wpts[(i + 1) % n].x, wpts[(i + 1) % n].y)
-    if (ib.y >= midY && ib1.y >= midY) front.lineBetween(ib.x, ib.y - 1, ib1.x, ib1.y - 1)
-  }
-
-  // Ribete inferior tablero cercano (borde exterior proyectado)
-  front.lineStyle(2, 0x08192e, 0.8)
-  for (let i = 0; i < n; i++) {
-    const w0 = wpts[i]
-    const w1 = wpts[(i + 1) % n]
-    const dxi = w1.x - w0.x
-    const dyi = w1.y - w0.y
-    const li  = Math.sqrt(dxi * dxi + dyi * dyi)
-    if (li < 0.5) continue
-    const nwxi = dyi / li
-    const nwyi = -dxi / li
-    const ib0i = worldToScreen(w0.x, w0.y)
-    const ib1i = worldToScreen(w1.x, w1.y)
-    if ((ib0i.y + ib1i.y) * 0.5 < midY) continue   // solo tablero cercano
-    const ob0i = worldToScreenExt(w0.x + nwxi * BOARD_W, w0.y + nwyi * BOARD_W)
-    const ob1i = worldToScreenExt(w1.x + nwxi * BOARD_W, w1.y + nwyi * BOARD_W)
-    front.lineBetween(ob0i.x, ob0i.y, ob1i.x, ob1i.y)
+    // Sombra de contacto de la valla lejana con el suelo
+    if (isBack && innerVisible) {
+      g.lineStyle(2, 0x06101b, 0.45)
+      g.lineBetween(ib0.x, ib0.y + 1, ib1.x, ib1.y + 1)
+    }
   }
 }

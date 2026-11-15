@@ -1,9 +1,8 @@
 import * as Phaser from 'phaser'
-import { GOALIE_RADIUS, PLAYER_PUPPET_VISUAL_SCALE, PLAYER_RADIUS } from '../constants'
+import { GOALIE_RADIUS, PLAYER_RADIUS } from '../constants'
 import { createProceduralPuppetTextures } from '../render/createProceduralPuppetTextures'
 import type { Player, Role, TeamColor, TeamSide } from '../types'
 import { getRoleShort } from '../utils'
-import { VIEW_Y_SCALE } from '../render/viewTransform'
 
 const FONT = '"Russo One", sans-serif'
 const STAMINA_BAR_W = 36
@@ -33,11 +32,11 @@ export function createPlayer(
   const isGoalie = role === 'goalie'
   const prefix = isGoalie ? 'goalie' : 'field'
 
-  // Sombra en el suelo
-  const shadow = scene.add.ellipse(x, y + 10, radius * 2.6, radius * 0.82 * VIEW_Y_SCALE, 0x000000, 0.22)
+  // Sombra y anillo se dimensionan en px de mundo; visuals.ts los escala con los ejes del suelo proyectados
+  const shadow = scene.add.ellipse(x, y + 10, radius * 2.6, radius * 0.82, 0x000000, 0.22)
 
-  // Container: todo el personaje se mueve aquí
-  const container = scene.add.container(x, y).setScale(PLAYER_PUPPET_VISUAL_SCALE)
+  // Container: todo el personaje se mueve aquí; visuals.ts lo ancla por los pies y lo escala con la cámara
+  const container = scene.add.container(x, y)
 
   // Piernas: origen en la cadera; visuals.ts las estira hasta cada patín
   const leftLeg = scene.add.image(-6, 18, `${prefix}-leg`).setOrigin(0.5, 0).setTint(LEG_TINT[team])
@@ -69,7 +68,6 @@ export function createPlayer(
   const selectionRing = scene.add.circle(x, y, radius + 7)
   selectionRing.setStrokeStyle(3, 0xffffff, 1)
   selectionRing.setFillStyle(0, 0)
-  selectionRing.setScale(1, VIEW_Y_SCALE)
   selectionRing.setVisible(false)
 
   const staminaBar = controllable

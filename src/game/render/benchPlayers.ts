@@ -1,24 +1,27 @@
 import * as Phaser from 'phaser'
-import { PLAYER_PUPPET_VISUAL_SCALE, RINK } from '../constants'
+import { RINK } from '../constants'
+import { BENCH, FIGURE_EXAG, PUPPET_LOCAL, PX_PER_M, WORLD_PX_PER_M, bandDepth } from './artSpec'
 import { createProceduralPuppetTextures } from './createProceduralPuppetTextures'
+import { BOARD_W } from './rink/geometry'
+import { project } from './viewTransform'
 
 /**
  * Puppets animados en los banquillos del lado lejano.
  *
- * - Misma escala que los jugadores de campo (PLAYER_PUPPET_VISUAL_SCALE).
+ * - Colocados en coordenadas de mundo detrás de la valla lejana y proyectados
+ *   con la cámara única; la escala sale de `s`, como cualquier figura.
  * - Postura sentada: patines rotados ~80° como si apoyaran los pies en el suelo.
+ *   Con los patines hacia delante la figura mide más que de pie, así que se
+ *   escala a `BENCH.seatedHeightM` en vez de a la altura de pie.
  * - Cada jugador tiene velocidades y amplitudes de animación independientes
  *   para que no estén sincronizados entre sí.
- * - Posicionados en screen-space (Y) + convergencia perspectiva X_FAR (X).
  */
 
-const XS = 0.82                          // X_FAR: convergencia perspectiva en t=0
-const CX = RINK.x + RINK.width / 2      // 640
-const SCALE = PLAYER_PUPPET_VISUAL_SCALE // 0.84, mismo que jugadores de campo
-
-// Screen Y del centro del container — cerca de los tableros lejanos (y≈121)
-// A esta posición: cabeza≈y46, cuerpo≈y87, patines≈y113, tablero≈y121
-const SEAT_Y = 78
+const CX = RINK.x + RINK.width / 2
+/** Coordenada de mundo Y de los pies de los sentados. */
+const SEAT_WORLD_Y = RINK.y - BOARD_W - BENCH.seatSetbackM * WORLD_PX_PER_M.y
+/** Pies del puppet sentado en coordenadas locales (suela del patín rotado). */
+const SEATED_FEET_Y = 53
 
 // Tints de equipo — idénticos a createPlayer.ts
 const BODY_TINT:   Record<'blue' | 'red', number> = { blue: 0x3399ff, red: 0xff3333 }
@@ -26,12 +29,10 @@ const HELMET_TINT: Record<'blue' | 'red', number> = { blue: 0x1155cc, red: 0xcc1
 const ARM_TINT:    Record<'blue' | 'red', number> = { blue: 0x2277dd, red: 0xdd2222 }
 const SKATE_TINT:  Record<'blue' | 'red', number> = { blue: 0xd9efff, red: 0xffe1e1 }
 
-function wx2sx(wx: number): number {
-  return CX + (wx - CX) * XS
-}
-
 export interface BenchPlayer {
   container:  Phaser.GameObjects.Container
+  /** y de pantalla de los pies (el contenedor oscila alrededor del centro derivado). */
+  baseY: number
   head:       Phaser.GameObjects.Image
   body:       Phaser.GameObjects.Image
   leftArm:    Phaser.GameObjects.Image
@@ -59,18 +60,20 @@ export function createBenchPlayers(scene: Phaser.Scene): BenchPlayer[] {
   const players: BenchPlayer[] = []
   const N = 5
 
-  const bL = wx2sx(RINK.x + 110)
-  const bR = wx2sx(RINK.x + RINK.width / 2 - 70)
+  const corner = BENCH.cornerGapM * WORLD_PX_PER_M.x
+  const centre = BENCH.centerGapM * WORLD_PX_PER_M.x
+  const bL = RINK.x + corner
+  const bR = CX - centre
   for (let i = 0; i < N; i++) {
     const x = bL + (bR - bL) * (i + 1) / (N + 1)
-    players.push(spawnBenchPlayer(scene, x, SEAT_Y, 'blue', i))
+    players.push(spawnBenchPlayer(scene, x, SEAT_WORLD_Y, 'blue', i))
   }
 
-  const rL = wx2sx(RINK.x + RINK.width / 2 + 70)
-  const rR = wx2sx(RINK.x + RINK.width - 110)
+  const rL = CX + centre
+  const rR = RINK.x + RINK.width - corner
   for (let i = 0; i < N; i++) {
     const x = rL + (rR - rL) * (i + 1) / (N + 1)
-    players.push(spawnBenchPlayer(scene, x, SEAT_Y, 'red', i + N))
+    players.push(spawnBenchPlayer(scene, x, SEAT_WORLD_Y, 'red', i + N))
   }
 
   return players
@@ -84,14 +87,17 @@ function prng(seed: number, min: number, max: number): number {
 
 function spawnBenchPlayer(
   scene: Phaser.Scene,
-  screenX: number,
-  screenY: number,
+  wx: number,
+  wy: number,
   team: 'blue' | 'red',
   idx: number,
 ): BenchPlayer {
-  const container = scene.add.container(screenX, screenY)
-    .setScale(SCALE)
-    .setDepth(5)
+  const foot = project(wx, wy, 0)
+  const k = ((BENCH.seatedHeightM * PX_PER_M) / (SEATED_FEET_Y - PUPPET_LOCAL.topY)) * foot.s * FIGURE_EXAG
+  const baseY = foot.y - SEATED_FEET_Y * k
+  const container = scene.add.container(foot.x, baseY)
+    .setScale(k)
+    .setDepth(bandDepth('OFFCOURT_FAR', foot.y) + 1)
 
   // ── Patines: postura sentada ──────────────────────────────────────────────
   // En pie los patines están a y=27, apuntando en X. Sentado: bajan a y=44,
@@ -122,7 +128,7 @@ function spawnBenchPlayer(
 
   // ── Parámetros de animación únicos por jugador ────────────────────────────
   return {
-    container, head, body, leftArm, rightArm, leftSkate, rightSkate,
+    container, baseY, head, body, leftArm, rightArm, leftSkate, rightSkate,
     p1: prng(idx * 7 + 1, 0, Math.PI * 2),
     p2: prng(idx * 7 + 2, 0, Math.PI * 2),
     p3: prng(idx * 7 + 3, 0, Math.PI * 2),
@@ -162,11 +168,10 @@ export function updateBenchPlayers(players: BenchPlayer[], timeNow: number) {
     p.body.setRotation(lean)
     p.container.setRotation(lean * 0.45)
 
-    // Container Y: bob vertical de respiración (en px, directamente)
-    const baseY = SEAT_Y
+    // Container Y: bob vertical de respiración (amplitud en px locales)
     p.container.setPosition(
       p.container.x,
-      baseY + Math.sin(t * p.breathSpeed + p.p4) * p.breathAmp,
+      p.baseY + Math.sin(t * p.breathSpeed + p.p4) * p.breathAmp * p.container.scaleY,
     )
 
     // Brazos: movimiento de reposo independiente

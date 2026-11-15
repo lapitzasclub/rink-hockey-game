@@ -8,6 +8,8 @@ export function createBall(scene: Phaser.Scene): Ball {
   createProceduralPuppetTextures(scene)
   const visual = scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'puck-pixel')
   visual.setDisplaySize(BALL_RADIUS * 2.6, BALL_RADIUS * 2.6)
-  visual.setDepth(3)
+  // Sombra en el suelo: la coloca y escala updateVisuals con la cámara
+  const shadow = scene.add.ellipse(GAME_WIDTH / 2, GAME_HEIGHT / 2, 10, 4, 0x000000, 0.3)
+  visual.setData('shadow', shadow)
   return { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2, visual }
 }

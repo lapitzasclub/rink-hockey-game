@@ -87,3 +87,54 @@ export function bandDepth(band: DepthBand, screenY: number): number {
   const t = (screenY - DEPTH_SCREEN_Y.min) / (DEPTH_SCREEN_Y.max - DEPTH_SCREEN_Y.min)
   return DEPTH[band] + span * Math.max(0, Math.min(1, t))
 }
+
+// ─── WP-11: figuras y estructuras fuera de la pista ─────────────────────────
+
+/** Altura real de un jugador de pie, en metros. */
+export const PLAYER_HEIGHT_M = 1.75
+
+/**
+ * Puppet en coordenadas locales del contenedor (origen en el centro del torso):
+ * `topY` = coronilla del casco, `feetY` = suela del patín. Sirven para escalar
+ * la figura a `PLAYER_HEIGHT_M` y para anclar el contenedor por los pies.
+ */
+export const PUPPET_LOCAL = { topY: -38, feetY: 40 } as const
+
+/** Escala del contenedor del puppet para la profundidad `s` (origen en los pies). */
+export function figureScale(s: number): number {
+  return ((PLAYER_HEIGHT_M * PX_PER_M) / (PUPPET_LOCAL.feetY - PUPPET_LOCAL.topY)) * s * FIGURE_EXAG
+}
+
+/** Diámetro visual de la bola en metros (exagerado: la real mide 7 cm y no se vería). */
+export const BALL_VISUAL_DIAMETER_M = 0.48
+
+/** Altura de la valla, en metros (SPEC §1). */
+export const BOARD_HEIGHT_M = 1.0
+
+/** Gradas: altura de la primera fila y subida por escalón, en metros; altura de un espectador sentado. */
+export const STANDS = { firstHeightM: 0.42, tierRiseM: 0.53, fanHeightM: 1.25 } as const
+
+/**
+ * Banquillos del lado lejano, en metros desde la cara exterior de la valla
+ * lejana (hacia fuera) y desde el borde de la pista en X. El eje X del banco
+ * azul se espeja para el rojo.
+ */
+export const BENCH = {
+  /** Del extremo exterior del banco a la esquina de la pista (m). */
+  cornerGapM: 4,
+  /** Del extremo interior del banco al centro de la pista (m). */
+  centerGapM: 2.5,
+  /** Distancia valla exterior → pies de los sentados (m). */
+  seatSetbackM: 1.7,
+  seatHeightM: 0.5,
+  seatDepthM: 0.55,
+  backrestTopM: 1.15,
+  /** Distancia valla exterior → pared del fondo (m) y su altura (m). */
+  wallSetbackM: 2.7,
+  wallHeightM: 1.7,
+  /** Altura equivalente de un jugador sentado con los patines hacia delante (m). */
+  seatedHeightM: 1.4,
+} as const
+
+/** Zona de sancionados junto a la mesa: distancia a la valla exterior, al centro y entre figuras (m). */
+export const PENALTY_BOX = { setbackM: 0.7, centerGapM: 1.4, stepM: 1.1 } as const

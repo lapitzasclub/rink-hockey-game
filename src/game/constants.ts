@@ -92,12 +92,6 @@ export const RINK = {
  */
 export const FIELD_PLAYER_BOTTOM_BOARD_MARGIN = 30
 
-/**
- * Escala visual global del puppet para que su tamaño percibido encaje mejor
- * con la pista comprimida en perspectiva 3/4.
- */
-export const PLAYER_PUPPET_VISUAL_SCALE = 0.84
-
 export const PERIOD_COUNT = 4
 export const PERIOD_RESTART_DELAY_MS = 1400
 export const BULLY_PLAYER_OFFSET = 26
