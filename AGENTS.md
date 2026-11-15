@@ -26,6 +26,8 @@ src/
   main.ts                    Bootstrap Phaser (espera a la fuente Russo One), HTML shell, ajustes
   scenes/MenuScene.ts        Menú con selección de modo ARCADE / REGLAMENTO (localStorage `rh-mode`)
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
+  scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
+  scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV)
   game/
     constants.ts             Todas las constantes de física y gameplay (tuning aquí)
     types.ts                 Tipos: Player, Vector, ActiveBully, ActiveFoulRestart, GameMode, PowerupKind
@@ -236,6 +238,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 - WP-01: work log anterior a la sesión 20 archivado en `docs/worklog-archive.md`.
 - WP-02: medidas oficiales verificadas contra el *Rink Hockey Rulebook* 2027 de World Skate (`docs/graphics/REGLAMENTO-MEDIDAS.md`); SPEC §1/§9 sin VERIFICAR; propuestas D8–D10.
+- WP-00: escena de laboratorio `?lab=` (solo DEV): rink, scale, goal, players, strip, officials, style y match; capturas deterministas con PRNG con semilla y tiempo fijo `t`.
 
 ### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
 

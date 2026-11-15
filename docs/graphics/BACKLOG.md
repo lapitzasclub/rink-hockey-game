@@ -41,7 +41,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 
 | WP | Título | Rol · modelo | Depende de | Estado |
 |---|---|---|---|---|
-| WP-00 | Escena de laboratorio `?lab=` | builder · sonnet | — | ⬜ |
+| WP-00 | Escena de laboratorio `?lab=` | builder · sonnet | — | ✅ 2026-11-15 |
 | WP-01 | Archivar el work log antiguo | qa · haiku | D7 | ✅ 2026-11-15 |
 | WP-02 | Verificar medidas oficiales | builder · sonnet | — | ✅ 2026-11-15 |
 | WP-12 | Dividir `drawRink.ts` en módulos | builder · sonnet | — | ⬜ |

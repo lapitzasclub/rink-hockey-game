@@ -81,14 +81,18 @@ const fontReady = Promise.race([
   new Promise(resolve => setTimeout(resolve, 1500)),
 ]).catch(() => undefined)
 
-void fontReady.then(() => {
+void fontReady.then(async () => {
+  // Laboratorio gráfico: solo DEV y con ?lab=; el import dinámico queda fuera del build de producción
+  const labScene = import.meta.env.DEV && new URLSearchParams(window.location.search).has('lab')
+    ? (await import('./scenes/LabScene')).LabScene
+    : null
   game = new Phaser.Game({
     type: Phaser.AUTO,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     parent: 'game-host',
     backgroundColor: '#08111b',
-    scene: [MenuScene, MatchScene],
+    scene: labScene ? [labScene, MenuScene, MatchScene] : [MenuScene, MatchScene],
     scale: {
       // EXPAND: el lienzo ocupa toda la ventana; el pabellón rellena lo que sobra de 16:9
       mode: Phaser.Scale.EXPAND,
