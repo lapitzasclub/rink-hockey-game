@@ -74,6 +74,7 @@ Reglas de paralelismo:
   3. en `main`: `git cherry-pick -n gfx/wp-XX`, papeleo y commit `gfx(WP-XX): ...`;
   4. `git worktree remove` y `git branch -D`.
 - **Servidor dev por worktree:** `npx vite --port 517X --strictPort`. Los puertos 5173 y 5174 pueden estar ocupados por otros proyectos. Vite escucha en IPv6, así que se captura con `-BaseUrl 'http://[::1]:517X/'`.
+  - `vite.config.ts` hace que el servidor de `main` ignore `.claude/`. Sin eso, un `npm run build` dentro de un worktree bloquea `dist/` y tumba el watcher con EBUSY.
 - Requiere D5 y D6. Sin D6, se trabaja **en secuencia** sobre el árbol de trabajo principal.
 
 ## 4. Plantilla de encargo (la rellena el coordinador)
