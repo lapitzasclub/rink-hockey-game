@@ -235,6 +235,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 ### 2026-11-15 (sesión 24) — renovación gráfica (/gfx)
 
 - WP-01: work log anterior a la sesión 20 archivado en `docs/worklog-archive.md`.
+- WP-02: medidas oficiales verificadas contra el *Rink Hockey Rulebook* 2027 de World Skate (`docs/graphics/REGLAMENTO-MEDIDAS.md`); SPEC §1/§9 sin VERIFICAR; propuestas D8–D10.
 
 ### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
 

@@ -18,6 +18,11 @@ Paquetes de trabajo (WP) para la renovación gráfica.
 | D5 | Commitear las sesiones 21–22 pendientes antes de empezar | sí · no | sí (los worktrees parten de HEAD) | primer `/gfx` | ✅ sí — commits b14abd2, c78de1a (2026-11-15) |
 | D6 | Commit automático por WP aceptado (`gfx(WP-XX): ...`, sin autoría) | sí · no (todo en secuencia, sin worktrees) | sí | primer WP en paralelo | ✅ sí (2026-11-15) |
 | D7 | Archivar el work log antiguo de AGENTS.md en `docs/worklog-archive.md` | sí · no | sí (ahorra ~8 k tokens por agente) | WP-01 | ✅ sí (2026-11-15) |
+| D8 | Fondo de portería y zona de falta del portero a escala real | sí: `GOAL_BACK_DEPTH` 34 → ~18 px y zona de falta con el radio del semicírculo (26 px) en vez de `GOAL_HEIGHT` · no | sí | WP-44 | ⬜ |
+| D9 | Punto de libre directo a 7,40 m reglamentarios | sí: `DIRECT_FREE_HIT_SPOT_OFFSET` 160 → 211 px · no | sí | WP-42 | ⬜ |
+| D10 | Línea azul (no existe en rink hockey) | retirar · mantener como marca decorativa | retirar | WP-42 | ⬜ |
+
+D8–D10 salen de WP-02: ver `docs/graphics/REGLAMENTO-MEDIDAS.md` §3.
 
 ## Mapa de fases
 
@@ -38,7 +43,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 |---|---|---|---|---|
 | WP-00 | Escena de laboratorio `?lab=` | builder · sonnet | — | ⬜ |
 | WP-01 | Archivar el work log antiguo | qa · haiku | D7 | ✅ 2026-11-15 |
-| WP-02 | Verificar medidas oficiales | builder · sonnet | — | ⬜ |
+| WP-02 | Verificar medidas oficiales | builder · sonnet | — | ✅ 2026-11-15 |
 | WP-12 | Dividir `drawRink.ts` en módulos | builder · sonnet | — | ⬜ |
 | WP-10 | Cámara única | engineer · opus | WP-00 | ⬜ |
 | WP-11 | Migrar todo a la cámara única | builder · sonnet | WP-10, WP-12 | ⬜ |

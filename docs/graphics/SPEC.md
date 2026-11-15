@@ -34,21 +34,21 @@ Marcas:
 | Elemento | Medida real | px | Estado | Juego actual |
 |---|---|---|---|---|
 | Pista | 40 × 20 m (rango 34–44 × 17–22, proporción 2:1) | 1140 × 600 | OK | igual |
-| Radio de esquina | 1–3 m | — | VERIFICAR | 86 px ≈ 3 m |
-| Valla perimetral, altura | 1,00 m | 28,5 (z) | VERIFICAR | 14 px (≈ 0,5 m) |
-| Valla, rodapié (banda inferior de rebote) | ~0,20 m | ~6 (z) | VERIFICAR | — |
-| Portería, boca interior | 1,70 m ancho × 1,05 m alto | 51 (y) × 30 (z) | VERIFICAR | 114 px de boca (≈ 3,8 m). **D2** |
-| Portería, fondo | ~0,92 m abajo, menor arriba | ~26 (x) | VERIFICAR | `GOAL_BACK_DEPTH` 34 |
-| Portería, color | naranja / rojo flúor, tubo ~7,6 cm | ~2–3 px | VERIFICAR | rojo |
-| Línea de gol, distancia a la valla de fondo | — | — | VERIFICAR | `GOAL_LINE_OFFSET` 86 px ≈ 3 m |
+| Radio de esquina | 1–3 m (3 m en internacional) | — | [REG TR a.1] | 86 px ≈ 3 m |
+| Valla perimetral, altura | 1,00 m (más redes de 4 m desde el suelo) | 28,5 (z) | [REG TR a.1] | 14 px (≈ 0,5 m) |
+| Valla, rodapié (banda inferior de rebote) | 0,20 m alto, 2 cm grueso | ~6 (z) | [REG TR a.1] | — |
+| Portería, boca interior | 1,70 m ancho × 1,05 m alto, medidas **interiores** | 51 (y) × 30 (z) | [REG TR a.3] | 114 px de boca (≈ 3,8 m). **D2** |
+| Portería, fondo | ≈ 0,64 m abajo (arco r 64 cm), ≈ 0,65 m arriba; red colgante a 0,40 m | ~18 (x) | [REG TR a.3] (diagrama sin texto; ver REGLAMENTO-MEDIDAS.md §4) | `GOAL_BACK_DEPTH` 34 |
+| Portería, color | frente naranja fluorescente, tubo Ø 7,5 cm; fondo y red blancos | ~2–3 px | [REG TR a.3] | rojo |
+| Línea de gol, distancia a la valla de fondo | 2,70–3,30 m | 77–94 (x) | [REG TR a.2] | `GOAL_LINE_OFFSET` 86 px ≈ 3 m |
 | Área de penalti | 9 × 5,4 m | 270 (y) × 154 (x) | OK | igual |
-| Punto de penalti | a 5,4 m de la línea de gol | 154 | VERIFICAR | — |
-| Punto de libre directo | a 7,4 m | 211 | VERIFICAR | — |
-| Semicírculo de protección del portero | r ≈ 1,5 m | ~43 | VERIFICAR | `GOALIE_ZONE_RADIUS` 26 |
-| Líneas de antijuego | — | — | VERIFICAR | — |
-| Círculo central | — | — | VERIFICAR | — |
-| Bola | Ø 7,3 cm, 155 g | ver exageración | VERIFICAR | `BALL_RADIUS` 6 (física) |
-| Stick | ≤ 1,15 m, extremo curvo, ≤ 500 g | 38 | VERIFICAR | barra recta de 46 px |
+| Punto de penalti | a 5,40 m de la línea de gol, Ø 10 cm | 154 | [REG TR a.2] | — |
+| Punto de libre directo | a 7,40 m de la línea de gol, Ø 10 cm | 211 | [REG TR a.2] | — |
+| Semicírculo de protección del portero | de poste a poste, r = 0,85 m (derivado de la línea de 1,70 m; no hay zona de 1,5 m) | ~26 | [REG TR a.2] | `GOALIE_ZONE_RADIUS` 26 |
+| Líneas de antijuego | no existen; el antijuego es de tiempo (45 s), no de líneas | — | sin fuente (ver REGLAMENTO-MEDIDAS.md) | — |
+| Círculo central | r = 3 m, punto central Ø 10 cm | ~85 (x) × 90 (y) | [REG TR a.2] | — |
+| Bola | Ø 72 mm, 150 g ± 5 g, negra o amarilla | ver exageración | [REG TR a.4] | `BALL_RADIUS` 6 (física) |
+| Stick | ≤ 1,15 m, pala curva, ≤ 500 g (tolerancia 50 g) | 38 | [REG TR a.8] | barra recta de 46 px |
 | Jugador | 1,75–1,85 m de pie; ~1,50 m en postura de patinaje | ~50 px a `s=1` con exageración | — | ~61 px (≈ 2,15 m) |
 | Árbitro | 1,80 m de pie | ~59 px | — | no existe |
 
@@ -284,7 +284,7 @@ Ciclo locomotor visto en 3/4. Lo importante es que **empuja hacia fuera y atrás
 
 **Árbitros** (2 en pista):
 
-- **A pie, con zapatillas** (VERIFICAR; en rink hockey no patinan).
+- **A pie, con zapatillas** [REG AR a.6] (suela de goma; en rink hockey no patinan).
 - Uniforme negro o gris oscuro con detalle amarillo, silbato.
 - Tarjetas azul y roja en el bolsillo.
 
