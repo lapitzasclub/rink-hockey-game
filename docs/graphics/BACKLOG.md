@@ -12,12 +12,12 @@ Paquetes de trabajo (WP) para la renovación gráfica.
 | ID | Decisión | Opciones | Recomendación | Antes de | Estado |
 |---|---|---|---|---|---|
 | D1 | Estilo de arte | A cartoon limpio · B pixel-art HD · C semirrealista TV | A | Gate B (WP-30) | ⬜ |
-| D2 | Tamaño de la portería | **Real** (1,70 × 1,05 m visual y física, con reajuste del portero y la IA) · **Exagerada** (visual real ×1,5 y física actual) | Real | WP-40 | ⬜ |
+| D2 | Tamaño de la portería | **Real** (1,70 × 1,05 m visual y física, con reajuste del portero y la IA) · **Exagerada** (visual real ×1,5 y física actual) | Real | WP-40 | ✅ Real (2026-11-15) |
 | D3 | Árbitros en arcade | sí (silbato y gol, sin tarjetas) · no | sí | WP-50 | ⬜ |
 | D4 | Casco de jugador de campo | casco ligero sin rejilla · sin casco | casco ligero | WP-20 (se enseñan ambos) | ⬜ |
-| D5 | Commitear las sesiones 21–22 pendientes antes de empezar | sí · no | sí (los worktrees parten de HEAD) | primer `/gfx` | ⬜ |
-| D6 | Commit automático por WP aceptado (`gfx(WP-XX): ...`, sin autoría) | sí · no (todo en secuencia, sin worktrees) | sí | primer WP en paralelo | ⬜ |
-| D7 | Archivar el work log antiguo de AGENTS.md en `docs/worklog-archive.md` | sí · no | sí (ahorra ~8 k tokens por agente) | WP-01 | ⬜ |
+| D5 | Commitear las sesiones 21–22 pendientes antes de empezar | sí · no | sí (los worktrees parten de HEAD) | primer `/gfx` | ✅ sí — commits b14abd2, c78de1a (2026-11-15) |
+| D6 | Commit automático por WP aceptado (`gfx(WP-XX): ...`, sin autoría) | sí · no (todo en secuencia, sin worktrees) | sí | primer WP en paralelo | ✅ sí (2026-11-15) |
+| D7 | Archivar el work log antiguo de AGENTS.md en `docs/worklog-archive.md` | sí · no | sí (ahorra ~8 k tokens por agente) | WP-01 | ✅ sí (2026-11-15) |
 
 ## Mapa de fases
 
@@ -37,7 +37,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP | Título | Rol · modelo | Depende de | Estado |
 |---|---|---|---|---|
 | WP-00 | Escena de laboratorio `?lab=` | builder · sonnet | — | ⬜ |
-| WP-01 | Archivar el work log antiguo | qa · haiku | D7 | ⬜ |
+| WP-01 | Archivar el work log antiguo | qa · haiku | D7 | ✅ 2026-11-15 |
 | WP-02 | Verificar medidas oficiales | builder · sonnet | — | ⬜ |
 | WP-12 | Dividir `drawRink.ts` en módulos | builder · sonnet | — | ⬜ |
 | WP-10 | Cámara única | engineer · opus | WP-00 | ⬜ |
