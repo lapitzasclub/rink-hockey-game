@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 tmp_sprites/
+
+# Workflow gráfico: logs de consola y temporales de tools/gfx-shot.ps1
+docs/graphics/shots/**/*.console.txt
+docs/graphics/shots/**/*.tmp.png

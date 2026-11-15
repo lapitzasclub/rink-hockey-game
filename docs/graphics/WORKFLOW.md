@@ -1,0 +1,157 @@
+# Workflow gráfico — coordinación por agentes
+
+Cómo se ejecuta la renovación gráfica del juego con agentes baratos y un coordinador que evalúa.
+Documentos hermanos:
+
+- [AUDIT.md](./AUDIT.md): qué está mal y por qué.
+- [SPEC.md](./SPEC.md): biblia de arte con medidas reales, cámara, equipamiento, patinaje, stick y oficiales.
+- [BACKLOG.md](./BACKLOG.md): paquetes de trabajo (WP) con estado, dependencias, archivos y criterios.
+
+## 1. Principios de coste
+
+1. **El coordinador no programa.** Fable (sesión principal) lee informes cortos y como mucho 3 capturas por WP, decide y despacha. Todo el código lo escriben los agentes `gfx-*`.
+2. **El modelo más barato que pueda hacerlo**:
+   - Opus solo para matemática de cámara, rig y animación.
+   - Sonnet para escenario, props, oficiales y HUD.
+   - Haiku para build, capturas, checklist y papeleo.
+3. **Contexto mínimo por agente.** El encargo trae todo lo necesario. El agente lee solo:
+   - su encargo;
+   - las secciones de SPEC que el encargo cite;
+   - los archivos listados en el encargo.
+
+   Nunca lee AGENTS.md entero, ni AUDIT ni BACKLOG enteros.
+4. **Capturas headless, no navegador interactivo.**
+   - `tools/gfx-shot.ps1` hace la captura y vuelca la consola en un solo comando, sin herramientas de navegador.
+   - Los agentes de código no usan las herramientas `mcp__claude-in-chrome__*`.
+5. **Informes ≤ 20 líneas** con formato fijo (§5). Si algo no cabe, va a un archivo y el informe lo enlaza.
+6. **Máximo 2 rondas de cambios** por WP con el mismo agente (`SendMessage`, conserva su contexto). A la tercera, el coordinador replantea el encargo o sube de modelo.
+7. **Nada de subagentes anidados.** Los `gfx-*` no tienen la herramienta Agent.
+
+## 2. Roles
+
+| Rol | Dónde | Modelo / esfuerzo | Hace | No hace |
+|---|---|---|---|---|
+| Coordinador | sesión principal (`/gfx`) | Fable | Elegir WP, redactar encargo, veredicto, gates, integrar en `MatchScene.ts` vía agente | Escribir código, leer archivos fuente enteros |
+| `gfx-engineer` | `.claude/agents/gfx-engineer.md` | opus · high | Cámara (WP-10), estilo (WP-20), rig y animación (WP-30…33) | Escenario, papeleo |
+| `gfx-builder` | `.claude/agents/gfx-builder.md` | sonnet · medium | Lab (WP-00), escenario, porterías, vallas, oficiales, banquillos, HUD, luz | Cambiar la cámara o la física sin encargo |
+| `gfx-qa` | `.claude/agents/gfx-qa.md` | haiku · low | `npm run build`, capturas, revisión de consola, checklist DoD, estado en BACKLOG, entrada en AGENTS.md | Editar `src/` |
+| Usuario | — | — | Gate B (estilo), decisiones D1–D7, autorizar commits | — |
+
+> **Importante:** los agentes de `.claude/agents/` se cargan al arrancar Claude Code. Tras crearlos o editarlos hay que reiniciar la sesión (o comprobar con `/agents`).
+>
+> Además, al despachar, el coordinador pasa siempre `model` explícito (`opus`/`sonnet`/`haiku`). Si el tipo `gfx-*` no estuviera cargado, el trabajo no cae en el modelo caro de la sesión.
+
+## 3. Ciclo por WP
+
+```
+/gfx next
+ └─ 1. Coordinador: elige el WP listo (dependencias ✅, ningún conflicto de archivos con WPs en curso)
+ └─ 2. Coordinador: redacta el encargo con la plantilla §4 copiando el bloque del WP de BACKLOG
+ └─ 3. Agent(subagent_type=gfx-<rol>, model=<tier>, prompt=encargo)          → informe §5
+ └─ 4. Agent(subagent_type=gfx-qa, model=haiku): build + capturas + checklist → informe QA
+ └─ 5. Coordinador: lee ambos informes + ≤3 capturas → veredicto
+        ACEPTADO   → gfx-qa marca ✅ en BACKLOG y añade línea al work log de AGENTS.md
+                     (+ commit si D6 está autorizado)
+        CAMBIOS    → SendMessage al MISMO agente con lista numerada (máx. 2 rondas)
+        RECHAZADO  → se revierte el WP y se reescribe el encargo (o se sube de modelo)
+```
+
+Reglas de paralelismo:
+
+- Solo puede haber WPs en paralelo si sus **archivos propios** (tabla de BACKLOG) no se solapan.
+- **`MatchScene.ts` es un recurso serializado:** solo un WP activo a la vez puede tocarlo, y el encargo dice exactamente qué enganches añadir.
+- En paralelo, cada agente trabaja con `isolation: "worktree"`. Esto exige que HEAD contenga todo el trabajo previo (ver §9, pre-flight) y que D6 (commits) esté autorizado para poder fusionar.
+- Sin D6, se trabaja **en secuencia** sobre el árbol de trabajo principal.
+
+## 4. Plantilla de encargo (la rellena el coordinador)
+
+```
+WP-XX — <título>            Rol: gfx-<rol>   Modelo: <tier>
+Objetivo: <1–3 frases, resultado visible>
+Lee SOLO: docs/graphics/SPEC.md §<n>, §<m>; <archivos fuente concretos con rango de líneas si es grande>
+Archivos propios (puedes editar): <lista>
+Archivos prohibidos: src/game/systems/{physics,ball,rules,...}.ts salvo que se indique; MatchScene.ts salvo enganches listados
+Enganches en MatchScene.ts permitidos: <lista exacta o "ninguno">
+Constantes: gameplay en src/game/constants.ts; dimensiones visuales en src/game/render/artSpec.ts
+Criterios de aceptación: <copiar de BACKLOG>
+Capturas: tools/gfx-shot.ps1 -Set <set> -Dir docs/graphics/shots/WP-XX/after
+Contexto de decisiones: <D1..D7 resueltas que afecten>
+Entrega: informe con el formato de §5.
+```
+
+## 5. Formato de informe (todos los agentes)
+
+```
+WP-XX · <ESTADO: HECHO | BLOQUEADO | PARCIAL>
+Cambios: <archivo — qué, 1 línea por archivo>
+Decisiones propias: <solo las no triviales>
+Desviaciones del encargo: <o "ninguna">
+Build: <ok / error resumido>   Consola: <0 errores / lista corta>
+Capturas: <rutas>
+Riesgos / pendientes: <máx. 3 líneas>
+```
+
+## 6. Revisión del coordinador
+
+Por WP, el coordinador mira como mucho 3 capturas (las que pida el criterio, normalmente `scale`, el plano específico y un `reglamento` o `arcade`) y comprueba:
+
+1. **Criterios de aceptación** del WP, punto por punto.
+2. **Contrato de cámara** (SPEC §2): pies en el suelo, escala coherente con la profundidad, sin flotar ni hundirse.
+3. **Legibilidad en juego:**
+   - los equipos se distinguen;
+   - la bola se ve siempre;
+   - nada tapa la jugada (la valla cercana usa el corte de SPEC §3).
+4. **Sin regresiones:** las capturas `arcade` y `reglamento` siguen siendo jugables a la vista, y el HUD no se solapa.
+5. **Coste:** si el informe dice PARCIAL o hay > 2 rondas, se replantea el encargo antes de seguir gastando.
+
+Si una diferencia visual es dudosa, el coordinador pide al QA una captura concreta (`-Query`) en lugar de mirar más.
+
+## 7. Gates
+
+| Gate | Tras | Quién | Qué se aprueba | Evidencia |
+|---|---|---|---|---|
+| **A — Perspectiva** | WP-10, WP-11 | Coordinador | Una sola cámara; escalas coherentes jugador ↔ banquillo ↔ gradas ↔ valla ↔ portería | `scale.jpg`, `rink.jpg`, `reglamento.jpg` |
+| **B — Estilo** | WP-20 | **Usuario** (D1) | Uno de los 3 prototipos de estilo | `style.jpg` + abrir `?lab=style` en el navegador |
+| **C — Personajes** | WP-30…34 | Coordinador + usuario | Rig, patinaje quad, stick a dos manos, portero | `players.jpg`, `strip.jpg`; el usuario lo prueba en vivo (`?lab=players&anim=1`) |
+| **Final** | todo | Coordinador + usuario | Partido completo en ambos modos, móvil y rendimiento | set `standard` + informes WP-62/63 |
+
+El coordinador **no** salta un gate. Lo que depende de él espera.
+
+## 8. Capturas
+
+- Comando: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-shot.ps1 ...`
+  - `-Set <standard|camera|players|rink|officials|style> -Dir docs/graphics/shots/WP-XX/after`
+  - o `-Query "lab=goal&zoom=3" -Out docs/graphics/shots/WP-XX/after/goal-zoom.jpg`
+- Requiere el servidor de desarrollo (`npm run dev`). Si el puerto 5173 está ocupado por otro proyecto, se arranca Vite en otro puerto y se pasa `-BaseUrl http://127.0.0.1:<puerto>/`.
+- Cada captura deja un `.console.txt` al lado. QA reporta las líneas con `error` o `Uncaught`.
+- **No hay carpeta `before/`:** el "antes" de un WP es el `after/` del WP anterior que tocó lo mismo, o `shots/baseline/`. Así no se duplican capturas.
+- Solo se versionan los `after/` de WPs aceptados (JPG, ~50–150 KB).
+- Las escenas `lab=...` las crea el WP-00. Hasta entonces, el script captura el menú.
+
+## 9. Pre-flight (antes del primer `/gfx`)
+
+1. **Reiniciar Claude Code** (o abrir `/agents`) y comprobar que aparecen `gfx-engineer`, `gfx-builder` y `gfx-qa`.
+2. **Trabajo sin commitear:** las sesiones 21–22 (modo arcade, pabellón) están sin commitear.
+   - Los worktrees parten de HEAD, así que hay que commitearlas antes de cualquier trabajo en paralelo.
+   - Lo decide el usuario (D5).
+3. **Servidor de desarrollo** arrancado y `tools/gfx-shot.ps1 -Query "" -Out <tmp>.jpg` devuelve imagen.
+4. Decisiones D1–D7 de BACKLOG revisadas (al menos D2, D5, D6 y D7 antes de empezar; D1 y D4 llegan en el Gate B).
+5. El coordinador corre en **Fable** (`/model`). Los agentes usan su propio modelo.
+
+## 10. Definition of Done (lo verifica `gfx-qa`)
+
+- [ ] `npm run build` pasa (tsc + vite).
+- [ ] 0 errores nuevos en los `.console.txt` de las capturas del WP.
+- [ ] Capturas del set indicado en `docs/graphics/shots/WP-XX/after/`.
+- [ ] Física y reglas intactas, salvo que el encargo diga lo contrario: no se tocan `physics`, `ball`, `rules` ni constantes de gameplay.
+- [ ] Constantes visuales en `artSpec.ts`; las de gameplay, en `constants.ts`; nada mágico inline repetido.
+- [ ] Comentarios en español según la convención de AGENTS.md, sin comentar lo obvio.
+- [ ] Sin dependencias nuevas. nipplejs intacto.
+- [ ] Archivo nuevo o modificado > 500 líneas → se señala en riesgos para dividirlo.
+- [ ] BACKLOG actualizado (estado y fecha) y una línea en el work log de AGENTS.md: `- WP-XX: <qué>` dentro de la entrada de sesión del día.
+
+## 11. Commits (solo si el usuario autoriza D6)
+
+- Un commit por WP aceptado, mensaje `gfx(WP-XX): <resumen en español>`.
+- **Sin líneas de autoría ni coautoría**, sin `Co-Authored-By`, sin «Generated with». Lo manda la regla global del usuario.
+- Nunca `push` sin pedirlo.

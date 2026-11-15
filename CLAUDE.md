@@ -15,6 +15,12 @@ Juego de rink hockey 2D — Phaser 4, TypeScript, Vite. Lee [AGENTS.md](./AGENTS
 - No introducir dependencias nuevas sin consultarlo.
 - No mover la integración de nipplejs a controles Phaser nativos sin decisión explícita del usuario.
 
+## Workflow gráfico
+
+- La renovación gráfica se coordina con `/gfx` según [docs/graphics/WORKFLOW.md](./docs/graphics/WORKFLOW.md) (backlog, SPEC y auditoría en `docs/graphics/`).
+- Agentes `gfx-engineer` (opus), `gfx-builder` (sonnet), `gfx-qa` (haiku) en `.claude/agents/`. **Excepción a "lee AGENTS.md"**: estos agentes leen solo su encargo, las secciones de SPEC citadas y los archivos listados; de AGENTS.md solo aplican la convención de comentarios.
+- Capturas headless: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-shot.ps1 ...` (requiere `npm run dev`).
+
 ## Comandos
 
 ```bash

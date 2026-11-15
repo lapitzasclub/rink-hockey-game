@@ -65,6 +65,13 @@ src/
       mobileJoystick.ts      nipplejs + botones táctiles (A/B/S)
 tools/
   generate-comfy-asset.ps1   Helper para generar borradores 2D con ComfyUI local
+  gfx-shot.ps1               Capturas headless (Chrome/Edge) + volcado de consola para el workflow gráfico
+docs/
+  graphics/                  Renovación gráfica: WORKFLOW (proceso y roles), SPEC (biblia de arte, medidas, cámara),
+                             AUDIT (diagnóstico 2026-11-15), BACKLOG (WPs, decisiones, propiedad de archivos), shots/
+.claude/
+  agents/gfx-*.md            Agentes del workflow gráfico: engineer (opus), builder (sonnet), qa (haiku)
+  commands/gfx.md            /gfx — coordinador del workflow gráfico
 .openclaw/
   skills/
     comfyui-asset-generation/SKILL.md
@@ -179,7 +186,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - [ ] Verificar el modo arcade en móvil (S+A, legibilidad del HUD con zoom)
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
 - [ ] Separar sistema de reglas en módulo propio (`systems/rules.ts` puede crecer)
-- [ ] UI definitiva, sprites finales
+- [ ] UI definitiva, sprites finales → sustituido por la renovación gráfica: ver `docs/graphics/BACKLOG.md` (cámara única, rig con patines quad y stick a dos manos, porterías y vallas reglamentarias, árbitros, mesa, entrenadores, HUD unificado)
 
 ### Backlog
 
@@ -224,6 +231,13 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
+
+- Auditoría visual completa (Chrome, ambos modos + lectura del código de render): `docs/graphics/AUDIT.md`, capturas en `docs/graphics/shots/baseline/`. Causa raíz principal: no hay cámara única (banquillos, gradas, sancionados y jugadores escalan cada uno a su manera).
+- Workflow gráfico por agentes con coordinador: `docs/graphics/{WORKFLOW,SPEC,BACKLOG}.md`, agentes `.claude/agents/gfx-{engineer,builder,qa}.md`, comando `/gfx`, script `tools/gfx-shot.ps1` (capturas headless + consola, probado).
+- Decisiones abiertas para el usuario: D1–D7 en `docs/graphics/BACKLOG.md` (estilo, tamaño de portería, árbitros en arcade, casco, commits).
+- Sin cambios en `src/`.
 
 ### 2026-11-15 (sesión 22) — pabellón, gráficos y ajustes tras pruebas
 
