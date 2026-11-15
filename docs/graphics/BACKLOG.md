@@ -47,7 +47,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-01 | Archivar el work log antiguo | qa · haiku | D7 | ✅ 2026-11-15 |
 | WP-02 | Verificar medidas oficiales | builder · sonnet | — | ✅ 2026-11-15 |
 | WP-12 | Dividir `drawRink.ts` en módulos | builder · sonnet | — | ✅ 2026-11-15 |
-| WP-10 | Cámara única | engineer · opus | WP-00 | ⬜ |
+| WP-10 | Cámara única | engineer · opus | WP-00 | ✅ 2026-11-15 |
 | WP-11 | Migrar todo a la cámara única | builder · sonnet | WP-10, WP-12 | ⬜ |
 | Gate A | Perspectiva y escalas | coordinador | WP-11 | ⬜ |
 | WP-20 | Tres prototipos de estilo | engineer · opus | Gate A | ⬜ |

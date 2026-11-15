@@ -1,63 +1,91 @@
 import { RINK } from '../constants'
+import { CAMERA } from './artSpec'
 
 /**
- * Perspectiva 3/4 con convergencia en X y compresión Y no-lineal.
+ * Cámara de perspectiva única (SPEC §2) para todo lo dibujado en el mundo.
  *
- * - X_FAR: el extremo lejano (arriba) aparece al 82% del ancho del cercano.
- *   Ej: esquina superior izquierda pasa de X=70 a X≈173 en pantalla.
- * - Y_POW: curva de potencia > 1 comprime más las filas lejanas.
- *   Con 1.4, el centro del campo ocupa el 38% del alto visible (antes 50%).
- * - SCREEN_H: alto total del campo en pantalla (≈ al previo con VIEW_Y_SCALE 0.82).
+ * Mundo: (wx, wy) en el plano del suelo, en px de mundo; wz = altura en px
+ * (PX_PER_M por metro). La cámara está centrada en X, detrás del borde
+ * cercano (wy grande) y a `CAMERA.height` sobre el suelo. Para un punto:
+ *
+ *   d = camY − wy,  h = height − wz
+ *   D = d·cos θ + h·sin θ          (profundidad sobre el eje óptico)
+ *   V = d·sin θ − h·cos θ          (altura sobre el eje óptico)
+ *   x = cx + f·(wx − cx)/D,  y = y0 − f·V/D,  s = f·d/D²
+ *
+ * `s` es la escala vertical local (∂y/∂wz): un segmento vertical de altura h
+ * mide h·s en pantalla, así que una figura con `setScale(base · s)` casa con
+ * él. La compresión de las filas lejanas sale sola de 1/D.
  */
-const FIELD_CX  = RINK.x + RINK.width / 2   // 640
-const X_FAR     = 0.82   // escala X en el extremo lejano
-const Y_POW     = 1.4    // exponente curva Y
-const SCREEN_H  = 490    // alto del campo en pantalla (px)
+
+export interface Projected { x: number; y: number; s: number }
+
+const CX = RINK.x + RINK.width / 2
+const THETA = (CAMERA.tiltDeg * Math.PI) / 180
+const COS = Math.cos(THETA)
+const SIN = Math.sin(THETA)
+const F = CAMERA.focal
+const H = CAMERA.height
+const CAM_Y = RINK.y + RINK.height + CAMERA.distance
+/** Descentrado vertical: deja el borde lejano de la pista en `CAMERA.farEdgeY`. */
+const Y0 = (() => {
+  const d = CAM_Y - RINK.y
+  return CAMERA.farEdgeY + (F * (d * SIN - H * COS)) / (d * COS + H * SIN)
+})()
 
 /**
- * Screen Y donde aparece el borde superior (lejano) de la pista.
- * La zona de banquillos ocupa y = 0..VIEW_ANCHOR_Y en pantalla.
- * Al ser 130, los tableros lejanos quedan a y≈121 y el área de banquillos tiene ~121px.
+ * Proyecta un punto del mundo a pantalla. Sin asignaciones si se pasa `out`.
+ * `s` es la escala de figura en ese punto (con wz = 0, la del suelo).
  */
-export const VIEW_ANCHOR_Y = 130
-export const VIEW_Y_SCALE  = 0.72     // aproximación lineal media — solo para sombras y anillos
-
-export function worldToScreen(wx: number, wy: number): { x: number; y: number } {
-  const t  = Math.max(0, Math.min(1, (wy - RINK.y) / RINK.height))
-  const xs = X_FAR + (1 - X_FAR) * t
-  return {
-    x: FIELD_CX + (wx - FIELD_CX) * xs,
-    y: VIEW_ANCHOR_Y + Math.pow(t, Y_POW) * SCREEN_H,
-  }
+export function project(wx: number, wy: number, wz = 0, out?: Projected): Projected {
+  const d = CAM_Y - wy
+  const h = H - wz
+  const inv = 1 / (d * COS + h * SIN)
+  const o = out ?? { x: 0, y: 0, s: 0 }
+  o.x = CX + F * (wx - CX) * inv
+  o.y = Y0 - F * (d * SIN - h * COS) * inv
+  o.s = F * d * inv * inv
+  return o
 }
 
+/** Escala de figura a nivel del suelo en (wx, wy). s ≈ 1 en el centro de la pista. */
+export function depthScale(_wx: number, wy: number): number {
+  const d = CAM_Y - wy
+  const inv = 1 / (d * COS + H * SIN)
+  return F * d * inv * inv
+}
+
+/** Inversa sobre el plano del suelo (wz = 0). */
 export function screenToWorld(sx: number, sy: number): { x: number; y: number } {
-  const rawT = Math.max(0, Math.min(1, (sy - VIEW_ANCHOR_Y) / SCREEN_H))
-  const t    = Math.pow(rawT, 1 / Y_POW)
-  const xs   = X_FAR + (1 - X_FAR) * t
-  return {
-    x: FIELD_CX + (sx - FIELD_CX) / xs,
-    y: RINK.y + t * RINK.height,
-  }
+  const r = (Y0 - sy) / F
+  const d = (H * (COS + r * SIN)) / (SIN - r * COS)
+  const D = d * COS + H * SIN
+  return { x: CX + ((sx - CX) * D) / F, y: CAM_Y - d }
 }
 
-/** Escala Y local en un punto del campo — para comprimir facing/dir en screen space. */
-export function localYScale(wy: number): number {
-  const t = Math.max(0.001, Math.min(1, (wy - RINK.y) / RINK.height))
-  return Y_POW * Math.pow(t, Y_POW - 1) * SCREEN_H / RINK.height
+// ─── Compatibilidad (se retira al migrar los consumidores en WP-11) ──────────
+
+/** @deprecated Usar `CAMERA.farEdgeY`. */
+export const VIEW_ANCHOR_Y = CAMERA.farEdgeY
+/** @deprecated Aproximación lineal media para sombras y anillos; usar `project(...).s`. */
+export const VIEW_Y_SCALE = 0.72
+
+/** @deprecated Usar `project(wx, wy, 0, out)`. Mantiene la firma antigua; ya no recorta a la pista. */
+export function worldToScreen(wx: number, wy: number): { x: number; y: number } {
+  return project(wx, wy, 0)
+}
+
+/** @deprecated Igual que `worldToScreen`: la cámara única ya no aplana detrás de la valla lejana. */
+export function worldToScreenExt(wx: number, wy: number): { x: number; y: number } {
+  return project(wx, wy, 0)
 }
 
 /**
- * Proyección sin clamp de t — para puntos fuera del campo (borde exterior de tableros).
- * t > 1 funciona bien (tablero cercano se aleja hacia abajo en pantalla).
- * t < 0 (tablero lejano): la potencia se aplana en 0, el X sí converge
- * correctamente; el caller añade offset Y de pantalla para dar altura visible.
+ * @deprecated Compresión local del eje Y del suelo (∂y/∂wy) para orientar
+ * facing/dir en pantalla. Se sustituye proyectando los dos extremos.
  */
-export function worldToScreenExt(wx: number, wy: number): { x: number; y: number } {
-  const t  = (wy - RINK.y) / RINK.height
-  const xs = X_FAR + (1 - X_FAR) * t
-  return {
-    x: FIELD_CX + (wx - FIELD_CX) * xs,
-    y: VIEW_ANCHOR_Y + Math.pow(Math.max(0, t), Y_POW) * SCREEN_H,
-  }
+export function localYScale(wy: number): number {
+  const d = CAM_Y - wy
+  const inv = 1 / (d * COS + H * SIN)
+  return F * H * inv * inv
 }

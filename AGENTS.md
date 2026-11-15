@@ -40,7 +40,8 @@ src/
       drawRink.ts            Vallas, líneas blancas, porterías y vallas publicitarias (todo por código)
       rink/                  Fachada `drawRink.ts` y módulos: geometry, markings, boards, ads, goal, benches
       arena.ts               Pabellón: suelo azul pintado, gradas en anfiteatro con perspectiva y público animado
-      viewTransform.ts       Transform mundo→pantalla para perspectiva 3/4
+      viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s
+      artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
       arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
     systems/
@@ -177,7 +178,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Libre indirecto auténtico (solo pase válido para el saque)
 - Zona de protección del portero con falta automática + tarjeta azul
 - Sprites ilustrados para jugadores y porteros, hielo texturizado
-- Render 3/4 por transform de mundo a pantalla (`viewTransform.ts`)
+- Render con una cámara de perspectiva única (`viewTransform.ts`, parámetros en `artSpec.ts`)
 - Jugadores, porteros, sticks y pelota con puppet procedural por piezas tintables
 - Menú inicial, panel de ajustes, audio procedural, animación de stick
 - Animación de patinaje procedural v3: fase acumulada, contrafase 180°, zancada por dirección, `sideFactor`, texturas de espalda, sprint
@@ -242,6 +243,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-00: escena de laboratorio `?lab=` (solo DEV): rink, scale, goal, players, strip, officials, style y match; capturas deterministas con PRNG con semilla y tiempo fijo `t`.
 - WP-12: `drawRink.ts` partido en `render/rink/{geometry,markings,boards,ads,goal,benches}.ts` con fachada; captura idéntica (hash) a la de WP-00.
 - Workflow gfx: integrar cada WP en `main` en cuanto se acepta; WPs en paralelo con worktrees manuales desde `main` (no `isolation: "worktree"`, que parte de `origin/main`). Ver WORKFLOW §3 y `/gfx` guarda 3.
+- WP-10: cámara de perspectiva única (`project` con escala `s`, sin asignar memoria) y `artSpec.ts` (PX_PER_M 28,5, FIGURE_EXAG 1,15, DEPTH); encuadre de la pista igual que antes; `?lab=scale` con reglas de 1 m y rejilla de 5 m.
 
 ### 2026-11-15 (sesión 23) — auditoría gráfica y workflow de agentes
 

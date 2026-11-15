@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../../game/constants'
 import { getFormation } from '../../game/formation'
-import { worldToScreen } from '../../game/render/viewTransform'
+import { PX_PER_M, WORLD_PX_PER_M } from '../../game/render/artSpec'
+import { project, worldToScreen, type Projected } from '../../game/render/viewTransform'
 import { getGoalLineX } from '../../game/utils'
 import type { Ball, Role, TeamColor } from '../../game/types'
 import { createFigure, type FigureSpec, type LabFigure } from './labFigures'
@@ -64,18 +65,80 @@ function rinkScene(ctx: LabBuildCtx): LabBuild {
   return { figures: build(ctx, specs), frame: DEFAULT_FRAME }
 }
 
-/** Rejilla 3x3 de la misma figura: cerca/centro/lejos x izquierda/centro/derecha. */
+/** Separación (px de mundo) entre la figura y su regla de 1 m. */
+const RULER_OFFSET_X = 34
+/** Paso de la rejilla de suelo de depuración: 5 m por eje. */
+const GRID_STEP_M = 5
+/** Depth heredado del suelo (0) hasta que WP-11 mueva la pista a DEPTH.FLOOR. */
+const GRID_DEPTH = 0
+const GUIDE_DEPTH = 59
+
+/** Rejilla de suelo de 5 m, con una celda de margen fuera de la pista para ver la perspectiva detrás de las vallas. */
+function drawFloorGrid(scene: Phaser.Scene) {
+  const g = scene.add.graphics().setDepth(GRID_DEPTH)
+  const sx = GRID_STEP_M * WORLD_PX_PER_M.x
+  const sy = GRID_STEP_M * WORLD_PX_PER_M.y
+  const x0 = RINK.x - sx, x1 = RINK.x + RINK.width + sx
+  const y0 = RINK.y - sy, y1 = RINK.y + RINK.height + sy
+  const a: Projected = { x: 0, y: 0, s: 0 }
+  const b: Projected = { x: 0, y: 0, s: 0 }
+  g.lineStyle(1, 0xffe14d, 0.5)
+  for (let x = x0; x <= x1 + 0.5; x += sx) {
+    project(x, y0, 0, a); project(x, y1, 0, b)
+    g.lineBetween(a.x, a.y, b.x, b.y)
+  }
+  for (let y = y0; y <= y1 + 0.5; y += sy) {
+    project(x0, y, 0, a); project(x1, y, 0, b)
+    g.lineBetween(a.x, a.y, b.x, b.y)
+  }
+}
+
+/**
+ * Regla vertical de 1 m proyectada con `project` (cian, marcas cada 25 cm) y,
+ * pegada a ella, una barra de 1 m dibujada como figura: `setScale(s)` en el
+ * punto del suelo (magenta). Si la cámara es coherente miden lo mismo.
+ */
+function drawMeterGuide(scene: Phaser.Scene, wx: number, wy: number) {
+  const g = scene.add.graphics().setDepth(GUIDE_DEPTH)
+  const foot = project(wx, wy, 0)
+  const top = project(wx, wy, PX_PER_M)
+  const tick: Projected = { x: 0, y: 0, s: 0 }
+  g.lineStyle(2, 0x3ee6ff, 1).lineBetween(foot.x, foot.y, top.x, top.y)
+  for (let i = 0; i <= 4; i++) {
+    project(wx, wy, (PX_PER_M * i) / 4, tick)
+    const w = i % 2 === 0 ? 4 : 2
+    g.lineBetween(tick.x - w, tick.y, tick.x, tick.y)
+  }
+  scene.add.rectangle(foot.x + 4, foot.y, 3, PX_PER_M, 0xff4dd8)
+    .setOrigin(0.5, 1).setScale(foot.s).setDepth(GUIDE_DEPTH)
+  const rulerPx = foot.y - top.y
+  const figurePx = PX_PER_M * foot.s
+  scene.add.text(foot.x + 8, top.y, `s ${foot.s.toFixed(3)}\n${rulerPx.toFixed(1)}/${figurePx.toFixed(1)}`, {
+    fontFamily: '"Courier New", Courier, monospace',
+    fontSize: '8px',
+    color: '#bff6ff',
+    stroke: '#06101a',
+    strokeThickness: 3,
+  }).setDepth(GUIDE_DEPTH)
+}
+
+/**
+ * Rejilla 3x3 de la misma figura: cerca/centro/lejos x izquierda/centro/derecha,
+ * con regla de 1 m junto a cada una y rejilla de suelo de 5 m (solo lab).
+ */
 function scaleScene(ctx: LabBuildCtx): LabBuild {
   const cols = [0.18, 0.5, 0.82]
   const rows = [0.12, 0.5, 0.88]
   const rowNames = ['lejos', 'centro', 'cerca']
   const colNames = ['izq', 'centro', 'der']
+  drawFloorGrid(ctx.scene)
   const specs: FigureSpec[] = []
   rows.forEach((ry, r) => cols.forEach((cx, c) => {
     const x = RINK.x + RINK.width * cx
     const y = RINK.y + RINK.height * ry
     specs.push({ team: 'blue', role: 'defender', x, y, angle: Math.PI / 2, aimAhead: true })
     label(ctx.scene, x, y, `${rowNames[r]} · ${colNames[c]}`)
+    drawMeterGuide(ctx.scene, x + RULER_OFFSET_X, y)
   }))
   return { figures: build(ctx, specs), frame: DEFAULT_FRAME }
 }
