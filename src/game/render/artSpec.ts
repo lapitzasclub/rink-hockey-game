@@ -88,6 +88,32 @@ export function bandDepth(band: DepthBand, screenY: number): number {
   return DEPTH[band] + span * Math.max(0, Math.min(1, t))
 }
 
+// ─── Suelo y marcas (WP-42) ─────────────────────────────────────────────────
+
+/** Suelo y marcas de la pista (SPEC §10). Líneas reglamentarias de 8 cm ≈ 2,5 px. */
+export const FLOOR_STYLE = {
+  /** Degradado de la pintura, de la valla lejana a la cercana (casi uniforme). */
+  colorFar: '#1d5aa5',
+  colorMid: '#1f5fae',
+  colorNear: '#2266b6',
+  /** Grano: nº de motas y opacidades. */
+  grainCount: 16000,
+  grainLight: 'rgba(255,255,255,0.03)',
+  grainDark: 'rgba(0,10,30,0.05)',
+  /** Reflejos cenitales: posiciones relativas en la pista y opacidad del centro. */
+  spotsX: [0.2, 0.5, 0.8],
+  spotsY: [0.25, 0.75],
+  spotAlpha: 0.13,
+} as const
+
+export const MARKINGS = {
+  lineWidth: 2.5,
+  lineColor: 0xf2f6fb,
+  lineAlpha: 0.95,
+  /** Radio en px de pantalla de los puntos (Ø 10 cm, algo exagerado para leerse). */
+  dotRadius: 3,
+} as const
+
 // ─── WP-11: figuras y estructuras fuera de la pista ─────────────────────────
 
 /** Altura real de un jugador de pie, en metros. */

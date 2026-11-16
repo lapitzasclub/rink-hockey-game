@@ -1,8 +1,9 @@
 /** Marcas de la pista: área de penalti, semicírculo del portero y puntos reglamentarios. */
 import * as Phaser from 'phaser'
-import { GOAL_HEIGHT } from '../../constants'
+import { DIRECT_FREE_HIT_SPOT_OFFSET, GOAL_HALF_H, PENALTY_SPOT_OFFSET } from '../../constants'
+import { MARKINGS } from '../artSpec'
 import { worldToScreen } from '../viewTransform'
-import { LINE_RED, LINE_WHITE, arcPts } from './geometry'
+import { arcPts } from './geometry'
 
 // ─── Elementos del campo ──────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ export function drawPenaltyArea(
     bl = worldToScreen(goalLineX - depth, bot)
   }
 
-  g.lineStyle(3, LINE_WHITE, 0.9)
+  g.lineStyle(MARKINGS.lineWidth, MARKINGS.lineColor, MARKINGS.lineAlpha)
   g.beginPath()
   g.moveTo(tl.x, tl.y); g.lineTo(tr.x, tr.y)
   g.lineTo(br.x, br.y); g.lineTo(bl.x, bl.y)
@@ -37,45 +38,35 @@ export function drawPenaltyArea(
   g.strokePath()
 }
 
+/**
+ * Semicírculo de protección del portero: de poste a poste (r = GOAL_HALF_H),
+ * con el diámetro sobre la línea de gol. Solo abre hacia el campo, así que
+ * nunca entra en la portería (que queda detrás de la línea).
+ */
 export function drawGoalCrease(g: Phaser.GameObjects.Graphics, goalLineX: number, cy: number, leftSide: boolean) {
-  const r = (GOAL_HEIGHT - 36) / 2
-  // Arco que abre hacia el campo: derecha para portería izq, izquierda para portería dcha
   const startDeg = leftSide ? 270 : 90
-  const endDeg   = leftSide ? 270 + 180 : 90 + 180
-
-  const arc = arcPts(goalLineX, cy, r, startDeg, endDeg, 24)
-  const gpt = worldToScreen(goalLineX, cy)
-
-  g.fillStyle(0x7fb4ff, 0.22)
-  g.beginPath()
-  g.moveTo(gpt.x, gpt.y)
-  for (const p of arc) g.lineTo(p.x, p.y)
-  g.closePath()
-  g.fillPath()
-
-  g.lineStyle(3, LINE_RED, 0.9)
+  const arc = arcPts(goalLineX, cy, GOAL_HALF_H, startDeg, startDeg + 180, 28)
+  g.lineStyle(MARKINGS.lineWidth, MARKINGS.lineColor, MARKINGS.lineAlpha)
   g.beginPath()
   g.moveTo(arc[0].x, arc[0].y)
   for (let i = 1; i < arc.length; i++) g.lineTo(arc[i].x, arc[i].y)
   g.strokePath()
 }
 
-
-
-
+/** Puntos de penalti (5,40 m) y de libre directo (`DIRECT_FREE_HIT_SPOT_OFFSET`, 7,40 m), desde la línea de gol. */
 export function drawFieldDots(
   g: Phaser.GameObjects.Graphics,
-  leftGoalX: number, rightGoalX: number, cy: number, sx: number,
+  leftGoalX: number, rightGoalX: number, cy: number,
 ) {
-  const penaltyDepth  = 5.40 * sx
-  const freeHitDepth  = 7.40 * sx
+  const penaltyDepth  = PENALTY_SPOT_OFFSET
+  const freeHitDepth  = DIRECT_FREE_HIT_SPOT_OFFSET
 
-  g.fillStyle(LINE_WHITE, 0.95)
+  g.fillStyle(MARKINGS.lineColor, 1)
   const dots = [
     worldToScreen(leftGoalX  + penaltyDepth,  cy),
     worldToScreen(rightGoalX - penaltyDepth,  cy),
     worldToScreen(leftGoalX  + freeHitDepth,  cy),
     worldToScreen(rightGoalX - freeHitDepth,  cy),
   ]
-  for (const d of dots) g.fillCircle(d.x, d.y, 5)
+  for (const d of dots) g.fillCircle(d.x, d.y, MARKINGS.dotRadius)
 }

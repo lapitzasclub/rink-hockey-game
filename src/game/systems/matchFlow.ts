@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
+import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, PENALTY_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
 import { getFormation } from '../formation'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControlledPlayer } from './playerHelpers'
@@ -103,7 +103,11 @@ export function startFoulRestartState(options: {
   const { foul, players, ball, timeNow } = options
   const taker = findPlayerById(players, foul.victimPlayerId)
   const isDirect = foul.sanction === 'direct-free-hit' || foul.sanction === 'penalty'
-  const restartX = isDirect ? (taker?.side === 'left' ? GAME_WIDTH - DIRECT_FREE_HIT_SPOT_OFFSET : DIRECT_FREE_HIT_SPOT_OFFSET) : foul.restartX
+  // El balón va al punto marcado en la pista: línea de gol rival ∓ offset hacia el campo
+  const spotOffset = foul.sanction === 'penalty' ? PENALTY_SPOT_OFFSET : DIRECT_FREE_HIT_SPOT_OFFSET
+  const restartX = isDirect
+    ? (taker?.side === 'left' ? getGoalLineX('right') - spotOffset : getGoalLineX('left') + spotOffset)
+    : foul.restartX
   const restartY = isDirect ? GAME_HEIGHT / 2 : foul.restartY
 
   ball.x = restartX

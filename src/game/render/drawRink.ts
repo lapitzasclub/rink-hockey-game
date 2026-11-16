@@ -1,8 +1,9 @@
 import * as Phaser from 'phaser'
-import { BLUE_LINE_OFFSET, GAME_WIDTH, RINK } from '../constants'
+import { GAME_WIDTH, RINK } from '../constants'
 import { getGoalLineX } from '../utils'
 import { worldToScreen } from './viewTransform'
-import { LINE_WHITE, RINK_CORNER_R, projFillCircle, projStrokeCircle, projStrokePath, projStrokePoly, roundedRectPts } from './rink/geometry'
+import { DEPTH, MARKINGS } from './artSpec'
+import { RINK_CORNER_R, projStrokeCircle, projStrokePath, projStrokePoly, roundedRectPts } from './rink/geometry'
 import { drawPerspectiveBoards } from './rink/boards'
 import { drawBenches } from './rink/benches'
 import { drawAds } from './rink/ads'
@@ -21,14 +22,14 @@ export { createGoalNetFlash } from './rink/goal'
  * trapezoidal con filas lejanas más comprimidas que las cercanas.
  */
 export function drawRink(scene: Phaser.Scene) {
-  const gBenches = scene.add.graphics().setDepth(-3)
+  const gBenches = scene.add.graphics().setDepth(DEPTH.OFFCOURT_FAR)
   drawBenches(gBenches)
 
-  const boardBack  = scene.add.graphics().setDepth(-2)
-  const boardFront = scene.add.graphics().setDepth(20)
+  const boardBack  = scene.add.graphics().setDepth(DEPTH.BOARD_FAR)
+  const boardFront = scene.add.graphics().setDepth(DEPTH.BOARD_NEAR)
   drawPerspectiveBoards(boardBack, boardFront)
 
-  const g  = scene.add.graphics().setDepth(0)
+  const g  = scene.add.graphics().setDepth(DEPTH.COURT)
   const cx = GAME_WIDTH / 2
   const cy = RINK.y + RINK.height / 2   // 360 — centro mundo del campo
 
@@ -37,8 +38,6 @@ export function drawRink(scene: Phaser.Scene) {
 
   const leftGoalX  = getGoalLineX('left')
   const rightGoalX = getGoalLineX('right')
-  const leftBlueX  = cx - BLUE_LINE_OFFSET
-  const rightBlueX = cx + BLUE_LINE_OFFSET
 
   // El suelo pintado (azul, con reflejos) lo pone arena.ts por debajo de estas líneas
   drawAds(scene)
@@ -56,25 +55,18 @@ export function drawRink(scene: Phaser.Scene) {
   drawGoal3D(g, rightGoalX, cy, false)
 
   // ── Línea central y círculo ───────────────────────────────────────────────
-  g.fillStyle(0xffffff, 0.06)
-  projFillCircle(g, cx, cy, 3 * sy)
-  g.lineStyle(4, LINE_WHITE, 0.95)
+  g.lineStyle(MARKINGS.lineWidth, MARKINGS.lineColor, MARKINGS.lineAlpha)
   projStrokePath(g, [worldToScreen(cx, RINK.y + 8), worldToScreen(cx, RINK.y + RINK.height - 8)])
   projStrokeCircle(g, cx, cy, 3 * sy)
 
   const cc = worldToScreen(cx, cy)
-  g.fillStyle(LINE_WHITE, 1)
-  g.fillCircle(cc.x, cc.y, 6)
-
-  // ── Líneas de anti-juego ──────────────────────────────────────────────────
-  g.lineStyle(3, LINE_WHITE, 0.6)
-  projStrokePath(g, [worldToScreen(leftBlueX,  RINK.y + 8), worldToScreen(leftBlueX,  RINK.y + RINK.height - 8)])
-  projStrokePath(g, [worldToScreen(rightBlueX, RINK.y + 8), worldToScreen(rightBlueX, RINK.y + RINK.height - 8)])
+  g.fillStyle(MARKINGS.lineColor, 1)
+  g.fillCircle(cc.x, cc.y, MARKINGS.dotRadius)
 
   // ── Puntos reglamentarios ─────────────────────────────────────────────────
-  drawFieldDots(g, leftGoalX, rightGoalX, cy, sx)
+  drawFieldDots(g, leftGoalX, rightGoalX, cy)
 
   // ── Borde perimetral ──────────────────────────────────────────────────────
-  g.lineStyle(3, LINE_WHITE, 0.85)
+  g.lineStyle(MARKINGS.lineWidth, MARKINGS.lineColor, MARKINGS.lineAlpha)
   projStrokePoly(g, roundedRectPts(RINK.x, RINK.y, RINK.width, RINK.height, RINK_CORNER_R, 10))
 }

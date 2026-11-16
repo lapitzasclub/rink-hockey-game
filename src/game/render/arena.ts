@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
 import { BOARD_W, RINK_CORNER_R, roundedRectWorldPts } from './drawRink'
-import { DEPTH, FIGURE_EXAG, PX_PER_M, STANDS } from './artSpec'
+import { DEPTH, FIGURE_EXAG, FLOOR_STYLE, PX_PER_M, STANDS } from './artSpec'
 import { project } from './viewTransform'
 
 type Pt = { x: number, y: number }
@@ -269,7 +269,7 @@ function drawFanBack(ctx: CanvasRenderingContext2D, x: number, y: number, s: num
 
 /**
  * Pista de hockey patines: suelo sintético azul pintado (no hielo), con
- * degradado por profundidad, juntas de paneles en perspectiva, grano y los
+ * degradado casi uniforme, grano, marcas de ruedas y los
  * reflejos de los focos del techo.
  */
 function paintFloor(scene: Phaser.Scene) {
@@ -287,33 +287,17 @@ function paintFloor(scene: Phaser.Scene) {
     ctx.clip()
 
     const grad = ctx.createLinearGradient(0, top, 0, bottom)
-    grad.addColorStop(0, '#123b72')
-    grad.addColorStop(0.4, '#1a55a0')
-    grad.addColorStop(1, '#2066b6')
+    grad.addColorStop(0, FLOOR_STYLE.colorFar)
+    grad.addColorStop(0.5, FLOOR_STYLE.colorMid)
+    grad.addColorStop(1, FLOOR_STYLE.colorNear)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
 
-    // Juntas de paneles
-    ctx.strokeStyle = 'rgba(6,22,50,0.22)'
-    ctx.lineWidth = 1
-    for (let i = 1; i < 24; i++) {
-      const wx = RINK.x + (RINK.width / 24) * i
-      const a = project(wx, RINK.y)
-      const b = project(wx, RINK.y + RINK.height)
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
-    }
-    for (let i = 1; i < 12; i++) {
-      const wy = RINK.y + (RINK.height / 12) * i
-      const a = project(RINK.x, wy)
-      const b = project(RINK.x + RINK.width, wy)
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
-    }
-
     // Grano de la pintura
-    for (let i = 0; i < 14000; i++) {
+    for (let i = 0; i < FLOOR_STYLE.grainCount; i++) {
       const x = rand() * GAME_WIDTH
       const y = top + rand() * (bottom - top)
-      ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,10,30,0.06)'
+      ctx.fillStyle = rand() < 0.5 ? FLOOR_STYLE.grainLight : FLOOR_STYLE.grainDark
       ctx.fillRect(x, y, 1 + rand() * 1.5, 1)
     }
 
@@ -330,16 +314,16 @@ function paintFloor(scene: Phaser.Scene) {
     }
 
     // Reflejos de los focos (barniz brillante)
-    for (const fy of [0.22, 0.72]) {
-      for (const fx of [0.18, 0.5, 0.82]) {
+    for (const fy of FLOOR_STYLE.spotsY) {
+      for (const fx of FLOOR_STYLE.spotsX) {
         const c = project(RINK.x + RINK.width * fx, RINK.y + RINK.height * fy)
         const r = 120 + fy * 90
         ctx.save()
         ctx.translate(c.x, c.y)
         ctx.scale(1, 0.4)
         const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, r)
-        rg.addColorStop(0, 'rgba(255,255,255,0.20)')
-        rg.addColorStop(0.35, 'rgba(200,225,255,0.08)')
+        rg.addColorStop(0, `rgba(255,255,255,${FLOOR_STYLE.spotAlpha})`)
+        rg.addColorStop(0.35, 'rgba(200,225,255,0.05)')
         rg.addColorStop(1, 'rgba(200,225,255,0)')
         ctx.fillStyle = rg
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill()

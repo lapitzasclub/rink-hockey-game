@@ -244,6 +244,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-60: videomarcador común (`ui/scoreboard.ts`) en Russo One para ambos modos: goles, periodo y reloj; en reglamento, además, faltas por equipo y sancionados con cuenta atrás. Esquina superior izquierda, sin tapar banquillos. Fuera la tipografía monoespaciada y la línea de stamina.
 - WP-20: tres prototipos de estilo en `?lab=style` (A cartoon, B pixel-art y C semirrealista) con esqueleto 3D, IK de brazos y pintores por estilo (`src/scenes/lab/style/`).
 - Gate B ✅ (coordinador, por delegación del usuario): D1 = A (cartoon limpio): es el único que se lee bien a 57 px, escala limpio con `s` y sale barato con rig por piezas. D4 = casco ligero en el color del equipo.
+- WP-42: suelo sin rejilla con grano y reflejos suaves; marcas a 2,5 px según el reglamento; sin línea azul (D10); la D ya no cruza la portería. Libre directo a 7,40 m (D9) y penalti a 5,40 m (`PENALTY_SPOT_OFFSET`, nuevo), los dos medidos desde la línea de gol en la marca y en matchFlow; antes el balón caía junto a la línea. Depths de drawRink en DEPTH.*.
 
 ### 2026-11-15 (sesión 24) — renovación gráfica (/gfx)
 
