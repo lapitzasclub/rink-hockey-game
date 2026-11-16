@@ -31,6 +31,7 @@ import { setVisualHeadScale, updateVisuals } from '../game/systems/visuals'
 import type { ActiveBully, ActiveFoulRestart, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
 import { worldToScreen } from '../game/render/viewTransform'
 import { createHud } from '../game/ui/createHud'
+import type { Scoreboard } from '../game/ui/scoreboard'
 import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
 import { createRuleState, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
@@ -86,8 +87,7 @@ export class MatchScene extends Phaser.Scene {
   private ballCarrierId: string | null = null
   private players: Player[] = []
   private controlledPlayerIndex = 0
-  private hudText!: Phaser.GameObjects.Text
-  private subHudText!: Phaser.GameObjects.Text
+  private scoreboard!: Scoreboard
   private centerText!: Phaser.GameObjects.Text
   private blueScore = 0
   private redScore = 0
@@ -229,13 +229,10 @@ export class MatchScene extends Phaser.Scene {
     this.withUi(() => {
       this.goalFlash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 3, GAME_HEIGHT * 3, 0xffec88)
         .setAlpha(0).setDepth(45)
-      const hud = createHud(this)
-      this.hudText = hud.hudText
-      this.subHudText = hud.subHudText
+      const hud = createHud(this, !this.isArcade)
+      this.scoreboard = hud.scoreboard
       this.centerText = hud.centerText.setDepth(55)
       if (this.isArcade) {
-        this.hudText.setVisible(false)
-        this.subHudText.setVisible(false)
         this.arcadeHud = createArcadeHud(this)
       }
     })
@@ -1020,30 +1017,23 @@ export class MatchScene extends Phaser.Scene {
 
   /** Refresca marcador, tiempo y ayuda contextual del jugador controlado. */
   private updateHud() {
-    if (this.arcadeHud && this.arcade) {
-      const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
-      this.arcadeHud.update({
-        blueScore: this.blueScore,
-        redScore: this.redScore,
-        remainingSeconds: this.remainingSeconds,
-        currentPeriod: this.currentPeriod,
-        controlled,
-        statusLine: this.arcade.getStatusLine(controlled, this.players, this.time.now),
-        timeNow: this.time.now,
-      })
-      return
-    }
     updateMatchHud({
-      hudText: this.hudText,
-      subHudText: this.subHudText,
+      scoreboard: this.scoreboard,
       remainingSeconds: this.remainingSeconds,
       currentPeriod: this.currentPeriod,
       blueScore: this.blueScore,
       redScore: this.redScore,
       ruleState: this.ruleState,
       players: this.players,
-      controlledPlayerIndex: this.controlledPlayerIndex,
       timeNow: this.time.now,
     })
+    if (this.arcadeHud && this.arcade) {
+      const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+      this.arcadeHud.update({
+        controlled,
+        statusLine: this.arcade.getStatusLine(controlled, this.players, this.time.now),
+        timeNow: this.time.now,
+      })
+    }
   }
 }

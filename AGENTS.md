@@ -61,7 +61,8 @@ src/
     ui/
       createHud.ts
       matchHud.ts
-      arcadeHud.ts           Videomarcador, barra de turbo y línea de estado (arcade)
+      arcadeHud.ts           Barra de turbo y línea de estado (arcade)
+      scoreboard.ts          Videomarcador común (ambos modos)
     audio/
       sounds.ts              Audio procedural Web Audio (incluye público, cargas, powerups)
       announcer.ts           Locutor con Web Speech API (voz española si existe; on/off en ajustes)
@@ -235,6 +236,10 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
+
+- WP-60: videomarcador común (`ui/scoreboard.ts`) en Russo One para ambos modos: goles, periodo y reloj; en reglamento, además, faltas por equipo y sancionados con cuenta atrás. Esquina superior izquierda, sin tapar banquillos. Fuera la tipografía monoespaciada y la línea de stamina.
 
 ### 2026-11-15 (sesión 24) — renovación gráfica (/gfx)
 
