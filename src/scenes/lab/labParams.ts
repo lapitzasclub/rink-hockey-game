@@ -18,6 +18,12 @@ export interface LabParams {
   /** Partido de humo IA contra IA (WP-64) y ms de juego a medir. */
   auto: boolean
   smokeMs: number
+  /** WP-66: evento a esperar (goal|foul|card|save|<ms>) y ms de juego extra antes de congelar. */
+  at: string | null
+  after: number
+  /** Objeto que centra la cámara bloqueada al congelar: ball|referee|goalie-blue|goalie-red. */
+  follow: string | null
+  seed: number | null
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -45,6 +51,10 @@ export function readLabParams(search: string): LabParams {
     pen: num(q, 'pen') ?? 0,
     auto: q.get('auto') === '1',
     smokeMs: num(q, 'smokeMs') ?? 120000,
+    at: q.get('at') || null,
+    after: num(q, 'after') ?? 400,
+    follow: q.get('follow'),
+    seed: num(q, 'seed'),
   }
 }
 

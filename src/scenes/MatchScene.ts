@@ -119,6 +119,8 @@ export class MatchScene extends Phaser.Scene {
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
   private cameraDirector!: CameraDirector
+  /** Solo lab (WP-66): si es true, la cámara principal no sigue ni cambia de zoom. */
+  labCameraLock = false
   private arcade: ArcadeController | null = null
   private fx: ArcadeFx | null = null
   private arcadeHud: ArcadeHud | null = null
@@ -207,7 +209,7 @@ export class MatchScene extends Phaser.Scene {
     this.cameras.main.setSize(width, height)
     this.uiCamera.setSize(width, height)
     this.uiCamera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2)
-    this.cameraDirector?.refit()
+    if (!this.labCameraLock) this.cameraDirector?.refit()
   }
 
   /** Inicializa escena, entidades, HUD y estado de saque inicial. */
@@ -311,7 +313,7 @@ export class MatchScene extends Phaser.Scene {
     updateBenchPlayers(this.benchPlayers, time)
     this.officials.update(time, dt, this.ball, this.players)
     this.arena.update(time, this.matchEnded ? 0.9 : this.getCrowdIntensity())
-    this.cameraDirector.update({
+    if (!this.labCameraLock) this.cameraDirector.update({
       dt,
       timeNow: time,
       ball: this.ball,

@@ -151,6 +151,14 @@ El coordinador **no** salta un gate. Lo que depende de él espera.
 - Requiere el servidor de desarrollo (`npm run dev`). Si el puerto 5173 está ocupado por otro proyecto, se arranca Vite en otro puerto y se pasa `-BaseUrl http://127.0.0.1:<puerto>/`.
 - Cada captura deja un `.console.txt` al lado. QA reporta las líneas con `error` o `Uncaught`.
 - **Partido de humo** (WP-64), obligatorio en WPs que tocan juego (física, IA, reglas, portería, constantes o dimensiones): `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-smoke.ps1 -Mode <reglamento|arcade> -SmokeMs 240000 -Runs 20 -BaseUrl http://127.0.0.1:<puerto>/`, 20 corridas por modo comparadas con la referencia de BACKLOG §WP-64. Tarda unos 6 s por corrida. El ruido entre partidos es grande (en reglamento, de 2 a 6 goles por partido con la misma versión), así que se compara media ± IC 95 % y solo cuenta una diferencia cuyos intervalos no se solapan. Puede correrlo `gfx-qa` (haiku) o un script en segundo plano.
+- **Detalle y eventos dentro del partido** (WP-66). En `lab=match` (`mode=reglamento|arcade`):
+  - `zoom`, `cx`, `cy` (cx/cy en mundo, pista 70..1210 × 60..660) colocan y **bloquean** la cámara principal; la de UI no cambia.
+  - `follow=ball|referee|goalie-blue|goalie-red` centra la cámara en ese objeto al congelar (`referee` cae a `ball` si no hay árbitros).
+  - `at=goal|foul|card|save|<ms>` con `auto=1`: la simulación avanza a paso fijo hasta el evento, sigue `after` ms (por defecto 400) y congela. Deja `[at] <evento> t=<ms>` en consola, o `[at] timeout` si no ocurre en 180 s de juego. Con `at=` el script sube el tiempo virtual a 60 s (`-WaitMs` lo fuerza). La semilla es fija (`seed=` la cambia), así que el evento es repetible.
+  - `hud=0` oculta el marcador. Sin `at`, `freeze=<ms>` congela por tiempo real como antes.
+  - Set `-Set detail -Dir docs/graphics/shots/WP-XX/after`: `stands-near`, `stands-far`, `stands-side`, `bench-blue`, `bench-red`, `table`, `goal-left`, `goal-right`, `referee`, `goal-reaction`, `foul-gesture`. Los encuadres están en `$Shots` de `tools/gfx-shot.ps1`.
+  - Ejemplo: `-Query "lab=match&mode=reglamento&auto=1&at=foul&follow=referee&zoom=3" -Out docs/graphics/shots/WP-XX/after/foul.jpg`.
+  - **Regla (§6):** cada elemento nuevo se revisa de cerca con este set y cada reacción justo después de su evento; no basta la pista entera.
 - **No hay carpeta `before/`:** el "antes" de un WP es el `after/` del WP anterior que tocó lo mismo, o `shots/baseline/`. Así no se duplican capturas.
 - Solo se versionan los `after/` de WPs aceptados (JPG, ~50–150 KB).
 - Las escenas `lab=...` las crea el WP-00. Hasta entonces, el script captura el menú.

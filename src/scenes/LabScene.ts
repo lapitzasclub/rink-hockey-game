@@ -8,6 +8,7 @@ import { setVisualHeadScale } from '../game/systems/visuals'
 import { poseFigure, type LabFigure } from './lab/labFigures'
 import { readLabParams, seedMathRandom, type LabParams } from './lab/labParams'
 import { startSmoke } from './lab/labSmoke'
+import { atHooks, freezeMatch, lockMatchCamera, wantsCameraLock } from './lab/labAt'
 import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
 
 /**
@@ -15,6 +16,7 @@ import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
  * que reutilizan los constructores reales del juego, para capturas headless.
  * Escenas: rink, scale, goal, players (&strip=), officials, style, match (&mode=, &freeze=).
  * Parámetros comunes: zoom, cx, cy (centro en mundo), t (ms), anim=1, hud=0.
+ * En match, zoom/cx/cy bloquean la cámara; follow= y at=<evento>&auto=1&after= (ver WORKFLOW §8).
  */
 export class LabScene extends Phaser.Scene {
   private params!: LabParams
@@ -31,7 +33,7 @@ export class LabScene extends Phaser.Scene {
 
   init() {
     this.params = readLabParams(window.location.search)
-    if (!this.params.auto) seedMathRandom() // el humo necesita variar entre corridas
+    if (!this.params.auto || this.params.at) seedMathRandom(this.params.seed ?? undefined) // el humo necesita variar entre corridas
     this.figures = []
     this.arena = null
     this.bench = []
@@ -107,9 +109,12 @@ export class LabScene extends Phaser.Scene {
         if (cams.length > 1) cams[cams.length - 1].setVisible(false)
       })
     }
+    if (wantsCameraLock(this.params)) lockMatchCamera(match, this.params)
     this.scene.start('match', { mode })
-    if (this.params.auto) startSmoke(match, mode, this.params.smokeMs)
-    if (freeze !== null) window.setTimeout(() => this.game.scene.pause('match'), freeze)
+    if (this.params.at && !this.params.auto) console.warn('[at] requiere auto=1; se ignora')
+    if (this.params.auto && this.params.at) startSmoke(match, mode, 1e9, atHooks(match, this.params))
+    else if (this.params.auto) startSmoke(match, mode, this.params.smokeMs)
+    if (freeze !== null && !(this.params.auto && this.params.at)) window.setTimeout(() => freezeMatch(match, this.params), freeze)
   }
 
   private installHook() {

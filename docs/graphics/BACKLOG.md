@@ -74,7 +74,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-64 | Partido de humo (IA contra IA) | builder · sonnet | — | ✅ 2026-11-16 |
 | WP-65 | Escala de pista parametrizada (D11) | builder · sonnet | WP-64 | ✅ 2026-11-16 |
 | **Segunda pasada** | El usuario rechazó el entorno (2026-11-16): gradas, banquillos, mesa y porterías | | | |
-| WP-66 | Capturas de detalle y por evento en el partido | builder · sonnet | — | ⬜ |
+| WP-66 | Capturas de detalle y por evento en el partido | builder · sonnet | — | ✅ 2026-11-16 |
 | WP-67 | Portería y portero legibles (v2) | engineer · opus | — | ⬜ |
 | WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ⬜ |

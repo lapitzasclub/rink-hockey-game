@@ -7,6 +7,9 @@
   y vuelca los mensajes de consola del navegador (errores incluidos) a un .console.txt junto
   a cada imagen. No usa dependencias del proyecto: solo el navegador instalado.
 
+  Con `at=` en la query (evento dentro del partido, WP-66) el tiempo virtual sube a 60000 ms
+  salvo que se pase -WaitMs.
+
   Requiere `npm run dev` arrancado. Las escenas `lab=...` las crea el WP-00 (LabScene);
   antes de que exista, cualquier query abre el menú.
 
@@ -29,6 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:WaitGiven = $PSBoundParameters.ContainsKey('WaitMs')
 
 # Escenas estándar del laboratorio. Los nombres son los ficheros de salida.
 $Shots = [ordered]@{
@@ -41,6 +45,18 @@ $Shots = [ordered]@{
   style      = 'lab=style'
   arcade     = 'lab=match&mode=arcade&freeze=4000'
   reglamento = 'lab=match&mode=reglamento&freeze=4000'
+  # Detalle dentro del partido (WP-66): zoom 2-3 a 36 x 18 m. cx/cy en coordenadas de mundo.
+  'stands-near'   = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=2.5&cx=640&cy=740'
+  'stands-far'    = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=2.5&cx=640&cy=-40'
+  'stands-side'   = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=2.5&cx=0&cy=360'
+  'bench-blue'    = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=2.8&cx=420&cy=40'
+  'bench-red'     = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=2.8&cx=860&cy=40'
+  table           = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=3&cx=640&cy=40'
+  'goal-left'     = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=3&cx=100&cy=360'
+  'goal-right'    = 'lab=match&mode=reglamento&hud=0&freeze=2000&zoom=3&cx=1180&cy=360'
+  referee         = 'lab=match&mode=reglamento&hud=0&freeze=3000&zoom=3&follow=referee'
+  'goal-reaction' = 'lab=match&mode=reglamento&hud=0&auto=1&at=goal&after=600&zoom=2&cx=640&cy=50'
+  'foul-gesture'  = 'lab=match&mode=reglamento&hud=0&auto=1&at=foul&after=400&zoom=3&follow=referee'
 }
 $Sets = @{
   standard  = @('rink', 'scale', 'goal', 'players', 'officials', 'arcade', 'reglamento')
@@ -49,6 +65,7 @@ $Sets = @{
   rink      = @('rink', 'goal', 'reglamento')
   officials = @('officials', 'reglamento')
   style     = @('style', 'players')
+  detail    = @('stands-near', 'stands-far', 'stands-side', 'bench-blue', 'bench-red', 'table', 'goal-left', 'goal-right', 'referee', 'goal-reaction', 'foul-gesture')
 }
 
 function Find-Browser {
@@ -88,6 +105,8 @@ function Invoke-Shot([string]$query, [string]$outPath) {
   $outPath = [System.IO.Path]::GetFullPath($outPath)
   New-Item -ItemType Directory -Force (Split-Path $outPath) | Out-Null
   $tmpPng = [System.IO.Path]::ChangeExtension($outPath, '.tmp.png')
+  # Con at= la simulación avanza a pasos fijos hasta el evento: hace falta más tiempo virtual.
+  $wait = if ($query -match '(^|&)at=' -and -not $script:WaitGiven) { 60000 } else { $WaitMs }
   $url = if ($query) { "$BaseUrl`?$query" } else { $BaseUrl }
   $profileDir = Join-Path $env:TEMP 'rh-gfx-shot-chrome'
   $logPath = [System.IO.Path]::ChangeExtension($outPath, '.console.txt')
@@ -95,7 +114,7 @@ function Invoke-Shot([string]$query, [string]$outPath) {
   $chromeArgs = @(
     '--headless=new', '--hide-scrollbars', '--mute-audio', '--no-first-run',
     '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-    "--window-size=$Width,$Height", "--virtual-time-budget=$WaitMs",
+    "--window-size=$Width,$Height", "--virtual-time-budget=$wait",
     "--user-data-dir=$profileDir", '--enable-logging=stderr', '--v=0',
     "--screenshot=$tmpPng", $url
   )

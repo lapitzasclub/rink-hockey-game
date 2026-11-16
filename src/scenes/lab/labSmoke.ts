@@ -38,7 +38,13 @@ type MatchView = Phaser.Scene & {
   joystickInput: { x: number, y: number, pass: boolean, shoot: boolean }
 }
 
-export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number) {
+/** Ganchos opcionales (WP-66): `onStep` tras cada paso de juego; `onDone` al terminar (sin informe de humo). */
+export interface SmokeHooks {
+  onStep: (ms: number, stop: () => void) => void
+  onDone: () => void
+}
+
+export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, hooks?: SmokeHooks) {
   const s = match as MatchView
   autopilot.on = true
   const st = {
@@ -175,7 +181,9 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number) {
       else if (pending.age > SHOT_RESOLVE_MS) pending = null
     }
 
-    if (ms >= nextPartial && ms < smokeMs) {
+    hooks?.onStep(ms, () => finish())
+    if (done) return
+    if (!hooks && ms >= nextPartial && ms < smokeMs) {
       nextPartial += 30000
       console.log('[smoke] ' + JSON.stringify(snapshot(false)))
     }
@@ -186,11 +194,12 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number) {
     if (done) return
     done = true
     autopilot.on = false
-    console.log('[smoke] ' + JSON.stringify(snapshot(true)))
+    if (!hooks) console.log('[smoke] ' + JSON.stringify(snapshot(true)))
     match.events.off(Phaser.Scenes.Events.UPDATE, drive)
     match.events.off(Phaser.Scenes.Events.POST_UPDATE, post)
     console.error = origError
     window.removeEventListener('error', onErr)
+    hooks?.onDone()
   }
   const post = (_t: number, delta: number) => observe(delta)
   match.events.on(Phaser.Scenes.Events.UPDATE, drive)
