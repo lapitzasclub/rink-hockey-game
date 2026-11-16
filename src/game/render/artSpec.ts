@@ -149,9 +149,9 @@ export const NEAR_CUT: 'edge' | 'ghost' = 'edge'
 export const BOARDS = {
   /** Segmentos por esquina (≥ 24, SPEC §10). */
   cornerSegs: 28,
-  /** Alto del rodapié (m). */
   /** Espesor visual de la valla (px mundo); la física sigue usando BOARD_W. */
   thickPx: 7,
+  /** Alto del rodapié (m). */
   kickM: 0.2,
   /** Alto del embellecedor opaco del borde superior de la valla cercana (m). */
   capM: 0.1,
