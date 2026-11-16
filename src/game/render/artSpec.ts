@@ -131,6 +131,77 @@ export function figureScale(s: number): number {
   return ((PLAYER_HEIGHT_M * PX_PER_M) / (PUPPET_LOCAL.feetY - PUPPET_LOCAL.topY)) * s * FIGURE_EXAG
 }
 
+// Stick y acciones (WP-32)
+
+/**
+ * Agarre y conducción (SPEC §7), en unidades de figura y rad.
+ * `gripGap`: separación de manos a lo largo del mango (≈ 35 cm).
+ * `maxBladeY`: tope de altura de la pala en golpes (hombro ≈ 0,7: regla del stick alto).
+ * `dribbleSway`/`dribbleRock`: vaivén lateral (en pantalla) y giro de la pala al conducir;
+ * el vaivén no supera el radio visual de la bola, así que la pala no la suelta nunca.
+ * `dribbleHz`: toques por segundo parado (en marcha van con la zancada).
+ * `reachLean`/`reachArms`: cuánto se inclina el tronco y adelantan las manos por unidad de
+ * alcance de más; `maxReach` es solo un tope de seguridad (la bola manda).
+ * `ballHug`/`ballHugSide`: la pala abraza la bola por su borde (radio visual ≈ 0,14): por
+ * detrás si la bola va de lado en pantalla, por el lado del stick si va en profundidad (de
+ * frente la bola la taparía); así se ve en toda vista. De espaldas (`backOut`, `backDrop`)
+ * las manos bajan y se abren al lado del stick y el tronco se ladea `backRoll` al contrario,
+ * para que mango, pala y bola salgan de la silueta del cuerpo.
+ * `maxScreen`: largo máximo del mango en pantalla (× `stickLen`); si la bola cae más lejos,
+ * las manos bajan hacia ella por el propio mango y el tronco se inclina `fitLean` por unidad.
+ */
+export const STICK_HOLD = {
+  gripGap: 0.2, maxBladeY: 0.52,
+  dribbleSway: 0.07, dribbleRock: 0.35, dribbleHz: 1.6,
+  reachLean: 0.18, reachArms: 0.35, maxReach: 4,
+  ballHug: 0.05, ballHugSide: 0.1, backOut: 0.12, backDrop: 0.16, backRoll: 0.22,
+  maxScreen: 1.2, fitLean: 0.7,
+} as const
+
+/**
+ * Pala curva de rink hockey («cuchara»), en unidades de figura: largo visual (más que la
+ * articulación del rig, para que se lea a 50 px), semiancho en el talón y en la punta, y
+ * flecha de la curva hacia la cara de golpeo (se refleja con la mano).
+ */
+export const STICK_BLADE = { len: 0.16, heelR: 0.02, toeR: 0.034, bow: 0.05 } as const
+
+/**
+ * Duración visual de cada acción (ms). La física suelta la bola en el instante 0, así que
+ * pase y tiro empiezan ya armados: latigazo hasta el impacto (t ≈ 0,1-0,15, < 60 ms) y
+ * el resto del clip es el follow-through, que es lo que se lee.
+ */
+export const ACTION_CLIP_MS = {
+  pass: 200, shot: 360, turbo: 420, steal: 220, receive: 200, check: 340, celebrate: 1500,
+} as const
+
+/**
+ * Claves de los golpes de stick: `[t, peso, ángulo, altura, radio, twist, pitch]`.
+ * Ángulo y twist van hacia el lado del stick (se reflejan con la mano); radio y altura
+ * son de la pala respecto a la pelvis; pitch se suma al tronco. Peso 0 = pose base.
+ */
+export const STICK_CLIPS = {
+  pass: [[0, 1, 0.7, 0.04, 0.42, 0.25, 0], [0.15, 1, 0.05, 0, 0.5, 0, 0.06], [0.5, 1, -0.55, 0.07, 0.5, -0.22, 0.05], [0.8, 1, -0.5, 0.06, 0.5, -0.2, 0.04], [1, 0, 0, 0, 0, 0, 0]],
+  shot: [[0, 1, 2.1, 0.44, 0.42, 0.55, -0.05], [0.1, 1, 0.05, 0, 0.52, 0, 0.14], [0.42, 1, -1.4, 0.42, 0.45, -0.55, 0.1], [0.78, 1, -1.25, 0.36, 0.45, -0.48, 0.08], [1, 0, 0, 0, 0, 0, 0]],
+  turbo: [[0, 1, 2.45, 0.52, 0.42, 0.7, -0.08], [0.1, 1, 0.05, 0, 0.54, 0, 0.2], [0.42, 1, -1.6, 0.52, 0.45, -0.7, 0.14], [0.8, 1, -1.45, 0.46, 0.45, -0.6, 0.12], [1, 0, 0, 0, 0, 0, 0]],
+  check: [[0, 0, 0, 0, 0, 0, 0], [0.25, 1, -0.4, 0.03, 0.34, 0.9, 0.34], [0.7, 1, -0.4, 0.03, 0.34, 0.9, 0.34], [1, 0, 0, 0, 0, 0, 0]],
+} as const
+
+/** Ataque y relajación (fracción del clip) de robo, recepción y celebración. */
+export const ACTION_ENVELOPE = { steal: [0.4, 0.75], receive: [0.3, 0.3], celebrate: [0.12, 0.88] } as const
+
+/**
+ * Robo, recepción, carga y celebración (unidades de figura y rad).
+ * Robo: estocada a una mano hasta `getStickTip`. Recepción: la pala cede `cushion`.
+ * Carga: cadera adelantada `checkLunge`, agachada `checkDip` y ladeada `checkRoll`.
+ * Celebración: manos a `handsY` con `pumps` sacudidas de `pump`; el stick, pala arriba.
+ */
+export const ACTION_POSE = {
+  stealLean: 0.3, stealArms: 0.45, stealOneHand: [0.2, 0.8],
+  cushion: 0.07, cushionDip: 0.025,
+  checkDip: 0.04, checkRoll: 0.2, checkLunge: 0.06,
+  handsY: 1.04, handsSide: 0.17, pump: 0.05, pumps: 3, stickUp: 0.44, celebrateLift: 0.02,
+} as const
+
 // Rig de figura (WP-30)
 
 /**

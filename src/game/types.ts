@@ -51,6 +51,7 @@ export type Player = {
   ballProtectionUntil?: number
   staminaBar?: Phaser.GameObjects.Rectangle | null
   stickSwingUntil?: number
+  anim?: { type: 'pass' | 'shot' | 'turbo' | 'steal' | 'receive' | 'check' | 'celebrate' | 'save'; at: number }
   /** Angulo del stick en coordenadas mundo; el render puede usar otro por perspectiva. */
   stickWorldAngle?: number
   /** Timestamp hasta el que el jugador está expulsado (tarjeta azul). 0 o ausente = activo. */

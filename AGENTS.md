@@ -45,7 +45,7 @@ src/
       viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
-      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30); locomoción quad (WP-31: locomotion.ts, locomotionGaits.ts)
+      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30); locomoción quad (WP-31: locomotion.ts, locomotionGaits.ts); stick y acciones (WP-32: upperBody.ts, actions.ts, actionClips.ts)
       arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
     systems/
       ai.ts                  IA de portero y jugadores de campo
@@ -243,6 +243,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 
+- gfx WP-32: stick a dos manos según `hand` con la pala siempre sobre la bola física, pala curva por mano (`STICK_BLADE`), largo en pantalla ≤ 1,2× real; clips de pase, tiro (latigazo: impacto a 36 ms), turbo, carga, robo, recepción y celebración (`Player.anim`, `startAnim`, `celebrateGoal`; `save` reservado a WP-33). Juego: `BALL_PROTECT_VELOCITY_BLEND` 0,12 → 0,04 (bola a ≤ 47 px en sprint). Tiras de acciones en `scenes/lab/labActionStrips.ts`.
 - gfx WP-51: mesa de oficiales en mundo (render/rink/table.ts) con 3 figuras sentadas del rig, kit de oficial (`officialKit`) y marcador; asientos de sancionados a ambos lados (`penaltySeat`) con seatedPose; lab `?lab=officials&pen=N`. Adelantado a Gate C por decisión del coordinador (solo usa poses estáticas del rig).
 - gfx WP-31: locomoción quad (puppet/locomotion.ts + locomotionGaits.ts): zancada lateral-atrás con deslizamiento, cadencia por aceleración, sprint, cruces, marcha atrás en C, frenada en cuña/T, espera y caída; strips stride/sprint/crossover/backward/brake/idle/fall en el lab.
 - gfx WP-34: etiquetas de rol apagadas por defecto (ajuste en el panel, `?labels=1|0`, src/game/ui/prefs.ts); anillo en perspectiva con borde claro y banda del equipo y barra de stamina bajo los pies, solo para el jugador controlado.

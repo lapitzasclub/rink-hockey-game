@@ -15,7 +15,7 @@ import {
   BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
   WORLD_PX_PER_M, bandDepth, figureScale,
 } from '../render/artSpec'
-import { actions } from '../render/puppet/actions'
+import { actions, resolveAction } from '../render/puppet/actions'
 import { goaliePose } from '../render/puppet/goalie'
 import { advanceStride, locomotion, seatedPose } from '../render/puppet/locomotion'
 import { resetPose, type PoseContext } from '../render/puppet/pose'
@@ -77,6 +77,7 @@ export function setVisualHeadScale(scale: number) {
 /** Contexto de pose reutilizado (sin asignaciones por frame). */
 const poseCtx: PoseContext = {
   player: null as unknown as Player, kind: 'skater', time: 0, dt: 0,
+  action: null, stickTip: v3(),
   velForward: 0, velRight: 0, speedRatio: 0, sprinting: false, phase: 0, blend: 0,
   carrying: false, ball: v3(), swing: -1, stickSide: 1,
 }
@@ -196,6 +197,13 @@ export function updateVisuals(
     c.blend = stride.blend
     c.carrying = carrying
     c.swing = swing
+    resolveAction(c, timeNow)
+    if (c.action === 'steal') {
+      // El robo estira la pala hasta la punta de contacto (solo mientras dura: sin asignar por frame)
+      const tip = getStickTip(player)
+      project(tip.x, tip.y, 0, probe)
+      groundFromLocal(yaw, (probe.x - sp.x) / k, (probe.y - sp.y) / k, RIG_UNIT, c.stickTip)
+    }
     c.stickSide = player.rig.stickSide
     // La bola entra por pantalla para que la pala caiga sobre ella tal como se ve
     project(ball.x, ball.y, 0, probe)

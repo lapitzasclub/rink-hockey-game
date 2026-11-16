@@ -22,6 +22,7 @@ import { v3, type V3 } from './vec'
 
 export type Side = 0 | 1
 export type FigureKind = 'skater' | 'goalie' | 'official'
+export type ActionType = NonNullable<Player['anim']>['type']
 
 export interface FootPose {
   /** Punto de apoyo en el suelo bajo el tobillo; `y` > 0 = patín levantado. */
@@ -84,6 +85,10 @@ export interface PoseContext {
   carrying: boolean
   /** Bola proyectada al suelo del marco del cuerpo (y = 0). */
   ball: V3
+  /** Acción del patinador (de `player.anim`); con ella, `swing` es su progreso 0..1. */
+  action: ActionType | null
+  /** Punta del stick de mundo (`getStickTip`) en el marco del cuerpo; solo se rellena durante el robo. */
+  stickTip: V3
   /** Progreso 0..1 del golpe de stick en curso; < 0 si no hay golpe. */
   swing: number
   /** Lado del stick del jugador (SPEC §5 `hand`): 1 = pala a la derecha. */

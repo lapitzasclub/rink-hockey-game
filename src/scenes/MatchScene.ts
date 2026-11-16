@@ -58,6 +58,7 @@ import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, mayb
 import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle, startCrowdAmbience } from '../game/audio/sounds'
 import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
 import { ArcadeController } from '../game/systems/arcade'
+import { celebrateGoal } from '../game/render/puppet/actions'
 import { CameraDirector } from '../game/systems/cameraDirector'
 import { ArcadeFx } from '../game/render/arcadeFx'
 import { createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
@@ -761,6 +762,7 @@ export class MatchScene extends Phaser.Scene {
     })
     if (!next) return
     playGoal()
+    celebrateGoal(this.players, next.redScore > this.redScore ? 'red' : 'blue', time)
     this.arena.cheer(time)
     if (this.arcade) this.celebrateArcadeGoal(next.redScore > this.redScore ? 'red' : 'blue', time)
     else this.cameras.main.shake(300, 0.011)

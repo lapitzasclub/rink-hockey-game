@@ -6,6 +6,7 @@ import { project, worldToScreen, type Projected } from '../../game/render/viewTr
 import { getGoalLineX } from '../../game/utils'
 import type { Ball, Role, TeamColor } from '../../game/types'
 import { officialsScene } from './labOfficials'
+import { ACTION_STRIPS } from './labActionStrips'
 import { createFigure, type FigureSpec, type LabFigure } from './labFigures'
 import type { LabParams } from './labParams'
 import { createStylePrototypes } from './stylePrototypes'
@@ -200,6 +201,7 @@ function playersGrid(ctx: LabBuildCtx): LabBuild {
 
 /** Hojas de contactos: `?strip=<nombre>`. WP-31 y WP-32 añaden aquí sus entradas. */
 const STRIPS: Record<string, (ctx: LabBuildCtx) => FigureSpec[]> = {
+  ...ACTION_STRIPS,
   /** Ciclo de 8 fotogramas: empujando (3/4 frente y de espaldas) y en crucero, con deslizamientos. */
   stride: () => [
     ...locoRow(-1, k => ({ angle: Math.PI / 4, phase: (k / 8) * TAU, loco: { accel: 1 } })),

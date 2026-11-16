@@ -46,6 +46,7 @@ import {
 } from './targeting'
 import { clearGoalieCatch, getAimingDirection, markGoalieCaughtBall } from './ai'
 import { findPlayerById } from './playerHelpers'
+import { startAnim } from '../render/puppet/actions'
 import { getStickTip } from './visuals'
 import { registerBully, registerStealFoul, type RuleState } from './rules'
 import type { Ball, Player, Vector } from '../types'
@@ -165,6 +166,7 @@ export function handleBallControlAction(options: {
     state.ballVelocity = result.ballVelocity
     state.controlledPlayerIndex = result.controlledPlayerIndex
     state.lastTouch = player.team
+    startAnim(player, 'receive', options.time)
     if (player.role === 'goalie') markGoalieCaughtBall(player, options.time)
     claimed = true
     break
@@ -249,6 +251,7 @@ export function tryPassAction(options: {
   const isGoalie = options.player.role === 'goalie'
   const direction = isGoalie ? getGoalieDistributionDirection(options.players, options.player) : getAssistedPassDirection(options.players, options.player, getAimingDirection(options.player))
   const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, isGoalie ? GOALIE_DISTRIBUTION_POWER : PASS_POWER, options.timeNow, isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS, isGoalie ? GOALIE_RELEASE_DISTANCE : undefined)
+  startAnim(options.player, 'pass', options.timeNow)
 
   if (isGoalie) {
     const target = getGoalieDistributionTarget(options.players, options.player)
@@ -292,6 +295,7 @@ export function tryShotAction(options: {
   if (options.ballCarrierId !== options.player.id) return null
   const direction = getAssistedShotDirection(options.player, getAimingDirection(options.player))
   const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, SHOT_POWER * (options.powerMultiplier ?? 1), options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
+  startAnim(options.player, (options.powerMultiplier ?? 1) > 1 ? 'turbo' : 'shot', options.timeNow)
   if (options.player.role === 'goalie') clearGoalieCatch(options.player)
   return {
     ballCarrierId: released.ballCarrierId,
@@ -390,6 +394,7 @@ export function tryManualStealAction(options: {
     foulChance = 0
   }
 
+  startAnim(options.player, 'steal', options.timeNow)
   const roll = Math.random()
   if (roll < foulChance) {
     registerStealFoul(options.ruleState, options.player, carrier, carrier.pos.x, carrier.pos.y, options.timeNow)

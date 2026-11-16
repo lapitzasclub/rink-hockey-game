@@ -15,7 +15,7 @@ import type { RigKit } from './kit'
 import type { FigureKind, PuppetPose, Side } from './pose'
 import { BLADE_LEN, J, Skeleton, viewIndex } from './skeleton'
 import {
-  FIGURE_PX, VIEWS, WHITE, blobFrame, blockerFrame, capsuleFrame, headFrame, mittFrame, numberFrame,
+  FIGURE_PX, VIEWS, WHITE, blobFrame, bladeFrame, blockerFrame, capsuleFrame, headFrame, mittFrame, numberFrame,
   padFrame, padLen, shadowFrame, skateFrame, torsoFrame, torsoLen,
 } from './textures'
 
@@ -141,7 +141,8 @@ export class PuppetRig {
     if (!official) {
       const shaftR = Math.max(0.011, RIG_STICK_MIN_PX / 2 / FIGURE_PX)
       const shaft = capsuleFrame(at, 'shaft', 0.3, shaftR, shaftR, RIG_GEAR.shaft, true)
-      const blade = capsuleFrame(at, 'blade', BLADE_LEN, 0.02, 0.015, RIG_GEAR.blade, true)
+      // Pala curva, más larga que su articulación (BLADE_LEN) para leerse a 50 px
+      const blade = bladeFrame(at, this.stickSide)
       this.stickSlots = [
         this.add('seg', shaft, J.stickTop, J.stickMid, 0.3, 0),
         this.add('seg', shaft, J.stickMid, J.stickHeel, 0.3, 0),

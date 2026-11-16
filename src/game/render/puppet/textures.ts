@@ -5,11 +5,11 @@
  * portero, dorsal) se pintan con su color final. Las dependientes de la vista
  * se generan para las 8 direcciones (0 = de frente, 2 = derecha, 4 = espalda).
  */
-import { FIGURE_EXAG, PLAYER_HEIGHT_M, PX_PER_M, RIG_FLOOR_FORESHORTEN, RIG_GEAR, RIG_PROPORTIONS } from '../artSpec'
+import { FIGURE_EXAG, PLAYER_HEIGHT_M, PX_PER_M, RIG_FLOOR_FORESHORTEN, RIG_GEAR, RIG_PROPORTIONS, STICK_BLADE } from '../artSpec'
 import type { FrameRef, PuppetAtlas } from './atlas'
 import type { RigKit } from './kit'
 import {
-  capsulePath, detailLine, ellipsePath, hex, paintHead, paintNumber, paintShape, strokeOutline, tone, type HeadSpec,
+  capsulePath, detailLine, ellipsePath, hex, paintHead, paintNumber, paintShape, polyPath, strokeOutline, tone, type HeadSpec,
 } from './paint'
 import { rigDims, type RigDims } from './skeleton'
 
@@ -29,6 +29,39 @@ export function capsuleFrame(atlas: PuppetAtlas, name: string, len: number, ra: 
   const r = Math.max(a, b)
   return atlas.ensure(`cap-${name}`, { left: -r - M, right: r + M, top: -a - M, bottom: l + b + M }, ctx => {
     paintShape(ctx, capsulePath(0, 0, 0, l, a, b), c, Math.min(a, b), thin)
+  })
+}
+
+/**
+ * Pala curva («cuchara», SPEC §7) del talón (ancla) a la punta, a lo largo de +y:
+ * se ensancha hacia la punta y se curva hacia la cara de golpeo. El suelo se ve
+ * en pantalla reflejado (escorzo), así que basta un marco por mano (`side` 1 = diestro).
+ */
+export function bladeFrame(atlas: PuppetAtlas, side: 0 | 1): FrameRef {
+  const B = STICK_BLADE
+  const [l, ra, rb, bow] = [B.len * FIGURE_PX, B.heelR * FIGURE_PX, B.toeR * FIGURE_PX, B.bow * FIGURE_PX * (side === 1 ? 1 : -1)]
+  const n = 10
+  const pts: [number, number][] = []
+  const edge = (k: number, sign: number) => {
+    // Línea media x = bow·u², con su normal; el ancho crece del talón a la punta
+    const u = k / n
+    const tx = 2 * bow * u
+    const tl = Math.hypot(tx, l) || 1
+    const r = ra + (rb - ra) * u
+    pts.push([bow * u * u + (sign * l * r) / tl, l * u - (sign * tx * r) / tl])
+  }
+  for (let k = 0; k <= n; k++) edge(k, 1)
+  // Punta redonda: media vuelta de la normal a la contraria pasando por la tangente
+  const tl = Math.hypot(2 * bow, l)
+  const [nx, ny, tx, ty] = [l / tl, -2 * bow / tl, 2 * bow / tl, l / tl]
+  for (let k = 1; k < 6; k++) {
+    const a = (k / 6) * Math.PI
+    pts.push([bow + rb * (nx * Math.cos(a) + tx * Math.sin(a)), l + rb * (ny * Math.cos(a) + ty * Math.sin(a))])
+  }
+  for (let k = n; k >= 0; k--) edge(k, -1)
+  const m = Math.abs(bow) + rb + M
+  return atlas.ensure(`blade-${side}`, { left: -m, right: m, top: -ra - M, bottom: l + rb + M }, ctx => {
+    paintShape(ctx, polyPath(pts), RIG_GEAR.blade, ra, true)
   })
 }
 

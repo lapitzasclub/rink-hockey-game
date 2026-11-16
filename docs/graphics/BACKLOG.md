@@ -54,7 +54,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | Gate B | Elección de estilo (D1, D4) | usuario | WP-20 | ✅ 2026-11-16 (D1 = A, D4 = casco ligero) |
 | WP-30 | Rig 2D jerárquico + equipamiento | engineer · opus | Gate B | ✅ 2026-11-16 |
 | WP-31 | Locomoción quad | engineer · opus | WP-30 | ✅ 2026-11-16 |
-| WP-32 | Stick a dos manos y acciones | engineer · opus | WP-30 | ⬜ |
+| WP-32 | Stick a dos manos y acciones | engineer · opus | WP-30 | ✅ 2026-11-16 |
 | WP-33 | Portero: posturas y paradas | builder · sonnet | WP-31, WP-32 | ⬜ |
 | WP-34 | UI sobre jugadores | builder · sonnet | WP-30 | ✅ 2026-11-16 |
 | Gate C | Personajes y animación | coordinador + usuario | WP-31…34 | ⬜ |
