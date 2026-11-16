@@ -35,7 +35,7 @@ export function createPauseMenu(deps: {
     const mode = s.mode === 'arcade' ? 'ARCADE' : 'REGLAMENTO'
     root.querySelector('#pause-kicker')!.textContent = s.ended
       ? `${mode} · FINAL`
-      : `${mode} · PERIODO ${s.period} · ${fmtClock(s.remainingSeconds)}`
+      : `${mode} · ${s.period}ª PARTE · ${fmtClock(s.remainingSeconds)}`
     root.querySelector('#pause-blue')!.textContent = String(s.blue)
     root.querySelector('#pause-red')!.textContent = String(s.red)
   }

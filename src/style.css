@@ -643,6 +643,42 @@ button {
   transform: translateX(32px);
 }
 
+/* Selector por pasos (duración de cada parte): flechas dibujadas a los lados del valor */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepper-value {
+  min-width: 112px;
+  font-size: 15px;
+  text-align: center;
+  color: #fff;
+}
+
+.stepper-arrow {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--c-orange);
+  background: rgba(0, 0, 0, 0.3);
+  transition: transform var(--dur-fast) var(--ease-back), background var(--dur-fast) ease-out;
+}
+
+.stepper-arrow .kicon {
+  width: 13px;
+  height: 13px;
+}
+
+.stepper-arrow:hover {
+  background: var(--c-orange);
+  color: #fff;
+  transform: scale(1.12);
+}
+
 /* Deslizador de volumen: pista rellena hasta el valor (--fill la pone el JS) */
 .slider-wrap {
   display: flex;

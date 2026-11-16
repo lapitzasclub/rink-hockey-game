@@ -55,7 +55,7 @@ src/
       cameraDirector.ts      Cámara dinámica (seguimiento con anticipación, zoom contextual, punch)
       ball.ts                Física y posición de la pelota
       matchActions.ts        Acciones: pase, tiro, robo, contactos, parada portero
-      matchClock.ts          Reloj del partido y periodos
+      matchClock.ts          Reloj acelerado (2 partes de 25:00), descanso y escala tiempo de juego ↔ real (`matchTime`)
       matchFlow.ts           Bully, kickoff, foul restart
       movement.ts            Seek, resolvePlayerSpacing
       playerControl.ts       Control humano y coordinación de IA de equipo
@@ -68,7 +68,7 @@ src/
       matchHud.ts
       arcadeHud.ts           Barra de turbo y línea de estado (arcade)
       scoreboard.ts          Videomarcador común (ambos modos)
-      prefs.ts               Preferencias de UI sobre jugadores (etiquetas, `?labels=1|0`)
+      prefs.ts               Preferencias: etiquetas de rol (`?labels=1|0`) y minutos reales por parte (`?half=N`)
     audio/
       sounds.ts              Audio procedural Web Audio (incluye público, cargas, powerups)
       announcer.ts           Locutor con Web Speech API (voz española si existe; on/off en ajustes)
@@ -141,7 +141,7 @@ Formato preferido: `/** ... */` en funciones o módulos clave. Inline solo cuand
 
 ### Mecánicas implementadas
 
-- Partido con 2 periodos, reloj de 120 s
+- Partido a dos partes de 25:00 de juego (reglamento). El reloj del marcador corre acelerado: cada parte dura los minutos reales elegidos en Ajustes → General (2, 3, 5, 8, 12 o 25 = tiempo real; por defecto 3). La tarjeta azul son 2 min de juego, escalados con el reloj (`matchTime.scale` y `gameToRealMs` en matchClock.ts). Las faltas de equipo se reinician en el descanso
 - Kickoff, bully, foul restarts: free-hit, direct-free-hit, penalty
 - Stamina por jugador, sprint con drenaje y recuperación
 - Robo con probabilidades distintas por ángulo (frontal / lateral / espalda) y cuatro resultados: éxito, bola suelta, fallo silencioso o falta
@@ -153,7 +153,7 @@ Formato preferido: `/** ... */` en funciones o módulos clave. Inline solo cuand
 
 Estilo NBA Jam manteniendo el 5v5 y relajando las reglas. Se elige en el menú; REGLAMENTO conserva las reglas oficiales.
 
-- Periodos de 90 s (`ARCADE_PERIOD_DURATION`), cabezones (`ARCADE_HEAD_SCALE`), cámara dinámica con zoom y celebración de gol de 2,6 s.
+- Misma duración que reglamento (2 × 25:00 acelerados), cabezones (`ARCADE_HEAD_SCALE`), cámara dinámica con zoom y celebración de gol de 2,6 s.
 - **Sin faltas**: el robo nunca pita falta (el resultado se convierte en bola suelta), no hay falta de zona del portero y el bully se sustituye por una melé: la bola sale disparada en dirección aleatoria.
 - **Turbo**: Shift/S gasta stamina con más velocidad. **Shift+U con bola** = tiro turbo (más potencia, puede batir al portero). **Shift+U sin bola** = carga: derriba al rival cercano y, si es el portador, suelta la bola.
 - **En racha (on fire)**: 2 goles seguidos del mismo jugador → turbo infinito y tiros de fuego hasta que el rival marca.
@@ -262,6 +262,15 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-16 (sesión 25, cont.) — partido a dos partes de 25 minutos
+
+- `PERIOD_COUNT` 4 → 2 y `HALF_GAME_SECONDS` = 25 × 60; fuera `MATCH_DURATION` y `ARCADE_PERIOD_DURATION`. Los dos modos comparten duración.
+- Reloj acelerado al estilo de los juegos de deporte: el marcador cuenta 25:00 por parte y el tick de 1 s de juego se dispara cada `1000 / matchTime.scale` ms reales. La escala sale de `getHalfRealMinutes()` (ui/prefs.ts, `rh-half-minutes`, `?half=N` para pruebas). Por defecto son 3 min reales por parte: unos 7–8 min con paradas y descanso, parecido a lo que duraba antes (4 × 90 s en arcade, 4 × 120 s en reglamento).
+- Tarjeta azul en tiempo de juego, y la cuenta atrás de sancionados del marcador en m:ss de juego. Reloj en rojo en el último minuto de juego. Marcador con «1ª PARTE» y «2ª PARTE»; descanso de 2,6 s con «Descanso / Empieza la 2ª parte».
+- Ajustes → General → «Duración de cada parte»: selector con flechas dibujadas (← → o clic). Durante un partido avisa de que se aplica en el siguiente. Las tarjetas del menú muestran «2 × N MIN» y se actualizan al momento.
+- Pendiente (no hecho): cambio de campo en el descanso. La IA y las formaciones asumen el azul a la izquierda.
+- Validación: `npm run build` pasa. Con `?half=0.15`, el reloj avanza al ritmo esperado, entra el descanso, empieza la 2.ª parte y el partido termina en «Empate / Pulsa U para continuar». El selector y las tarjetas del menú se actualizan.
 
 ### 2026-11-16 (sesión 25, cont.) — pausa, controles, mando y UI por dispositivo
 

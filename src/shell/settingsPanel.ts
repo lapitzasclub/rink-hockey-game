@@ -1,7 +1,8 @@
 import { isAnnouncerEnabled, setAnnouncerEnabled } from '../game/audio/announcer'
 import { getVolume, playUiBack, playUiMove, setVolume, type VolumeChannel } from '../game/audio/sounds'
 import { BIND_ACTIONS, getBindings, keyText, labelForEvent, RESERVED_CODES, resetBindings, setBinding, type BindAction } from '../game/input/keyBindings'
-import { areRoleLabelsEnabled, setRoleLabelsEnabled } from '../game/ui/prefs'
+import { HALF_REAL_MINUTES_OPTIONS } from '../game/constants'
+import { areRoleLabelsEnabled, getHalfRealMinutes, setHalfRealMinutes, setRoleLabelsEnabled } from '../game/ui/prefs'
 import { focusFirst } from './menuNav'
 import { keyGlyph } from './template'
 
@@ -19,7 +20,7 @@ const isReserved = (code: number) => RESERVED_CODES.has(code) || code === 9
  * reasignación de teclas: al elegir una casilla, la siguiente tecla pulsada
  * se captura en fase de captura y no llega ni al shell ni a Phaser.
  */
-export function createSettingsPanel(deps: { onVisibilityChange: () => void, onToggleFullscreen: () => void }) {
+export function createSettingsPanel(deps: { onVisibilityChange: () => void, onToggleFullscreen: () => void, isMatchRunning: () => boolean }) {
   const panel = $<HTMLElement>('#settings-panel')!
   const closeBtn = $<HTMLButtonElement>('#btn-settings-close')!
   const tabs = Array.from(panel.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
@@ -63,6 +64,39 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
   roleLabelsBtn.addEventListener('click', () => {
     setRoleLabelsEnabled(!areRoleLabelsEnabled())
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
+  })
+
+  // Duración de cada parte: ← → (o clic en las flechas) recorren las opciones
+  const halfBtn = $<HTMLButtonElement>('#half-length')!
+  const halfValue = $<HTMLElement>('#half-length-value')!
+  const halfNote = $<HTMLElement>('#half-length-note')!
+  const halfText = (m: number) => (m === 25 ? '25 MIN · REAL' : `${m} MIN`)
+  const paintHalf = () => {
+    const m = getHalfRealMinutes()
+    halfValue.textContent = halfText(m)
+    halfBtn.setAttribute('aria-label', `Duración de cada parte: ${m} minutos reales`)
+    halfNote.textContent = deps.isMatchRunning()
+      ? 'Se aplicará en el próximo partido.'
+      : 'Dos partes de 25:00 en el marcador, como en el reglamento; el reloj corre acelerado.'
+  }
+  const stepHalf = (dir: number, sound = true) => {
+    const opts = HALF_REAL_MINUTES_OPTIONS as readonly number[]
+    const i = Math.max(0, opts.indexOf(getHalfRealMinutes()))
+    const next = opts[Math.min(opts.length - 1, Math.max(0, i + dir))]
+    if (next === opts[i]) return
+    setHalfRealMinutes(next)
+    paintHalf()
+    if (sound) playUiMove()
+  }
+  halfBtn.addEventListener('click', (e) => {
+    const arrow = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')
+    // El clic ya suena por la navegación de menús
+    stepHalf(arrow ? Number(arrow.dataset.step) : 1, false)
+  })
+  halfBtn.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    stepHalf(e.key === 'ArrowLeft' ? -1 : 1)
   })
 
   const announcerBtn = $<HTMLButtonElement>('#btn-announcer')!
@@ -181,6 +215,7 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
   // ─── Abrir y cerrar ────────────────────────────────────────────────────────
 
   const syncToggles = (isFullscreen: boolean) => {
+    paintHalf()
     setSwitch(fullscreenBtn, isFullscreen)
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
     setSwitch(announcerBtn, isAnnouncerEnabled())
@@ -189,6 +224,7 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
   const open = (tab: SettingsTab = 'general', from?: HTMLElement | null) => {
     returnFocus = from ?? (document.activeElement as HTMLElement | null)
     renderBindings()
+    paintHalf()
     setTab(tab)
     panel.hidden = false
     deps.onVisibilityChange()

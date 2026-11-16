@@ -113,6 +113,7 @@ function syncOverlays() {
 const settings = createSettingsPanel({
   onVisibilityChange: syncOverlays,
   onToggleFullscreen: () => void toggleFullscreen(shell, isTouchDevice),
+  isMatchRunning: () => activeScene === 'match',
 })
 
 const pause = createPauseMenu({

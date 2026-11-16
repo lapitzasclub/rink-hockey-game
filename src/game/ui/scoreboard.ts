@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { PERIOD_COUNT } from '../constants'
+import { CLOCK_WARNING_GAME_SECONDS, PERIOD_COUNT } from '../constants'
 import { ARCADE_FONT } from '../render/arcadeFx'
 
 /** Videomarcador en la esquina superior izquierda: no toca banquillos (x 320-960) ni valla lejana. */
@@ -45,7 +45,7 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
   const redScore = scene.add.text(left + PANEL_W - BLOCK_W / 2, PANEL_Y + (showFouls ? 22 : PANEL_H / 2), '0', scoreStyle).setOrigin(0.5).setDepth(51)
   const blueFouls = mk(left + BLOCK_W / 2, PANEL_Y + 46, 12, '#dcebff')
   const redFouls = mk(left + PANEL_W - BLOCK_W / 2, PANEL_Y + 46, 12, '#ffe2e5')
-  const clock = mk(left + PANEL_W / 2, PANEL_Y + (showFouls ? 21 : 17), 28, '#ffe36a', '1:30')
+  const clock = mk(left + PANEL_W / 2, PANEL_Y + (showFouls ? 21 : 17), 28, '#ffe36a', '25:00')
   const period = mk(left + PANEL_W / 2, PANEL_Y + (showFouls ? 45 : 39), 13, '#9fb6cf')
 
   const susStyle = { fontFamily: ARCADE_FONT, fontSize: '15px', stroke: '#050b13', strokeThickness: 4 }
@@ -58,7 +58,7 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
     scene.tweens.add({ targets: t, scale: { from: 1.8, to: 1 }, duration: 420, ease: 'Back.Out' })
   }
   const fmt = (list: ScoreboardState['suspensions'], team: 'blue' | 'red') =>
-    list.filter(s => s.team === team).map(s => `2' ${s.secondsLeft}s`).join('\n')
+    list.filter(s => s.team === team).map(s => `${Math.floor(s.secondsLeft / 60)}:${String(s.secondsLeft % 60).padStart(2, '0')}`).join('\n')
 
   return {
     update(s: ScoreboardState) {
@@ -73,8 +73,8 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
       const m = Math.floor(s.remainingSeconds / 60)
       const sec = s.remainingSeconds % 60
       clock.setText(`${m}:${sec.toString().padStart(2, '0')}`)
-      clock.setColor(s.remainingSeconds <= 10 ? '#ff5d6c' : '#ffe36a')
-      period.setText(`${s.currentPeriod}º / ${PERIOD_COUNT}`)
+      clock.setColor(s.remainingSeconds <= CLOCK_WARNING_GAME_SECONDS ? '#ff5d6c' : '#ffe36a')
+      period.setText(PERIOD_COUNT === 2 ? `${s.currentPeriod}ª PARTE` : `${s.currentPeriod} / ${PERIOD_COUNT}`)
       if (showFouls) blueSus.setText(fmt(s.suspensions, 'blue'))
       if (showFouls) redSus.setText(fmt(s.suspensions, 'red'))
     },

@@ -27,7 +27,6 @@ export const K = RINK_LENGTH_BASE_M / RINK_LENGTH_M
 
 export const GAME_WIDTH = 1280
 export const GAME_HEIGHT = 720
-export const MATCH_DURATION = 120
 export const PLAYER_RADIUS = 18 * K
 export const GOALIE_RADIUS = 9 * K
 export const BALL_RADIUS = 6 * K
@@ -147,8 +146,18 @@ export const RINK = {
  */
 export const FIELD_PLAYER_BOTTOM_BOARD_MARGIN = 30 * K
 
-export const PERIOD_COUNT = 4
-export const PERIOD_RESTART_DELAY_MS = 1400
+/** Partes del partido: dos, como en el reglamento. */
+export const PERIOD_COUNT = 2
+/** Duración de cada parte en tiempo de juego (s): 25 minutos reglamentarios. El reloj del marcador corre acelerado. */
+export const HALF_GAME_SECONDS = 25 * 60
+/** Minutos reales que puede durar cada parte (Ajustes → General). 25 = tiempo real. */
+export const HALF_REAL_MINUTES_OPTIONS = [2, 3, 5, 8, 12, 25] as const
+/** Por defecto: unos 7–8 min de partido con paradas y descanso, ritmo de partida rápida. */
+export const DEFAULT_HALF_REAL_MINUTES = 3
+/** Último minuto de juego de cada parte: el reloj se pone en rojo. */
+export const CLOCK_WARNING_GAME_SECONDS = 60
+/** Pausa del descanso entre partes antes del saque (ms reales). */
+export const PERIOD_RESTART_DELAY_MS = 2600
 export const BULLY_PLAYER_OFFSET = 26 * K
 export const MAX_BALL_SPEED = 760
 export const DIRECT_FREE_HIT_FOUL_THRESHOLD = 10
@@ -165,7 +174,7 @@ export const GOALIE_ZONE_RADIUS = 26 * K
 export const PENALTY_AREA_DEPTH = 154 * K
 /** Altura del área de portería (9 m × 30 px/m) */
 export const PENALTY_AREA_HEIGHT = 270 * K
-/** Duración de la tarjeta azul en ms (2 minutos reglamentarios) */
+/** Duración de la tarjeta azul en ms de tiempo de juego (2 minutos reglamentarios); se escala con el reloj. */
 export const BLUE_CARD_DURATION_MS = 120_000
 /** Posición Y del banquillo de expulsiones (encima de la pista) */
 export const BENCH_Y_TOP = 30
@@ -182,8 +191,6 @@ export const AI_OPEN_MATE_GAP = 80
 // ─── Modo arcade ────────────────────────────────────────────────────────────
 // Tuning del modo arcade (estilo NBA Jam): turbo, cargas, racha, powerups y cámara.
 
-/** Duración de cada periodo en arcade (s). Partidos más cortos y frenéticos. */
-export const ARCADE_PERIOD_DURATION = 90
 /** Pausa de celebración tras gol en arcade (ms); más larga para lucir la cámara y los efectos. */
 export const ARCADE_GOAL_CELEBRATION_MS = 2600
 /** Escala del casco en arcade ("cabezones"). */

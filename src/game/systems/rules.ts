@@ -1,4 +1,5 @@
 import { BLUE_CARD_DURATION_MS, DIRECT_FREE_HIT_FOUL_THRESHOLD } from '../constants'
+import { gameToRealMs } from './matchClock'
 import { SANCTION } from '../types'
 import type { Player, TeamColor } from '../types'
 
@@ -39,7 +40,8 @@ export function createRuleState(): RuleState {
 
 /** Emite una tarjeta azul al jugador: lo suspende BLUE_CARD_DURATION_MS. */
 export function registerBlueCard(player: Player, timeNow: number) {
-  player.suspendedUntil = timeNow + BLUE_CARD_DURATION_MS
+  // 2 minutos de juego, no reales: con el reloj acelerado duran lo mismo en proporción a la parte
+  player.suspendedUntil = timeNow + gameToRealMs(BLUE_CARD_DURATION_MS)
 }
 
 export function registerStealFoul(state: RuleState, offender: Player, victim: Player, restartX: number, restartY: number, timeNow: number) {

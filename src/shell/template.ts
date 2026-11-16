@@ -110,6 +110,15 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
             <h3 class="settings-section-title">PANTALLA</h3>
             ${toggleRow('btn-fullscreen', 'Pantalla completa')}` : ''}
             <h3 class="settings-section-title">PARTIDO</h3>
+            <button id="half-length" class="settings-row settings-row--stepper" data-nav>
+              <span>Duración de cada parte</span>
+              <span class="stepper" aria-hidden="true">
+                <span class="stepper-arrow" data-step="-1">${ICON.arrowLeft}</span>
+                <span id="half-length-value" class="stepper-value"></span>
+                <span class="stepper-arrow" data-step="1">${ICON.arrowRight}</span>
+              </span>
+            </button>
+            <p id="half-length-note" class="settings-note">Dos partes de 25:00 en el marcador, como en el reglamento; el reloj corre acelerado.</p>
             ${toggleRow('btn-role-labels', 'Etiquetas de rol sobre los jugadores')}
           </section>
 

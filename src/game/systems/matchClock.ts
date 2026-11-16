@@ -2,7 +2,21 @@ import { PERIOD_COUNT, PERIOD_RESTART_DELAY_MS } from '../constants'
 import type { RuleState } from './rules'
 
 /**
- * Decrementa el reloj en 1 segundo y gestiona el cambio de periodo.
+ * Escala del reloj del partido en curso: segundos de juego por segundo real.
+ * El marcador cuenta 25:00 por parte aunque la parte dure pocos minutos reales;
+ * lo que se mide en tiempo de juego (tarjeta azul) se convierte con esto.
+ * MatchScene lo fija al empezar cada partido.
+ */
+export const matchTime = { scale: 1 }
+
+/** Milisegundos reales que dura un intervalo dado en tiempo de juego. */
+export function gameToRealMs(gameMs: number) {
+  return gameMs / matchTime.scale
+}
+
+/**
+ * Decrementa el reloj en 1 segundo de juego y gestiona el descanso entre partes.
+ * Se llama cada `1000 / matchTime.scale` ms reales.
  *
  * Si el tiempo llega a cero y quedan periodos, inicia el siguiente con un
  * retardo de celebración. Si era el último periodo, llama a finishMatch.
@@ -43,7 +57,8 @@ export function tickMatchClock(options: {
       period: currentPeriod,
       teamFouls: { blue: 0, red: 0 },
     }
-    options.centerText.setText(`Inicio del ${currentPeriod}º tiempo`).setVisible(true)
+    options.centerText.setText(`Descanso
+Empieza la ${currentPeriod}ª parte`).setVisible(true)
     return {
       remainingSeconds: options.matchDuration,
       currentPeriod,

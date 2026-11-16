@@ -7,18 +7,19 @@ import { drawRink } from '../game/render/drawRink'
 import { playUiConfirm, playUiMove, playUiThump } from '../game/audio/sounds'
 import type { GameMode } from '../game/types'
 import { consumePad } from '../game/input/gamepad'
+import { getHalfRealMinutes, onHalfRealMinutesChange } from '../game/ui/prefs'
 import { getInputMode, onInputModeChange, PAD_GLYPH } from '../game/input/inputMode'
 
 type MenuData = { blueScore?: number; redScore?: number; blueFouls?: number; redFouls?: number; mode?: GameMode }
 
 type Hint = { key: string } | { pad: string } | { arrows: true }
 
-type ModeDef = { mode: GameMode, title: string, lines: string[], footer: string, color: number, hex: string, dark: number }
+type ModeDef = { mode: GameMode, title: string, lines: string[], color: number, hex: string, dark: number }
 
 const MODE_KEY = 'rh-mode'
 const MODES: ModeDef[] = [
-  { mode: 'arcade', title: 'ARCADE', lines: ['Turbo, cargas y powerups', 'Cabezones y racha de fuego', 'Sin faltas'], footer: '4 × 1:30', color: 0xff8a1a, hex: '#ffb347', dark: 0x3a1a04 },
-  { mode: 'classic', title: 'REGLAMENTO', lines: ['Reglas oficiales', 'Faltas, bully y tarjetas', 'Penaltis y libres directos'], footer: '4 × 2:00', color: 0x4da3ff, hex: '#8cc4ff', dark: 0x07213f },
+  { mode: 'arcade', title: 'ARCADE', lines: ['Turbo, cargas y powerups', 'Cabezones y racha de fuego', 'Sin faltas'], color: 0xff8a1a, hex: '#ffb347', dark: 0x3a1a04 },
+  { mode: 'classic', title: 'REGLAMENTO', lines: ['Reglas oficiales', 'Faltas, bully y tarjetas', 'Penaltis y libres directos'], color: 0x4da3ff, hex: '#8cc4ff', dark: 0x07213f },
 ]
 
 /** Medidas y tiempos del menú: solo presentación, por eso no viven en constants.ts. */
@@ -109,7 +110,11 @@ export class MenuScene extends Phaser.Scene {
     this.setupCameras()
     // Ayudas y texto de «jugar» siguen al último dispositivo usado (teclado, mando o táctil)
     const offMode = onInputModeChange(() => this.withUi(() => this.refreshHints(true)))
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offMode)
+    // La duración se cambia en Ajustes con el menú detrás: el pie de las tarjetas se actualiza al momento
+    const offHalf = onHalfRealMinutesChange(() => {
+      for (const c of this.cards) (c.container.getByName('duration') as Phaser.GameObjects.Text | null)?.setText(MenuScene.durationLabel())
+    })
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { offMode(); offHalf() })
 
     this.arena = createArena(this)
     drawRink(this)
@@ -315,6 +320,12 @@ export class MenuScene extends Phaser.Scene {
     }
   }
 
+  /** Pie de las tarjetas: dos partes y su duración real (Ajustes → General). */
+  private static durationLabel() {
+    const m = getHalfRealMinutes()
+    return m === 25 ? '2 × 25 MIN' : `2 × ${m} MIN`
+  }
+
   private createModeCard(def: ModeDef, x: number, y: number) {
     const { cardW: w, cardH: h } = UI
     const container = this.add.container(x, y)
@@ -335,9 +346,10 @@ export class MenuScene extends Phaser.Scene {
         fontFamily: ARCADE_FONT, fontSize: '17px', color: '#d6e4f5',
       }).setOrigin(0, 0))
     })
-    container.add(this.add.text(w / 2 - 44, h / 2 - 22, def.footer, {
+    const footer = this.add.text(w / 2 - 44, h / 2 - 22, MenuScene.durationLabel(), {
       fontFamily: ARCADE_FONT, fontSize: '16px', color: '#ffffff',
-    }).setOrigin(1, 0.5))
+    }).setOrigin(1, 0.5).setName('duration')
+    container.add(footer)
     container.setSize(w, h)
     container.setInteractive({ useHandCursor: true })
     container.on('pointerover', () => this.select(def.mode, canPlayAudio()))

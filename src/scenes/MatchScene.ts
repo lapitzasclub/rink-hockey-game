@@ -3,12 +3,11 @@ import {
   ARCADE_AI_CHECK_CHANCE,
   ARCADE_GOAL_CELEBRATION_MS,
   ARCADE_HEAD_SCALE,
-  ARCADE_PERIOD_DURATION,
   GAME_HEIGHT,
   GAME_WIDTH,
   GOAL_HALF_H,
   GOALIE_ZONE_RADIUS,
-  MATCH_DURATION,
+  HALF_GAME_SECONDS,
   RINK,
   STICK_SWING_MS,
 } from '../game/constants'
@@ -52,7 +51,8 @@ import {
   tryPassAction,
   tryShotAction,
 } from '../game/systems/matchActions'
-import { tickMatchClock } from '../game/systems/matchClock'
+import { matchTime, tickMatchClock } from '../game/systems/matchClock'
+import { getHalfRealMinutes } from '../game/ui/prefs'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
 import { consumePad, padAxis, padHeld } from '../game/input/gamepad'
@@ -92,7 +92,7 @@ export class MatchScene extends Phaser.Scene {
   private centerText!: Phaser.GameObjects.Text
   private blueScore = 0
   private redScore = 0
-  private remainingSeconds = MATCH_DURATION
+  private remainingSeconds = HALF_GAME_SECONDS
   private currentPeriod = 1
   private matchEnded = false
   private restartAt = 0
@@ -144,6 +144,8 @@ export class MatchScene extends Phaser.Scene {
     this.controlledPlayerIndex = 0
     this.blueScore = 0
     this.redScore = 0
+    // Reloj acelerado: 25:00 de juego en los minutos reales elegidos; se fija por partido
+    matchTime.scale = HALF_GAME_SECONDS / (getHalfRealMinutes() * 60)
     this.remainingSeconds = this.periodDuration
     this.currentPeriod = 1
     this.matchEnded = false
@@ -168,8 +170,9 @@ export class MatchScene extends Phaser.Scene {
     return this.mode === 'arcade'
   }
 
+  /** Cada parte cuenta 25:00 de juego en ambos modos; lo que cambia es la duración real (Ajustes). */
   private get periodDuration() {
-    return this.mode === 'arcade' ? ARCADE_PERIOD_DURATION : MATCH_DURATION
+    return HALF_GAME_SECONDS
   }
 
   /** Crea objetos de interfaz: los ve solo la cámara UI, sin zoom. */
@@ -288,7 +291,8 @@ export class MatchScene extends Phaser.Scene {
     })
 
     this.time.addEvent({
-      delay: 1000,
+      // Un segundo de juego por tick
+      delay: 1000 / matchTime.scale,
       loop: true,
       callback: () => {
         const next = tickMatchClock({
