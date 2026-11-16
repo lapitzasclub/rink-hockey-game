@@ -137,6 +137,50 @@ export const BALL_VISUAL_DIAMETER_M = 0.48
 /** Altura de la valla, en metros (SPEC §1). */
 export const BOARD_HEIGHT_M = 1.0
 
+// Vallas (WP-41)
+
+/**
+ * `NEAR_CUT` elige cómo no tapar la bola con la valla cercana (SPEC §3):
+ * - `edge`: rodapié, banda de publicidad baja y borde superior; el resto es cristal casi invisible.
+ * - `ghost`: toda la cara a `ghostAlpha` (variante descartada, se conserva para comparar).
+ */
+export const NEAR_CUT: 'edge' | 'ghost' = 'edge'
+
+export const BOARDS = {
+  /** Segmentos por esquina (≥ 24, SPEC §10). */
+  cornerSegs: 28,
+  /** Alto del rodapié (m). */
+  /** Espesor visual de la valla (px mundo); la física sigue usando BOARD_W. */
+  thickPx: 7,
+  kickM: 0.2,
+  /** Alto del embellecedor opaco del borde superior de la valla cercana (m). */
+  capM: 0.1,
+  /** Franja de publicidad (m desde el suelo): lejana alta, cercana baja para no tapar la bola. */
+  adFar: { z0: 0.2, z1: 0.88 },
+  adNear: { z0: 0.2, z1: 0.52 },
+  /** Anchura de un panel de publicidad (m). */
+  adWidthM: 3,
+  /** Opacidad del cristal de la valla cercana (`edge`) y de la cara entera (`ghost`). */
+  glassAlpha: 0.1,
+  ghostAlpha: 0.35,
+  /** Opacidad de la losa superior de la valla cercana. */
+  nearTopAlpha: 0.22,
+  /** Sombra de la valla en el suelo: anchos (px mundo) de las franjas apiladas y opacidad de cada una. */
+  shadowWidths: [3, 7, 12],
+  shadowAlpha: 0.13,
+  /** Puerta frente al banquillo: ancho y alto (m). */
+  doorWidthM: 1.3,
+  doorHeightM: 0.94,
+  /** Red de protección tras la portería: altura desde el suelo (m), semianchura (m), paso de malla (m). */
+  netTopM: 4,
+  netHalfWidthM: 4.2,
+  netMeshM: 0.5,
+  netAlpha: 0.2,
+  /** Color base de la pared (se modula por la normal) y del canto superior. */
+  wallColor: 0x2f5086,
+  topColor: 0xd5e1ee,
+} as const
+
 /** Gradas: altura de la primera fila y subida por escalón, en metros; altura de un espectador sentado. */
 export const STANDS = { firstHeightM: 0.42, tierRiseM: 0.53, fanHeightM: 1.25 } as const
 

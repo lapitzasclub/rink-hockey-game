@@ -61,8 +61,9 @@ function rinkScene(ctx: LabBuildCtx): LabBuild {
   for (const [side, team] of [['left', 'blue'], ['right', 'red']] as const) {
     for (const slot of getFormation(side)) specs.push({ team, role: slot.role, x: slot.x, y: slot.y })
   }
-  ctx.ball.x = MID_X
-  ctx.ball.y = MID_Y
+  // Con cx/cy la bola se coloca ahí (prueba de la valla cercana)
+  ctx.ball.x = ctx.params.cx ?? MID_X
+  ctx.ball.y = ctx.params.cy ?? MID_Y
   return { figures: build(ctx, specs), frame: DEFAULT_FRAME }
 }
 

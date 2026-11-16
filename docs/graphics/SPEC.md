@@ -105,6 +105,7 @@ Bandas en `artSpec.ts` (`DEPTH.*`). La profundidad dentro de cada banda va por l
 **Portería:** se parte en *trasera* (red de fondo, techo, tubos traseros: depth de la línea de fondo) y *delantera* (tubos de la boca: depth de la línea de gol). Así un jugador puede estar dentro o detrás.
 
 **Corte de la valla cercana:** la valla cercana nunca tapa jugadores ni bola. Se dibuja solo su borde superior más un rodapié bajo, o semitransparente (alpha ≈ 0,35) en un radio alrededor de la bola y de los jugadores próximos. Lo elige WP-41 con capturas.
+Elegida en WP-41: variante `edge` (`NEAR_CUT` en artSpec.ts): rodapié opaco, franja de publicidad baja (z 0,2–0,52 m), cristal al 10 % y embellecedor opaco arriba. La bola se ve a color pleno; `ghost` (cara entera al 35 %) queda desactivada.
 
 ---
 
