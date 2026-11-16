@@ -53,7 +53,7 @@ import {
   tryShotAction,
 } from '../game/systems/matchActions'
 import { tickMatchClock } from '../game/systems/matchClock'
-import { updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
+import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
 import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle, startCrowdAmbience } from '../game/audio/sounds'
 import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
@@ -493,10 +493,10 @@ export class MatchScene extends Phaser.Scene {
 
     for (const player of this.players) {
       if (player.suspendedUntil && player.suspendedUntil > this.time.now) continue
-      if (player.team === 'blue' && player.role !== 'goalie') continue
+      if (player.team === 'blue' && player.role !== 'goalie' && !autopilot.on) continue
       const hasBall = this.ballCarrierId === player.id
 
-      if (player.team === 'red') {
+      if (player.team === 'red' || autopilot.on) {
         if (hasBall) {
           if (player.role === 'goalie' && shouldGoaliePass(player, this.time.now)) this.tryPass(player)
           else if (shouldAIShoot(player)) this.tryShot(player, (player.stamina ?? 0) > 45 && Math.random() < 0.45)

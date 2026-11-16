@@ -70,6 +70,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-61 | Luz y sombras | builder · sonnet | Gate C, WP-40…43 | ⬜ |
 | WP-62 | Rendimiento | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
 | WP-63 | Móvil | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
+| WP-64 | Partido de humo (IA contra IA) | builder · sonnet | — | ✅ 2026-11-16 |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos
@@ -520,6 +521,14 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 - No mover nipplejs a controles Phaser.
 
 **Aceptación:** capturas legibles; problemas listados y arreglados por el builder.
+
+### WP-64 — Partido de humo
+
+- **Rol:** gfx-builder · sonnet. Añadido el 2026-11-16 a raíz de una revisión: los WPs que tocan juego se validaban solo con capturas fijas.
+
+**Encargo:** `?lab=match&auto=1&smokeMs=N` juega IA contra IA sin render, a 60 Hz fijos, e imprime `[smoke] {json}` con goles, tiros, a puerta, paradas, faltas, tarjetas, atascos, NaN y errores. Comando: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-smoke.ps1 -Mode <reglamento|arcade> -SmokeMs 240000 -BaseUrl http://127.0.0.1:<puerto>/`.
+
+**Referencia** (medias de corridas de 240 s): reglamento 0,94 goles/min, 7,4 tiros/min y 72 % de paradas; arcade 1,88 goles/min, 11,4 tiros/min y 68 % de paradas (main e8ed16b). Alarma: goles/min −50 % o +100 %, atascos > 10 %, cualquier NaN, jugador fuera de pista o error de consola.
 
 ### Gate F — Revisión final
 

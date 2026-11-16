@@ -138,6 +138,7 @@ El coordinador **no** salta un gate. Lo que depende de él espera.
   - o `-Query "lab=goal&zoom=3" -Out docs/graphics/shots/WP-XX/after/goal-zoom.jpg`
 - Requiere el servidor de desarrollo (`npm run dev`). Si el puerto 5173 está ocupado por otro proyecto, se arranca Vite en otro puerto y se pasa `-BaseUrl http://127.0.0.1:<puerto>/`.
 - Cada captura deja un `.console.txt` al lado. QA reporta las líneas con `error` o `Uncaught`.
+- **Partido de humo** (WP-64), obligatorio en WPs que tocan juego (física, IA, reglas, portería, constantes o dimensiones): `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-smoke.ps1 -Mode <reglamento|arcade> -SmokeMs 240000 -BaseUrl http://127.0.0.1:<puerto>/`, 3–4 corridas por modo comparadas con la referencia de BACKLOG §WP-64. Tarda unos 6 s por corrida.
 - **No hay carpeta `before/`:** el "antes" de un WP es el `after/` del WP anterior que tocó lo mismo, o `shots/baseline/`. Así no se duplican capturas.
 - Solo se versionan los `after/` de WPs aceptados (JPG, ~50–150 KB).
 - Las escenas `lab=...` las crea el WP-00. Hasta entonces, el script captura el menú.

@@ -15,6 +15,9 @@ export interface LabParams {
   set: string
   /** Nº de sancionados de demo en la escena officials. */
   pen: number
+  /** Partido de humo IA contra IA (WP-64) y ms de juego a medir. */
+  auto: boolean
+  smokeMs: number
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -40,6 +43,8 @@ export function readLabParams(search: string): LabParams {
     strip: q.get('strip'),
     set: q.get('set') ?? 'field',
     pen: num(q, 'pen') ?? 0,
+    auto: q.get('auto') === '1',
+    smokeMs: num(q, 'smokeMs') ?? 120000,
   }
 }
 

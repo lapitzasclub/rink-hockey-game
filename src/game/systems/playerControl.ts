@@ -4,6 +4,9 @@ import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
 import type { Ball, Player } from '../types'
 
+/** Autopiloto (partido de humo, WP-64): la IA también mueve al jugador "humano". */
+export const autopilot = { on: false }
+
 /**
  * Lee el input del jugador humano (teclado o joystick táctil), actualiza el
  * sprint y la stamina, aplica aceleración y delega el movimiento a applySkating.
@@ -22,6 +25,7 @@ export function updateControlledPlayerMotion(options: {
   timeNow: number
 }) {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
+  if (autopilot.on) return player // lo mueve updateTeamAIPlayers
 
   // Si el jugador controlado está suspendido, solo aplicar rozamiento (sin input)
   if ((player.suspendedUntil && player.suspendedUntil > options.timeNow) || (player.stunUntil ?? 0) > options.timeNow) {
@@ -83,7 +87,7 @@ export function updateTeamAIPlayers(options: {
   const controlled = getControlledPlayer(options.players, options.controlledPlayerIndex)
 
   for (const player of options.players) {
-    if (player.id === controlled.id) continue
+    if (player.id === controlled.id && !autopilot.on) continue
     // Jugador suspendido: no actualizar IA ni física (lo gestiona updateSuspendedPlayers)
     if (player.suspendedUntil && player.suspendedUntil > options.timeNow) continue
     if ((player.stunUntil ?? 0) > options.timeNow) {

@@ -7,6 +7,7 @@ import { worldToScreen } from '../game/render/viewTransform'
 import { setVisualHeadScale } from '../game/systems/visuals'
 import { poseFigure, type LabFigure } from './lab/labFigures'
 import { readLabParams, seedMathRandom, type LabParams } from './lab/labParams'
+import { startSmoke } from './lab/labSmoke'
 import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
 
 /**
@@ -30,7 +31,7 @@ export class LabScene extends Phaser.Scene {
 
   init() {
     this.params = readLabParams(window.location.search)
-    seedMathRandom()
+    if (!this.params.auto) seedMathRandom() // el humo necesita variar entre corridas
     this.figures = []
     this.arena = null
     this.bench = []
@@ -107,6 +108,7 @@ export class LabScene extends Phaser.Scene {
       })
     }
     this.scene.start('match', { mode })
+    if (this.params.auto) startSmoke(match, mode, this.params.smokeMs)
     if (freeze !== null) window.setTimeout(() => this.game.scene.pause('match'), freeze)
   }
 
