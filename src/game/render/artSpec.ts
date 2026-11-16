@@ -202,6 +202,66 @@ export const ACTION_POSE = {
   handsY: 1.04, handsSide: 0.17, pump: 0.05, pumps: 3, stickUp: 0.44, celebrateLift: 0.02,
 } as const
 
+// ─── Portero (WP-33) ───
+
+/**
+ * Posturas del portero (SPEC §8), en unidades de figura y rad; se mezclan por `k`
+ * (0 = de pie atento, 1 = de rodillas). Los x van hacia el lado de la pierna / mano:
+ * `footX` separación de cada pie, `poleX/Y/Z` hacia dónde dobla la rodilla,
+ * `mitt*` es la manopla (mano libre, lado contrario al stick), `hand*` la mano del
+ * stick y `heel*` el talón de la pala (cruzada delante, tapando el hueco entre pads).
+ */
+export const GOALIE_POSTURE = {
+  stand: {
+    pelvisY: 0.41, pelvisZ: -0.02, pitch: 0.32, footX: 0.075, footZ: 0.02, footYaw: 0.12,
+    poleX: 0.15, poleY: 0, poleZ: 1, mittX: 0.26, mittY: 0.5, mittZ: 0.2,
+    handX: 0.2, handY: 0.36, handZ: 0.22, heelX: 0.1, heelZ: 0.2,
+  },
+  kneel: {
+    pelvisY: 0.25, pelvisZ: 0.02, pitch: 0.1, footX: 0.3, footZ: -0.12, footYaw: 1.9,
+    poleX: 0.35, poleY: -1, poleZ: 0.5, mittX: 0.32, mittY: 0.52, mittZ: 0.2,
+    handX: 0.24, handY: 0.32, handZ: 0.22, heelX: 0.16, heelZ: 0.26,
+  },
+} as const
+
+/**
+ * Cuándo se arrodilla (unidades de figura, ms): `kneelOn`/`kneelOff` son la distancia de la
+ * bola con histéresis; `fastClose` (u/s) y `fastDist` la «bola que viene rápida» hacia él;
+ * `hold` el mínimo que aguanta una postura; `tau` la constante de la transición (ms).
+ */
+export const GOALIE_VIEW = { kneelOn: 1.7, kneelOff: 2.8, fastClose: 10, fastDist: 7, hold: 400, tau: 90 } as const
+
+/**
+ * Desplazamiento lateral: `stepAmp`/`stepLift` pasos cortos de pie, `lean` y `slideLean`
+ * ladeo del tronco (de pie / de rodillas), `speedRef` velocidad (px/s) de referencia.
+ */
+export const GOALIE_MOVE = { stepAmp: 0.05, stepLift: 0.03, lean: 0.09, slideLean: 0.14, speedRef: 90 } as const
+
+/** Duración de la parada (≤ 300 ms, SPEC §8) y ataque/relajación (fracción del clip). */
+export const GOALIE_CLIP_MS = { save: 280 } as const
+export const GOALIE_ENVELOPE = { save: [0.22, 0.7], concede: [0.15, 0.85] } as const
+
+/**
+ * Selección de parada por la bola respecto al portero en el instante de la parada
+ * (fracciones del radio de parada): `body` = por debajo de esa distancia, bloqueo con el
+ * cuerpo; `wide` = lateral por encima del cual abre el pad; `side` = lateral mínimo para
+ * llegar con la manopla (lado libre) o con el stick (lado del stick); el resto, stick al suelo.
+ */
+export const GOALIE_SAVE_PICK = { body: 0.35, wide: 0.7, side: 0.2 } as const
+
+/**
+ * Poses de parada y reacción (unidades de figura y rad). `splitOut` abre el pad hasta `x`;
+ * `gloveUp/Out` la manopla; `stickOut` la pala por el suelo; `bodyArms` abre los brazos.
+ * `concede*`: cabeza gacha y golpes de stick al suelo (`taps` en el clip).
+ */
+export const GOALIE_SAVE_POSE = {
+  splitOut: 0.46, splitDrop: 0.1, splitShift: 0.1, splitRoll: 0.32,
+  gloveUp: 0.86, gloveOut: 0.34, gloveRoll: 0.16,
+  stickOut: 0.46, stickLean: 0.22,
+  bodyDrop: 0.07, bodyArms: 0.34, bodyLunge: 0.06,
+  concedePitch: 0.36, concedeTaps: 3, concedeLift: 0.13,
+} as const
+
 // Rig de figura (WP-30)
 
 /**

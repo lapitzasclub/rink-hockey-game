@@ -27,7 +27,7 @@ src/
   scenes/MenuScene.ts        Menú con selección de modo ARCADE / REGLAMENTO (localStorage `rh-mode`)
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
   scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
-  scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV); labSmoke: partido de humo
+  scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV); labActionStrips y labGoalieStrips: tiras de acciones y portero; labSmoke: partido de humo
   scenes/lab/stylePrototypes.ts  prototipos de estilo de WP-20 (A, B, C) en `?lab=style`
   scenes/lab/style/          rig, parts, paintVector, paintPixel: prototipos de estilo de WP-20; base del rig de WP-30
   game/
@@ -45,7 +45,7 @@ src/
       viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
-      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30); locomoción quad (WP-31: locomotion.ts, locomotionGaits.ts); stick y acciones (WP-32: upperBody.ts, actions.ts, actionClips.ts)
+      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30); locomoción quad (WP-31: locomotion.ts, locomotionGaits.ts); stick y acciones (WP-32: upperBody.ts, actions.ts, actionClips.ts); portero (WP-33: goalie.ts, goalieClips.ts)
       arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
     systems/
       ai.ts                  IA de portero y jugadores de campo
@@ -244,6 +244,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 
+- gfx WP-33: portero con careta, pads y manopla; postura de pie o de rodillas con histéresis (según distancia y cierre de la bola), pasos laterales o deslizamiento, y 4 paradas de 280 ms (split, manopla, stick, cuerpo) elegidas por lado y distancia en `markGoalieSave` (una línea en `handleGoalieSaveAction`, solo marca `anim`). Al encajar, cabeza gacha y golpes de stick. Lab `?lab=players&strip=goalie`.
 - gfx WP-64: partido de humo IA contra IA (`?lab=match&auto=1&smokeMs=N`, `scenes/lab/labSmoke.ts`, `tools/gfx-smoke.ps1`). Avanza `match.sys.step()` a 60 Hz sin render; el azul juega con `autopilot` (playerControl) y la rama de IA rival (MatchScene, 3 líneas). Medido: base 450751b → main e8ed16b, reglamento 0,75 → 0,94 goles/min y paradas 90 % → 72 %; arcade 2,00 → 1,88 goles/min; 0 atascos, NaN y errores.
 - gfx WP-32: stick a dos manos según `hand` con la pala siempre sobre la bola física, pala curva por mano (`STICK_BLADE`), largo en pantalla ≤ 1,2× real; clips de pase, tiro (latigazo: impacto a 36 ms), turbo, carga, robo, recepción y celebración (`Player.anim`, `startAnim`, `celebrateGoal`; `save` reservado a WP-33). Juego: `BALL_PROTECT_VELOCITY_BLEND` 0,12 → 0,04 (bola a ≤ 47 px en sprint). Tiras de acciones en `scenes/lab/labActionStrips.ts`.
 - gfx WP-51: mesa de oficiales en mundo (render/rink/table.ts) con 3 figuras sentadas del rig, kit de oficial (`officialKit`) y marcador; asientos de sancionados a ambos lados (`penaltySeat`) con seatedPose; lab `?lab=officials&pen=N`. Adelantado a Gate C por decisión del coordinador (solo usa poses estáticas del rig).

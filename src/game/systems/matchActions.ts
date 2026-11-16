@@ -47,6 +47,7 @@ import {
 import { clearGoalieCatch, getAimingDirection, markGoalieCaughtBall } from './ai'
 import { findPlayerById } from './playerHelpers'
 import { startAnim } from '../render/puppet/actions'
+import { markGoalieSave } from '../render/puppet/goalieClips'
 import { getStickTip } from './visuals'
 import { registerBully, registerStealFoul, type RuleState } from './rules'
 import type { Ball, Player, Vector } from '../types'
@@ -68,6 +69,7 @@ export function handleGoalieSaveAction(options: {
   if (options.ballCarrierId) return null
   const result = tryGoalieSave(options.ball, options.ballVelocity, options.players, options.timeNow)
   if (!result.saved) return null
+  markGoalieSave(options.players, options.ball, options.timeNow)
 
   let lastTouch: Player['team'] | null = null
   if (result.claimedBy) {

@@ -66,9 +66,11 @@ export function startAnim(player: Player, type: ActionType, at: number) {
   anim.at = at
 }
 
-/** Marca la celebración en los jugadores de campo del equipo que marca. */
+/** Marca la celebración en los jugadores de campo del equipo que marca y la reacción (cabeza gacha) en el portero que encaja. */
 export function celebrateGoal(players: Player[], team: TeamColor, at: number) {
-  for (const p of players) if (p.team === team && p.role !== 'goalie') startAnim(p, 'celebrate', at)
+  for (const p of players) {
+    if (p.team === team ? p.role !== 'goalie' : p.role === 'goalie') startAnim(p, 'celebrate', at)
+  }
 }
 
 export function actions(pose: PuppetPose, ctx: PoseContext) {

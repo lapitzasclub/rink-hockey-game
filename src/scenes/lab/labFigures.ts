@@ -5,8 +5,9 @@ import { createPlayer } from '../../game/entities/createPlayer'
 import { setLocoState } from '../../game/render/puppet/locomotion'
 import { updateVisuals } from '../../game/systems/visuals'
 import { updateBallPosition } from '../../game/systems/ball'
-import { ACTION_CLIP_MS } from '../../game/render/artSpec'
+import { ACTION_CLIP_MS, GOALIE_CLIP_MS } from '../../game/render/artSpec'
 import { lookFor } from '../../game/render/puppet/kit'
+import type { SaveKind } from '../../game/render/puppet/goalieClips'
 import type { ActionType } from '../../game/render/puppet/pose'
 import type { Ball, Player, Role, TeamColor } from '../../game/types'
 
@@ -14,6 +15,7 @@ import type { Ball, Player, Role, TeamColor } from '../../game/types'
 export interface LabFigure {
   /** Acción con progreso fijo 0..1 (hojas de WP-32). */
   action?: { type: ActionType; t: number }
+  gk?: FigureSpec['gk']
   player: Player
   ball: Ball
   carrying: boolean
@@ -44,6 +46,8 @@ export interface FigureSpec {
   /** Mano del stick forzada (busca un id con esa mano); acción y su progreso 0..1. */
   hand?: 'L' | 'R'
   action?: ActionType
+  /** Portero (WP-33): postura y parada forzadas. */
+  gk?: { kneel?: boolean; save?: SaveKind; side?: 1 | -1 }
   actionT?: number
   team: TeamColor
   role: Role
@@ -74,7 +78,7 @@ export function createFigure(scene: Phaser.Scene, id: string, spec: FigureSpec, 
     ? createBall(scene)
     : aimAhead ? { x: spec.x, y: spec.y, visual: sharedBall.visual } : sharedBall
   const action = spec.action ? { type: spec.action, t: spec.actionT ?? 0 } : undefined
-  return { action, player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null }
+  return { action, gk: spec.gk, player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null }
 }
 
 /** Aplica la pose de la figura para el instante `t` (determinista: dt de animación = 0). */
@@ -95,7 +99,11 @@ export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
   c.setData('ab', ratio)
   c.setData('sp', (fig.phase ?? 0) + phaseOffset)
   c.setData('pt', t)
-  if (fig.action) player.anim = { type: fig.action.type, at: t - fig.action.t * ACTION_CLIP_MS[fig.action.type as keyof typeof ACTION_CLIP_MS] }
+  c.setData('kneel', fig.gk?.kneel)
+  if (fig.action) {
+    const ms = fig.action.type === 'save' ? GOALIE_CLIP_MS.save : ACTION_CLIP_MS[fig.action.type as keyof typeof ACTION_CLIP_MS]
+    player.anim = { type: fig.action.type, at: t - fig.action.t * ms, save: fig.gk?.save, side: fig.gk?.side }
+  }
   // Con bola, donde la pone la física (con su adelanto por velocidad); sin ella, un proxy delante
   if (fig.carrying) updateBallPosition(fig.ball, { x: 0, y: 0 }, player.id, [player], 0)
   else if (fig.aimAhead) {
