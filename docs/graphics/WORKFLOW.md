@@ -65,7 +65,7 @@ Reglas de paralelismo:
   - `git worktree add -b gfx/wp-XX .claude/worktrees/wp-XX main`;
   - se despacha **sin** `isolation`, con la ruta absoluta en el encargo;
   - el encargo exige que `git log --oneline -1` muestre el último commit de `main`.
-  - **No uses `isolation: "worktree"` del Agent:** crea el worktree desde `origin/main`, que va por detrás porque no se hace push (pasó en la sesión 24).
+  - **No uses `isolation: "worktree"` del Agent:** crea el worktree desde `origin/main`, que puede ir por detrás del `main` local (pasó en la sesión 24).
   - `node_modules` no hace falta: Node lo resuelve desde el repo principal subiendo de carpeta. **Nunca crees uniones**, porque al borrar el worktree se puede llevar por delante el `node_modules` real.
   - `.claude/worktrees/` va en `.git/info/exclude`.
 - **Integración:**
@@ -168,4 +168,4 @@ El coordinador **no** salta un gate. Lo que depende de él espera.
 
 - Un commit por WP aceptado, mensaje `gfx(WP-XX): <resumen en español>`.
 - **Sin líneas de autoría ni coautoría**, sin `Co-Authored-By`, sin «Generated with». Lo manda la regla global del usuario.
-- Nunca `push` sin pedirlo.
+- Push: solo de `main`, justo después de cada integración con build ok (`git push origin main`; Cloudflare publica desde `main`, pedido por el usuario el 2026-11-16). Nunca push de ramas `gfx/wp-XX`.

@@ -18,7 +18,7 @@ Argumento recibido: `$ARGUMENTS` (vacío = `status`).
      - despacha sin `isolation`, dando la ruta absoluta al agente (WORKFLOW §3).
    - Cada WP aceptado se integra en `main` en el acto: commit del WP en su rama, `git cherry-pick -n` en `main`, papeleo, commit, y se borran el worktree y la rama. No se espera a terminar la tanda.
    - Si un WP posterior necesita lo ya integrado, rebasa su rama sobre `main` antes de verificarlo.
-4. Commits: solo si D6 = sí, mensaje `gfx(WP-XX): ...` **sin líneas de autoría/coautoría**. Nunca push.
+4. Commits: solo si D6 = sí, mensaje `gfx(WP-XX): ...` **sin líneas de autoría/coautoría**. Tras cada integración en `main`: `npm run build` y `git push origin main` (Cloudflare publica desde `main`; pedido por el usuario el 2026-11-16). Nunca push de ramas `gfx/wp-XX`.
 
 ## Modos
 - **status**: lee solo la tabla de estado y la de decisiones de `docs/graphics/BACKLOG.md`; resume en ≤ 10 líneas: hecho, en curso, listo para empezar, bloqueado, decisiones pendientes.
