@@ -2,7 +2,7 @@
 import * as Phaser from 'phaser'
 import { GOAL_BACK_DEPTH, GOAL_HALF_H, RINK } from '../../constants'
 import { getGoalLineX } from '../../utils'
-import { bandDepth, DEPTH, GOAL_VIS, PX_PER_M } from '../artSpec'
+import { bandDepth, DEPTH, GOAL_VIS, LIGHT, PX_PER_M } from '../artSpec'
 import { project } from '../viewTransform'
 
 const C = GOAL_VIS.colors
@@ -54,6 +54,8 @@ function buildGeom(leftSide: boolean): GoalGeom {
 
 /** Tubo con sombreado: borde oscuro, cuerpo y brillo especular desplazado a la luz. */
 function tube(g: Phaser.GameObjects.Graphics, a: Pt, b: Pt, w: number, body: number, edge: number, shine: number) {
+  g.lineStyle(w + LIGHT.goalGlowPx, LIGHT.goalGlowColor, LIGHT.goalGlowAlpha)
+  g.lineBetween(a.x, a.y, b.x, b.y)
   g.lineStyle(w + 1.2, edge, 1)
   g.lineBetween(a.x, a.y, b.x, b.y)
   g.lineStyle(w, body, 1)
@@ -112,10 +114,13 @@ function drawBack(g: Phaser.GameObjects.Graphics, geo: GoalGeom) {
   const farTop = pp(line, cy - GOAL_HALF_H, H)
   const nearTop = pp(line, cy + GOAL_HALF_H, H)
 
-  // Sombra proyectada hacia fuera y suelo oscurecido dentro
-  const shadow = rearArc(line + dir * 3, cy, dir, 0, GOAL_VIS.arcSegments).map(p => ({ x: p.x + 2, y: p.y + 1.5 }))
-  g.fillStyle(0x000000, A.shadow)
-  fillPoly(g, shadow)
+  // Sombra de la base y el arco trasero sobre el suelo: capas más anchas y suaves hacia fuera
+  const cxs = floorArc.reduce((a, p) => a + p.x, 0) / floorArc.length
+  const cys = floorArc.reduce((a, p) => a + p.y, 0) / floorArc.length
+  for (const L of LIGHT.goalShadow) {
+    g.fillStyle(0x000000, L.alpha)
+    fillPoly(g, floorArc.map(p => ({ x: cxs + (p.x - cxs) * (1 + L.grow), y: cys + (p.y - cys) * (1 + L.grow) + L.dy })))
+  }
   g.fillStyle(C.floor, A.floor)
   fillPoly(g, floorArc)
 
@@ -164,6 +169,8 @@ function drawBack(g: Phaser.GameObjects.Graphics, geo: GoalGeom) {
 
   // Silueta exterior de la jaula (casco convexo de ambos arcos y los postes): una sola forma
   const hull = convexHull([...floorArc, ...topArc, farFoot, nearFoot, farTop, nearTop])
+  g.lineStyle(rw + LIGHT.goalGlowPx * 1.6, LIGHT.goalGlowColor, LIGHT.goalGlowAlpha * 0.6)
+  polyline(g, [...hull, hull[0]])
   g.lineStyle(rw + 1.2, C.rearEdge, 0.9)
   fillPolyStroke(g, hull)
   g.lineStyle(rw, C.rear, 1)

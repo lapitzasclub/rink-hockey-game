@@ -10,6 +10,7 @@ import { drawOfficialsTable } from './rink/table'
 import { drawAds } from './rink/ads'
 import { drawFieldDots, drawGoalCrease, drawPenaltyArea } from './rink/markings'
 import { drawGoal3D } from './rink/goal'
+import { createLighting } from './lighting'
 
 // API pública (los consumidores externos importan de aquí)
 export { RINK_CORNER_R, BOARD_W, BOARD_FAR_H, roundedRectWorldPts } from './rink/geometry'
@@ -71,4 +72,7 @@ export function drawRink(scene: Phaser.Scene) {
   // ── Borde perimetral ──────────────────────────────────────────────────────
   g.lineStyle(MARKINGS.lineWidth, MARKINGS.lineColor, MARKINGS.lineAlpha)
   projStrokePoly(g, roundedRectPts(RINK.x, RINK.y, RINK.width, RINK.height, RINK_CORNER_R, 10))
+
+  // Pozos de luz cenitales y viñeteado del pabellón (WP-61)
+  createLighting(scene)
 }

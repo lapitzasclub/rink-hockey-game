@@ -5,7 +5,7 @@
  */
 import * as Phaser from 'phaser'
 import { RINK } from '../../constants'
-import { BENCH, BOARDS, BOARD_HEIGHT_M, NEAR_CUT, PX_PER_M, WORLD_PX_PER_M, CAMERA } from '../artSpec'
+import { BENCH, BOARDS, BOARD_HEIGHT_M, NEAR_CUT, PX_PER_M, WORLD_PX_PER_M, CAMERA, LIGHT } from '../artSpec'
 import { project } from '../viewTransform'
 import { RINK_CORNER_R, fillQuad, roundedRectWorldPts } from './geometry'
 
@@ -73,12 +73,12 @@ export function drawPerspectiveBoards(back: Phaser.GameObjects.Graphics, front: 
 
   // Sombra primero: franjas apiladas hacia dentro de la pista
   for (const p of pieces) {
-    for (const wd of BOARDS.shadowWidths) {
+    for (const wd of LIGHT.boardShadowWidths) {
       const a = project(p.w0.x, p.w0.y, 0)
       const b = project(p.w1.x, p.w1.y, 0)
       const c = project(p.w1.x - p.nx * wd, p.w1.y - p.ny * wd, 0)
       const d = project(p.w0.x - p.nx * wd, p.w0.y - p.ny * wd, 0)
-      back.fillStyle(0x040a14, BOARDS.shadowAlpha)
+      back.fillStyle(0x040a14, LIGHT.boardShadowAlpha)
       fillQuad(back, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)
     }
   }

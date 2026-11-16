@@ -571,3 +571,35 @@ export const PLAYER_UI = {
   barMid: 0.5,
   barLow: 0.25,
 } as const
+
+// ─── Luz (WP-61) ────────────────────────────────────────────────────────────
+
+/** Luz de pabellón (SPEC §4/§10): pozos cenitales, viñeteado y sombras de valla y portería. */
+export const LIGHT = {
+  /** Pozos de luz: posiciones relativas (coinciden con los reflejos del suelo), radio (px) y opacidad aditiva. */
+  poolsX: [0.2, 0.5, 0.8],
+  poolsY: [0.25, 0.75],
+  poolRadius: 150,
+  poolSquash: 0.4,
+  poolAlpha: 0.075,
+  /** Pozo junto a cada portería: distancia a la línea de gol (m, hacia dentro), radio y opacidad. */
+  goalPoolOffsetM: 2.2,
+  goalPoolRadius: 80,
+  goalPoolAlpha: 0.14,
+  /** Viñeteado: fracción del radio sin oscurecer, color y opacidad máxima en el borde del pabellón. */
+  vignetteInner: 0.5,
+  vignetteColor: '3,7,16',
+  vignetteAlpha: 0.38,
+  /** Sombra de la valla: anchos (px de mundo) de las franjas apiladas y opacidad de cada una (más densa pegada a la valla). */
+  boardShadowWidths: [2, 5, 9, 14],
+  boardShadowAlpha: 0.14,
+  /** Sombra de la portería: capas {crecimiento relativo, desplazamiento y (px), opacidad}. */
+  goalShadow: [
+    { grow: 0.22, dy: 3, alpha: 0.12 },
+    { grow: 0.08, dy: 2, alpha: 0.2 },
+  ],
+  /** Halo claro tras los tubos y la silueta de la portería (canto claro): grosor extra (px), color y opacidad. */
+  goalGlowPx: 3.4,
+  goalGlowColor: 0xdff0ff,
+  goalGlowAlpha: 0.32,
+} as const
