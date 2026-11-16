@@ -23,8 +23,9 @@ Juego de rink hockey 2D top-down para navegador. Formato 5v5 simplificado. El ju
 
 ```
 src/
-  main.ts                    Bootstrap Phaser (espera a la fuente Russo One), HTML shell, ajustes
-  scenes/MenuScene.ts        Menú con selección de modo ARCADE / REGLAMENTO (localStorage `rh-mode`)
+  main.ts                    Bootstrap Phaser (espera a la fuente Russo One), HTML shell, ajustes, pantalla completa (F), aviso de orientación
+  style.css                  Shell DOM con estética de juego: botones HUD inclinados, panel de ajustes con interruptores, aviso «gira el móvil»
+  scenes/MenuScene.ts        Menú: pabellón real de fondo con cámara a la deriva, logo, tarjetas ARCADE / REGLAMENTO (localStorage `rh-mode`), resultado final
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
   scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
   scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV); labActionStrips y labGoalieStrips: tiras de acciones y portero; labSmoke: partido de humo
@@ -103,6 +104,8 @@ public/
 - La cámara trabaja en coordenadas de pantalla ya proyectadas (`worldToScreen`); la física sigue en mundo.
 - **Scale.EXPAND**: el lienzo ocupa toda la ventana (sin bandas negras). El área de juego sigue siendo 1280×720 centrada; el pabellón (`ARENA_BOUNDS` en `arena.ts`) rellena lo que sobra. Las cámaras se reajustan en `MatchScene.fitCameras` (evento `RESIZE`) y `CameraDirector.refit`; el HUD queda dentro del área 16:9.
 - **Gradas** (`arena.ts`): anillos concéntricos alrededor de la valla (`roundedRectWorldPts` desplazado) proyectados con `standToScreen` (misma perspectiva que la pista + retroceso tras el fondo + altura del escalón). Se pintan una vez en canvas: estructura (profundidad -6), dos capas de público que se mecen (-5) y filas cercanas de espaldas (21, delante del tablero).
+- **Menú**: `MenuScene` usa el mismo enrutado de dos cámaras que MatchScene (mundo = `createArena` + `drawRink`; UI fija). Mientras está activa, el shell lleva la clase `scene-menu`, que muestra el acceso directo a pantalla completa. El menú ignora teclas y toques si hay un panel DOM encima (ajustes o aviso de orientación). Con `prefers-reduced-motion` no hay intro, deriva de cámara ni bucles: todo aparece con fundidos cortos.
+- **Pausa por shell** (`main.ts`): el partido se pausa con los ajustes abiertos o con un dispositivo táctil en vertical (`is-portrait`, overlay `#rotate-overlay` en CSS). Solo reanuda lo que pausó el propio shell, así el congelado del laboratorio no se pisa.
 - `MatchScene.init(data)` resetea todo el estado: Phaser reutiliza la instancia de escena entre partidos.
 - Modo arcade vs reglamento: `this.mode` en MatchScene; con `classic` no se crean `ArcadeController`/`ArcadeFx`/cámara dinámica y el juego se comporta como antes.
 - La portería se trata como jaula: boca frontal válida para gol, estructura trasera/lateral hace rebotar la pelota. El anclaje del balón al portador está blindado cerca de la portería para evitar goles fantasma.
@@ -161,10 +164,12 @@ Estilo NBA Jam manteniendo el 5v5 y relajando las reglas. Se elige en el menú; 
 | Tiro (con posesión) / robo (sin posesión) | U |
 | Tiro turbo (con posesión) / carga (sin posesión) — solo arcade | Shift + U |
 | Pase (con posesión) / cambio de jugador (sin posesión) | Y |
+| Pantalla completa (global) | F |
+| Menú: elegir modo / jugar | ← → o A D / Espacio o Enter |
 
 ### Controles (móvil)
 
-Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio), S (sprint/turbo), S+A (tiro turbo/carga en arcade), ⛶ (fullscreen).
+Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio), S (sprint/turbo), S+A (tiro turbo/carga en arcade). Pantalla completa desde el botón del menú o desde Ajustes; en Android además fija el apaisado (`screen.orientation.lock`). En vertical se muestra el aviso «gira el móvil» y el partido queda en pausa.
 
 ## Roadmap
 
@@ -189,6 +194,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Menú inicial, panel de ajustes, audio procedural, animación de stick
 - Animación de patinaje procedural v3: fase acumulada, contrafase 180°, zancada por dirección, `sideFactor`, texturas de espalda, sprint
 - Modo arcade estilo NBA Jam (cámara dinámica, turbo, cargas, powerups, racha de fuego, locutor, HUD arcade) con selección de modo en el menú
+- Menús con aspecto de videojuego: menú principal sobre el pabellón, acceso directo a pantalla completa, ajustes renovados y aviso de orientación en móvil
 
 ### Pendiente
 
@@ -241,6 +247,16 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-16 (sesión 25) — menús con aspecto de videojuego
+
+- `MenuScene` rehecha: el fondo es el pabellón real (gradas con público y pista) con una deriva lenta de cámara, un velo de degradado y dos haces de foco. Encima, en cámara de UI: logo extruido con degradado, cinta «hockey sobre patines», tarjetas inclinadas con icono dibujado (llama para arcade, tarjetas azul y roja para reglamento), chevrons en la tarjeta activa, ayudas de teclado con teclas dibujadas y marcador FINAL de videomarcador al volver de un partido.
+- Coreografía: fundido desde negro, golpe del logo (escala, sacudida y destello), barrido de la cinta, tarjetas escalonadas y ayudas. Al confirmar: pulso de la tarjeta, destello y fundido. Sonidos procedurales `playUiMove`, `playUiConfirm` y `playUiThump` en `sounds.ts`. Los de hover solo suenan si ya hubo gesto (`userActivation`), para que Chrome no avise en consola.
+- Shell DOM: botón de pantalla completa junto al engranaje, visible solo en el menú (`scene-menu`), con iconos SVG. La tecla F es global, hay fallback `webkit*` y en Android se fija el apaisado. El botón no aparece donde no hay Fullscreen API (iPhone).
+- Ajustes renovados: tarjeta con esquinas cortadas, cabecera con franja naranja, filas inclinadas con interruptores ON/OFF (`role="switch"` + `aria-checked`), teclas en `<kbd>` y animaciones de entrada solo con CSS.
+- Aviso de orientación: `#rotate-overlay` con un móvil SVG que gira en bucle, flecha que se dibuja y una pista esquemática de fondo. En vertical el partido se pausa y el menú no responde.
+- Reduced motion respetado en Phaser (sin intro, sin deriva ni bucles) y en CSS (sin rebotes y con el móvil ya girado).
+- Validación: `npm run build` pasa. Probado en Chrome a 1280×720, con resultado final, con el panel de ajustes, en móvil emulado en vertical (aviso) y en apaisado, y arrancando un partido desde el menú. Sin errores en consola, salvo el 404 del favicon, que ya estaba.
 
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 

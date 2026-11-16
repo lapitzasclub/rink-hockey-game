@@ -196,3 +196,21 @@ export function startCrowdAmbience(): { setIntensity(v: number): void, stop(): v
     },
   }
 }
+
+/** Navegación de menú: clic corto y seco. */
+export function playUiMove(): void {
+  tone(880, 660, 0.05, 0.12, 'square')
+}
+
+/** Confirmación de menú: arpegio ascendente. */
+export function playUiConfirm(): void {
+  tone(523, 523, 0.09, 0.18, 'square')
+  tone(659, 659, 0.09, 0.18, 'square', 0.07)
+  tone(988, 1320, 0.22, 0.2, 'triangle', 0.14)
+}
+
+/** Golpe grave del logo al aparecer en el menú. */
+export function playUiThump(): void {
+  tone(140, 45, 0.28, 0.5, 'sine')
+  tone(2400, 900, 0.05, 0.05, 'triangle')
+}
