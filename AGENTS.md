@@ -45,6 +45,7 @@ src/
       viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
+      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30)
       arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
     systems/
       ai.ts                  IA de portero y jugadores de campo
@@ -247,6 +248,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-42: suelo sin rejilla con grano y reflejos suaves; marcas a 2,5 px según el reglamento; sin línea azul (D10); la D ya no cruza la portería. Libre directo a 7,40 m (D9) y penalti a 5,40 m (`PENALTY_SPOT_OFFSET`, nuevo), los dos medidos desde la línea de gol en la marca y en matchFlow; antes el balón caía junto a la línea. Depths de drawRink en DEPTH.*.
 - WP-41: vallas sin facetas (28 segmentos por esquina), canto, rodapié y sombra; publicidad en las 4 vallas con hueco en las puertas de los banquillos; redes de protección tras las porterías. Corte de la valla cercana con la variante `edge`: la bola nunca queda tapada. Pendiente para WP-43: el público cercano tapa la cara exterior de la valla cercana.
 - WP-43: gradas con escalones reales, huecos y ropa variada (rayas, bufanda, capucha), y salto en el gol reutilizando `cheer()`. Hay un pasillo de 2,5 m entre la valla y la primera fila, así que el público cercano ya no tapa la publicidad de la valla cercana. Escala: el público cercano es mayor que los jugadores cercanos y el lejano, menor (`STANDS_STYLE` en artSpec.ts).
+- WP-30: rig 2D con IK de dos huesos (`src/game/render/puppet/`), 8 vistas cacheadas en atlas, capas locomoción/tronco/acciones/portero, poses de pie y sentada; Player gana rig/pose.
 
 ### 2026-11-15 (sesión 24) — renovación gráfica (/gfx)
 

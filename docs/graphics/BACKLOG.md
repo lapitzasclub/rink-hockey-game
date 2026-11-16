@@ -52,7 +52,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | Gate A | Perspectiva y escalas | coordinador | WP-11 | ✅ 2026-11-15 (FIGURE_EXAG 1,15 sin cambios) |
 | WP-20 | Tres prototipos de estilo | engineer · opus | Gate A | ✅ 2026-11-16 |
 | Gate B | Elección de estilo (D1, D4) | usuario | WP-20 | ✅ 2026-11-16 (D1 = A, D4 = casco ligero) |
-| WP-30 | Rig 2D jerárquico + equipamiento | engineer · opus | Gate B | ⬜ |
+| WP-30 | Rig 2D jerárquico + equipamiento | engineer · opus | Gate B | ✅ 2026-11-16 |
 | WP-31 | Locomoción quad | engineer · opus | WP-30 | ⬜ |
 | WP-32 | Stick a dos manos y acciones | engineer · opus | WP-30 | ⬜ |
 | WP-33 | Portero: posturas y paradas | builder · sonnet | WP-31, WP-32 | ⬜ |

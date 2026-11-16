@@ -131,6 +131,71 @@ export function figureScale(s: number): number {
   return ((PLAYER_HEIGHT_M * PX_PER_M) / (PUPPET_LOCAL.feetY - PUPPET_LOCAL.topY)) * s * FIGURE_EXAG
 }
 
+// Rig de figura (WP-30)
+
+/**
+ * Proporciones del estilo A (SPEC §4) en unidades de figura (de pie = 1):
+ * cabezas por altura, engorde de miembros, altura de rueda+placa del patín y
+ * achatamiento de la cabeza.
+ */
+export const RIG_PROPORTIONS = { heads: 4.5, limb: 1.2, skate: 0.08, headAspect: 1.06 } as const
+
+/** Escorzo del suelo dentro de la figura: lo que avanza hacia cámara baja en pantalla esta fracción. */
+export const RIG_FLOOR_FORESHORTEN = 0.3
+
+/** Px de textura por px de pantalla a s = 1 (margen para zoom de cámara y cabezones). */
+export const RIG_TEX_SUPERSAMPLE = 2
+
+/** Contorno (SPEC §4) en px a s = 1: normal y fino (ruedas, freno, stick, que se empastan a s = 1). */
+export const RIG_OUTLINE = { color: 0x08111b, min: 0.8, max: 1.6, thinMin: 0.35, thinMax: 0.6 } as const
+
+/** Grosor mínimo del mango del stick en px a s = 1. */
+export const RIG_STICK_MIN_PX = 2
+
+/** Equipamiento sin color de equipo. */
+export const RIG_GEAR = {
+  boot: 0x24272e,
+  plate: 0x9aa4ae,
+  wheel: 0xeee6cf,
+  toeStop: 0xd2a86e,
+  kneePad: 0x22252b,
+  shaft: 0xcf9a5c,
+  blade: 0x1b1d22,
+  pad: 0xf2eee5,
+  cage: 0xc3cad2,
+  shoe: 0x15171b,
+} as const
+
+/** Equipaciones (SPEC §4): color principal, segundo color en pantalón y medias, dorsal por contraste. */
+export const TEAM_KITS = {
+  blue: { jersey: 0x3399ff, shorts: 0x15316a, socks: 0x15316a, gloves: 0x15316a, helmet: 0x3399ff, numColor: 0xffffff, trim: 0x15316a },
+  red: { jersey: 0xff3333, shorts: 0xf2efe9, socks: 0xf2efe9, gloves: 0x8a1420, helmet: 0xff3333, numColor: 0xffffff, trim: 0x8a1420 },
+} as const
+
+/** Tonos de piel (SPEC §5: 4) y colores de pelo (3–4 tipos). */
+export const SKIN_TONES = [0xf1c7a1, 0xe2ab80, 0xc98d62, 0x8d5a3b] as const
+export const HAIR_COLORS = [0x2a1b12, 0x6b4426, 0xd8b46a, 0x121212] as const
+
+/** Plantilla de dorsales por equipo: el portero lleva `goalie`; los de campo, `field` por orden de alta. */
+export const TEAM_NUMBERS = {
+  blue: { goalie: '1', field: ['4', '7', '9', '10', '5', '8', '11', '6'] },
+  red: { goalie: '1', field: ['3', '5', '8', '11', '2', '6', '9', '10'] },
+} as const
+
+/**
+ * Pose base mínima (WP-30; la afinan WP-31/32/33), en unidades de figura y rad.
+ * `strideHz`: zancadas por segundo en reposo → a tope (`sprintHz` al esprintar).
+ * `reach`: alcance de la pala con bola; `depthReach` lo amplía en profundidad de vista
+ * porque el suelo del rig (RIG_FLOOR_FORESHORTEN) está más escorzado que la pista.
+ */
+export const RIG_STANCE = {
+  pelvisY: 0.45, pelvisDip: 0.035, pitch: 0.42, pitchRun: 0.62, pitchSprint: 0.78,
+  feetHalf: 0.085, strideOut: 0.11, strideFore: 0.09, strideLift: 0.035,
+  strideHz: [0.8, 1.5], sprintHz: [1.2, 2.1],
+  stickLen: 0.6, stickRest: 0.4, reach: 0.7, depthReach: 2.6, grip: 0.36,
+  goaliePelvisY: 0.41, goaliePitch: 0.32,
+} as const
+
 /** Diámetro visual de la bola en metros (exagerado: la real mide 7 cm y no se vería). */
 export const BALL_VISUAL_DIAMETER_M = 0.48
 

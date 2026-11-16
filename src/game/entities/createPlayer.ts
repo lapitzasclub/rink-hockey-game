@@ -1,6 +1,9 @@
 import * as Phaser from 'phaser'
 import { GOALIE_RADIUS, PLAYER_RADIUS } from '../constants'
 import { createProceduralPuppetTextures } from '../render/createProceduralPuppetTextures'
+import { playerKit, lookFor } from '../render/puppet/kit'
+import { createPose } from '../render/puppet/pose'
+import { PuppetRig, createContactShadow } from '../render/puppet/rig'
 import type { Player, Role, TeamColor, TeamSide } from '../types'
 import { getRoleShort } from '../utils'
 
@@ -8,14 +11,11 @@ const FONT = '"Russo One", sans-serif'
 const STAMINA_BAR_W = 36
 const STAMINA_BAR_H = 3
 
-// Tints de equipo — se aplican sobre sprites blancos
-const BODY_TINT:   Record<TeamColor, number> = { blue: 0x3399ff, red: 0xff3333 }
-const HELMET_TINT: Record<TeamColor, number> = { blue: 0x1155cc, red: 0xcc1111 }
-const ARM_TINT:    Record<TeamColor, number> = { blue: 0x2277dd, red: 0xdd2222 }
-const SKATE_TINT:  Record<TeamColor, number> = { blue: 0xd9efff, red: 0xffe1e1 }
-const LEG_TINT:    Record<TeamColor, number> = { blue: 0x16336e, red: 0x6e1616 }
-
-/** Monta un jugador como puppet 2D por piezas tintables y proporciones fijas. */
+/**
+ * Monta un jugador con el rig 2D jerárquico (WP-30): kit del equipo, dorsal y
+ * variedad (mano, piel, pelo) deterministas por id. Las texturas del rig se
+ * pintan una vez por pieza y vista y se comparten entre jugadores.
+ */
 export function createPlayer(
   scene: Phaser.Scene,
   id: string,
@@ -27,44 +27,17 @@ export function createPlayer(
   _color: number,
   controllable: boolean,
 ): Player {
+  // La bola y los suplentes siguen usando las texturas procedurales antiguas
   createProceduralPuppetTextures(scene)
   const radius = role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
-  const isGoalie = role === 'goalie'
-  const prefix = isGoalie ? 'goalie' : 'field'
+  const kind = role === 'goalie' ? 'goalie' : 'skater'
+  const look = lookFor(id, team, role)
+  const stickSide = look.hand === 'R' ? 1 : 0
 
-  // Sombra y anillo se dimensionan en px de mundo; visuals.ts los escala con los ejes del suelo proyectados
-  const shadow = scene.add.ellipse(x, y + 10, radius * 2.6, radius * 0.82, 0x000000, 0.22)
+  // Sombra y anillo van fuera del contenedor; visuals.ts los escala con los ejes del suelo proyectados
+  const shadow = createContactShadow(scene, x, y)
+  const rig = new PuppetRig(scene, kind, playerKit(team, kind, look), stickSide, x, y)
 
-  // Container: todo el personaje se mueve aquí; visuals.ts lo ancla por los pies y lo escala con la cámara
-  const container = scene.add.container(x, y)
-
-  // Piernas: origen en la cadera; visuals.ts las estira hasta cada patín
-  const leftLeg = scene.add.image(-6, 18, `${prefix}-leg`).setOrigin(0.5, 0).setTint(LEG_TINT[team])
-  const rightLeg = scene.add.image(6, 18, `${prefix}-leg`).setOrigin(0.5, 0).setTint(LEG_TINT[team])
-
-  const leftSkate = scene.add.image(-8, 35, `${prefix}-skate`).setTint(SKATE_TINT[team])
-  const rightSkate = scene.add.image(8, 35, `${prefix}-skate`).setTint(SKATE_TINT[team])
-
-  // Torso / cuerpo principal
-  const body = scene.add.image(0, isGoalie ? 7 : 8, `${prefix}-body`)
-  body.setTint(BODY_TINT[team])
-
-  const leftArm = scene.add.image(-18, isGoalie ? 9 : 10, `${prefix}-arm`).setTint(ARM_TINT[team])
-  const rightArm = scene.add.image(18, isGoalie ? 9 : 10, `${prefix}-arm`).setTint(ARM_TINT[team])
-  leftArm.setRotation(0.18)
-  rightArm.setRotation(-0.18)
-
-  // Casco — crece hacia la cámara y oculta parte alta del torso.
-  const head = scene.add.image(0, isGoalie ? -23 : -20, `${prefix}-head`)
-  head.setTint(HELMET_TINT[team])
-
-  const stick = scene.add.image(18, 11, 'hockey-stick')
-  stick.setOrigin(0.08, 0.5)
-
-  // Z-order: patines y brazos debajo; torso, casco y stick encima.
-  container.add([leftLeg, rightLeg, leftSkate, rightSkate, leftArm, rightArm, body, head, stick])
-
-  // Anillo de selección — fuera del container
   const selectionRing = scene.add.circle(x, y, radius + 7)
   selectionRing.setStrokeStyle(3, 0xffffff, 1)
   selectionRing.setFillStyle(0, 0)
@@ -75,7 +48,7 @@ export function createPlayer(
         .setOrigin(0, 0.5)
     : null
 
-  const labelY = isGoalie ? -64 : -58
+  const labelY = role === 'goalie' ? -64 : -58
   const label = scene.add.text(x, y + labelY, getRoleShort(role), {
     fontFamily: FONT,
     fontSize: '11px',
@@ -86,8 +59,9 @@ export function createPlayer(
 
   return {
     id, team, side, role,
-    container, body, head, leftArm, rightArm, leftLeg, rightLeg, leftSkate, rightSkate,
-    shadow, selectionRing, stick, label, staminaBar,
+    container: rig.container, rig, pose: createPose(),
+    hand: look.hand, skin: look.skin, hair: look.hair, number: look.number,
+    shadow, selectionRing, label, staminaBar,
     pos: { x, y },
     velocity: { x: 0, y: 0 },
     facing: { x: side === 'left' ? 1 : -1, y: 0 },

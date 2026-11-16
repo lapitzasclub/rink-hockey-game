@@ -1,4 +1,6 @@
 import * as Phaser from 'phaser'
+import type { PuppetPose } from './render/puppet/pose'
+import type { PuppetRig } from './render/puppet/rig'
 
 export type TeamSide = 'left' | 'right'
 export type TeamColor = 'blue' | 'red'
@@ -20,18 +22,20 @@ export type Player = {
   team: TeamColor
   side: TeamSide
   role: Role
+  /** Contenedor de la figura (`rig.container`); el arcade lo rota y escala encima del render. */
   container: Phaser.GameObjects.Container
-  body: Phaser.GameObjects.Image
-  head: Phaser.GameObjects.Image
-  leftArm: Phaser.GameObjects.Image
-  rightArm: Phaser.GameObjects.Image
-  leftLeg: Phaser.GameObjects.Image
-  rightLeg: Phaser.GameObjects.Image
-  leftSkate: Phaser.GameObjects.Image
-  rightSkate: Phaser.GameObjects.Image
-  shadow: Phaser.GameObjects.Ellipse
+  /** Rig 2D jerárquico (WP-30) y su pose, que reescribe `updateVisuals` cada frame. */
+  rig: PuppetRig
+  pose: PuppetPose
+  /** Mano del stick (SPEC §5): 'R' = pala a la derecha. */
+  hand: 'L' | 'R'
+  /** Índices en SKIN_TONES y HAIR_COLORS. */
+  skin: number
+  hair: number
+  /** Dorsal. */
+  number: string
+  shadow: Phaser.GameObjects.Image
   selectionRing: Phaser.GameObjects.Arc
-  stick: Phaser.GameObjects.Image
   label: Phaser.GameObjects.Text
   pos: Vector
   velocity: Vector
