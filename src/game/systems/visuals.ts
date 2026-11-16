@@ -222,7 +222,8 @@ export function updateVisuals(
     player.selectionRing.setVisible(active)
     band.setVisible(active)
 
-    if (labelsOn) player.label.setText(`${getRoleShort(player.role)}${active ? '★' : ''}${carrying ? '●' : ''}`)
+    // Solo el rol: el jugador activo ya lo marca el anillo y el portador se ve con la bola
+    if (labelsOn) player.label.setText(getRoleShort(player.role))
 
     if (player.staminaBar) {
       const bg = player.staminaBar.getData('bg') as Phaser.GameObjects.Rectangle

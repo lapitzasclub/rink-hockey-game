@@ -3,120 +3,18 @@ import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MenuScene } from './scenes/MenuScene'
 import { MatchScene } from './scenes/MatchScene'
-import { isAnnouncerEnabled, setAnnouncerEnabled } from './game/audio/announcer'
-import { areRoleLabelsEnabled, setRoleLabelsEnabled } from './game/ui/prefs'
+import { playUiMove } from './game/audio/sounds'
+import { consumePad, pollGamepad } from './game/input/gamepad'
+import { getInputMode, onInputModeChange, type InputMode } from './game/input/inputMode'
+import { ICON, shellHtml } from './shell/template'
+import { fullscreenSupported, isFullscreen, onFullscreenChange, toggleFullscreen } from './shell/fullscreen'
+import { attachMenuNav } from './shell/menuNav'
+import { createSettingsPanel } from './shell/settingsPanel'
+import { createPauseMenu, type PauseSummary } from './shell/pauseMenu'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
-const ICON = {
-  gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>',
-  expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9V3h6v2.4H5.4V9zm12-6h6v6h-2.4V5.4H15zM3 15h2.4v3.6H9V21H3zm15.6 0H21v6h-6v-2.4h3.6z"/></svg>',
-  compress: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3H9v6H3V6.6h3.6zM15 3h2.4v3.6H21V9h-6zM3 15h6v6H6.6v-3.6H3zm12 0h6v2.4h-3.6V21H15z"/></svg>',
-}
-
-type WebkitDoc = Document & { webkitFullscreenEnabled?: boolean, webkitFullscreenElement?: Element, webkitExitFullscreen?: () => Promise<void> }
-type WebkitEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }
-type LockableOrientation = ScreenOrientation & { lock?: (o: 'landscape') => Promise<void> }
-
-// iPhone no tiene Fullscreen API para elementos: allí no se ofrece el botón
-const fullscreenSupported = !!(document.fullscreenEnabled || (document as WebkitDoc).webkitFullscreenEnabled)
-
-const toggleRow = (id: string, label: string) => `
-  <button id="${id}" class="settings-row" role="switch" aria-checked="false">
-    <span>${label}</span><span class="switch" aria-hidden="true"><span class="switch-knob"></span></span>
-  </button>`
-
-const app = document.querySelector<HTMLDivElement>('#app')!
-app.innerHTML = `
-  <div id="game-shell" class="${isTouchDevice ? 'is-touch' : 'is-desktop'}">
-    <div id="game-host"></div>
-
-    <div class="hud-cluster">
-      ${fullscreenSupported ? `<button id="btn-fullscreen-quick" class="hud-btn hud-btn--menu-only" aria-label="Pantalla completa" title="Pantalla completa (F)">${ICON.expand}</button>` : ''}
-      <button id="btn-settings" class="hud-btn" aria-label="Ajustes" title="Ajustes">${ICON.gear}</button>
-    </div>
-
-    <div id="settings-panel" class="settings-panel" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div class="settings-card">
-        <header class="settings-header">
-          <span id="settings-title" class="settings-title">AJUSTES</span>
-          <button id="btn-settings-close" class="settings-close" aria-label="Cerrar">✕</button>
-        </header>
-
-        <div class="settings-body">
-          ${fullscreenSupported ? `
-          <section class="settings-section">
-            <h3 class="settings-section-title">PANTALLA</h3>
-            ${toggleRow('btn-fullscreen', 'Pantalla completa')}
-          </section>` : ''}
-
-          <section class="settings-section">
-            <h3 class="settings-section-title">SONIDO</h3>
-            ${toggleRow('btn-announcer', 'Locutor (arcade)')}
-          </section>
-
-          <section class="settings-section">
-            <h3 class="settings-section-title">PANTALLA DE JUEGO</h3>
-            ${toggleRow('btn-role-labels', 'Etiquetas de rol')}
-          </section>
-
-          <section class="settings-section">
-            <h3 class="settings-section-title">TECLADO</h3>
-            <dl class="settings-controls">
-              <div><dt><kbd>WASD</kbd> <kbd>←↑↓→</kbd></dt><dd>Mover</dd></div>
-              <div><dt><kbd>Shift</kbd></dt><dd>Sprint / turbo</dd></div>
-              <div><dt><kbd>U</kbd></dt><dd>Disparar · Robar</dd></div>
-              <div><dt><kbd>Shift</kbd>+<kbd>U</kbd></dt><dd>Tiro turbo · Carga (arcade)</dd></div>
-              <div><dt><kbd>Y</kbd></dt><dd>Pasar · Cambiar jugador</dd></div>
-              ${fullscreenSupported ? '<div><dt><kbd>F</kbd></dt><dd>Pantalla completa</dd></div>' : ''}
-            </dl>
-          </section>
-
-          ${isTouchDevice ? `
-          <section class="settings-section">
-            <h3 class="settings-section-title">TÁCTIL</h3>
-            <dl class="settings-controls">
-              <div><dt><kbd>Joystick</kbd></dt><dd>Mover</dd></div>
-              <div><dt><kbd>A</kbd></dt><dd>Disparar · Robar</dd></div>
-              <div><dt><kbd>B</kbd></dt><dd>Pasar · Cambiar jugador</dd></div>
-              <div><dt><kbd>S</kbd></dt><dd>Sprint / turbo</dd></div>
-              <div><dt><kbd>S</kbd>+<kbd>A</kbd></dt><dd>Tiro turbo · Carga (arcade)</dd></div>
-            </dl>
-          </section>
-          ` : ''}
-        </div>
-      </div>
-    </div>
-
-    <div id="rotate-overlay" role="alertdialog" aria-labelledby="rotate-title" aria-describedby="rotate-text">
-      <div class="rotate-rink" aria-hidden="true"></div>
-      <div class="rotate-content">
-        <svg class="rotate-phone" viewBox="0 0 140 140" aria-hidden="true">
-          <path class="rotate-arrow" d="M26 52a46 46 0 0 1 66-32" />
-          <path class="rotate-arrow-head" d="M86 10l12 10-15 6z" />
-          <g class="rotate-device">
-            <rect x="46" y="26" width="48" height="88" rx="9" class="device-body" />
-            <rect x="51" y="35" width="38" height="70" rx="3" class="device-screen" />
-            <line x1="51" y1="70" x2="89" y2="70" class="device-line" />
-            <circle cx="70" cy="70" r="8" class="device-circle" />
-            <circle cx="70" cy="52" r="3.4" class="device-ball" />
-          </g>
-        </svg>
-        <h2 id="rotate-title" class="rotate-title">GIRA EL MÓVIL</h2>
-        <p id="rotate-text" class="rotate-text">Rink Hockey se juega en horizontal</p>
-      </div>
-    </div>
-
-    <div id="mobile-controls" aria-hidden="true">
-      <div id="left-zone"></div>
-      <div id="right-buttons">
-        <button id="btn-shoot" class="touch-btn">A</button>
-        <button id="btn-pass" class="touch-btn">B</button>
-        <button id="btn-sprint" class="touch-btn">S</button>
-      </div>
-    </div>
-  </div>
-`
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenSupported })
 
 let game: Phaser.Game | null = null
 
@@ -145,29 +43,62 @@ void fontReady.then(async () => {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
   })
-  // Un partido que arranca con el móvil en vertical nace pausado
-  game.events.on(Phaser.Core.Events.STEP, () => { if (isPortraitBlocked()) syncMatchPause() })
+  game.events.on(Phaser.Core.Events.STEP, onStep)
   // Acceso para depurar y simular desde la consola; no llega a producción
   if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game
 })
 
-// --- Settings panel ---
+// ─── Estado del shell ────────────────────────────────────────────────────────
 
 const shell = document.querySelector<HTMLElement>('#game-shell')!
-const settingsBtn = document.querySelector<HTMLButtonElement>('#btn-settings')!
-const settingsPanel = document.querySelector<HTMLElement>('#settings-panel')!
-const settingsClose = document.querySelector<HTMLButtonElement>('#btn-settings-close')!
-const fullscreenBtn = document.querySelector<HTMLButtonElement>('#btn-fullscreen')
-const fullscreenQuickBtn = document.querySelector<HTMLButtonElement>('#btn-fullscreen-quick')
 const portraitQuery = window.matchMedia('(orientation: portrait)')
-
-/** El partido se pausa con los ajustes abiertos o con el móvil en vertical, y se reanuda cuando no queda ninguno. */
 const isPortraitBlocked = () => isTouchDevice && portraitQuery.matches
+
+type ActiveScene = 'menu' | 'match' | ''
+let activeScene: ActiveScene = ''
+
+const matchScene = () => game?.scene.getScene('match') as MatchScene | undefined
+const matchSummary = (): PauseSummary | null => {
+  const m = matchScene()
+  const live = !!game && (game.scene.isActive('match') || game.scene.isPaused('match'))
+  return m && live ? m.getPauseSummary() : null
+}
+
+/** Escena visible para el CSS (`data-scene`): decide qué botones HUD se muestran. */
+function onStep() {
+  if (!game) return
+  pollGamepad()
+  handlePadInShell()
+  const scene: ActiveScene = game.scene.isActive('match') || game.scene.isPaused('match') ? 'match' : game.scene.isActive('menu') ? 'menu' : ''
+  if (scene !== activeScene) {
+    activeScene = scene
+    shell.dataset.scene = scene
+  }
+  // Un partido que arranca con el móvil en vertical nace con el menú de pausa abierto
+  if (scene === 'match' && isPortraitBlocked() && !pause.isOpen()) pause.open()
+}
+
 // Solo se reanuda lo que pausó el shell: el laboratorio congela el partido por su cuenta
 let pausedByShell = false
-function syncMatchPause() {
+
+/**
+ * Llamada cada vez que se abre o cierra un panel. Pausa o reanuda el partido
+ * y apaga el teclado de Phaser mientras haya un panel encima: así las teclas
+ * de menú (Espacio, flechas) no llegan al juego ni Phaser les hace preventDefault.
+ */
+function syncOverlays() {
+  const anyOverlay = pause.isOpen() || settings.isOpen()
+  shell.classList.toggle('has-overlay', anyOverlay)
   if (!game) return
-  const shouldPause = !settingsPanel.hidden || isPortraitBlocked()
+  const kb = game.input.keyboard
+  if (kb) {
+    if (anyOverlay) kb.enabled = false
+    else if (!kb.enabled) {
+      kb.enabled = true
+      for (const s of game.scene.getScenes(true)) s.input.keyboard?.resetKeys()
+    }
+  }
+  const shouldPause = anyOverlay || isPortraitBlocked()
   if (shouldPause && game.scene.isActive('match')) {
     game.scene.pause('match')
     pausedByShell = true
@@ -177,101 +108,139 @@ function syncMatchPause() {
   }
 }
 
-const openSettings = () => {
-  settingsPanel.hidden = false
-  settingsPanel.focus()
-  syncMatchPause()
-}
+// ─── Paneles ─────────────────────────────────────────────────────────────────
 
-const closeSettings = () => {
-  settingsPanel.hidden = true
-  settingsBtn.focus({ preventScroll: true })
-  syncMatchPause()
-}
-
-settingsBtn.addEventListener('click', openSettings)
-settingsClose.addEventListener('click', closeSettings)
-
-// Cerrar al pulsar el backdrop (fondo oscuro)
-settingsPanel.addEventListener('click', (e) => {
-  if (e.target === settingsPanel) closeSettings()
+const settings = createSettingsPanel({
+  onVisibilityChange: syncOverlays,
+  onToggleFullscreen: () => void toggleFullscreen(shell, isTouchDevice),
 })
 
-const setSwitch = (btn: HTMLElement | null, on: boolean) => btn?.setAttribute('aria-checked', String(on))
+const pause = createPauseMenu({
+  getSummary: matchSummary,
+  onVisibilityChange: syncOverlays,
+  onSettings: (tab, from) => settings.open(tab, from),
+  onRestart: () => {
+    const m = matchScene()
+    if (!m) return
+    pausedByShell = false
+    m.scene.restart({ mode: m.getPauseSummary().mode })
+  },
+  onQuit: () => {
+    const m = matchScene()
+    if (!m) return
+    pausedByShell = false
+    m.scene.start('menu', { mode: m.getPauseSummary().mode })
+  },
+})
 
-// --- Fullscreen ---
+attachMenuNav(pause.root)
+attachMenuNav(settings.root)
 
-const fullscreenElement = () => document.fullscreenElement ?? (document as WebkitDoc).webkitFullscreenElement ?? null
+const settingsBtn = document.querySelector<HTMLButtonElement>('#btn-settings')!
+const pauseBtn = document.querySelector<HTMLButtonElement>('#btn-pause')!
+settingsBtn.addEventListener('click', () => { playUiMove(); settings.open('general', settingsBtn) })
+pauseBtn.addEventListener('click', () => { playUiMove(); pause.open() })
 
-const toggleFullscreen = async () => {
-  try {
-    if (fullscreenElement()) {
-      await (document.exitFullscreen ? document.exitFullscreen() : (document as WebkitDoc).webkitExitFullscreen?.())
-      return
-    }
-    const el = shell as WebkitEl
-    await (el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen?.())
-    // En Android, con pantalla completa se puede fijar el apaisado; donde no se deja, falla en silencio
-    if (isTouchDevice) await (screen.orientation as LockableOrientation | undefined)?.lock?.('landscape').catch(() => {})
-  } catch {
-    // el navegador rechazó la petición (sin gesto o no permitida): no hay nada más que hacer
+// ─── Teclas globales del shell ───────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !e.repeat) {
+    e.preventDefault()
+    if (settings.isOpen()) settings.close()
+    else if (pause.isOpen()) pause.back()
+    else if (activeScene === 'match') { playUiMove(); pause.open() }
+    else if (activeScene === 'menu') { playUiMove(); settings.open('general', settingsBtn) }
+    return
   }
-}
+  const typing = (e.target as HTMLElement | null)?.tagName === 'INPUT'
+  if ((e.key === 'f' || e.key === 'F') && fullscreenSupported && !typing && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    void toggleFullscreen(shell, isTouchDevice)
+  }
+})
 
-const updateFullscreenLabel = () => {
-  const isFs = !!fullscreenElement()
-  setSwitch(fullscreenBtn, isFs)
+// Al cambiar de pestaña o minimizar, el partido se queda en pausa con el menú abierto
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && activeScene === 'match' && !pause.isOpen() && !matchSummary()?.ended) pause.open()
+})
+
+// ─── Pantalla completa ───────────────────────────────────────────────────────
+
+const fullscreenQuickBtn = document.querySelector<HTMLButtonElement>('#btn-fullscreen-quick')
+fullscreenQuickBtn?.addEventListener('click', () => void toggleFullscreen(shell, isTouchDevice))
+
+const updateFullscreenUi = () => {
+  const fs = isFullscreen()
+  settings.syncToggles(fs)
   if (fullscreenQuickBtn) {
-    fullscreenQuickBtn.innerHTML = isFs ? ICON.compress : ICON.expand
-    const label = isFs ? 'Salir de pantalla completa' : 'Pantalla completa'
+    fullscreenQuickBtn.innerHTML = fs ? ICON.compress : ICON.expand
+    const label = fs ? 'Salir de pantalla completa' : 'Pantalla completa'
     fullscreenQuickBtn.setAttribute('aria-label', label)
     fullscreenQuickBtn.title = `${label} (F)`
   }
 }
 
-fullscreenBtn?.addEventListener('click', toggleFullscreen)
-fullscreenQuickBtn?.addEventListener('click', toggleFullscreen)
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !settingsPanel.hidden) closeSettings()
-  else if ((e.key === 'f' || e.key === 'F') && fullscreenSupported && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) void toggleFullscreen()
-})
-
 // Reajustar escala tras entrar/salir de fullscreen (evita imagen estirada)
-const onFullscreenChange = () => {
-  updateFullscreenLabel()
+onFullscreenChange(() => {
+  updateFullscreenUi()
   requestAnimationFrame(() => game?.scale.refresh())
-}
-document.addEventListener('fullscreenchange', onFullscreenChange)
-document.addEventListener('webkitfullscreenchange', onFullscreenChange)
-updateFullscreenLabel()
+})
+updateFullscreenUi()
 
 window.addEventListener('resize', () => game?.scale.refresh())
 
-// --- Orientación (móvil) ---
+// ─── Orientación (móvil) ─────────────────────────────────────────────────────
 
-// El aviso lo muestra el CSS (#rotate-overlay); aquí solo se marca el shell y se pausa el partido
+// El aviso lo muestra el CSS (#rotate-overlay); en partido además se abre la pausa
 const onOrientation = () => {
-  shell.classList.toggle('is-portrait', isPortraitBlocked())
-  syncMatchPause()
+  const blocked = isPortraitBlocked()
+  shell.classList.toggle('is-portrait', blocked)
+  if (blocked && activeScene === 'match' && !pause.isOpen()) pause.open()
+  else syncOverlays()
 }
 portraitQuery.addEventListener('change', onOrientation)
 onOrientation()
 
-// --- Locutor ---
+// ─── Dispositivo de entrada ──────────────────────────────────────────────────
 
-const announcerBtn = document.querySelector<HTMLButtonElement>('#btn-announcer')!
-const updateAnnouncerLabel = () => setSwitch(announcerBtn, isAnnouncerEnabled())
-announcerBtn.addEventListener('click', () => {
-  setAnnouncerEnabled(!isAnnouncerEnabled())
-  updateAnnouncerLabel()
-})
-updateAnnouncerLabel()
+// `data-input` en el shell: el CSS muestra controles táctiles, teclas o botones del mando según lo último usado
+const applyInputMode = (mode: InputMode) => { shell.dataset.input = mode }
+applyInputMode(getInputMode())
+onInputModeChange(applyInputMode)
 
-const roleLabelsBtn = document.querySelector<HTMLButtonElement>('#btn-role-labels')!
-const updateRoleLabelsLabel = () => setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
-roleLabelsBtn.addEventListener('click', () => {
-  setRoleLabelsEnabled(!areRoleLabelsEnabled())
-  updateRoleLabelsLabel()
-})
-updateRoleLabelsLabel()
+/** Teclas sintéticas para reutilizar la navegación de teclado de los paneles (no cambian el modo de entrada). */
+function sendKey(key: string, target: EventTarget = document.activeElement ?? document) {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+}
+
+/**
+ * Mando fuera del partido: con un panel abierto, la cruceta navega, A acepta,
+ * B vuelve y Start cierra; sin panel, Start abre la pausa (partido) o los ajustes (menú).
+ */
+function handlePadInShell() {
+  if (pause.isOpen() || settings.isOpen()) {
+    const el = document.activeElement as HTMLElement | null
+    if (consumePad('up')) sendKey('ArrowUp')
+    if (consumePad('down')) sendKey('ArrowDown')
+    for (const dir of ['left', 'right'] as const) {
+      if (!consumePad(dir)) continue
+      if (el instanceof HTMLInputElement && el.type === 'range') {
+        if (dir === 'left') el.stepDown()
+        else el.stepUp()
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+      } else {
+        sendKey(dir === 'left' ? 'ArrowLeft' : 'ArrowRight')
+      }
+    }
+    if (consumePad('confirm') && el && el !== document.body) el.click()
+    if (consumePad('back')) sendKey('Escape')
+    if (consumePad('start')) {
+      settings.close()
+      pause.close()
+    }
+    return
+  }
+  if (!consumePad('start')) return
+  if (activeScene === 'match') { playUiMove(); pause.open() }
+  else if (activeScene === 'menu') { playUiMove(); settings.open('general', settingsBtn) }
+}

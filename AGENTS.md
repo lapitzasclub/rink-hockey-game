@@ -23,8 +23,9 @@ Juego de rink hockey 2D top-down para navegador. Formato 5v5 simplificado. El ju
 
 ```
 src/
-  main.ts                    Bootstrap Phaser (espera a la fuente Russo One), HTML shell, ajustes, pantalla completa (F), aviso de orientación
-  style.css                  Shell DOM con estética de juego: botones HUD inclinados, panel de ajustes con interruptores, aviso «gira el móvil»
+  main.ts                    Bootstrap Phaser (espera a la fuente Russo One) y coordinación del shell: Esc, pausa, paneles, mando en menús, orientación
+  shell/                     Shell DOM: template (marcado e iconos SVG), pauseMenu, settingsPanel (pestañas, volumen, reasignación de teclas), menuNav (navegación tipo consola), fullscreen
+  style.css                  Shell DOM con estética de juego; visibilidad por `data-scene` (menu/match) y `data-input` (keyboard/gamepad/touch)
   scenes/MenuScene.ts        Menú: pabellón real de fondo con cámara a la deriva, logo, tarjetas ARCADE / REGLAMENTO (localStorage `rh-mode`), resultado final
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
   scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
@@ -73,6 +74,9 @@ src/
       announcer.ts           Locutor con Web Speech API (voz española si existe; on/off en ajustes)
     input/
       mobileJoystick.ts      nipplejs + botones táctiles (A/B/S)
+      keyBindings.ts         Teclas configurables por acción (2 por acción, localStorage `rh-keys`)
+      gamepad.ts             Gamepad API: sondeo por frame y botones lógicos con «recién pulsado» consumible
+      inputMode.ts           Último dispositivo usado (touch/keyboard/gamepad) y textos de botón por dispositivo
 tools/
   generate-comfy-asset.ps1   Helper para generar borradores 2D con ComfyUI local
   gfx-shot.ps1               Capturas headless (Chrome/Edge) + volcado de consola para el workflow gráfico
@@ -104,8 +108,11 @@ public/
 - La cámara trabaja en coordenadas de pantalla ya proyectadas (`worldToScreen`); la física sigue en mundo.
 - **Scale.EXPAND**: el lienzo ocupa toda la ventana (sin bandas negras). El área de juego sigue siendo 1280×720 centrada; el pabellón (`ARENA_BOUNDS` en `arena.ts`) rellena lo que sobra. Las cámaras se reajustan en `MatchScene.fitCameras` (evento `RESIZE`) y `CameraDirector.refit`; el HUD queda dentro del área 16:9.
 - **Gradas** (`arena.ts`): anillos concéntricos alrededor de la valla (`roundedRectWorldPts` desplazado) proyectados con `standToScreen` (misma perspectiva que la pista + retroceso tras el fondo + altura del escalón). Se pintan una vez en canvas: estructura (profundidad -6), dos capas de público que se mecen (-5) y filas cercanas de espaldas (21, delante del tablero).
-- **Menú**: `MenuScene` usa el mismo enrutado de dos cámaras que MatchScene (mundo = `createArena` + `drawRink`; UI fija). Mientras está activa, el shell lleva la clase `scene-menu`, que muestra el acceso directo a pantalla completa. El menú ignora teclas y toques si hay un panel DOM encima (ajustes o aviso de orientación). Con `prefers-reduced-motion` no hay intro, deriva de cámara ni bucles: todo aparece con fundidos cortos.
-- **Pausa por shell** (`main.ts`): el partido se pausa con los ajustes abiertos o con un dispositivo táctil en vertical (`is-portrait`, overlay `#rotate-overlay` en CSS). Solo reanuda lo que pausó el propio shell, así el congelado del laboratorio no se pisa.
+- **Menú**: `MenuScene` usa el mismo enrutado de dos cámaras que MatchScene (mundo = `createArena` + `drawRink`; UI fija). Las ayudas inferiores y el texto «jugar» se rehacen al cambiar de dispositivo (`onInputModeChange`). El menú ignora teclas, toques y mando si el shell tiene `has-overlay` o está en vertical. Con `prefers-reduced-motion` no hay intro, deriva de cámara ni bucles.
+- **Shell** (`main.ts`): en cada STEP del juego, antes de las escenas, sondea el mando, lo aplica a los paneles abiertos y fija `data-scene`. Al abrir un panel apaga el teclado de Phaser (`game.input.keyboard.enabled`) para que Espacio y flechas no lleguen al juego ni sufran preventDefault, y al cerrarlo hace `resetKeys`. El partido se pausa con pausa o ajustes abiertos, o con el táctil en vertical. Solo reanuda lo que pausó el propio shell, así el congelado del laboratorio no se pisa. Esc: ajustes → pausa → partido; en el menú abre los ajustes. Al ocultar la pestaña se abre la pausa.
+- **Entrada configurable**: MatchScene crea sus `Key` desde `keyBindings` y las recrea al reasignar. `isDown`/`justDown` juntan teclado y mando. `playerControl` recibe un eje ya resuelto (`keyboardAxis`) y `sprintHeld`, no las teclas.
+- **Sin emojis ni símbolos Unicode** en textos del juego: flechas, chevrons, cruceta y similares se dibujan (Graphics en Phaser, SVG o clip-path en DOM). Las flechas se guardan como `ArrowUp`… y `keyText` las nombra en textos corridos.
+- **Audio**: `sounds.ts` enruta efectos y público por buses de ganancia que cuelgan del general. Los volúmenes se guardan en `rh-volume` y el locutor usa el volumen general.
 - `MatchScene.init(data)` resetea todo el estado: Phaser reutiliza la instancia de escena entre partidos.
 - Modo arcade vs reglamento: `this.mode` en MatchScene; con `classic` no se crean `ArcadeController`/`ArcadeFx`/cámara dinámica y el juego se comporta como antes.
 - La portería se trata como jaula: boca frontal válida para gol, estructura trasera/lateral hace rebotar la pelota. El anclaje del balón al portador está blindado cerca de la portería para evitar goles fantasma.
@@ -165,7 +172,14 @@ Estilo NBA Jam manteniendo el 5v5 y relajando las reglas. Se elige en el menú; 
 | Tiro turbo (con posesión) / carga (sin posesión) — solo arcade | Shift + U |
 | Pase (con posesión) / cambio de jugador (sin posesión) | Y |
 | Pantalla completa (global) | F |
+| Pausa (partido) / ajustes (menú) | Esc |
 | Menú: elegir modo / jugar | ← → o A D / Espacio o Enter |
+
+Las teclas de juego se reasignan en Ajustes → Controles (dos por acción). Esc y F están reservadas.
+
+### Controles (mando)
+
+Stick izquierdo o cruceta: mover · X/B: tiro y robo · A: pase y cambio · RT/RB: sprint y turbo (RT+X tiro turbo o carga) · Start: pausa (en el menú, ajustes). En los menús: cruceta, A acepta y B vuelve. Los botones son fijos (standard mapping). La UI pasa a mostrar botones de mando al detectar actividad del mando y oculta los botones HUD y los controles táctiles.
 
 ### Controles (móvil)
 
@@ -195,6 +209,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Animación de patinaje procedural v3: fase acumulada, contrafase 180°, zancada por dirección, `sideFactor`, texturas de espalda, sprint
 - Modo arcade estilo NBA Jam (cámara dinámica, turbo, cargas, powerups, racha de fuego, locutor, HUD arcade) con selección de modo en el menú
 - Menús con aspecto de videojuego: menú principal sobre el pabellón, acceso directo a pantalla completa, ajustes renovados y aviso de orientación en móvil
+- Menú de pausa (Esc / Start / botón táctil), ajustes por pestañas con volúmenes, reasignación de teclas, soporte de mando y UI adaptada a teclado, mando o táctil
 
 ### Pendiente
 
@@ -247,6 +262,16 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-16 (sesión 25, cont.) — pausa, controles, mando y UI por dispositivo
+
+- Menú de pausa (`shell/pauseMenu.ts`): cabecera con modo, periodo, reloj y marcador; opciones continuar, reiniciar, ajustes, controles y salir al menú. Reiniciar y salir piden confirmación con «No» por defecto, salvo con el partido acabado. Al pausar se silencian el público y el locutor (`MatchScene.getPauseSummary` y eventos PAUSE/RESUME).
+- Ajustes por pestañas (General, Audio y Controles). Audio con volúmenes general, efectos y público (buses en `sounds.ts`). Controles con la tabla de reasignación: captura de la siguiente tecla, Supr vacía, Esc cancela, Esc/F/Tab reservadas, y la tecla repetida se quita de la otra acción con aviso.
+- Mando: `input/gamepad.ts` (sondeo en STEP, botones lógicos consumibles; aceptar y pase comparten A sin dispararse dos veces) integrado en el partido, el menú Phaser y los paneles DOM (teclas sintéticas para la navegación existente).
+- UI por dispositivo (`input/inputMode.ts`, `data-input`): ayudas con teclas, botones de mando de colores o nada en táctil. Controles táctiles solo en partido y en modo táctil; los HUD se ocultan con mando. El texto «Pulsa X para continuar» del final usa la tecla o botón real. La sección de Controles del dispositivo actual sale primero.
+- Navegación de menús tipo consola (`shell/menuNav.ts`): ↑/↓ con vuelta, ←/→ en filas Sí/No y pestañas, el ratón selecciona al pasar, Tab atrapado y sonidos `playUiMove`, `playUiConfirm` y `playUiBack`.
+- Fuera emojis y símbolos Unicode en todo el juego: chevrons y viñetas del menú, cruceta, flechas de teclas, viñeta de los menús, cerrar, TURBO ∞/▶▶ (ahora TURBO MÁX y doble chevrón dibujado) y ★/● en las etiquetas de rol.
+- Validación: `npm run build` pasa. Probado en Chrome: Esc → pausa → controles → reasignar (conflicto y reservada) → Esc → Esc reanuda; salir con confirmación. Con un mando simulado (`getGamepads` falso): A juega, Start pausa, cruceta y A abren ajustes, B vuelve y Start reanuda. En táctil apaisado se ven el joystick, A/B/S y el botón de pausa. Sin errores en consola, salvo el 404 del favicon.
 
 ### 2026-11-16 (sesión 25) — menús con aspecto de videojuego
 

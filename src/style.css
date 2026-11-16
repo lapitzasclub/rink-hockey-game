@@ -13,6 +13,7 @@
   --c-text-muted: #4f6f93;
   --z-controls: 20;
   --z-hud-btn: 25;
+  --z-pause: 48;
   --z-settings: 50;
   --z-rotate: 90;
   --font-game: "Russo One", "Arial Black", Impact, sans-serif;
@@ -65,9 +66,13 @@ button {
   z-index: var(--z-controls);
 }
 
-#game-shell.is-desktop #mobile-controls,
-#game-shell.scene-menu #mobile-controls {
+/* Solo en partido y con el táctil como último dispositivo usado (con mando o teclado sobran) */
+#game-shell #mobile-controls {
   display: none;
+}
+
+#game-shell[data-input="touch"][data-scene="match"] #mobile-controls {
+  display: block;
 }
 
 #left-zone {
@@ -177,17 +182,28 @@ button {
   transition: transform 320ms var(--ease-out);
 }
 
-/* El acceso directo a pantalla completa solo vive en el menú; en partido sigue en Ajustes y con F */
-.hud-btn--menu-only {
+/* Botones HUD según escena: en el menú, pantalla completa y ajustes; en partido, pausa.
+   Con mando no hay puntero: se ocultan (Start abre la pausa o los ajustes) */
+.hud-btn--menu,
+.hud-btn--match {
   display: none;
 }
 
-#game-shell.scene-menu .hud-btn--menu-only {
+#game-shell[data-scene="menu"] .hud-btn--menu,
+#game-shell[data-scene="match"] .hud-btn--match {
   display: grid;
-  animation: hud-pop 360ms var(--ease-back) 900ms both;
+  animation: hud-pop 360ms var(--ease-back) both;
 }
 
-#game-shell.scene-menu .hud-btn--menu-only svg {
+#game-shell[data-scene="menu"] .hud-btn--menu {
+  animation-delay: 900ms;
+}
+
+#game-shell[data-input="gamepad"] .hud-cluster {
+  display: none;
+}
+
+#game-shell[data-scene="menu"] #btn-fullscreen-quick svg {
   animation: fs-nudge 2.6s ease-in-out 2s infinite;
 }
 
@@ -203,15 +219,17 @@ button {
   90% { transform: scale(0.96); }
 }
 
-/* ── Settings panel ─────────────────────────────────────── */
+/* ── Paneles (pausa y ajustes) ──────────────────────────── */
 
-.settings-panel {
+.overlay {
   position: absolute;
   inset: 0;
   z-index: var(--z-settings);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  box-sizing: border-box;
   background:
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 14px),
     radial-gradient(ellipse at center, rgba(8, 20, 38, 0.82) 0%, rgba(2, 5, 10, 0.94) 100%);
@@ -221,8 +239,17 @@ button {
   outline: none;
 }
 
-.settings-panel[hidden] {
+.overlay[hidden] {
   display: none;
+}
+
+.overlay--pause {
+  z-index: var(--z-pause);
+}
+
+/* Ajustes abiertos desde la pausa: la pausa queda debajo sin doble velo */
+#pause-menu:not([hidden]) ~ #settings-panel {
+  background: rgba(2, 5, 10, 0.55);
 }
 
 @keyframes backdrop-in {
@@ -230,12 +257,11 @@ button {
   to { opacity: 1; }
 }
 
-.settings-card {
+.overlay-card {
   position: relative;
-  width: min(480px, 92vw);
-  max-height: 88vh;
   display: flex;
   flex-direction: column;
+  max-height: 100%;
   background: linear-gradient(180deg, var(--c-panel-hi) 0%, var(--c-panel) 40%);
   clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
   box-shadow: inset 0 0 0 2px rgba(77, 163, 255, 0.28);
@@ -249,13 +275,194 @@ button {
   to { opacity: 1; transform: none; }
 }
 
+/* Botón de menú grande: la selección (foco) lo ilumina y lo desplaza, como en consola */
+.menu-item {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 13px 22px 13px 34px;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-game);
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--c-text-dim);
+  background: rgba(77, 163, 255, 0.07);
+  clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+  transition: background var(--dur-fast) ease-out, color var(--dur-fast) ease-out, transform var(--dur-fast) var(--ease-out);
+}
+
+/* Indicador de selección: triángulo dibujado con clip-path (sin caracteres) */
+.menu-item::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 9px;
+  height: 12px;
+  background: var(--c-orange);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  opacity: 0;
+  transform: translate(-6px, -50%);
+  transition: opacity var(--dur-fast) ease-out, transform var(--dur-fast) var(--ease-out);
+}
+
+.menu-item:focus,
+.menu-item:hover {
+  outline: none;
+  color: #fff;
+  background: linear-gradient(90deg, #2a5a92, #173a63);
+  transform: translateX(6px);
+}
+
+.menu-item:focus::before,
+.menu-item:hover::before {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.menu-item--danger:focus,
+.menu-item--danger:hover {
+  background: linear-gradient(90deg, #a52833, #6e1820);
+}
+
+.menu-item--small {
+  margin-top: 16px;
+  font-size: 14px;
+  padding: 10px 18px 10px 30px;
+}
+
+.overlay-hints {
+  display: none;
+  justify-content: center;
+  gap: 18px;
+  padding: 12px 18px 14px;
+  border-top: 1px solid rgba(77, 163, 255, 0.15);
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.overlay-hints span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#game-shell[data-input="keyboard"] .overlay-hints--keyboard,
+#game-shell[data-input="gamepad"] .overlay-hints--gamepad {
+  display: flex;
+}
+
+/* ── Pausa ───────────────────────────────────────────────── */
+
+.pause-card {
+  width: min(420px, 92vw);
+}
+
+.pause-head {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 18px 20px 16px;
+  background: linear-gradient(180deg, #1b3a60, #12263f);
+  border-bottom: 3px solid var(--c-orange);
+}
+
+.pause-kicker {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--c-text-dim);
+}
+
+.pause-title {
+  margin: 0;
+  font-size: 46px;
+  font-weight: normal;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 4px 0 #1f6fd1, 0 7px 0 var(--c-ink);
+}
+
+.pause-score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pause-score-team {
+  min-width: 44px;
+  padding: 2px 10px;
+  box-sizing: border-box;
+  font-size: 24px;
+  text-align: center;
+  color: #fff;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+
+.pause-score-team--blue { background: #1d5fb0; }
+.pause-score-team--red { background: #c0303d; }
+.pause-score-sep { color: var(--c-text-muted); }
+
+.pause-list,
+.pause-confirm {
+  display: grid;
+  gap: 8px;
+  padding: 18px 22px 20px;
+  overflow-y: auto;
+}
+
+.pause-list[hidden],
+.pause-confirm[hidden] {
+  display: none;
+}
+
+.pause-confirm-text {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.4;
+  text-align: center;
+  color: #fff;
+}
+
+.pause-confirm-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pause-confirm-row .menu-item {
+  text-align: center;
+  padding-left: 22px;
+}
+
+.pause-confirm-row .menu-item::before {
+  display: none;
+}
+
+/* En móvil apaisado hay poca altura: la pausa se compacta */
+@media (max-height: 500px) {
+  .pause-head { padding: 10px 16px 8px; }
+  .pause-title { font-size: 32px; }
+  .pause-list, .pause-confirm { gap: 5px; padding: 10px 18px 12px; }
+  .menu-item { padding-top: 8px; padding-bottom: 8px; font-size: 16px; }
+}
+
+/* ── Ajustes ─────────────────────────────────────────────── */
+
+.settings-card {
+  width: min(540px, 94vw);
+  height: min(640px, 100%);
+}
+
 .settings-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 22px 16px 26px;
+  padding: 16px 20px 12px 26px;
   background: linear-gradient(90deg, var(--c-orange) 0 8px, transparent 8px), linear-gradient(180deg, #1b3a60, #12263f);
-  border-bottom: 3px solid var(--c-accent);
 }
 
 .settings-title {
@@ -278,31 +485,69 @@ button {
 }
 
 .settings-close:hover,
-.settings-close:focus-visible {
+.settings-close:focus {
   background: #c0303d;
   color: #fff;
   transform: scale(1.08);
   outline: none;
 }
 
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  background: #12263f;
+  border-bottom: 3px solid var(--c-accent);
+}
+
+.settings-tab {
+  flex: 1;
+  padding: 10px 8px 9px;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-game);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--c-text-muted);
+  background: rgba(0, 0, 0, 0.25);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 100%, 0 100%);
+  transition: background var(--dur-fast) ease-out, color var(--dur-fast) ease-out;
+}
+
+.settings-tab:hover,
+.settings-tab:focus {
+  outline: none;
+  color: #fff;
+}
+
+.settings-tab:focus {
+  box-shadow: inset 0 -3px 0 var(--c-orange);
+}
+
+.settings-tab[aria-selected="true"] {
+  color: #fff;
+  background: var(--c-accent);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
 .settings-body {
-  padding: 18px 26px 24px;
+  flex: 1;
+  min-height: 0;
+  padding: 6px 26px 22px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2a5a92 transparent;
 }
 
-.settings-section {
-  margin-bottom: 20px;
-}
-
-.settings-section:last-child {
-  margin-bottom: 0;
+.settings-pane[hidden] {
+  display: none;
 }
 
 .settings-section-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 0 10px;
+  margin: 16px 0 10px;
   font-size: 12px;
   font-weight: normal;
   letter-spacing: 3px;
@@ -317,11 +562,13 @@ button {
 }
 
 .settings-row {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 6px;
   padding: 12px 16px 12px 20px;
   border: 0;
   cursor: pointer;
@@ -335,13 +582,15 @@ button {
 }
 
 .settings-row:hover,
-.settings-row:focus-visible {
+.settings-row:focus,
+.settings-row:focus-within {
   background: rgba(77, 163, 255, 0.2);
   transform: translateX(4px);
   outline: none;
 }
 
-.settings-row:focus-visible {
+.settings-row:focus,
+.settings-row:focus-within {
   box-shadow: inset 4px 0 0 var(--c-orange);
 }
 
@@ -394,13 +643,164 @@ button {
   transform: translateX(32px);
 }
 
+/* Deslizador de volumen: pista rellena hasta el valor (--fill la pone el JS) */
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-row--slider input[type="range"] {
+  --fill: 50%;
+  width: min(200px, 34vw);
+  height: 10px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(90deg, var(--c-orange) var(--fill), #23364f var(--fill));
+  border-radius: 5px;
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  outline: none;
+}
+
+.settings-row--slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff, #b9c9dc);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  transition: transform var(--dur-fast) var(--ease-back);
+}
+
+.settings-row--slider input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff, #b9c9dc);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.settings-row--slider input[type="range"]:focus::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.slider-value {
+  min-width: 44px;
+  font-size: 14px;
+  text-align: right;
+  color: #fff;
+}
+
+.settings-note {
+  margin: 0 0 10px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--c-text-dim);
+}
+
+/* Tabla de asignación: acción + principal + alternativa */
+.bindings-table {
+  display: grid;
+  gap: 4px;
+}
+
+.bind-row {
+  display: grid;
+  grid-template-columns: 1fr 96px 96px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0 3px 12px;
+  font-size: 14px;
+  background: rgba(77, 163, 255, 0.05);
+}
+
+.bind-label {
+  color: var(--c-text);
+}
+
+.bind-slot {
+  height: 34px;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-game);
+  font-size: 14px;
+  color: var(--c-ink);
+  background: #e8f0fa;
+  border-radius: 5px;
+  box-shadow: 0 3px 0 #6f86a3;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease-out;
+}
+
+.bind-slot.is-empty {
+  /* casilla vacía: una raya dibujada en lugar de un guion */
+  background-image: linear-gradient(var(--c-text-muted), var(--c-text-muted));
+  background-size: 14px 2px;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--c-text-muted);
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.bind-slot:hover,
+.bind-slot:focus {
+  outline: none;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 0 #6f86a3, 0 0 0 3px var(--c-orange);
+}
+
+.bind-slot.is-listening {
+  color: #fff;
+  background: var(--c-orange);
+  box-shadow: 0 3px 0 #9b4a00;
+  animation: listen-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes listen-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.25); }
+}
+
+.bindings-msg {
+  min-height: 1.4em;
+  margin: 8px 0 4px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  color: #ffd38f;
+}
+
+/* Controles: primero la sección del dispositivo que se está usando */
+.settings-pane--controls:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+
+#game-shell[data-input="keyboard"] .keyboard-section,
+#game-shell[data-input="gamepad"] .pad-section,
+#game-shell[data-input="touch"] .touch-section {
+  order: -1;
+}
+
+/* En táctil la sección de teclado sobra (si se usa un teclado, el modo cambia y aparece) */
+#game-shell[data-input="touch"] .keyboard-section {
+  display: none;
+}
+
 .settings-controls {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 8px 18px;
   align-items: center;
-  margin: 0;
+  margin: 0 0 6px;
   font-size: 13px;
+}
+
+.settings-controls--fixed {
+  margin-top: 8px;
 }
 
 .settings-controls div {
@@ -422,6 +822,26 @@ button {
   font-size: 14px;
 }
 
+/* Iconos SVG dentro de teclas y botones del mando */
+.kicon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  vertical-align: -1px;
+}
+
+.bind-slot .kicon {
+  width: 15px;
+  height: 15px;
+  vertical-align: -2px;
+}
+
+.settings-close svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
 kbd {
   display: inline-block;
   min-width: 18px;
@@ -434,6 +854,29 @@ kbd {
   font-size: 12px;
   text-align: center;
 }
+
+/* Botones del mando con los colores de la disposición Xbox */
+.pad-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  font-family: var(--font-game);
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  background: #2a3d57;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3), 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.pad-btn--wide { padding: 0 9px; font-size: 11px; }
+.pad-btn--a { background: #3fb34f; }
+.pad-btn--b { background: #e0363c; }
+.pad-btn--x { background: #2f7ff0; }
+.pad-btn--y { background: #f2b417; }
 
 /* ── Aviso de orientación (móvil en vertical) ──────────── */
 
@@ -578,16 +1021,20 @@ canvas {
   .settings-row,
   .settings-close,
   .switch-knob,
+  .menu-item,
+  .menu-item::before,
+  .bind-slot,
   #btn-settings svg {
     transition-duration: 1ms;
   }
 
-  .settings-card,
-  #game-shell.scene-menu .hud-btn--menu-only {
+  .overlay-card,
+  #game-shell[data-scene] .hud-btn {
     animation: backdrop-in 150ms ease-out both;
   }
 
-  #game-shell.scene-menu .hud-btn--menu-only svg,
+  .bind-slot.is-listening,
+  #game-shell[data-scene="menu"] #btn-fullscreen-quick svg,
   .rotate-arrow,
   .rotate-arrow-head {
     animation: none;
@@ -599,7 +1046,10 @@ canvas {
   }
 
   .hud-btn:hover,
-  .settings-row:hover {
+  .settings-row:hover,
+  .settings-row:focus,
+  .menu-item:hover,
+  .menu-item:focus {
     transform: none;
   }
 }

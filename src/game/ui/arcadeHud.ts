@@ -21,6 +21,10 @@ export function createArcadeHud(scene: Phaser.Scene) {
   barBg.fillRect(barX, barY, BAR_W, BAR_H)
   const bar = scene.add.rectangle(barX, barY, BAR_W, BAR_H, 0x3ee8ff).setOrigin(0, 0).setDepth(51)
   const barLabel = scene.add.text(barX, barY - 22, 'TURBO', { fontFamily: ARCADE_FONT, fontSize: '15px', color: '#3ee8ff' }).setDepth(51)
+  // Doble chevrón dibujado (sin caracteres Unicode) mientras se esprinta
+  const chevrons = scene.add.graphics({ x: barX + barLabel.width + 10, y: barY - 14 }).setDepth(51).setVisible(false)
+  chevrons.fillStyle(0x3ee8ff, 1)
+  for (const dx of [0, 9]) chevrons.fillTriangle(dx, -6, dx + 8, 0, dx, 6)
   const status = scene.add.text(barX + BAR_W + 22, barY - 2, '', {
     fontFamily: ARCADE_FONT,
     fontSize: '16px',
@@ -38,7 +42,8 @@ export function createArcadeHud(scene: Phaser.Scene) {
       const color = infinite ? (Math.floor(options.timeNow / 90) % 2 === 0 ? 0xffe36a : 0xff8a1a)
         : ratio > 0.5 ? 0x3ee8ff : ratio > 0.22 ? 0xf5c64f : 0xff4d5c
       bar.setFillStyle(color)
-      barLabel.setText(infinite ? 'TURBO ∞' : player.sprinting ? 'TURBO ▶▶' : 'TURBO')
+      barLabel.setText(infinite ? 'TURBO MÁX' : 'TURBO')
+      chevrons.setVisible(!infinite && !!player.sprinting)
       status.setText(options.statusLine)
     },
   }

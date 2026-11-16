@@ -1,4 +1,3 @@
-import * as Phaser from 'phaser'
 import { PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND } from '../constants'
 import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
@@ -16,10 +15,10 @@ export const autopilot = { on: false }
 export function updateControlledPlayerMotion(options: {
   players: Player[]
   controlledPlayerIndex: number
-  cursors: Phaser.Types.Input.Keyboard.CursorKeys
-  wasd: Record<string, Phaser.Input.Keyboard.Key>
+  /** Eje del teclado ya resuelto con la asignación de teclas (-1..1 por componente). */
+  keyboardAxis: { x: number, y: number }
   joystickInput: { x: number, y: number, sprint?: boolean }
-  sprintKey: Phaser.Input.Keyboard.Key
+  sprintHeld: boolean
   isTouchDevice: boolean
   dt: number
   timeNow: number
@@ -34,19 +33,15 @@ export function updateControlledPlayerMotion(options: {
     return player
   }
 
-  const keyboardInputX =
-    (options.cursors.left.isDown || options.wasd.A.isDown ? -1 : 0) +
-    (options.cursors.right.isDown || options.wasd.D.isDown ? 1 : 0)
-  const keyboardInputY =
-    (options.cursors.up.isDown || options.wasd.W.isDown ? -1 : 0) +
-    (options.cursors.down.isDown || options.wasd.S.isDown ? 1 : 0)
+  const keyboardInputX = options.keyboardAxis.x
+  const keyboardInputY = options.keyboardAxis.y
 
   const usingJoystick = options.isTouchDevice && Math.hypot(options.joystickInput.x, options.joystickInput.y) > 0.08
   const inputX = usingJoystick ? options.joystickInput.x : keyboardInputX
   const inputY = usingJoystick ? options.joystickInput.y : keyboardInputY
   const len = Math.hypot(inputX, inputY)
 
-  const wantsSprint = (!!options.sprintKey?.isDown || !!options.joystickInput.sprint) && lenientCanSprint(player)
+  const wantsSprint = (options.sprintHeld || !!options.joystickInput.sprint) && lenientCanSprint(player)
   player.sprinting = wantsSprint && len > 0
 
   if (player.sprinting) player.stamina = Math.max(0, (player.stamina ?? STAMINA_MAX) - STAMINA_SPRINT_DRAIN_PER_SECOND * options.dt)

@@ -54,6 +54,9 @@ import {
 } from '../game/systems/matchActions'
 import { tickMatchClock } from '../game/systems/matchClock'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
+import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
+import { consumePad, padAxis, padHeld } from '../game/input/gamepad'
+import { actionPrompt } from '../game/input/inputMode'
 import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
 import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle, startCrowdAmbience } from '../game/audio/sounds'
 import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
@@ -74,12 +77,8 @@ export type MatchSceneData = { mode?: GameMode }
  * único archivo inmanejable.
  */
 export class MatchScene extends Phaser.Scene {
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
-  private wasd!: Record<string, Phaser.Input.Keyboard.Key>
-  private shootKey!: Phaser.Input.Keyboard.Key
-  private passKey!: Phaser.Input.Keyboard.Key
-  private switchKey!: Phaser.Input.Keyboard.Key
-  private sprintKey!: Phaser.Input.Keyboard.Key
+  /** Teclas por acción según la asignación de Ajustes → Controles (keyBindings.ts). */
+  private keys: Record<BindAction, Phaser.Input.Keyboard.Key[]> = { up: [], down: [], left: [], right: [], sprint: [], shoot: [], pass: [] }
   private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
   private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
   private prevTouchButtons = { pass: false, shoot: false, switch: false }
@@ -272,6 +271,22 @@ export class MatchScene extends Phaser.Scene {
       announce('¡Bienvenidos al hockey arcade!', true)
     }
 
+    // Pausa del shell (menú de pausa, ajustes, móvil en vertical): silencio y teclas limpias al volver
+    const onPause = () => {
+      this.crowd?.setIntensity(-1)
+      stopAnnouncer()
+    }
+    const onResume = () => {
+      this.input.keyboard?.resetKeys()
+      this.crowd?.setIntensity(this.getCrowdIntensity())
+    }
+    this.events.on(Phaser.Scenes.Events.PAUSE, onPause)
+    this.events.on(Phaser.Scenes.Events.RESUME, onResume)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.PAUSE, onPause)
+      this.events.off(Phaser.Scenes.Events.RESUME, onResume)
+    })
+
     this.time.addEvent({
       delay: 1000,
       loop: true,
@@ -324,7 +339,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.matchEnded) {
       const touchReturn = this.joystickInput.shoot && !this.prevTouchButtons.shoot
       this.prevTouchButtons = { pass: !!this.joystickInput.pass, shoot: !!this.joystickInput.shoot, switch: !!this.joystickInput.switch }
-      if (Phaser.Input.Keyboard.JustDown(this.shootKey) || touchReturn) {
+      if (this.justDown('shoot') || touchReturn) {
         this.scene.start('menu', {
           blueScore: this.blueScore,
           redScore: this.redScore,
@@ -391,7 +406,7 @@ export class MatchScene extends Phaser.Scene {
 
     const touchSwitchPressed = this.joystickInput.switch && !this.prevTouchButtons.switch
     const controlledAfterInput = getControlledPlayer(this.players, this.controlledPlayerIndex)
-    const contextualSwitchPressed = controlIntent.switchPressed || ((Phaser.Input.Keyboard.JustDown(this.switchKey) && this.ballCarrierId !== controlledAfterInput.id) || touchSwitchPressed)
+    const contextualSwitchPressed = controlIntent.switchPressed || ((this.justDown('pass') && this.ballCarrierId !== controlledAfterInput.id) || touchSwitchPressed)
     this.controlledPlayerIndex = maybeSwitchControlledPlayer({
       justDown: contextualSwitchPressed,
       players: this.players,
@@ -417,14 +432,39 @@ export class MatchScene extends Phaser.Scene {
     this.updateHud()
   }
 
-  /** Registra todas las teclas de teclado usadas por el jugador humano. */
+  /** Registra las teclas del jugador humano y las recrea si se reasignan (desde la pausa). */
   private createInput() {
-    this.cursors = this.input.keyboard!.createCursorKeys()
-    this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as Record<string, Phaser.Input.Keyboard.Key>
-    this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.U)
-    this.passKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Y)
-    this.switchKey = this.passKey
-    this.sprintKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+    const build = () => {
+      const kb = this.input.keyboard!
+      for (const list of Object.values(this.keys)) list.forEach(key => kb.removeKey(key, true))
+      for (const { action } of BIND_ACTIONS) this.keys[action] = codesFor(action).map(code => kb.addKey(code))
+    }
+    build()
+    const off = onBindingsChange(build)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off)
+  }
+
+  private isDown(action: BindAction) {
+    if (action === 'sprint' && padHeld('sprint')) return true
+    return this.keys[action].some(key => key.isDown)
+  }
+
+  /** Consume el «recién pulsado» de todas las teclas de la acción, como hacía JustDown con una sola. */
+  private justDown(action: BindAction) {
+    let hit = false
+    for (const key of this.keys[action]) if (Phaser.Input.Keyboard.JustDown(key)) hit = true
+    if ((action === 'shoot' || action === 'pass') && consumePad(action)) hit = true
+    return hit
+  }
+
+  /** Dirección pedida por teclado o, si se está usando, por el stick o la cruceta del mando. */
+  private keyboardAxis() {
+    const pad = padAxis()
+    if (pad.x !== 0 || pad.y !== 0) return pad
+    return {
+      x: (this.isDown('left') ? -1 : 0) + (this.isDown('right') ? 1 : 0),
+      y: (this.isDown('up') ? -1 : 0) + (this.isDown('down') ? 1 : 0),
+    }
   }
 
 
@@ -444,10 +484,9 @@ export class MatchScene extends Phaser.Scene {
     const player = updateControlledPlayerMotion({
       players: this.players,
       controlledPlayerIndex: this.controlledPlayerIndex,
-      cursors: this.cursors,
-      wasd: this.wasd,
+      keyboardAxis: this.keyboardAxis(),
       joystickInput: this.joystickInput,
-      sprintKey: this.sprintKey,
+      sprintHeld: this.isDown('sprint'),
       isTouchDevice: this.isTouchDevice,
       dt,
       timeNow: this.time.now,
@@ -456,11 +495,11 @@ export class MatchScene extends Phaser.Scene {
     const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
     const touchShootPressed = this.joystickInput.shoot && !this.prevTouchButtons.shoot
 
-    const actionPressed = Phaser.Input.Keyboard.JustDown(this.shootKey) || touchShootPressed
-    const passPressed = Phaser.Input.Keyboard.JustDown(this.passKey) || touchPassPressed
+    const actionPressed = this.justDown('shoot') || touchShootPressed
+    const passPressed = this.justDown('pass') || touchPassPressed
     let switchPressed = false
 
-    const turboHeld = !!this.sprintKey.isDown || !!this.joystickInput.sprint
+    const turboHeld = this.isDown('sprint') || !!this.joystickInput.sprint
     if (actionPressed) {
       if (this.ballCarrierId === player.id) this.tryShot(player, turboHeld)
       else if (!(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
@@ -886,8 +925,8 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       controlledPlayerIndex: this.controlledPlayerIndex,
       centerText: this.centerText,
-      passJustDown: Phaser.Input.Keyboard.JustDown(this.passKey) || (this.joystickInput.pass && !this.prevTouchButtons.pass),
-      shootJustDown: Phaser.Input.Keyboard.JustDown(this.shootKey) || (this.joystickInput.shoot && !this.prevTouchButtons.shoot),
+      passJustDown: this.justDown('pass') || (this.joystickInput.pass && !this.prevTouchButtons.pass),
+      shootJustDown: this.justDown('shoot') || (this.joystickInput.shoot && !this.prevTouchButtons.shoot),
     })
     if (!state) return
 
@@ -900,10 +939,9 @@ export class MatchScene extends Phaser.Scene {
         state.taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
       } else {
         let kx = 0, ky = 0
-        if (this.cursors.left?.isDown || this.wasd['A']?.isDown) kx -= 1
-        if (this.cursors.right?.isDown || this.wasd['D']?.isDown) kx += 1
-        if (this.cursors.up?.isDown || this.wasd['W']?.isDown) ky -= 1
-        if (this.cursors.down?.isDown || this.wasd['S']?.isDown) ky += 1
+        const axis = this.keyboardAxis()
+        kx += axis.x
+        ky += axis.y
         const kLen = Math.hypot(kx, ky)
         if (kLen > 0) state.taker.facing = { x: kx / kLen, y: ky / kLen }
       }
@@ -1014,7 +1052,7 @@ export class MatchScene extends Phaser.Scene {
     const result = this.blueScore === this.redScore ? 'Empate'
       : this.blueScore > this.redScore ? '¡Gana el azul!'
       : '¡Gana el rojo!'
-    const hint = this.isTouchDevice ? 'Pulsa A para continuar' : 'Pulsa U para continuar'
+    const hint = `Pulsa ${actionPrompt('shoot')} para continuar`
     if (this.fx) {
       const winner: TeamColor | null = this.blueScore === this.redScore ? null : this.blueScore > this.redScore ? 'blue' : 'red'
       this.fx.showBanner('¡FINAL!', winner ? ArcadeController.teamHex(winner) : '#ffffff', result.toUpperCase(), 2200)
@@ -1024,6 +1062,18 @@ export class MatchScene extends Phaser.Scene {
       return
     }
     this.centerText.setText(`${result}\n${hint}`).setVisible(true)
+  }
+
+  /** Resumen para la cabecera del menú de pausa del shell. */
+  getPauseSummary() {
+    return {
+      mode: this.mode,
+      period: this.currentPeriod,
+      remainingSeconds: Math.max(0, Math.ceil(this.remainingSeconds)),
+      blue: this.blueScore,
+      red: this.redScore,
+      ended: this.matchEnded,
+    }
   }
 
   /** Refresca marcador, tiempo y ayuda contextual del jugador controlado. */

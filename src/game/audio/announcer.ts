@@ -5,6 +5,8 @@
  * puede desactivar desde Ajustes (preferencia en localStorage).
  */
 
+import { getVolume } from './sounds'
+
 const STORAGE_KEY = 'rh-announcer'
 const MIN_GAP_MS = 1400
 
@@ -59,7 +61,7 @@ export function announce(text: string, priority = false) {
   utterance.lang = voice?.lang ?? 'es-ES'
   utterance.rate = 1.18
   utterance.pitch = 1.05
-  utterance.volume = 1
+  utterance.volume = getVolume('master')
   synth.speak(utterance)
   lastSpokeAt = now
 }

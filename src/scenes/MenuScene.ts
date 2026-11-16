@@ -6,8 +6,12 @@ import { createArena, type Arena } from '../game/render/arena'
 import { drawRink } from '../game/render/drawRink'
 import { playUiConfirm, playUiMove, playUiThump } from '../game/audio/sounds'
 import type { GameMode } from '../game/types'
+import { consumePad } from '../game/input/gamepad'
+import { getInputMode, onInputModeChange, PAD_GLYPH } from '../game/input/inputMode'
 
 type MenuData = { blueScore?: number; redScore?: number; blueFouls?: number; redFouls?: number; mode?: GameMode }
+
+type Hint = { key: string } | { pad: string } | { arrows: true }
 
 type ModeDef = { mode: GameMode, title: string, lines: string[], footer: string, color: number, hex: string, dark: number }
 
@@ -78,7 +82,7 @@ type Card = { def: ModeDef, frame: Phaser.GameObjects.Graphics, container: Phase
 export class MenuScene extends Phaser.Scene {
   private selected: GameMode = 'arcade'
   private cards: Card[] = []
-  private chevrons: Phaser.GameObjects.Text[] = []
+  private chevrons: Phaser.GameObjects.Graphics[] = []
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
   private arena!: Arena
@@ -101,11 +105,11 @@ export class MenuScene extends Phaser.Scene {
     this.starting = false
     this.drift = { t: 0 }
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const shell = document.getElementById('game-shell')
-    shell?.classList.add('scene-menu')
 
     this.setupCameras()
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => shell?.classList.remove('scene-menu'))
+    // Ayudas y texto de «jugar» siguen al último dispositivo usado (teclado, mando o táctil)
+    const offMode = onInputModeChange(() => this.withUi(() => this.refreshHints(true)))
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offMode)
 
     this.arena = createArena(this)
     drawRink(this)
@@ -118,6 +122,11 @@ export class MenuScene extends Phaser.Scene {
 
   update(time: number) {
     this.arena.update(time, 0.25)
+    // Mando (el shell ya lo sondeó en este frame y se queda con lo que use un panel abierto)
+    if (!this.isBlockedByDom()) {
+      if (consumePad('left') || consumePad('right')) this.select(this.selected === 'arcade' ? 'classic' : 'arcade')
+      if (consumePad('confirm')) this.startMatch()
+    }
     const t = this.drift.t
     const cam = this.cameras.main
     cam.setZoom(UI.zoom.min + (UI.zoom.max - UI.zoom.min) * t)
@@ -160,7 +169,6 @@ export class MenuScene extends Phaser.Scene {
   private buildUi(data: MenuData) {
     const cx = GAME_WIDTH / 2
     const hasResult = data.blueScore !== undefined && data.redScore !== undefined
-    const isTouch = window.matchMedia('(pointer: coarse)').matches
 
     this.ensureTextures()
     this.shade = this.add.image(cx, GAME_HEIGHT / 2, 'menu-shade')
@@ -178,18 +186,16 @@ export class MenuScene extends Phaser.Scene {
 
     const cardsY = hasResult ? 452 : 430
     MODES.forEach((def, i) => this.createModeCard(def, cx + (i === 0 ? -UI.cardGap / 2 : UI.cardGap / 2), cardsY))
-    this.chevrons = ['▶', '◀'].map(ch => this.add.text(0, cardsY, ch, {
-      fontFamily: ARCADE_FONT, fontSize: '34px', color: '#ffffff', stroke: C.ink, strokeThickness: 6,
-    }).setOrigin(0.5).setName('chevron'))
+    this.chevrons = [0, 1].map(() => this.add.graphics({ y: cardsY }).setName('chevron'))
     this.refreshCards(false)
 
     const promptY = cardsY + UI.cardH / 2 + 50
-    const prompt = this.add.text(cx, promptY, isTouch ? 'TOCA UN MODO PARA JUGAR' : 'PULSA ESPACIO PARA JUGAR', {
+    const prompt = this.add.text(cx, promptY, '', {
       fontFamily: ARCADE_FONT, fontSize: '26px', color: '#ffffff', stroke: C.ink, strokeThickness: 7,
     }).setOrigin(0.5).setName('prompt')
     prompt.setShadow(0, 3, '#000000', 0, true, true)
 
-    if (!isTouch) this.createKeyHints(cx, 676)
+    this.refreshHints(false)
   }
 
   /** Velo (degradado + viñeta) y haces de foco: texturas de canvas generadas una vez. */
@@ -319,7 +325,13 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: ARCADE_FONT, fontSize: def.title.length > 8 ? '34px' : '40px', color: def.hex, stroke: C.ink, strokeThickness: 7,
     }).setOrigin(0, 0))
     def.lines.forEach((line, i) => {
-      container.add(this.add.text(-w / 2 + 34 - i * 2, -h / 2 + 94 + i * 26, `▸ ${line}`, {
+      const lx = -w / 2 + 34 - i * 2
+      const ly = -h / 2 + 94 + i * 26
+      const bullet = this.add.graphics()
+      bullet.fillStyle(def.color, 1)
+      bullet.fillTriangle(lx, ly + 6, lx + 7, ly + 10.5, lx, ly + 15)
+      container.add(bullet)
+      container.add(this.add.text(lx + 15, ly, line, {
         fontFamily: ARCADE_FONT, fontSize: '17px', color: '#d6e4f5',
       }).setOrigin(0, 0))
     })
@@ -372,33 +384,91 @@ export class MenuScene extends Phaser.Scene {
     return g
   }
 
-  private createKeyHints(cx: number, y: number) {
-    const hints: [string, string][] = [['← →', 'ELEGIR'], ['ESPACIO', 'JUGAR']]
-    if (document.fullscreenEnabled) hints.push(['F', 'PANTALLA COMPLETA'])
+  /** Texto de «jugar» y fila de ayudas para el dispositivo actual; en táctil no hay fila. */
+  private refreshHints(animate: boolean) {
+    const mode = getInputMode()
+    const prompt = this.children.getByName('prompt') as Phaser.GameObjects.Text | null
+    prompt?.setText(mode === 'touch' ? 'TOCA UN MODO PARA JUGAR' : mode === 'gamepad' ? 'PULSA  A  PARA JUGAR' : 'PULSA ESPACIO PARA JUGAR')
+    this.children.getByName('hints')?.destroy()
+    if (mode === 'touch') return
+    const hints: [Hint, string][] = mode === 'gamepad'
+      ? [[{ pad: 'dpad' }, 'ELEGIR'], [{ pad: 'a' }, 'JUGAR'], [{ pad: 'START' }, 'AJUSTES']]
+      : [[{ arrows: true }, 'ELEGIR'], [{ key: 'ESPACIO' }, 'JUGAR'], [{ key: 'ESC' }, 'AJUSTES']]
+    if (mode === 'keyboard' && document.fullscreenEnabled) hints.push([{ key: 'F' }, 'PANTALLA COMPLETA'])
+    const row = this.createHintRow(GAME_WIDTH / 2, 676, hints)
+    if (animate && !this.reducedMotion) {
+      row.setAlpha(0)
+      this.tweens.add({ targets: row, alpha: 1, duration: 200 })
+    }
+  }
+
+  /** Teclas dibujadas como teclas y botones del mando como círculos de color (A verde, B rojo…). */
+  private createHintRow(cx: number, y: number, hints: [Hint, string][]) {
     const row = this.add.container(cx, y).setName('hints')
     let x = 0
-    for (const [key, label] of hints) {
-      const keyText = this.add.text(0, 0, key, { fontFamily: ARCADE_FONT, fontSize: '15px', color: C.ink }).setOrigin(0.5)
-      const kw = Math.max(34, keyText.width + 20)
-      const cap = this.add.graphics()
-      cap.fillStyle(0x6f86a3, 1)
-      cap.fillRoundedRect(x, -14, kw, 30, 6)
-      cap.fillStyle(0xe8f0fa, 1)
-      cap.fillRoundedRect(x, -16, kw, 27, 6)
-      keyText.setPosition(x + kw / 2, -3)
-      const labelText = this.add.text(x + kw + 10, -2, label, { fontFamily: ARCADE_FONT, fontSize: '15px', color: '#b8cbe2' }).setOrigin(0, 0.5)
-      row.add([cap, keyText, labelText])
-      x += kw + 10 + labelText.width + 34
+    for (const [hint, label] of hints) {
+      const g = this.add.graphics()
+      let w: number
+      let glyph: Phaser.GameObjects.GameObject
+      if ('arrows' in hint) {
+        // Tecla con las flechas izquierda y derecha dibujadas
+        w = 52
+        g.fillStyle(0x6f86a3, 1)
+        g.fillRoundedRect(x, -14, w, 30, 6)
+        g.fillStyle(0xe8f0fa, 1)
+        g.fillRoundedRect(x, -16, w, 27, 6)
+        g.fillStyle(C.inkN, 1)
+        g.fillTriangle(x + 10, -3, x + 20, -9, x + 20, 3)
+        g.fillTriangle(x + w - 10, -3, x + w - 20, -9, x + w - 20, 3)
+        glyph = this.add.zone(0, 0, 1, 1)
+      } else if ('pad' in hint && hint.pad === 'dpad') {
+        // Cruceta dibujada sobre un botón oscuro
+        w = 30
+        g.fillStyle(0x000000, 0.45)
+        g.fillRoundedRect(x, -13, w, 30, 15)
+        g.fillStyle(0x2a3d57, 1)
+        g.fillRoundedRect(x, -16, w, 30, 15)
+        g.lineStyle(2, 0xffffff, 0.35)
+        g.strokeRoundedRect(x, -16, w, 30, 15)
+        g.fillStyle(0xffffff, 1)
+        g.fillRect(x + w / 2 - 3, -10, 6, 18)
+        g.fillRect(x + w / 2 - 9, -4, 18, 6)
+        glyph = this.add.zone(0, 0, 1, 1)
+      } else if ('key' in hint) {
+        const t = this.add.text(0, 0, hint.key, { fontFamily: ARCADE_FONT, fontSize: '15px', color: C.ink }).setOrigin(0.5)
+        glyph = t
+        w = Math.max(34, t.width + 20)
+        g.fillStyle(0x6f86a3, 1)
+        g.fillRoundedRect(x, -14, w, 30, 6)
+        g.fillStyle(0xe8f0fa, 1)
+        g.fillRoundedRect(x, -16, w, 27, 6)
+        t.setPosition(x + w / 2, -3)
+      } else {
+        const face = PAD_GLYPH[hint.pad as keyof typeof PAD_GLYPH]
+        const t = this.add.text(0, 0, face ? face.label : hint.pad, { fontFamily: ARCADE_FONT, fontSize: face ? '16px' : '13px', color: '#ffffff', stroke: C.ink, strokeThickness: 3 }).setOrigin(0.5)
+        glyph = t
+        w = face ? 30 : Math.max(34, t.width + 22)
+        g.fillStyle(0x000000, 0.45)
+        g.fillRoundedRect(x, -13, w, 30, 15)
+        g.fillStyle(face ? face.color : 0x2a3d57, 1)
+        g.fillRoundedRect(x, -16, w, 30, 15)
+        g.lineStyle(2, 0xffffff, 0.35)
+        g.strokeRoundedRect(x, -16, w, 30, 15)
+        t.setPosition(x + w / 2, -1)
+      }
+      const labelText = this.add.text(x + w + 10, -2, label, { fontFamily: ARCADE_FONT, fontSize: '15px', color: '#b8cbe2' }).setOrigin(0, 0.5)
+      row.add([g, glyph, labelText])
+      x += w + 10 + labelText.width + 34
     }
     row.x = cx - (x - 34) / 2
+    return row
   }
 
   // ─── Selección ─────────────────────────────────────────────────────────────
 
-  /** Con un panel DOM encima (ajustes o aviso de girar el móvil) el menú no debe reaccionar a teclas ni toques. */
+  /** Con un panel DOM encima (ajustes o aviso de girar el móvil) el menú no debe reaccionar a teclas, toques ni mando. */
   private isBlockedByDom() {
-    const settings = document.getElementById('settings-panel')
-    return (settings !== null && !settings.hidden) || !!document.querySelector('#game-shell.is-touch.is-portrait')
+    return !!document.querySelector('#game-shell.has-overlay, #game-shell.is-touch.is-portrait')
   }
 
   private select(mode: GameMode, withSound = true) {
@@ -445,6 +515,19 @@ export class MenuScene extends Phaser.Scene {
     this.placeChevrons()
   }
 
+  /** Punta de flecha con muesca, apuntando a la tarjeta (`dir` 1 = derecha), con contorno oscuro. */
+  private drawChevron(g: Phaser.GameObjects.Graphics, dir: 1 | -1, color: number) {
+    const pts = (k: number) => [
+      new Phaser.Math.Vector2(-13 * k * dir, -19 * k), new Phaser.Math.Vector2(15 * k * dir, 0),
+      new Phaser.Math.Vector2(-13 * k * dir, 19 * k), new Phaser.Math.Vector2(-4 * k * dir, 0),
+    ]
+    g.clear()
+    g.fillStyle(C.inkN, 1)
+    g.fillPoints(pts(1.3), true)
+    g.fillStyle(color, 1)
+    g.fillPoints(pts(1), true)
+  }
+
   private placeChevrons() {
     const card = this.cards.find(c => c.def.mode === this.selected)
     if (!card || this.chevrons.length < 2) return
@@ -452,7 +535,8 @@ export class MenuScene extends Phaser.Scene {
     this.chevrons.forEach((ch, i) => {
       this.tweens.killTweensOf(ch)
       const dir = i === 0 ? -1 : 1
-      ch.setPosition(card.container.x + dir * off, card.baseY).setColor(card.def.hex)
+      ch.setPosition(card.container.x + dir * off, card.baseY)
+      this.drawChevron(ch, -dir as 1 | -1, card.def.color)
       if (!this.reducedMotion) {
         this.tweens.add({ targets: ch, x: ch.x - dir * 8, duration: 360, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
       }

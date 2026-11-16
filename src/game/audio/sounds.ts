@@ -6,6 +6,60 @@ function ac(): AudioContext {
   return ctx
 }
 
+// ─── Volumen ─────────────────────────────────────────────────────────────────
+// Todo pasa por dos buses (efectos y público) que cuelgan del general. Los
+// niveles (0..1) se guardan en localStorage y se ajustan desde Ajustes → Audio.
+
+export type VolumeChannel = 'master' | 'sfx' | 'crowd'
+
+const VOLUME_KEY = 'rh-volume'
+const DEFAULT_VOLUME: Record<VolumeChannel, number> = { master: 0.8, sfx: 1, crowd: 0.8 }
+
+function loadVolumes(): Record<VolumeChannel, number> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(VOLUME_KEY) ?? '{}') as Partial<Record<VolumeChannel, number>>
+    const out = { ...DEFAULT_VOLUME }
+    for (const ch of Object.keys(out) as VolumeChannel[]) {
+      const v = parsed[ch]
+      if (typeof v === 'number' && v >= 0 && v <= 1) out[ch] = v
+    }
+    return out
+  } catch {
+    return { ...DEFAULT_VOLUME }
+  }
+}
+
+const volumes = loadVolumes()
+let buses: Record<VolumeChannel, GainNode> | null = null
+
+function bus(c: AudioContext, channel: 'sfx' | 'crowd'): GainNode {
+  if (!buses) {
+    const master = c.createGain()
+    master.connect(c.destination)
+    const sfx = c.createGain()
+    const crowd = c.createGain()
+    sfx.connect(master)
+    crowd.connect(master)
+    buses = { master, sfx, crowd }
+    for (const ch of Object.keys(buses) as VolumeChannel[]) buses[ch].gain.value = volumes[ch]
+  }
+  return buses[channel]
+}
+
+export function getVolume(channel: VolumeChannel): number {
+  return volumes[channel]
+}
+
+export function setVolume(channel: VolumeChannel, value: number) {
+  volumes[channel] = Math.max(0, Math.min(1, value))
+  if (buses && ctx) buses[channel].gain.setTargetAtTime(volumes[channel], ctx.currentTime, 0.03)
+  try {
+    localStorage.setItem(VOLUME_KEY, JSON.stringify(volumes))
+  } catch {
+    // sin almacenamiento: el volumen solo dura la sesión
+  }
+}
+
 /** Genera un tono oscilante con envolvente de ataque/caída. */
 function tone(
   freq: number,
@@ -20,7 +74,7 @@ function tone(
   const osc = c.createOscillator()
   const g = c.createGain()
   osc.connect(g)
-  g.connect(c.destination)
+  g.connect(bus(c, 'sfx'))
   osc.type = type
   osc.frequency.setValueAtTime(freq, t)
   if (endFreq !== freq) osc.frequency.exponentialRampToValueAtTime(endFreq, t + duration)
@@ -108,7 +162,7 @@ function noiseBurst(
   g.gain.exponentialRampToValueAtTime(0.001, t + duration)
   src.connect(filter)
   filter.connect(g)
-  g.connect(c.destination)
+  g.connect(bus(c, 'sfx'))
   src.start(t, Math.random() * 1.2)
   src.stop(t + duration + 0.02)
 }
@@ -178,15 +232,16 @@ export function startCrowdAmbience(): { setIntensity(v: number): void, stop(): v
   g.gain.value = 0
   src.connect(filter)
   filter.connect(g)
-  g.connect(c.destination)
+  g.connect(bus(c, 'crowd'))
   src.start()
   let stopped = false
   return {
     setIntensity(v: number) {
       if (stopped) return
-      const level = 0.015 + Math.max(0, Math.min(1, v)) * 0.06
+      // v < 0 silencia (partido en pausa)
+      const level = v < 0 ? 0 : 0.015 + Math.min(1, v) * 0.06
       g.gain.setTargetAtTime(level, c.currentTime, 0.4)
-      filter.frequency.setTargetAtTime(600 + v * 500, c.currentTime, 0.4)
+      if (v >= 0) filter.frequency.setTargetAtTime(600 + v * 500, c.currentTime, 0.4)
     },
     stop() {
       if (stopped) return
@@ -213,4 +268,10 @@ export function playUiConfirm(): void {
 export function playUiThump(): void {
   tone(140, 45, 0.28, 0.5, 'sine')
   tone(2400, 900, 0.05, 0.05, 'triangle')
+}
+
+/** Volver / cerrar en menús: dos notas descendentes. */
+export function playUiBack(): void {
+  tone(660, 660, 0.06, 0.12, 'square')
+  tone(440, 330, 0.09, 0.12, 'square', 0.05)
 }
