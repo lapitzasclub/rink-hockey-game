@@ -66,6 +66,7 @@ src/
       matchHud.ts
       arcadeHud.ts           Barra de turbo y línea de estado (arcade)
       scoreboard.ts          Videomarcador común (ambos modos)
+      prefs.ts               Preferencias de UI sobre jugadores (etiquetas, `?labels=1|0`)
     audio/
       sounds.ts              Audio procedural Web Audio (incluye público, cargas, powerups)
       announcer.ts           Locutor con Web Speech API (voz española si existe; on/off en ajustes)
@@ -242,6 +243,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 
+- gfx WP-34: etiquetas de rol apagadas por defecto (ajuste en el panel, `?labels=1|0`, src/game/ui/prefs.ts); anillo en perspectiva con borde claro y banda del equipo y barra de stamina bajo los pies, solo para el jugador controlado.
 - WP-60: videomarcador común (`ui/scoreboard.ts`) en Russo One para ambos modos: goles, periodo y reloj; en reglamento, además, faltas por equipo y sancionados con cuenta atrás. Esquina superior izquierda, sin tapar banquillos. Fuera la tipografía monoespaciada y la línea de stamina.
 - WP-20: tres prototipos de estilo en `?lab=style` (A cartoon, B pixel-art y C semirrealista) con esqueleto 3D, IK de brazos y pintores por estilo (`src/scenes/lab/style/`).
 - Gate B ✅ (coordinador, por delegación del usuario): D1 = A (cartoon limpio): es el único que se lee bien a 57 px, escala limpio con `s` y sale barato con rig por piezas. D4 = casco ligero en el color del equipo.

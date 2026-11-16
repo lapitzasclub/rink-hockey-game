@@ -339,3 +339,30 @@ export const GOAL_VIS = {
   },
   alpha: { netFill: 0.2, topFill: 0.36, innerFill: 0.16, mesh: 0.32, meshInner: 0.26, shadow: 0.3, floor: 0.22 },
 } as const
+
+// UI sobre jugadores (WP-34)
+/** Anillo del jugador controlado (elipse en el suelo) y barra de stamina bajo los pies. */
+export const PLAYER_UI = {
+  /** Radio exterior del anillo (m) y grosor de borde y de banda (px de mundo, ~px de pantalla a s = 1). */
+  ringRadiusM: 0.7,
+  ringEdgePx: 2,
+  ringBandPx: 2,
+  /** Borde casi blanco, banda del color del equipo y relleno interior muy suave. */
+  ringEdgeColor: 0xf2f6fb,
+  ringEdgeAlpha: 0.9,
+  ringBandColor: { blue: 0x0a2a6e, red: 0xd81f26 },
+  ringBandAlpha: 0.95,
+  ringFillAlpha: 0.1,
+  /** Barra: ancho (m), alto (px a s = 1), separación bajo el anillo (px), fondo y borde. */
+  barWM: 0.9,
+  barHPx: 4,
+  barGapPx: 3,
+  barBgColor: 0x06101a,
+  barBgAlpha: 0.65,
+  barEdgeColor: 0xe8f1fa,
+  barEdgeAlpha: 0.8,
+  /** Relleno según nivel (alto = cian del TURBO del HUD, medio, bajo) y umbrales. */
+  barColors: [0x4de6ff, 0xf5c64f, 0xff4d5c],
+  barMid: 0.5,
+  barLow: 0.25,
+} as const

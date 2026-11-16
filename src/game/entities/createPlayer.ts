@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GOALIE_RADIUS, PLAYER_RADIUS } from '../constants'
+import { PLAYER_UI, WORLD_PX_PER_M } from '../render/artSpec'
 import { createProceduralPuppetTextures } from '../render/createProceduralPuppetTextures'
 import { playerKit, lookFor } from '../render/puppet/kit'
 import { createPose } from '../render/puppet/pose'
@@ -8,8 +8,6 @@ import type { Player, Role, TeamColor, TeamSide } from '../types'
 import { getRoleShort } from '../utils'
 
 const FONT = '"Russo One", sans-serif'
-const STAMINA_BAR_W = 36
-const STAMINA_BAR_H = 3
 
 /**
  * Monta un jugador con el rig 2D jerárquico (WP-30): kit del equipo, dorsal y
@@ -29,7 +27,6 @@ export function createPlayer(
 ): Player {
   // La bola y los suplentes siguen usando las texturas procedurales antiguas
   createProceduralPuppetTextures(scene)
-  const radius = role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
   const kind = role === 'goalie' ? 'goalie' : 'skater'
   const look = lookFor(id, team, role)
   const stickSide = look.hand === 'R' ? 1 : 0
@@ -38,15 +35,26 @@ export function createPlayer(
   const shadow = createContactShadow(scene, x, y)
   const rig = new PuppetRig(scene, kind, playerKit(team, kind, look), stickSide, x, y)
 
-  const selectionRing = scene.add.circle(x, y, radius + 7)
-  selectionRing.setStrokeStyle(3, 0xffffff, 1)
-  selectionRing.setFillStyle(0, 0)
+  // Anillo: borde claro (selectionRing) y banda de equipo (dato 'band'); visuals.ts los escala con gx/gy a elipse
+  const ringR = PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.x
+  const bandColor = PLAYER_UI.ringBandColor[team]
+  const selectionRing = scene.add.circle(x, y, ringR)
+  selectionRing.setStrokeStyle(PLAYER_UI.ringEdgePx, PLAYER_UI.ringEdgeColor, PLAYER_UI.ringEdgeAlpha)
+  selectionRing.setFillStyle(bandColor, PLAYER_UI.ringFillAlpha)
   selectionRing.setVisible(false)
+  const band = scene.add.circle(x, y, ringR - (PLAYER_UI.ringEdgePx + PLAYER_UI.ringBandPx) / 2)
+  band.setStrokeStyle(PLAYER_UI.ringBandPx, bandColor, PLAYER_UI.ringBandAlpha).setFillStyle().setVisible(false)
+  selectionRing.setData('band', band)
 
+  // Barra de stamina: fondo oscuro con borde claro (dato 'bg') y relleno que visuals.ts recorta según el nivel
   const staminaBar = controllable
-    ? scene.add.rectangle(x - STAMINA_BAR_W / 2, y + radius + 10, STAMINA_BAR_W, STAMINA_BAR_H, 0x4da3ff)
-        .setOrigin(0, 0.5)
+    ? scene.add.rectangle(x, y, 1, 1, PLAYER_UI.barColors[0]).setOrigin(0, 0.5).setVisible(false)
     : null
+  if (staminaBar) {
+    const bg = scene.add.rectangle(x, y, 1, 1, PLAYER_UI.barBgColor, PLAYER_UI.barBgAlpha)
+      .setStrokeStyle(1, PLAYER_UI.barEdgeColor, PLAYER_UI.barEdgeAlpha).setVisible(false)
+    staminaBar.setData('bg', bg)
+  }
 
   const labelY = role === 'goalie' ? -64 : -58
   const label = scene.add.text(x, y + labelY, getRoleShort(role), {

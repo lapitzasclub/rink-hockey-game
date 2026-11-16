@@ -4,6 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MenuScene } from './scenes/MenuScene'
 import { MatchScene } from './scenes/MatchScene'
 import { isAnnouncerEnabled, setAnnouncerEnabled } from './game/audio/announcer'
+import { areRoleLabelsEnabled, setRoleLabelsEnabled } from './game/ui/prefs'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
@@ -32,6 +33,13 @@ app.innerHTML = `
           <h3 class="settings-section-title">SONIDO</h3>
           <button id="btn-announcer" class="settings-action-btn">
             <span>Locutor (arcade)</span><span id="announcer-state"></span>
+          </button>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">PANTALLA DE JUEGO</h3>
+          <button id="btn-role-labels" class="settings-action-btn">
+            <span>Etiquetas de rol</span><span id="role-labels-state"></span>
           </button>
         </section>
 
@@ -167,3 +175,14 @@ announcerBtn.addEventListener('click', () => {
   updateAnnouncerLabel()
 })
 updateAnnouncerLabel()
+
+const roleLabelsBtn = document.querySelector<HTMLButtonElement>('#btn-role-labels')!
+const roleLabelsState = document.querySelector<HTMLElement>('#role-labels-state')!
+const updateRoleLabelsLabel = () => {
+  roleLabelsState.textContent = areRoleLabelsEnabled() ? 'ON' : 'OFF'
+}
+roleLabelsBtn.addEventListener('click', () => {
+  setRoleLabelsEnabled(!areRoleLabelsEnabled())
+  updateRoleLabelsLabel()
+})
+updateRoleLabelsLabel()

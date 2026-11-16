@@ -12,7 +12,7 @@ import { GOALIE_RADIUS, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED
 import { project, type Projected } from '../render/viewTransform'
 import { BOARD_W } from '../render/rink/geometry'
 import {
-  BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PENALTY_BOX, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
+  BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PENALTY_BOX, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
   WORLD_PX_PER_M, bandDepth, figureScale,
 } from '../render/artSpec'
 import { actions } from '../render/puppet/actions'
@@ -22,11 +22,9 @@ import { resetPose, type PoseContext } from '../render/puppet/pose'
 import { RIG_UNIT, SHADOW_FRAME_RADIUS } from '../render/puppet/rig'
 import { groundFromLocal } from '../render/puppet/skeleton'
 import { upperBody } from '../render/puppet/upperBody'
+import { areRoleLabelsEnabled } from '../ui/prefs'
 import { v3 } from '../render/puppet/vec'
 
-const STAMINA_BAR_W = 36
-const STAMINA_BAR_H = 3
-const STAMINA_BAR_Y_OFFSET = 6   // px de pantalla bajo los pies
 const LABEL_GAP = 8              // px de pantalla sobre la coronilla
 /** Velocidad (px de mundo/s) por debajo de la cual la figura no patina. */
 const MOVING_SPEED = 14
@@ -121,6 +119,7 @@ export function updateVisuals(
   }
 
   const penPos = buildPenaltyPositions(players, timeNow)
+  const labelsOn = areRoleLabelsEnabled()
 
   for (const player of players) {
     const suspended = !!(player.suspendedUntil && player.suspendedUntil > timeNow)
@@ -145,28 +144,24 @@ export function updateVisuals(
         .setDepth(bandDepth('OFFCOURT_FAR', sp.y))
       player.shadow.setVisible(false)
       player.selectionRing.setVisible(false)
+      ;(player.selectionRing.getData('band') as Phaser.GameObjects.Arc).setVisible(false)
       player.staminaBar?.setVisible(false)
+      ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
       pose.yaw = 0
       standingPose(pose, player.rig.skeleton.dims)
       player.rig.apply(pose)
       const secsLeft = Math.ceil((player.suspendedUntil! - timeNow) / 1000)
-      player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setText(`${secsLeft}s`).setAlpha(1).setDepth(DEPTH.FX)
+      player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setText(`${secsLeft}s`).setAlpha(1).setDepth(DEPTH.FX)  // el contador de sanción se ve siempre
       continue
     }
 
     const facingAngle = Math.atan2(player.facing.y, player.facing.x)
-    const forwardY = Phaser.Math.Clamp(player.facing.y, -1, 1)
     const isGoalie = player.role === 'goalie'
     const speed = Math.hypot(player.velocity.x, player.velocity.y)
     const moving = speed > MOVING_SPEED
     const sprinting = moving && !isGoalie && !!player.sprinting
     const maxVisualSpeed = sprinting ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED
     const speedRatio = moving ? clamp01(speed / maxVisualSpeed) : 0
-    const sideFactor = Math.abs(player.facing.x)
-    const towardCamera = Math.max(0, forwardY)
-    const awayFromCamera = Math.max(0, -forwardY)
-    const depthScaleX = 1 + towardCamera * 0.11 - awayFromCamera * 0.06 - sideFactor * 0.03
-    const depthScaleY = 1 + towardCamera * 0.08 - awayFromCamera * 0.08
     const carrying = ballCarrierId === player.id
 
     player.container.setAlpha(1).setPosition(sp.x, centerY).setRotation(0).setScale(k).setDepth(depth)
@@ -176,11 +171,12 @@ export function updateVisuals(
       .setPosition(sp.x, sp.y)
       .setScale(gx * sh * SHADOW_W * (1 + speedRatio * 0.18), gy * sh * SHADOW_H * (1 - speedRatio * 0.12))
       .setDepth(depth - 0.006)
-    player.selectionRing.setPosition(sp.x, sp.y).setDepth(depth - 0.004)
-    player.selectionRing.setScale(gx * depthScaleX, gy * depthScaleY)
+    // Anillo: apoyado en el suelo, entre la sombra y los patines; la elipse sale de gx/gy
+    player.selectionRing.setPosition(sp.x, sp.y).setScale(gx, gy).setDepth(depth - 0.004)
+    const band = player.selectionRing.getData('band') as Phaser.GameObjects.Arc
+    band.setPosition(sp.x, sp.y).setScale(gx, gy).setDepth(depth - 0.0035)
     player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setDepth(DEPTH.FX)
-    player.staminaBar?.setVisible(true)
-    player.label.setAlpha(1)
+    player.label.setAlpha(labelsOn ? 1 : 0)   // alfa y no visibilidad: el lab oculta las etiquetas con setVisible
 
     // Stick en mundo (fuente de verdad del contacto, ver getStickTip): hacia la bola, o adelante si la lleva
     const aimX = carrying ? player.pos.x + player.facing.x * 40 : ball.x
@@ -224,25 +220,28 @@ export function updateVisuals(
     actions(pose, c)
     player.rig.apply(pose)
 
-    // Anillo de selección
+    // Anillo y barra solo para el jugador controlado
     const active = controlled.id === player.id
-    if (carrying) {
-      player.selectionRing.setVisible(true).setStrokeStyle(3, 0x9cff7a, 1)
-    } else if (active) {
-      player.selectionRing.setVisible(true).setStrokeStyle(3, 0xfff27a, 1)
-    } else {
-      player.selectionRing.setVisible(false)
-    }
+    player.selectionRing.setVisible(active)
+    band.setVisible(active)
 
-    player.label.setText(`${getRoleShort(player.role)}${active ? '★' : ''}${carrying ? '●' : ''}`)
+    if (labelsOn) player.label.setText(`${getRoleShort(player.role)}${active ? '★' : ''}${carrying ? '●' : ''}`)
 
     if (player.staminaBar) {
-      const stamina = Math.max(0, (player.stamina ?? 100) / 100)
-      const barW = Math.max(1, Math.round(STAMINA_BAR_W * stamina))
-      const color = stamina > 0.5 ? 0x4da3ff : stamina > 0.25 ? 0xf5c64f : 0xff4d5c
-      player.staminaBar.setFillStyle(color)
-      player.staminaBar.setPosition(sp.x - STAMINA_BAR_W / 2, sp.y + STAMINA_BAR_Y_OFFSET).setDepth(DEPTH.FX)
-      player.staminaBar.setDisplaySize(barW, STAMINA_BAR_H)
+      const bg = player.staminaBar.getData('bg') as Phaser.GameObjects.Rectangle
+      player.staminaBar.setVisible(active)
+      bg.setVisible(active)
+      if (active) {
+        const stamina = clamp01((player.stamina ?? 100) / 100)
+        const [hi, mid, low] = PLAYER_UI.barColors
+        // Tamaños en px de pantalla: metros de mundo por la escala local del suelo
+        const w = PLAYER_UI.barWM * WORLD_PX_PER_M.x * gx
+        const h = PLAYER_UI.barHPx * gx
+        const y = sp.y + PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.y * gy + PLAYER_UI.barGapPx * gx + h / 2
+        bg.setPosition(sp.x, y).setSize(w, h).setDepth(DEPTH.FX - 0.001)
+        player.staminaBar.setFillStyle(stamina > PLAYER_UI.barMid ? hi : stamina > PLAYER_UI.barLow ? mid : low)
+        player.staminaBar.setPosition(sp.x - w / 2, y).setSize(Math.max(1, w * stamina), h).setDepth(DEPTH.FX)
+      }
     }
   }
 }
