@@ -3,7 +3,7 @@
  * piel, pelo y casco. Los jugadores lo sacan de su equipo y de su variedad
  * (`hand`, `skin`, `hair`); árbitros y suplentes podrán pasar el suyo.
  */
-import { HAIR_COLORS, SKIN_TONES, TABLE, TEAM_KITS, TEAM_NUMBERS } from '../artSpec'
+import { HAIR_COLORS, REFEREES, SKIN_TONES, TABLE, TEAM_KITS, TEAM_NUMBERS } from '../artSpec'
 import type { Role, TeamColor } from '../../types'
 import type { FigureKind } from './pose'
 
@@ -58,6 +58,14 @@ export function officialKit(skin = 0, hair = 0): RigKit {
     id: 'official', jersey: o.jersey, shorts: o.shorts, socks: o.shorts, gloves: o.shorts, trim: o.trim,
     skin: SKIN_TONES[skin % SKIN_TONES.length], hair: HAIR_COLORS[hair % HAIR_COLORS.length],
     helmet: null, cage: false, number: '', numColor: o.trim, footwear: 'shoe',
+  }
+}
+
+/** Kit de árbitro (WP-50): gris oscuro y dorsal-franja amarillo flúor visible por delante y por detrás; sin casco, a pie. */
+export function refereeKit(skin = 0, hair = 0): RigKit {
+  return {
+    ...officialKit(skin, hair), jersey: 0x22262d, shorts: 0x111317, socks: 0x111317, gloves: 0x111317,
+    trim: REFEREES.fluor, number: 'II', numColor: REFEREES.fluor,
   }
 }
 

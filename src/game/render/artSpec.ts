@@ -446,6 +446,56 @@ export const BENCH = {
   seatedHeightM: 1.4,
 } as const
 
+// ─── Árbitros (WP-50) ───────────────────────────────────────────────────────
+
+/**
+ * Árbitros a pie (SPEC §9). Distancias en metros (a px con `WORLD_PX_PER_M`),
+ * velocidades en m/s y tiempos en ms. Son solo visuales: no colisionan.
+ */
+export const REFEREES = {
+  /** Amarillo flúor del detalle del uniforme y colores de las tarjetas. */
+  fluor: 0xd9ff1f,
+  cardBlue: 0x2f7bff,
+  cardRed: 0xe02424,
+  /** Velocidad al andar y al correr, y aceleración (m/s y m/s²). */
+  walkMps: 1.8,
+  runMps: 5.2,
+  accelMps2: 4.5,
+  /** Vuelta máxima del cuerpo hacia donde mira (rad/s). */
+  turnRate: 6,
+  /** Distancia a la bola que mantienen al seguirla (m). */
+  followMinM: 4,
+  followMaxM: 8,
+  /** Se apartan a este radio de la bola y de los jugadores (m) y empujan a esta velocidad (m/s). */
+  ballAvoidM: 2,
+  playerAvoidM: 1.2,
+  avoidMps: 3.2,
+  /** Distancia al lateral que cubren (m) y banda en la que pueden moverse (mín. y máx. a la valla). */
+  laneM: 1.4,
+  laneBandM: [0.6, 3.2],
+  /** Cuánto cruzan la línea de medio campo (m) y margen a las vallas de fondo (m). */
+  overlapM: 3,
+  endMarginM: 1.2,
+  /** Distancia (m) al error de posición a la que pasan de andar a correr: [0 = andar, 1 = correr]. */
+  runErrM: [3, 9],
+  /** Longitud de ciclo completo de zancada (m de mundo) al andar y al correr. */
+  strideM: [1.2, 2.2],
+  /** Amplitud de zancada (unidades de figura), elevación del pie y balanceo de brazos al andar y al correr. */
+  stepA: [0.15, 0.27],
+  footLift: [0.05, 0.15],
+  armSwing: [0.07, 0.17],
+  /** Duración de cada gesto (ms). */
+  gestureMs: { whistle: 1000, point: 1300, goal: 1300, card: 1500 },
+  /** Bully: separación a cada lado del punto (m) y tiempo que se mantienen allí (ms). */
+  bullyOffsetM: [1.5, 3.4],
+  bullyHoldMs: 3000,
+  /** Ángulo de bajada del brazo al señalar un punto del suelo (rad); la dirección va horizontal. */
+  pointDown: 0.55,
+  /** Tarjeta (unidades de figura) y radio de la sombra de contacto (m). */
+  cardSize: [0.05, 0.075],
+  shadowRadiusM: 0.4,
+} as const
+
 // ─── Gradas (WP-43) ─────────────────────────────────────────────────────────
 
 /** Gradas (WP-43): geometría del anfiteatro y variedad del público. */

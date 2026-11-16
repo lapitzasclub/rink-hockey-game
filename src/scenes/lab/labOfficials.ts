@@ -1,6 +1,7 @@
 import { GAME_WIDTH } from '../../game/constants'
 import type { TeamColor } from '../../game/types'
 import { createFigure } from './labFigures'
+import { refereeStrip } from './labReferee'
 import type { LabBuild, LabBuildCtx } from './labScenes'
 
 /** Equipos de los sancionados de demo (`pen=N`): 2 azules y 1 rojo, y así sucesivamente. */
@@ -10,6 +11,7 @@ const PEN_UNTIL_MS = 90000
 
 /** Lado lejano: banquillos, mesa de oficiales y, con `pen=N`, N jugadores sancionados sentados. */
 export function officialsScene(ctx: LabBuildCtx): LabBuild {
+  if (ctx.params.strip === 'referee') return refereeStrip(ctx)
   const seats = { blue: 0, red: 0 }
   const figures = Array.from({ length: ctx.params.pen }, (_, i) => {
     const team = PEN_TEAMS[i % PEN_TEAMS.length]

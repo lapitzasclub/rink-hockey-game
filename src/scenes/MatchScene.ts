@@ -60,6 +60,7 @@ import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
 import { ArcadeController } from '../game/systems/arcade'
 import { celebrateGoal } from '../game/render/puppet/actions'
 import { CameraDirector } from '../game/systems/cameraDirector'
+import { createOfficials, type Officials } from '../game/systems/officials'
 import { ArcadeFx } from '../game/render/arcadeFx'
 import { createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
 
@@ -113,6 +114,7 @@ export class MatchScene extends Phaser.Scene {
   private ballEnteredGoalFromFront = { left: false, right: false }
   private prevBallX = 0
   private benchPlayers: BenchPlayer[] = []
+  private officials!: Officials
   private mode: GameMode = 'arcade'
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
@@ -226,6 +228,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.createTeams()
     this.ball = createBall(this)
+    this.officials = createOfficials(this)
     this.aimIndicator = this.add.graphics().setDepth(42)
     this.withUi(() => {
       this.goalFlash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 3, GAME_HEIGHT * 3, 0xffec88)
@@ -306,6 +309,7 @@ export class MatchScene extends Phaser.Scene {
     const dt = Math.min(delta / 1000, 0.033)
     // joystickInput ya se actualiza por nipplejs
     updateBenchPlayers(this.benchPlayers, time)
+    this.officials.update(time, dt, this.ball, this.players)
     this.arena.update(time, this.matchEnded ? 0.9 : this.getCrowdIntensity())
     this.cameraDirector.update({
       dt,
@@ -703,6 +707,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.ruleState.pendingFoul) {
       const foul = this.ruleState.pendingFoul
       playFoul()
+      this.officials.foul(foul, this.players)
       this.centerText.setText(foul.message).setVisible(true)
       this.startFoulRestart(foul)
       this.ruleState.pendingFoul = null
@@ -712,6 +717,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.ruleState.pendingBully) {
       const bully = this.ruleState.pendingBully
       playWhistle()
+      this.officials.bully(bully.x, bully.y)
       this.centerText.setText(bully.message).setVisible(true)
       this.startBully(bully.x, bully.y, bully.participants.bluePlayerId, bully.participants.redPlayerId)
       this.ruleState.pendingBully = null
@@ -762,6 +768,7 @@ export class MatchScene extends Phaser.Scene {
     })
     if (!next) return
     playGoal()
+    this.officials.goal()
     celebrateGoal(this.players, next.redScore > this.redScore ? 'red' : 'blue', time)
     this.arena.cheer(time)
     if (this.arcade) this.celebrateArcadeGoal(next.redScore > this.redScore ? 'red' : 'blue', time)
@@ -828,6 +835,7 @@ export class MatchScene extends Phaser.Scene {
     this.stuckCarrierOrigin = nextState.stuckCarrierOrigin
     this.ruleState = nextState.ruleState
     refreshKickoffVisuals(this.players, this.controlledPlayerIndex, this.ball, this.ballCarrierId, this.time.now)
+    this.officials.whistle()
     playWhistle()
   }
 
