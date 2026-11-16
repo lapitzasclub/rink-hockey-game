@@ -3,7 +3,7 @@
  * piel, pelo y casco. Los jugadores lo sacan de su equipo y de su variedad
  * (`hand`, `skin`, `hair`); árbitros y suplentes podrán pasar el suyo.
  */
-import { HAIR_COLORS, SKIN_TONES, TEAM_KITS, TEAM_NUMBERS } from '../artSpec'
+import { HAIR_COLORS, SKIN_TONES, TABLE, TEAM_KITS, TEAM_NUMBERS } from '../artSpec'
 import type { Role, TeamColor } from '../../types'
 import type { FigureKind } from './pose'
 
@@ -48,6 +48,16 @@ export function lookFor(id: string, team: TeamColor, role: Role): PlayerLook {
     skin: (h >>> 3) % SKIN_TONES.length,
     hair: (h >>> 7) % HAIR_COLORS.length,
     number: role === 'goalie' ? TEAM_NUMBERS[team].goalie : field[order % field.length],
+  }
+}
+
+/** Kit de oficial (mesa, árbitros): sin casco, prenda oscura con detalle amarillo y calzado de calle. */
+export function officialKit(skin = 0, hair = 0): RigKit {
+  const o = TABLE.official
+  return {
+    id: 'official', jersey: o.jersey, shorts: o.shorts, socks: o.shorts, gloves: o.shorts, trim: o.trim,
+    skin: SKIN_TONES[skin % SKIN_TONES.length], hair: HAIR_COLORS[hair % HAIR_COLORS.length],
+    helmet: null, cage: false, number: '', numColor: o.trim, footwear: 'shoe',
   }
 }
 

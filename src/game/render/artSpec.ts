@@ -342,7 +342,37 @@ export const STANDS_STYLE = {
 } as const
 
 /** Zona de sancionados junto a la mesa: distancia a la valla exterior, al centro y entre figuras (m). */
-export const PENALTY_BOX = { setbackM: 0.7, centerGapM: 1.4, stepM: 1.1 } as const
+export const PENALTY_BOX = { setbackM: 0.7, centerGapM: 2.05, stepM: 0.9, maxRows: 3 } as const
+
+// ─── Mesa y sancionados (WP-51) ─────────────────────────────────────────────
+
+/**
+ * Mesa de oficiales (SPEC §9), centrada tras la valla lejana. Medidas en metros;
+ * `setbackM` = de la cara exterior de la valla al borde delantero de la mesa y
+ * `figSetbackM` a los pies de los sentados. `figX` = posición de cada figura
+ * respecto al centro (auxiliar, cronometrador, anotador); `board` = marcador.
+ */
+export const TABLE = {
+  widthM: 3.2,
+  depthM: 0.7,
+  heightM: 0.75,
+  setbackM: 1.0,
+  figSetbackM: 1.85,
+  figX: [-1.1, -0.35, 0.4],
+  board: { x: 1.1, widthM: 0.8, heightM: 0.34, standM: 0.04 },
+  /** Semiancho de la zona trasera (suelo y pared) que cubre mesa y asientos de sancionados. */
+  zoneHalfM: 2.5,
+  wallSetbackM: 2.7,
+  wallHeightM: 1.7,
+  /** Taburete de sancionado: ancho, fondo y alto (m). */
+  stoolM: { w: 0.5, d: 0.4, h: 0.45 },
+  colors: {
+    floor: 0x07111e, wall: 0x030810, top: 0xcdb58a, topEdge: 0x8f7a55, skirt: 0x1d2c4a, skirtBand: 0xf2c230,
+    side: 0x142038, board: 0x0b0f14, boardLit: 0xffb347, stool: 0x1a2438,
+  },
+  /** Kit de los oficiales de mesa (reutilizable por árbitros, WP-50): prenda oscura y calzado de calle. */
+  official: { jersey: 0x2b313b, shorts: 0x1c2027, trim: 0xf2c230 },
+} as const
 
 // ─── Portería (WP-40) ───────────────────────────────────────────────────────
 

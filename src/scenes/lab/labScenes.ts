@@ -5,6 +5,7 @@ import { DEPTH, PX_PER_M, WORLD_PX_PER_M } from '../../game/render/artSpec'
 import { project, worldToScreen, type Projected } from '../../game/render/viewTransform'
 import { getGoalLineX } from '../../game/utils'
 import type { Ball, Role, TeamColor } from '../../game/types'
+import { officialsScene } from './labOfficials'
 import { createFigure, type FigureSpec, type LabFigure } from './labFigures'
 import type { LabParams } from './labParams'
 import { createStylePrototypes } from './stylePrototypes'
@@ -260,11 +261,6 @@ function stripScene(ctx: LabBuildCtx, name: string): LabBuild {
   return { figures: build(ctx, make(ctx)), frame: { sx: c.x, sy: c.y - 20, zoom: 1.25 } }
 }
 
-/** Lado lejano: banquillos y zona de mesa (vacía por ahora). */
-function officialsScene(): LabBuild {
-  return { figures: [], frame: { sx: GAME_WIDTH / 2, sy: 95, zoom: 2 } }
-}
-
 /** Prototipos de estilo A, B y C sobre la pista (WP-20). */
 function styleScene(ctx: LabBuildCtx): LabBuild {
   createStylePrototypes(ctx.scene)
@@ -286,7 +282,7 @@ export function buildLabScene(ctx: LabBuildCtx): LabBuild {
     case 'scale': return scaleScene(ctx)
     case 'goal': return goalScene(ctx)
     case 'players': return noLabels(ctx.params.strip ? stripScene(ctx, ctx.params.strip) : playersGrid(ctx))
-    case 'officials': return officialsScene()
+    case 'officials': return officialsScene(ctx)
     case 'style': return styleScene(ctx)
     default: throw new Error(`escena de lab desconocida: ${ctx.params.scene}`)
   }

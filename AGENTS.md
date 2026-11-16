@@ -40,7 +40,7 @@ src/
       createPlayer.ts
     render/
       drawRink.ts            Vallas, líneas blancas, porterías y vallas publicitarias (todo por código)
-      rink/                  Fachada `drawRink.ts` y módulos: geometry, markings, boards, ads, goal, benches
+      rink/                  Fachada `drawRink.ts` y módulos: geometry, markings, boards, ads, goal, benches, table (mesa y asientos de sancionados)
       arena.ts               Pabellón: suelo azul pintado, gradas en anfiteatro con perspectiva y público animado
       viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
@@ -243,6 +243,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 
+- gfx WP-51: mesa de oficiales en mundo (render/rink/table.ts) con 3 figuras sentadas del rig, kit de oficial (`officialKit`) y marcador; asientos de sancionados a ambos lados (`penaltySeat`) con seatedPose; lab `?lab=officials&pen=N`. Adelantado a Gate C por decisión del coordinador (solo usa poses estáticas del rig).
 - gfx WP-31: locomoción quad (puppet/locomotion.ts + locomotionGaits.ts): zancada lateral-atrás con deslizamiento, cadencia por aceleración, sprint, cruces, marcha atrás en C, frenada en cuña/T, espera y caída; strips stride/sprint/crossover/backward/brake/idle/fall en el lab.
 - gfx WP-34: etiquetas de rol apagadas por defecto (ajuste en el panel, `?labels=1|0`, src/game/ui/prefs.ts); anillo en perspectiva con borde claro y banda del equipo y barra de stamina bajo los pies, solo para el jugador controlado.
 - WP-60: videomarcador común (`ui/scoreboard.ts`) en Russo One para ambos modos: goles, periodo y reloj; en reglamento, además, faltas por equipo y sancionados con cuenta atrás. Esquina superior izquierda, sin tapar banquillos. Fuera la tipografía monoespaciada y la línea de stamina.

@@ -13,6 +13,8 @@ export interface LabParams {
   hud: boolean
   strip: string | null
   set: string
+  /** Nº de sancionados de demo en la escena officials. */
+  pen: number
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -37,6 +39,7 @@ export function readLabParams(search: string): LabParams {
     hud: q.get('hud') !== '0',
     strip: q.get('strip'),
     set: q.get('set') ?? 'field',
+    pen: num(q, 'pen') ?? 0,
   }
 }
 

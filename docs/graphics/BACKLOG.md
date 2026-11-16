@@ -64,7 +64,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-42 | Suelo y marcas | builder · sonnet | Gate B, WP-12, WP-02 | ✅ 2026-11-16 |
 | WP-43 | Gradas | builder · sonnet | Gate B | ✅ 2026-11-16 |
 | WP-50 | Árbitros | builder · sonnet | Gate C, D3 | ⬜ |
-| WP-51 | Mesa de árbitros y sancionados | builder · sonnet | Gate C, WP-12 | ⬜ |
+| WP-51 | Mesa de árbitros y sancionados | builder · sonnet | Gate C, WP-12 | ✅ 2026-11-16 |
 | WP-52 | Banquillos, entrenadores y delegados | builder · sonnet | Gate C, WP-12 | ⬜ |
 | WP-60 | HUD unificado | builder · sonnet | Gate A | ✅ 2026-11-16 |
 | WP-61 | Luz y sombras | builder · sonnet | Gate C, WP-40…43 | ⬜ |

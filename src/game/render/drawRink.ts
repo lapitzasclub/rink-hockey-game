@@ -6,6 +6,7 @@ import { DEPTH, MARKINGS } from './artSpec'
 import { RINK_CORNER_R, projStrokeCircle, projStrokePath, projStrokePoly, roundedRectPts } from './rink/geometry'
 import { drawPerspectiveBoards } from './rink/boards'
 import { drawBenches } from './rink/benches'
+import { drawOfficialsTable } from './rink/table'
 import { drawAds } from './rink/ads'
 import { drawFieldDots, drawGoalCrease, drawPenaltyArea } from './rink/markings'
 import { drawGoal3D } from './rink/goal'
@@ -24,6 +25,7 @@ export { createGoalNetFlash } from './rink/goal'
 export function drawRink(scene: Phaser.Scene) {
   const gBenches = scene.add.graphics().setDepth(DEPTH.OFFCOURT_FAR)
   drawBenches(gBenches)
+  drawOfficialsTable(scene)
 
   const boardBack  = scene.add.graphics().setDepth(DEPTH.BOARD_FAR)
   const boardFront = scene.add.graphics().setDepth(DEPTH.BOARD_NEAR)

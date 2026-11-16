@@ -8,16 +8,16 @@
 import * as Phaser from 'phaser'
 import type { Ball, Player } from '../types'
 import { getRoleShort } from '../utils'
-import { GOALIE_RADIUS, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK, STICK_SWING_MS } from '../constants'
+import { GOALIE_RADIUS, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
 import { project, type Projected } from '../render/viewTransform'
-import { BOARD_W } from '../render/rink/geometry'
+import { penaltySeat } from '../render/rink/table'
 import {
-  BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PENALTY_BOX, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
+  BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
   WORLD_PX_PER_M, bandDepth, figureScale,
 } from '../render/artSpec'
 import { actions } from '../render/puppet/actions'
 import { goaliePose } from '../render/puppet/goalie'
-import { advanceStride, locomotion, standingPose } from '../render/puppet/locomotion'
+import { advanceStride, locomotion, seatedPose } from '../render/puppet/locomotion'
 import { resetPose, type PoseContext } from '../render/puppet/pose'
 import { RIG_UNIT, SHADOW_FRAME_RADIUS } from '../render/puppet/rig'
 import { groundFromLocal } from '../render/puppet/skeleton'
@@ -37,27 +37,16 @@ function clamp01(value: number) {
   return Phaser.Math.Clamp(value, 0, 1)
 }
 
-// Zona de sancionados: coordenadas de mundo detrás de la valla lejana, junto a la mesa.
-// Azul se coloca a la izquierda del centro, rojo a la derecha.
-const PEN_CENTER_X = RINK.x + RINK.width / 2
-const PEN_Y_WORLD = RINK.y - BOARD_W - PENALTY_BOX.setbackM * WORLD_PX_PER_M.y
+// Zona de sancionados: asientos de la mesa de oficiales (rink/table.ts), azul a la izquierda y rojo a la derecha.
 
-/** Calcula la posición de mundo de cada jugador suspendido. */
+/** Posición de mundo del asiento de cada jugador suspendido (el lab puede forzarlo con el dato `penSeat`). */
 function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, { x: number; y: number }> {
-  const idxBlue = { n: 0 }
-  const idxRed  = { n: 0 }
+  const next = { blue: 0, red: 0 }
   const map = new Map<string, { x: number; y: number }>()
-  const gap = PENALTY_BOX.centerGapM * WORLD_PX_PER_M.x
-  const step = PENALTY_BOX.stepM * WORLD_PX_PER_M.x
   for (const p of players) {
     if (!(p.suspendedUntil && p.suspendedUntil > timeNow)) continue
-    if (p.team === 'blue') {
-      map.set(p.id, { x: PEN_CENTER_X - gap - idxBlue.n * step, y: PEN_Y_WORLD })
-      idxBlue.n++
-    } else {
-      map.set(p.id, { x: PEN_CENTER_X + gap + idxRed.n * step, y: PEN_Y_WORLD })
-      idxRed.n++
-    }
+    const forced = p.container.getData('penSeat') as number | undefined
+    map.set(p.id, penaltySeat(p.team, forced ?? next[p.team]++))
   }
   return map
 }
@@ -135,7 +124,7 @@ export function updateVisuals(
     resetPose(pose)
 
     if (suspended) {
-      // Zona de sancionados (al otro lado de la valla): de pie, mirando a la pista, sin stick
+      // Zona de sancionados (al otro lado de la valla): sentado en su asiento, mirando a la pista, sin stick
       player.container
         .setPosition(sp.x, centerY)
         .setAlpha(1)
@@ -148,7 +137,7 @@ export function updateVisuals(
       player.staminaBar?.setVisible(false)
       ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
       pose.yaw = 0
-      standingPose(pose, player.rig.skeleton.dims)
+      seatedPose(pose)
       player.rig.apply(pose)
       const secsLeft = Math.ceil((player.suspendedUntil! - timeNow) / 1000)
       player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setText(`${secsLeft}s`).setAlpha(1).setDepth(DEPTH.FX)  // el contador de sanción se ve siempre
