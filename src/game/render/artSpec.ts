@@ -1,15 +1,15 @@
-import { GAME_HEIGHT, RINK } from '../constants'
+import { GAME_HEIGHT, K, RINK, RINK_LENGTH_M, RINK_WIDTH_M } from '../constants'
 
 /**
  * Constantes visuales del mundo (SPEC §1–§3): escala, exageraciones, cámara
  * y bandas de profundidad. Las de gameplay siguen en `constants.ts`.
  */
 
-/** Metros reales de la pista que representa `RINK` (40 × 20 m). */
-export const RINK_METERS = { length: 40, width: 20 } as const
+/** Metros reales de la pista que representa `RINK` (40 × 20 m por defecto; ver `RINK_LENGTH_M` en constants). */
+export const RINK_METERS = { length: RINK_LENGTH_M, width: RINK_WIDTH_M } as const
 
-/** px de mundo por metro en altura (z). Coincide con el eje X. */
-export const PX_PER_M = 28.5
+/** px de mundo por metro en altura (z). Coincide con el eje X; crece con K al acortar la pista. */
+export const PX_PER_M = 28.5 * K
 
 /** px de mundo por metro en cada eje. Y tiene un 5 % de anisotropía heredada que no se corrige. */
 export const WORLD_PX_PER_M = {

@@ -21,6 +21,7 @@ Paquetes de trabajo (WP) para la renovación gráfica.
 | D8 | Fondo de portería y zona de falta del portero a escala real | sí: `GOAL_BACK_DEPTH` 34 → ~18 px y zona de falta con el radio del semicírculo (26 px) en vez de `GOAL_HEIGHT` · no | sí | WP-44 | ✅ sí (2026-11-15, coordinador por delegación) |
 | D9 | Punto de libre directo a 7,40 m reglamentarios | sí: `DIRECT_FREE_HIT_SPOT_OFFSET` 160 → 211 px · no | sí | WP-42 | ✅ sí (2026-11-15, coordinador por delegación) |
 | D10 | Línea azul (no existe en rink hockey) | retirar · mantener como marca decorativa | retirar | WP-42 | ✅ retirar (2026-11-15, coordinador por delegación) |
+| D11 | Tamaño de pista por defecto (legal 34–44 m, 2:1) | 40 × 20 · 36 × 18 · 34 × 17 | 36 × 18 | WP-65 | ✅ 36 × 18 m en los dos modos (2026-11-16, coordinador por delegación) |
 
 D8–D10 salen de WP-02: ver `docs/graphics/REGLAMENTO-MEDIDAS.md` §3.
 
@@ -71,6 +72,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-62 | Rendimiento | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
 | WP-63 | Móvil | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
 | WP-64 | Partido de humo (IA contra IA) | builder · sonnet | — | ✅ 2026-11-16 |
+| WP-65 | Escala de pista parametrizada (D11) | builder · sonnet | WP-64 | ✅ 2026-11-16 |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos
@@ -528,7 +530,36 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 
 **Encargo:** `?lab=match&auto=1&smokeMs=N` juega IA contra IA sin render, a 60 Hz fijos, e imprime `[smoke] {json}` con goles, tiros, a puerta, paradas, faltas, tarjetas, atascos, NaN y errores. Comando: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-smoke.ps1 -Mode <reglamento|arcade> -SmokeMs 240000 -BaseUrl http://127.0.0.1:<puerto>/`.
 
-**Referencia** (medias de corridas de 240 s): reglamento 0,94 goles/min, 7,4 tiros/min y 72 % de paradas; arcade 1,88 goles/min, 11,4 tiros/min y 68 % de paradas (main e8ed16b). Alarma: goles/min −50 % o +100 %, atascos > 10 %, cualquier NaN, jugador fuera de pista o error de consola.
+**Método:** `-Runs 20` por modo. El ruido entre partidos es grande: con la misma versión, en reglamento salen de 2 a 6 goles por partido. Por eso se compara media ± IC 95 %, y una diferencia solo cuenta si los intervalos no se solapan. La primera referencia, con 3–4 corridas, no servía para concluir nada y queda retirada.
+
+**Referencia vigente** (pista de 36 m, 20 × 240 s por modo, 2026-11-16):
+
+| Modo | goles/min | tiros/min | a puerta/min | % paradas | faltas/min |
+|---|---|---|---|---|---|
+| reglamento | 1,34 ± 0,20 | 8,3 ± 0,8 | 5,0 ± 0,7 | 65 ± 6 | 8,9 ± 0,7 |
+| arcade | 1,79 ± 0,24 | 11,3 ± 0,9 | 7,9 ± 0,6 | 72 ± 4 | — |
+
+**Alarma:** una diferencia significativa en goles/min o % de paradas, atascos > 10 %, cualquier NaN, un jugador fuera de pista o un error de consola.
+
+**Sesgo conocido:** rojo marca más que azul (+0,3 a +0,6 goles/min, significativo en varias configuraciones). Lo más probable es que venga del piloto automático del jugador azul controlado, que el humo usa en vez de la IA de equipo. Está pendiente de comprobar si también existe en el juego real.
+
+### WP-65 — Escala de pista
+
+- **Rol:** gfx-builder · sonnet. Añadido el 2026-11-16 a raíz de la pregunta del usuario: ¿casan las dimensiones del campo con el estilo arcade?
+
+**Hecho:** `RINK_LENGTH_M` en constants.ts es la única fuente del tamaño (la anchura es la mitad). `K = 40 / RINK_LENGTH_M` escala todo lo que mide metros reales: cuerpos, bola, portería, marcas, alcances de control, robo y recogida, zona del portero y puntos de penalti y libre directo. No escala velocidades, tiempos ni distancias tácticas de la IA. La pantalla sigue en 1140 × 600 px, así que una pista más corta muestra a los jugadores más grandes. En DEV, `?rinkm=34..44` prueba otros tamaños, y `tools/gfx-smoke.ps1 -Extra "rinkm=36"` lo pasa al partido de humo.
+
+**Comparativa** (20 corridas de 240 s por caso; goles/min, media ± IC 95 %):
+
+| Pista | reglamento | arcade | % paradas arcade |
+|---|---|---|---|
+| 40 m | 1,23 ± 0,22 | 1,68 ± 0,28 | 74 ± 4 |
+| 36 m | 1,34 ± 0,20 | 1,79 ± 0,24 | 72 ± 4 |
+| 34 m | 1,23 ± 0,27 | **2,36 ± 0,29** | **65 ± 5** |
+
+Ningún caso tuvo atascos, NaN, jugadores fuera de pista ni errores. Entre 40 y 36 m no hay diferencia significativa en ninguna métrica: 36 m solo cambia la imagen, con un 11 % más de tamaño en pantalla. A 34 m, el arcade sí cambia de equilibrio: más goles y menos paradas. Se elige 36 × 18 m (D11).
+
+**Pendiente:** varias distancias tácticas siguen en px y no escalan, a propósito: ai.ts stepOut, matchFlow ±55/±34/220/54, rules.ts 40, `AI_SHOOT_DISTANCE` y `AI_MARK_RADIUS`. Revisarlas si se juega a 34 m.
 
 ### Gate F — Revisión final
 

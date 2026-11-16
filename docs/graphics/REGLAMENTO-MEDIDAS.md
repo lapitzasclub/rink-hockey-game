@@ -19,6 +19,7 @@ Donde dice [REG] en las tablas, el valor está también en [REG-WS]. Los "artíc
 
 | Campo | Valor en SPEC antes | Valor oficial | Artículo | URL |
 |---|---|---|---|---|
+| Dimensiones de la pista (WP-65) | 36 × 18 m por defecto (D11); `?rinkm=34..44` en DEV | Rectángulo con proporción **2:1**; mínimo **34 × 17 m**, máximo **44 × 22 m**. 40 × 20 m obligatorio en selecciones internacionales. Las marcas (área, punto de penalti 5,40 m, libre directo 7,40 m, semicírculo r 0,85 m, círculo central r 3 m, línea de gol a 2,70–3,30 m del fondo) y la portería 1,70 × 1,05 m son **fijas en metros**, no dependen del tamaño de pista | REG TR a.1 ap. 3 y 8 | [REG] |
 | Radio de esquina | 1–3 m, VERIFICAR | 1–3 m en general; **3 m obligatorio** en selecciones internacionales (pista 40 × 20) | REG TR a.1 ap. 4 y 8 | [REG] |
 | Valla perimetral, altura | 1,00 m, VERIFICAR | **1 m**, cerrada. Además redes de protección sobre la valla, **4 m** desde el suelo | REG TR a.1 ap. 4 y 6 | [REG] |
 | Rodapié de la valla | ~0,20 m, VERIFICAR | **20 cm** de alto y **2 cm** de grosor, color neutro distinto de la bola | REG TR a.1 ap. 5a | [REG] |

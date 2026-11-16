@@ -9,7 +9,7 @@ Documentos hermanos:
 
 ## 1. Principios de coste
 
-1. **El coordinador no programa.** Fable (sesión principal) lee informes cortos y como mucho 3 capturas por WP, decide y despacha. Todo el código lo escriben los agentes `gfx-*`.
+1. **El coordinador no programa.** Fable (sesión principal) lee informes cortos y las capturas de §6 (una general y el detalle de cada elemento), decide y despacha. Ahorrar en capturas nunca justifica aceptar algo que no se ha visto de cerca. Todo el código lo escriben los agentes `gfx-*`.
 2. **El modelo más barato que pueda hacerlo**:
    - Opus solo para matemática de cámara, rig y animación.
    - Sonnet para escenario, props, oficiales y HUD.
@@ -107,9 +107,21 @@ Riesgos / pendientes: <máx. 3 líneas>
 
 ## 6. Revisión del coordinador
 
-Por WP, el coordinador mira como mucho 3 capturas (las que pida el criterio, normalmente `scale`, el plano específico y un `reglamento` o `arcade`) y comprueba:
+**Listón de calidad (2026-11-16).** Cumplir los criterios no basta: la pregunta es si el elemento se vería bien en un juego indie publicado. Se compara con la calidad de los jugadores (rig, sombreado y contorno), no con lo que había antes. Lo que no pasa vuelve con cambios, aunque cumpla la letra del encargo.
 
-1. **Criterios de aceptación** del WP, punto por punto.
+El usuario rechazó las gradas, los banquillos y la mesa (WP-43, WP-51, WP-52) después de que yo los aceptara: los había juzgado en capturas de pista entera, donde ocupan pocos píxeles.
+
+**Capturas para revisar:**
+
+- Una vista general (`reglamento` o `arcade`) para comprobar la escala y la legibilidad.
+- **Al menos una captura de detalle por elemento**, con zoom ≥ 2 y dentro del partido (`lab=match&zoom=&cx=&cy=`): gradas cercanas, gradas lejanas, banquillo, mesa, portería, árbitro…
+- En los elementos con animación o reacción, una captura justo después del evento (`at=goal|foul|card`).
+
+El tope deja de ser 3 por WP y pasa a ser 3 por elemento. Las capturas de pista entera sirven para ver la escala, no para dar por buena la calidad.
+
+Comprueba:
+
+1. **Criterios de aceptación** del WP, punto por punto, **y el listón de calidad** en las capturas de detalle.
 2. **Contrato de cámara** (SPEC §2): pies en el suelo, escala coherente con la profundidad, sin flotar ni hundirse.
 3. **Legibilidad en juego:**
    - los equipos se distinguen;
@@ -138,7 +150,7 @@ El coordinador **no** salta un gate. Lo que depende de él espera.
   - o `-Query "lab=goal&zoom=3" -Out docs/graphics/shots/WP-XX/after/goal-zoom.jpg`
 - Requiere el servidor de desarrollo (`npm run dev`). Si el puerto 5173 está ocupado por otro proyecto, se arranca Vite en otro puerto y se pasa `-BaseUrl http://127.0.0.1:<puerto>/`.
 - Cada captura deja un `.console.txt` al lado. QA reporta las líneas con `error` o `Uncaught`.
-- **Partido de humo** (WP-64), obligatorio en WPs que tocan juego (física, IA, reglas, portería, constantes o dimensiones): `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-smoke.ps1 -Mode <reglamento|arcade> -SmokeMs 240000 -BaseUrl http://127.0.0.1:<puerto>/`, 3–4 corridas por modo comparadas con la referencia de BACKLOG §WP-64. Tarda unos 6 s por corrida.
+- **Partido de humo** (WP-64), obligatorio en WPs que tocan juego (física, IA, reglas, portería, constantes o dimensiones): `powershell -NoProfile -ExecutionPolicy Bypass -File tools/gfx-smoke.ps1 -Mode <reglamento|arcade> -SmokeMs 240000 -Runs 20 -BaseUrl http://127.0.0.1:<puerto>/`, 20 corridas por modo comparadas con la referencia de BACKLOG §WP-64. Tarda unos 6 s por corrida. El ruido entre partidos es grande (en reglamento, de 2 a 6 goles por partido con la misma versión), así que se compara media ± IC 95 % y solo cuenta una diferencia cuyos intervalos no se solapan. Puede correrlo `gfx-qa` (haiku) o un script en segundo plano.
 - **No hay carpeta `before/`:** el "antes" de un WP es el `after/` del WP anterior que tocó lo mismo, o `shots/baseline/`. Así no se duplican capturas.
 - Solo se versionan los `after/` de WPs aceptados (JPG, ~50–150 KB).
 - Las escenas `lab=...` las crea el WP-00. Hasta entonces, el script captura el menú.

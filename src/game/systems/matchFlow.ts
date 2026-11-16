@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, PENALTY_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
+import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, PENALTY_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
 import { getFormation } from '../formation'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControlledPlayer } from './playerHelpers'
@@ -213,7 +213,7 @@ export function updateFoulRestartState(options: {
 
   const taker = findPlayerById(players, foul.takerPlayerId)
   if (taker) {
-    const takerTargetX = foul.x + (taker.side === 'left' ? -18 : 18)
+    const takerTargetX = foul.x + (taker.side === 'left' ? -PLAYER_RADIUS : PLAYER_RADIUS)
     if (time < foul.readyAt) {
       movePlayerToward(taker, takerTargetX, foul.y, dt)
 

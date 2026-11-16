@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BULLY_CLUSTER_RADIUS, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CARRY_GAP, BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BALL_WALL_MARGIN, BULLY_CLUSTER_RADIUS, BULLY_CONTEST_GAP, GOAL_NET_HOLD_X, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
 import type { Ball, BullyCandidate, Player, TeamColor, Vector } from '../types'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
@@ -14,7 +14,7 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
 
   if (carrier) {
-    const carryOffset = carrier.role === 'goalie' ? GOALIE_RADIUS + 8 : PLAYER_RADIUS + 8
+    const carryOffset = carrier.role === 'goalie' ? GOALIE_RADIUS + BALL_CARRY_GAP : PLAYER_RADIUS + BALL_CARRY_GAP
     const speed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
     const velocityDir = speed > 1 ? { x: carrier.velocity.x / speed, y: carrier.velocity.y / speed } : { x: 0, y: 0 }
     const lateral = { x: -carrier.facing.y, y: carrier.facing.x }
@@ -53,10 +53,10 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
   ball.x += nextVelocity.x * dt
   ball.y += nextVelocity.y * dt
 
-  const top = RINK.y + 9
-  const bottom = RINK.y + RINK.height - 9
-  const left = RINK.x + 9
-  const right = RINK.x + RINK.width - 9
+  const top = RINK.y + BALL_WALL_MARGIN
+  const bottom = RINK.y + RINK.height - BALL_WALL_MARGIN
+  const left = RINK.x + BALL_WALL_MARGIN
+  const right = RINK.x + RINK.width - BALL_WALL_MARGIN
   const goalTop = RINK.y + RINK.height / 2 - GOAL_HALF_H
   const goalBottom = RINK.y + RINK.height / 2 + GOAL_HALF_H
   const inGoalMouth = ball.y > goalTop && ball.y < goalBottom
@@ -356,7 +356,7 @@ export function getBullyCandidate(players: Player[], ball: Ball, ballVelocity: V
   const playerGap = Phaser.Math.Distance.Between(blue.pos.x, blue.pos.y, red.pos.x, red.pos.y)
   const blueBallDistance = Phaser.Math.Distance.Between(blue.pos.x, blue.pos.y, ball.x, ball.y)
   const redBallDistance = Phaser.Math.Distance.Between(red.pos.x, red.pos.y, ball.x, ball.y)
-  const contested = playerGap < 74 && blueBallDistance < BULLY_CLUSTER_RADIUS && redBallDistance < BULLY_CLUSTER_RADIUS
+  const contested = playerGap < BULLY_CONTEST_GAP && blueBallDistance < BULLY_CLUSTER_RADIUS && redBallDistance < BULLY_CLUSTER_RADIUS
 
   if (!contested) return null
   if (nearbyPlayers.length < BULLY_MIN_PLAYERS && speed >= 34) return null
@@ -391,7 +391,7 @@ export function checkGoal(
   if (enteredFromFront.left && ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS) {
     return {
       scorer: 'red' as TeamColor,
-      holdX: leftGoalLineX - 10,
+      holdX: leftGoalLineX - GOAL_NET_HOLD_X,
       holdY: Phaser.Math.Clamp(ball.y, top + 6, bottom - 6),
     }
   }
@@ -399,7 +399,7 @@ export function checkGoal(
   if (enteredFromFront.right && ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS) {
     return {
       scorer: 'blue' as TeamColor,
-      holdX: rightGoalLineX + 10,
+      holdX: rightGoalLineX + GOAL_NET_HOLD_X,
       holdY: Phaser.Math.Clamp(ball.y, top + 6, bottom - 6),
     }
   }

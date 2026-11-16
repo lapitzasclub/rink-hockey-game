@@ -2,7 +2,7 @@ import * as Phaser from 'phaser'
 import { GAME_WIDTH, RINK } from '../constants'
 import { getGoalLineX } from '../utils'
 import { worldToScreen } from './viewTransform'
-import { DEPTH, MARKINGS } from './artSpec'
+import { DEPTH, MARKINGS, WORLD_PX_PER_M } from './artSpec'
 import { RINK_CORNER_R, projStrokeCircle, projStrokePath, projStrokePoly, roundedRectPts } from './rink/geometry'
 import { drawPerspectiveBoards } from './rink/boards'
 import { drawBenches } from './rink/benches'
@@ -35,8 +35,8 @@ export function drawRink(scene: Phaser.Scene) {
   const cx = GAME_WIDTH / 2
   const cy = RINK.y + RINK.height / 2   // 360 — centro mundo del campo
 
-  const sx = RINK.width  / 40   // px/m horizontal
-  const sy = RINK.height / 20   // px/m vertical (mundo)
+  const sx = WORLD_PX_PER_M.x
+  const sy = WORLD_PX_PER_M.y
 
   const leftGoalX  = getGoalLineX('left')
   const rightGoalX = getGoalLineX('right')

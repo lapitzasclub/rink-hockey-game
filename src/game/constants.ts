@@ -1,16 +1,61 @@
+/** Límites legales de la longitud de pista en metros (REG TR a.1 ap. 3): 34 a 44 m, proporción 2:1. */
+const RINK_LENGTH_MIN_M = 34
+const RINK_LENGTH_MAX_M = 44
+/** Longitud con la que se escribieron los valores en px (K = 1). */
+const RINK_LENGTH_BASE_M = 40
+/** Pista por defecto: 36 × 18 m, legal y más arcade que la base (D11). */
+const RINK_LENGTH_DEFAULT_M = 36
+
+/** Lee `?rinkm=` (solo en DEV); fuera del rango legal o no numérico devuelve la de por defecto. */
+function readRinkLengthM(): number {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return RINK_LENGTH_DEFAULT_M
+  const raw = new URLSearchParams(window.location.search).get('rinkm')
+  const value = raw === null ? NaN : Number(raw)
+  return Number.isFinite(value) && value >= RINK_LENGTH_MIN_M && value <= RINK_LENGTH_MAX_M ? value : RINK_LENGTH_DEFAULT_M
+}
+
+/** Longitud de la pista en metros: única fuente del tamaño (la anchura es la mitad, proporción 2:1). */
+export const RINK_LENGTH_M = readRinkLengthM()
+export const RINK_WIDTH_M = RINK_LENGTH_M / 2
+/**
+ * Factor de escala de los objetos físicos: la pantalla sigue siendo 1140 × 600 px, así que
+ * con menos metros cada metro ocupa más px. Escala con K todo lo que mide metros reales
+ * (cuerpos, bola, portería, marcas, alcances); NO escala velocidades, tiempos ni rangos tácticos.
+ * A 40 m vale exactamente 1.
+ */
+export const K = RINK_LENGTH_BASE_M / RINK_LENGTH_M
+
 export const GAME_WIDTH = 1280
 export const GAME_HEIGHT = 720
 export const MATCH_DURATION = 120
-export const PLAYER_RADIUS = 18
-export const GOALIE_RADIUS = 9
-export const BALL_RADIUS = 6
-export const GOAL_WIDTH = 28
+export const PLAYER_RADIUS = 18 * K
+export const GOALIE_RADIUS = 9 * K
+export const BALL_RADIUS = 6 * K
+export const GOAL_WIDTH = 28 * K
 /** Semialtura interior de la portería: boca de 1,70 m reglamentarios (51 px a 30 px/m en Y). */
-export const GOAL_HALF_H = 25.5
+export const GOAL_HALF_H = 25.5 * K
 /** Fondo de la red: arco trasero de 0,64 m (≈ 18 px en X). */
-export const GOAL_BACK_DEPTH = 18
-export const GOAL_LINE_OFFSET = 86
-export const GOAL_NET_HOLD_X = 10
+export const GOAL_BACK_DEPTH = 18 * K
+export const GOAL_LINE_OFFSET = 86 * K
+export const GOAL_NET_HOLD_X = 10 * K
+/** Margen entre el centro de la bola y la valla (radio + 3 px). */
+export const BALL_WALL_MARGIN = 9 * K
+/** Distancia de la bola al portador (se suma al radio del cuerpo). */
+export const BALL_CARRY_GAP = 8 * K
+/** Holgura extra entre cuerpos en la separación de jugadores. */
+export const PLAYER_SEPARATION_GAP = 8 * K
+/** Límites X del portero respecto a la valla de fondo: mínimo (junto al fondo) y máximo (hacia el campo). */
+export const GOALIE_X_MIN = 28 * K
+export const GOALIE_X_MAX = 90 * K
+/** Posición base del portero (x desde la valla de fondo). */
+export const GOALIE_BASE_X = 110 * K
+/** Contacto cuerpo-bola y punta del stick que desvía la bola (px sobre el radio / absolutos). */
+export const BALL_BODY_KICK_GAP = 12 * K
+export const BALL_STICK_KICK_DISTANCE = 14 * K
+/** Adelanto del saque del portero sobre la distancia de suelta. */
+export const GOALIE_RELEASE_LEAD = 28 * K
+/** Separación entre los dos jugadores para considerar un bully disputado. */
+export const BULLY_CONTEST_GAP = 74 * K
 export const GOAL_POST_REBOUND = 0.82
 export const GOAL_SIDE_REBOUND = 0.78
 export const PLAYER_MAX_SPEED = 320
@@ -19,11 +64,11 @@ export const PLAYER_ACCEL = 860
 export const PLAYER_SPRINT_ACCEL_MULTIPLIER = 1.42
 export const PLAYER_FRICTION = 0.925
 export const BALL_FRICTION = 0.989
-export const BALL_CONTROL_DISTANCE = 30
-export const BALL_PICKUP_DISTANCE = 38
-export const BALL_CAPTURE_SHIELD_DISTANCE = 46
-export const BALL_MAGNET_DISTANCE = 48
-export const BALL_PROTECT_OFFSET_SIDE = 8
+export const BALL_CONTROL_DISTANCE = 30 * K
+export const BALL_PICKUP_DISTANCE = 38 * K
+export const BALL_CAPTURE_SHIELD_DISTANCE = 46 * K
+export const BALL_MAGNET_DISTANCE = 48 * K
+export const BALL_PROTECT_OFFSET_SIDE = 8 * K
 export const BALL_PROTECT_VELOCITY_BLEND = 0.04
 export const BALL_CLAIM_FRONT_DOT = -0.15
 export const BALL_CLAIM_FACING_BONUS = 8
@@ -38,22 +83,22 @@ export const PASS_POWER = 520
 export const SHOT_POWER = 700
 export const DUMP_RELEASE_POWER = 160
 export const STEAL_RELEASE_POWER = 190
-export const GOALIE_SAVE_RADIUS = 7
+export const GOALIE_SAVE_RADIUS = 7 * K
 /** Recorrido lateral máximo del portero desde el centro de la boca (poste + margen). */
-export const GOALIE_AI_MAX_Y = GOAL_HALF_H + 6
+export const GOALIE_AI_MAX_Y = GOAL_HALF_H + 6 * K
 /** Fracción del ángulo bola-portería que sigue el portero IA (menos = más batible). */
 export const GOALIE_AI_TRACK = 0.25
-export const GOALIE_CLAIM_RADIUS = 7
+export const GOALIE_CLAIM_RADIUS = 7 * K
 export const BALL_MAGNET_MAX_SPEED = 220
 export const GOALIE_DISTRIBUTION_DELAY_MS = 550
 export const FOUL_CHANCE_ON_STEAL = 0.28
-export const MANUAL_STEAL_RANGE = 52
+export const MANUAL_STEAL_RANGE = 52 * K
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
 export const MANUAL_STEAL_FOUL_CHANCE = 0.12
 export const AI_STEAL_ATTEMPT_CHANCE = 0.08
 export const AI_STEAL_ENGAGE_FRONT_DOT = 0.08
 /** Distancia a la que el defensor más cercano se planta delante del portador rival. */
-export const AI_PRESS_DISTANCE = 26
+export const AI_PRESS_DISTANCE = 26 * K
 export const STEAL_FRONT_SUCCESS_CHANCE = 0.03
 export const STEAL_FRONT_LOOSE_CHANCE = 0.05
 export const STEAL_FRONT_FOUL_CHANCE = 0.07
@@ -74,18 +119,18 @@ export const SHOT_ASSIST_BLEND = 1
 /** Idem para el jugador humano: conserva el 25 % de su propia dirección. */
 export const SHOT_ASSIST_BLEND_HUMAN = 0.75
 /** Desvío vertical máximo (px) del punto de tiro asistido respecto al centro de la boca. */
-export const SHOT_AIM_MAX_OFFSET = 14
+export const SHOT_AIM_MAX_OFFSET = 14 * K
 export const POSSESSION_RELEASE_COOLDOWN_MS = 260
 export const GOALIE_RELEASE_COOLDOWN_MS = 900
 export const GOALIE_DISTRIBUTION_POWER = 640
-export const GOALIE_RELEASE_DISTANCE = 66
-export const DIRECT_FREE_HIT_SPOT_OFFSET = 211
+export const GOALIE_RELEASE_DISTANCE = 66 * K
+export const DIRECT_FREE_HIT_SPOT_OFFSET = 211 * K
 /** Punto de penalti: 5,40 m de la línea de gol (x: 28,5 px/m). */
-export const PENALTY_SPOT_OFFSET = 154
+export const PENALTY_SPOT_OFFSET = 154 * K
 export const BALL_FREEZE_AFTER_GOALIE_RELEASE_MS = 220
 export const BULLY_SETUP_MS = 1400
 export const FOUL_SETUP_MS = 1100
-export const BULLY_CLUSTER_RADIUS = 52
+export const BULLY_CLUSTER_RADIUS = 52 * K
 export const BULLY_MIN_PLAYERS = 2
 export const STUCK_BALL_TIMEOUT_MS = 3000
 
@@ -100,11 +145,11 @@ export const RINK = {
  * Margen extra en mundo para evitar que los patines (que viven en screen-space)
  * sobresalgan visualmente por debajo del borde inferior de la pista.
  */
-export const FIELD_PLAYER_BOTTOM_BOARD_MARGIN = 30
+export const FIELD_PLAYER_BOTTOM_BOARD_MARGIN = 30 * K
 
 export const PERIOD_COUNT = 4
 export const PERIOD_RESTART_DELAY_MS = 1400
-export const BULLY_PLAYER_OFFSET = 26
+export const BULLY_PLAYER_OFFSET = 26 * K
 export const MAX_BALL_SPEED = 760
 export const DIRECT_FREE_HIT_FOUL_THRESHOLD = 10
 /** Factor de velocidad máxima cuando la stamina está por debajo del umbral bajo */
@@ -115,11 +160,11 @@ export const STICK_SWING_MS = 160
  * Diámetro visual = apertura interior de la portería (1,70 m).
  * Nota: la zona de falta del portero (MatchScene) usa este radio centrado en la línea de gol.
  */
-export const GOALIE_ZONE_RADIUS = 26
+export const GOALIE_ZONE_RADIUS = 26 * K
 /** Profundidad del área de portería desde la línea de gol (5,40 m × 28,5 px/m) */
-export const PENALTY_AREA_DEPTH = 154
+export const PENALTY_AREA_DEPTH = 154 * K
 /** Altura del área de portería (9 m × 30 px/m) */
-export const PENALTY_AREA_HEIGHT = 270
+export const PENALTY_AREA_HEIGHT = 270 * K
 /** Duración de la tarjeta azul en ms (2 minutos reglamentarios) */
 export const BLUE_CARD_DURATION_MS = 120_000
 /** Posición Y del banquillo de expulsiones (encima de la pista) */
@@ -160,7 +205,7 @@ export const ARCADE_SHOT_FX_MS = 1500
 
 /** Carga con el cuerpo (Shift + robo sin bola). */
 export const ARCADE_CHECK_COST = 18
-export const ARCADE_CHECK_RANGE = 64
+export const ARCADE_CHECK_RANGE = 64 * K
 export const ARCADE_CHECK_COOLDOWN_MS = 750
 export const ARCADE_CHECK_STUN_MS = 1150
 export const ARCADE_CHECK_KNOCKBACK = 420
@@ -183,7 +228,7 @@ export const ARCADE_POWERUP_INTERVAL_MIN_MS = 10000
 export const ARCADE_POWERUP_INTERVAL_MAX_MS = 15000
 export const ARCADE_POWERUP_LIFETIME_MS = 12000
 export const ARCADE_POWERUP_MAX_ACTIVE = 2
-export const ARCADE_POWERUP_PICKUP_RADIUS = 30
+export const ARCADE_POWERUP_PICKUP_RADIUS = 30 * K
 /** Distancia a la que la IA se desvía para recoger un powerup. */
 export const ARCADE_POWERUP_AI_SEEK_RADIUS = 170
 export const ARCADE_POWERUP_TURBO_MS = 8000

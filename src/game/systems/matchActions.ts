@@ -1,6 +1,10 @@
 import * as Phaser from 'phaser'
 import {
+  BALL_BODY_KICK_GAP,
   BALL_CAPTURE_SHIELD_DISTANCE,
+  BALL_STICK_KICK_DISTANCE,
+  GOALIE_RELEASE_LEAD,
+  K,
   BALL_FREEZE_AFTER_GOALIE_RELEASE_MS,
   GOALIE_DISTRIBUTION_POWER,
   GOALIE_RADIUS,
@@ -218,15 +222,15 @@ export function handleLooseBallContactsAction(options: {
     const bodyDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, options.ball.x, options.ball.y)
     const stickTip = getStickTip(player)
     const stickDistance = Phaser.Math.Distance.Between(stickTip.x, stickTip.y, options.ball.x, options.ball.y)
-    const captureShield = player.role === 'goalie' ? BALL_CAPTURE_SHIELD_DISTANCE - 8 : BALL_CAPTURE_SHIELD_DISTANCE
+    const captureShield = player.role === 'goalie' ? BALL_CAPTURE_SHIELD_DISTANCE - 8 * K : BALL_CAPTURE_SHIELD_DISTANCE
 
-    if (bodyDistance < captureShield || stickDistance < captureShield - 10) continue
-    if (bodyDistance < radius + 12) {
+    if (bodyDistance < captureShield || stickDistance < captureShield - 10 * K) continue
+    if (bodyDistance < radius + BALL_BODY_KICK_GAP) {
       const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, options.ball.x, options.ball.y)
       nextVelocity = kickBall(nextVelocity, angle, player.role === 'goalie' ? 70 : 90)
       nextLastTouch = player.team
     }
-    if (stickDistance < 14) {
+    if (stickDistance < BALL_STICK_KICK_DISTANCE) {
       const angle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, options.ball.x, options.ball.y)
       nextVelocity = kickBall(nextVelocity, angle, player.role === 'goalie' ? 55 : 70)
       nextLastTouch = player.team
@@ -258,7 +262,7 @@ export function tryPassAction(options: {
   if (isGoalie) {
     const target = getGoalieDistributionTarget(options.players, options.player)
     if (target) {
-      const lead = 28
+      const lead = GOALIE_RELEASE_LEAD
       options.ball.x = options.player.pos.x + direction.x * GOALIE_RELEASE_DISTANCE + (target.pos.x - options.player.pos.x) * 0.18 + direction.x * lead
       options.ball.y = options.player.pos.y + direction.y * GOALIE_RELEASE_DISTANCE + (target.pos.y - options.player.pos.y) * 0.18 + direction.y * lead
     }
