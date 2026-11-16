@@ -1,30 +1,116 @@
 /**
- * Capa de locomoción (mínima de WP-30; la completa WP-31): postura de patinador
- * y zancada lateral alterna. Escribe pelvis, tronco, pies y polos de rodilla.
- * También lleva el estado de la zancada en los datos del contenedor
- * ('ab' amplitud, 'sp' fase en rad, 'pt' último instante), que el lab fija a mano.
+ * Capa de locomoción (WP-31, SPEC §6): patinaje quad por pasos que se mezclan
+ * por pesos (zancada/sprint, cruces, hacia atrás, espera, frenada y caída).
+ *
+ * `advanceStride` lee la velocidad del jugador una vez por frame y deriva lo que
+ * la física no da: aceleración (cadencia y deslizamiento), giro de la
+ * trayectoria (cruces) y frenada. Ese estado vive en un WeakMap por jugador; la
+ * fase y la amplitud siguen en los datos del contenedor ('sp', 'ab', 'pt'), que
+ * el lab fija a mano. Con dt = 0 (lab) los pesos van directos al objetivo: pose determinista.
  */
 import * as Phaser from 'phaser'
-import { RIG_STANCE } from '../artSpec'
+import { ARCADE_CHECK_STUN_MS, PLAYER_ACCEL } from '../../constants'
+import { RIG_LOCO } from '../artSpec'
 import type { Player } from '../../types'
-import type { PoseContext, PuppetPose } from './pose'
-import type { RigDims } from './skeleton'
+import { backGait, brakeGait, crossGait, fallGait, idleGait, lerp, ramp, strideGait, type GaitIn } from './locomotionGaits'
+import { createPose, type PoseContext, type PuppetPose } from './pose'
+import { rigDims, type RigDims } from './skeleton'
 
 const TAU = Math.PI * 2
-/** Suavizado por frame de la amplitud de zancada. */
-const BLEND_RATE = 0.1
+const L = RIG_LOCO
 /** Tope de dt (ms) para que un parón no dispare la fase. */
 const MAX_DT = 50
+/** Peso por debajo del cual un paso no se calcula. */
+const EPS = 0.01
+const DIMS = rigDims('skater')
 
-/** Avanza fase y amplitud de la zancada del jugador; devuelve dt (ms) en `out`. */
+interface LocoState {
+  speed: number
+  heading: number
+  /** Variación de rapidez filtrada, en fracciones de PLAYER_ACCEL/s (< 0 = frena). */
+  acc: number
+  /** Giro de la trayectoria filtrado (rad/s, > 0 hacia la derecha del jugador). */
+  turn: number
+  sprint: number
+  back: number
+  cross: number
+  /** −1..1: sentido suavizado del cruce. */
+  crossDir: number
+  brake: number
+  brakeT: boolean
+}
+
+const states = new WeakMap<Player, LocoState>()
+
+function stateOf(p: Player): LocoState {
+  let st = states.get(p)
+  if (!st) {
+    // Estilo de frenada fijo por jugador (cuña o T) para que no parpadee
+    let h = 0
+    for (let i = 0; i < p.id.length; i++) h = (h * 31 + p.id.charCodeAt(i)) | 0
+    st = { speed: 0, heading: 0, acc: L.initAccel, turn: 0, sprint: 0, back: 0, cross: 0, crossDir: 0, brake: 0, brakeT: (h & 1) === 1 }
+    states.set(p, st)
+  }
+  return st
+}
+
+/** Lab: fija las entradas derivadas (aceleración normalizada, giro en rad/s, estilo de frenada). */
+export function setLocoState(p: Player, accel: number, turn: number, brakeT?: boolean) {
+  const st = stateOf(p)
+  st.acc = accel
+  st.turn = turn
+  if (brakeT !== undefined) st.brakeT = brakeT
+}
+
+const follow = (v: number, target: number, k: number) => v + (target - v) * k
+const driveOf = (st: LocoState) => ramp(L.acc[0], L.acc[1], st.acc)
+
+/**
+ * Avanza fase y amplitud de la zancada, deriva aceleración y giro y suaviza los
+ * pesos de los pasos. La cadencia sube con la aceleración y con el sprint.
+ */
 export function advanceStride(player: Player, timeNow: number, speedRatio: number, sprinting: boolean, out: { phase: number; blend: number; dt: number }) {
   const c = player.container
-  const blend = Phaser.Math.Linear((c.getData('ab') as number | undefined) ?? 0, speedRatio, BLEND_RATE)
+  const st = stateOf(player)
   const prevT = (c.getData('pt') as number | undefined) ?? timeNow
   const dt = Math.max(0, Math.min(timeNow - prevT, MAX_DT))
-  const hz = sprinting ? RIG_STANCE.sprintHz : RIG_STANCE.strideHz
-  const rate = TAU * Phaser.Math.Linear(hz[0], hz[1], blend)
-  const phase = (((c.getData('sp') as number | undefined) ?? 0) + rate * dt / 1000) % (TAU * 10)
+  const kOf = (tau: number) => (dt > 0 ? 1 - Math.exp(-dt / tau) : 1)
+  const blend = follow((c.getData('ab') as number | undefined) ?? 0, speedRatio, kOf(L.tau.blend))
+
+  const vx = player.velocity.x
+  const vy = player.velocity.y
+  const speed = Math.hypot(vx, vy)
+  const heading = Math.atan2(vy, vx)
+  if (dt > 0) {
+    const sec = dt / 1000
+    st.acc = follow(st.acc, (speed - st.speed) / sec / PLAYER_ACCEL, kOf(L.tau.acc))
+    const turning = speed > L.turnMinSpeed && st.speed > L.turnMinSpeed
+    st.turn = follow(st.turn, turning ? Phaser.Math.Angle.Wrap(heading - st.heading) / sec : 0, kOf(L.tau.turn))
+  }
+  st.speed = speed
+  if (speed > 1e-3) st.heading = heading
+
+  // Objetivos de los pasos según la velocidad en el marco del cuerpo
+  const f = player.facing
+  const fwd = speed > 1e-3 ? (vx * f.x + vy * f.y) / speed : 1
+  const right = speed > 1e-3 ? (-vx * f.y + vy * f.x) / speed : 0
+  const back = ramp(L.backFwd[0], L.backFwd[1], fwd) * ramp(0, L.idleBlend, blend)
+  const byTurn = ramp(L.turn[0], L.turn[1], Math.abs(st.turn)) * ramp(L.turnSpeed[0], L.turnSpeed[1], blend)
+  const byLateral = ramp(L.lateral[0], L.lateral[1], Math.abs(right)) * ramp(0, L.idleBlend, blend)
+  const cross = Math.max(byTurn, byLateral) * (1 - back)
+  const dir = byTurn >= byLateral ? Math.sign(st.turn) : Math.sign(right)
+  const kw = kOf(L.tau.weight)
+  st.back = follow(st.back, back, kw)
+  st.cross = follow(st.cross, cross, kw)
+  st.crossDir = follow(st.crossDir, cross > EPS ? dir : st.crossDir, kw)
+  st.brake = follow(st.brake, ramp(L.brake[0], L.brake[1], -st.acc) * (1 - back) * (speed > L.turnMinSpeed ? 1 : 0), kw)
+  st.sprint = follow(st.sprint, sprinting ? 1 : 0, kw)
+
+  const drive = driveOf(st)
+  const H = L.hz
+  const hzMove = lerp(lerp(H.cruise, H.drive, drive), lerp(H.sprintCruise, H.sprint, drive), st.sprint)
+  const hz = lerp(H.idle, hzMove, ramp(0, L.idleBlend, blend))
+  const phase = (((c.getData('sp') as number | undefined) ?? 0) + TAU * hz * dt / 1000) % (TAU * 10)
   c.setData('ab', blend)
   c.setData('pt', timeNow)
   c.setData('sp', phase)
@@ -33,31 +119,78 @@ export function advanceStride(player: Player, timeNow: number, speedRatio: numbe
   out.dt = dt
 }
 
-/** Postura de patinador agachado con zancada: cada pie empuja hacia fuera y atrás y vuelve levantado. */
-export function locomotion(pose: PuppetPose, ctx: PoseContext) {
-  const S = RIG_STANCE
-  const b = ctx.blend
-  const amp = b * (ctx.sprinting ? 1.3 : 1)
-  const ph = ctx.phase
-  pose.pelvis.x = Math.sin(ph) * 0.025 * amp
-  pose.pelvis.y = S.pelvisY - S.pelvisDip * b - Math.abs(Math.sin(ph)) * 0.012 * amp
-  pose.pelvis.z = 0
-  pose.trunk.pitch = S.pitch + (S.pitchRun - S.pitch) * b + (ctx.sprinting ? (S.pitchSprint - S.pitchRun) * b : 0)
-  pose.trunk.roll = -Math.sin(ph) * 0.06 * amp
-  pose.trunk.twist = Math.sin(ph) * 0.08 * amp
+const tmp = createPose()
+const gait: GaitIn = { amp: 0, drive: 0, sprint: 0, phase: 0, dir: 1, brakeT: false, dragSide: 1, fall: -1, fallDir: 1 }
+
+/** Mezcla en `dst` los campos de locomoción de `src` con peso `w`. */
+function mixInto(dst: PuppetPose, src: PuppetPose, w: number) {
+  const m = (a: number, b: number) => a + (b - a) * w
+  dst.pelvis.x = m(dst.pelvis.x, src.pelvis.x)
+  dst.pelvis.y = m(dst.pelvis.y, src.pelvis.y)
+  dst.pelvis.z = m(dst.pelvis.z, src.pelvis.z)
+  dst.trunk.pitch = m(dst.trunk.pitch, src.trunk.pitch)
+  dst.trunk.roll = m(dst.trunk.roll, src.trunk.roll)
+  dst.trunk.twist = m(dst.trunk.twist, src.trunk.twist)
   for (let i = 0; i < 2; i++) {
-    const s = i === 0 ? -1 : 1
-    // Fase del pie: el derecho empuja con sin(ph) > 0, el izquierdo en contrafase
-    const fp = ph + (i === 0 ? Math.PI : 0)
-    const push = Math.max(0, Math.sin(fp))
-    const lift = Math.max(0, -Math.sin(fp))
-    const f = pose.feet[i]
-    f.x = s * (S.feetHalf + amp * (0.02 + S.strideOut * push))
-    f.z = amp * (S.strideFore * Math.cos(fp) - 0.03)
-    f.y = amp * S.strideLift * lift * lift
-    f.yaw = s * (0.15 + amp * 0.4 * push)
-    f.pitch = amp * 0.12 * lift
+    const a = dst.feet[i]
+    const b = src.feet[i]
+    a.x = m(a.x, b.x); a.y = m(a.y, b.y); a.z = m(a.z, b.z); a.yaw = m(a.yaw, b.yaw); a.pitch = m(a.pitch, b.pitch)
+    const ka = dst.kneePole[i]
+    const kb = src.kneePole[i]
+    ka.x = m(ka.x, kb.x); ka.y = m(ka.y, kb.y); ka.z = m(ka.z, kb.z)
+    const ha = dst.hands[i]
+    const hb = src.hands[i]
+    ha.x = m(ha.x, hb.x); ha.y = m(ha.y, hb.y); ha.z = m(ha.z, hb.z)
   }
+}
+
+/** Baja la cadera lo justo para que cada pierna llegue a su patín (la de empuje queda estirada). */
+function keepReach(p: PuppetPose) {
+  const reach = (DIMS.thigh + DIMS.shin) * L.reach
+  for (let i = 0; i < 2; i++) {
+    const f = p.feet[i]
+    const dx = f.x - (p.pelvis.x + (i === 0 ? -1 : 1) * DIMS.hipHalf)
+    const dz = f.z - p.pelvis.z
+    const maxY = f.y + DIMS.ankleY + Math.sqrt(Math.max(0, reach * reach - dx * dx - dz * dz))
+    if (p.pelvis.y > maxY) p.pelvis.y = maxY
+  }
+}
+
+/** Progreso 0..1 de la caída por carga; < 0 si no está caído. */
+function fallProgress(ctx: PoseContext) {
+  const p = ctx.player
+  if (p.stunKind !== 'check' || !p.stunUntil) return -1
+  const left = p.stunUntil - ctx.time
+  return left > 0 ? Math.min(1, Math.max(0, 1 - left / ARCADE_CHECK_STUN_MS)) : -1
+}
+
+/**
+ * Tren inferior del patinador: zancada (o sprint) como base y, encima, cruces,
+ * hacia atrás, espera, frenada y caída según sus pesos. Escribe pelvis, tronco,
+ * pies, polos de rodilla y manos libres (upperBody puede sobrescribir los brazos).
+ */
+export function locomotion(pose: PuppetPose, ctx: PoseContext) {
+  const st = stateOf(ctx.player)
+  const g = gait
+  g.amp = ctx.blend
+  g.drive = Math.max(driveOf(st), 1 - ramp(0, L.idleBlend * 2, ctx.blend))
+  g.sprint = st.sprint
+  g.phase = ctx.phase
+  g.dir = st.crossDir >= 0 ? 1 : -1
+  g.brakeT = st.brakeT
+  g.dragSide = ctx.stickSide
+  g.fall = fallProgress(ctx)
+  g.fallDir = ((ctx.player.container.getData('tumbleDir') as number | undefined) ?? 1) >= 0 ? 1 : -1
+
+  strideGait(pose, g)
+  const wCross = st.cross * Math.abs(st.crossDir)
+  if (wCross > EPS) { crossGait(tmp, g); mixInto(pose, tmp, wCross) }
+  if (st.back > EPS) { backGait(tmp, g); mixInto(pose, tmp, st.back) }
+  const wIdle = 1 - ramp(0, L.idleBlend, ctx.blend)
+  if (wIdle > EPS) { idleGait(tmp, g); mixInto(pose, tmp, wIdle) }
+  if (st.brake > EPS) { brakeGait(tmp, g); mixInto(pose, tmp, st.brake) }
+  if (g.fall >= 0) fallGait(pose, g)
+  keepReach(pose)
 }
 
 /** Figura de pie y quieta (sancionados, banquillos, árbitros a pie). */

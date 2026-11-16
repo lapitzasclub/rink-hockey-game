@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser'
-import { PLAYER_MAX_SPEED } from '../../game/constants'
+import { ARCADE_CHECK_STUN_MS, PLAYER_MAX_SPEED, PLAYER_SPRINT_MAX_SPEED } from '../../game/constants'
 import { createBall } from '../../game/entities/createBall'
 import { createPlayer } from '../../game/entities/createPlayer'
+import { setLocoState } from '../../game/render/puppet/locomotion'
 import { updateVisuals } from '../../game/systems/visuals'
 import type { Ball, Player, Role, TeamColor } from '../../game/types'
 
@@ -14,6 +15,23 @@ export interface LabFigure {
   aimAhead: boolean
   /** null = parado; si no, fase del ciclo de patinaje en radianes. */
   phase: number | null
+  loco: LabLoco | null
+}
+
+/** Movimiento forzado para las hojas de locomoción (WP-31). */
+export interface LabLoco {
+  /** Fracción de la velocidad máxima (por defecto 1 si hay fase, 0 si no). */
+  speed?: number
+  /** Rumbo de la velocidad respecto a donde mira (rad; π = hacia atrás, > 0 hacia su derecha). */
+  moveAngle?: number
+  /** Aceleración normalizada: < 0 frena, 0 crucero, 1 arrancada. */
+  accel?: number
+  /** Giro de la trayectoria (rad/s, > 0 hacia la derecha del jugador). */
+  turn?: number
+  sprint?: boolean
+  brake?: 'wedge' | 'T'
+  /** Progreso 0..1 de la caída por carga. */
+  fall?: number
 }
 
 export interface FigureSpec {
@@ -27,6 +45,7 @@ export interface FigureSpec {
   carrying?: boolean
   /** Sin bola real: el stick apunta hacia delante. */
   aimAhead?: boolean
+  loco?: LabLoco
 }
 
 const DUMMY_CONTROLLED = { id: '__none__' } as Player
@@ -42,17 +61,25 @@ export function createFigure(scene: Phaser.Scene, id: string, spec: FigureSpec, 
   const ball: Ball = carrying
     ? createBall(scene)
     : aimAhead ? { x: spec.x, y: spec.y, visual: sharedBall.visual } : sharedBall
-  return { player, ball, carrying, aimAhead, phase: spec.phase ?? null }
+  return { player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null }
 }
 
 /** Aplica la pose de la figura para el instante `t` (determinista: dt de animación = 0). */
 export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
   const { player } = fig
-  const moving = fig.phase !== null
-  const speed = moving ? PLAYER_MAX_SPEED : 0
-  player.velocity = { x: player.facing.x * speed, y: player.facing.y * speed }
+  const loco = fig.loco
+  const ratio = loco?.speed ?? (fig.phase !== null ? 1 : 0)
+  const speed = ratio * (loco?.sprint ? PLAYER_SPRINT_MAX_SPEED : PLAYER_MAX_SPEED)
+  const heading = Math.atan2(player.facing.y, player.facing.x) + (loco?.moveAngle ?? 0)
+  player.velocity = { x: Math.cos(heading) * speed, y: Math.sin(heading) * speed }
+  player.sprinting = !!loco?.sprint
+  if (loco) {
+    setLocoState(player, loco.accel ?? 0.6, loco.turn ?? 0, loco.brake ? loco.brake === 'T' : undefined)
+    player.stunKind = loco.fall !== undefined ? 'check' : undefined
+    player.stunUntil = loco.fall !== undefined ? t + (1 - loco.fall) * ARCADE_CHECK_STUN_MS : 0
+  }
   const c = player.container
-  c.setData('ab', moving ? 1 : 0)
+  c.setData('ab', ratio)
   c.setData('sp', (fig.phase ?? 0) + phaseOffset)
   c.setData('pt', t)
   if (fig.aimAhead) {

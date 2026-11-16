@@ -45,7 +45,7 @@ src/
       viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
-      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30)
+      puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30); locomoción quad (WP-31: locomotion.ts, locomotionGaits.ts)
       arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
     systems/
       ai.ts                  IA de portero y jugadores de campo
@@ -243,6 +243,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 
+- gfx WP-31: locomoción quad (puppet/locomotion.ts + locomotionGaits.ts): zancada lateral-atrás con deslizamiento, cadencia por aceleración, sprint, cruces, marcha atrás en C, frenada en cuña/T, espera y caída; strips stride/sprint/crossover/backward/brake/idle/fall en el lab.
 - gfx WP-34: etiquetas de rol apagadas por defecto (ajuste en el panel, `?labels=1|0`, src/game/ui/prefs.ts); anillo en perspectiva con borde claro y banda del equipo y barra de stamina bajo los pies, solo para el jugador controlado.
 - WP-60: videomarcador común (`ui/scoreboard.ts`) en Russo One para ambos modos: goles, periodo y reloj; en reglamento, además, faltas por equipo y sancionados con cuenta atrás. Esquina superior izquierda, sin tapar banquillos. Fuera la tipografía monoespaciada y la línea de stamina.
 - WP-20: tres prototipos de estilo en `?lab=style` (A cartoon, B pixel-art y C semirrealista) con esqueleto 3D, IK de brazos y pintores por estilo (`src/scenes/lab/style/`).

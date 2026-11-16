@@ -199,11 +199,58 @@ function playersGrid(ctx: LabBuildCtx): LabBuild {
 
 /** Hojas de contactos: `?strip=<nombre>`. WP-31 y WP-32 añaden aquí sus entradas. */
 const STRIPS: Record<string, (ctx: LabBuildCtx) => FigureSpec[]> = {
-  /** 8 fotogramas consecutivos del ciclo de patinaje de un jugador mirando a la derecha. */
-  stride: () => Array.from({ length: 8 }, (_, k) => ({
-    team: 'blue' as TeamColor, role: 'defender' as Role, angle: 0, phase: (k / 8) * TAU, aimAhead: true,
-    x: MID_X + (k - 3.5) * 120, y: MID_Y,
-  })),
+  /** Ciclo de 8 fotogramas: empujando (3/4 frente y de espaldas) y en crucero, con deslizamientos. */
+  stride: () => [
+    ...locoRow(-1, k => ({ angle: Math.PI / 4, phase: (k / 8) * TAU, loco: { accel: 1 } })),
+    ...locoRow(0, k => ({ angle: -Math.PI / 2, phase: (k / 8) * TAU, loco: { accel: 1 } })),
+    ...locoRow(1, k => ({ angle: Math.PI / 4, phase: (k / 8) * TAU, loco: { accel: 0 } })),
+  ],
+  /** Sprint arrancando: 3/4 frente, de lado y de espaldas. */
+  sprint: () => [
+    ...locoRow(-1, k => ({ angle: Math.PI / 4, phase: (k / 8) * TAU, loco: { accel: 1, sprint: true } })),
+    ...locoRow(0, k => ({ angle: 0, phase: (k / 8) * TAU, loco: { accel: 1, sprint: true } })),
+    ...locoRow(1, k => ({ angle: -Math.PI / 2, phase: (k / 8) * TAU, loco: { accel: 1, sprint: true } })),
+  ],
+  /** Cruces en curva cerrada: girando a la izquierda (3/4 frente) y a la derecha (de espaldas y de lado). */
+  crossover: () => [
+    ...locoRow(-1, k => ({ angle: Math.PI / 4, phase: (k / 8) * TAU, loco: { turn: -3 } })),
+    ...locoRow(0, k => ({ angle: -Math.PI / 2, phase: (k / 8) * TAU, loco: { turn: 3 } })),
+    ...locoRow(1, k => ({ angle: 0, phase: (k / 8) * TAU, loco: { turn: 3 } })),
+  ],
+  /** Hacia atrás en "C": mirando a cámara, en 3/4 y de lado. */
+  backward: () => [
+    ...locoRow(-1, k => ({ angle: Math.PI / 2, phase: (k / 8) * TAU, loco: { moveAngle: Math.PI } })),
+    ...locoRow(0, k => ({ angle: Math.PI / 4, phase: (k / 8) * TAU, loco: { moveAngle: Math.PI } })),
+    ...locoRow(1, k => ({ angle: 0, phase: (k / 8) * TAU, loco: { moveAngle: Math.PI } })),
+  ],
+  /** Frenada fuerte en cuña y en T, en las 8 direcciones. */
+  brake: () => [
+    ...locoRow(-1, k => ({ angle: DIRS[k], phase: 0, loco: { accel: -1, brake: 'wedge' } })),
+    ...locoRow(0.5, k => ({ angle: DIRS[k], phase: 0, loco: { accel: -1, brake: 'T' } })),
+  ],
+  /** Espera: respiración y cambio de peso (dos ciclos de respiración) y las 8 direcciones. */
+  idle: () => [
+    ...locoRow(-1, k => ({ angle: Math.PI / 4, phase: (k / 8) * 2 * TAU, loco: { speed: 0 } })),
+    ...locoRow(0.5, k => ({ angle: DIRS[k], phase: 0, loco: { speed: 0 } })),
+  ],
+  /** Caída por carga: golpe, suelo y levantarse (~600 ms finales), en 3/4 y de lado. */
+  fall: () => [
+    ...locoRow(-1, k => ({ angle: Math.PI / 4, loco: { speed: 0, fall: FALL_STEPS[k] } })),
+    ...locoRow(0.5, k => ({ angle: 0, loco: { speed: 0, fall: FALL_STEPS[k] } })),
+  ],
+}
+
+/** Progresos de la hoja de caída. */
+const FALL_STEPS = [0.05, 0.1, 0.2, 0.35, 0.55, 0.68, 0.8, 0.92]
+/** Separación entre filas de las hojas de locomoción (px de mundo). */
+const STRIP_ROW_DY = 95
+
+/** Fila de 8 figuras de una hoja de locomoción; `row` en filas desde el centro. */
+function locoRow(row: number, make: (k: number) => Partial<FigureSpec>): FigureSpec[] {
+  return Array.from({ length: 8 }, (_, k) => ({
+    team: 'blue' as TeamColor, role: 'defender' as Role, aimAhead: true,
+    x: MID_X + (k - 3.5) * 120, y: MID_Y + row * STRIP_ROW_DY, ...make(k),
+  }))
 }
 
 function stripScene(ctx: LabBuildCtx, name: string): LabBuild {

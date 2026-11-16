@@ -196,6 +196,50 @@ export const RIG_STANCE = {
   goaliePelvisY: 0.41, goaliePitch: 0.32,
 } as const
 
+// Locomoción (WP-31)
+
+/**
+ * Patinaje quad (SPEC §6), en unidades de figura, rad, ms y ciclos/s (un ciclo =
+ * una zancada de cada pie). `knee`: flexión de rodilla con el pie bajo la cadera
+ * (las piernas del estilo A son cortas: por debajo de ~0,8 rad el empuje no llega).
+ * Zancada por pie: `push` (sale lateral-atrás a `out`/`back`, ≈ 45°, y aguanta la
+ * extensión `extHold`), `rec` (recogida rozando el suelo) y deslizamiento el resto;
+ * en crucero el empuje ocupa `cruiseDuty` y quedan fases con los dos patines paralelos.
+ * `acc`, `brake`, `turn`, `lateral`, `backFwd`: umbrales [inicio, pleno] de cada paso.
+ */
+export const RIG_LOCO = {
+  knee: { idle: 0.85, glide: 1.05, drive: 1.15, sprint: 1.25, back: 1.2, brake: 1.3 },
+  pitch: { idle: 0.36, glide: 0.5, drive: 0.6, sprint: 0.76, back: 0.3, brake: 0.08 },
+  pelvisZ: -0.02, feetHalf: 0.085, feetIdle: 0.11, restYaw: 0.1, kneeOut: 0.15, reach: 0.985,
+  push: 0.46, rec: 0.26, extHold: 0.25, cruiseDuty: 0.5,
+  out: 0.17, back: 0.1, fore: 0.02, lift: 0.045, pushYaw: 0.75, recPitch: 0.12,
+  cruiseAmp: 0.8, sprintAmp: 1.2, shift: 0.035, roll: 0.09, twist: 0.07, bob: 0.012,
+  hand: { x: 0.16, y: 0.06, z: 0.12, swing: 0.12 },
+  hz: { idle: 0.25, cruise: 0.8, drive: 1.4, sprintCruise: 1.4, sprint: 2.2 },
+  tau: { blend: 160, acc: 140, turn: 160, weight: 150 },
+  initAccel: 0.6, idleBlend: 0.25, turnMinSpeed: 40,
+  acc: [0.05, 0.6], brake: [0.35, 0.85], turn: [1.2, 2.6], turnSpeed: [0.25, 0.6],
+  lateral: [0.6, 0.88], backFwd: [-0.2, -0.6],
+  cross: { over: 0.3, under: 0.09, fore: 0.08, rear: 0.05, lift: 0.06, yaw: 0.35, lean: 0.4, shift: 0.08, twist: 0.15 },
+  backC: { stroke: 0.5, out: 0.16, fore: 0.14, z: -0.05, toeIn: 0.65, lift: 0.012, shift: 0.03, roll: 0.08 },
+  brakeK: { pelvisZ: -0.05, wedgeHalf: 0.15, wedgeZ: 0.05, toeIn: 0.55, kneeIn: 0.25, frontZ: 0.05, tZ: -0.14, tTwist: 0.25, tRoll: 0.08 },
+  idleK: { breath: 0.006, pitchBreath: 0.03, sway: 0.012, roll: 0.025, yaw: 0.22 },
+} as const
+
+/**
+ * Caída por carga (SPEC §6): fotogramas clave por progreso `t` del aturdimiento
+ * (ARCADE_CHECK_STUN_MS); los extremos son la postura de patinar. Se levanta en
+ * los últimos ~600 ms. `py`/`pz` cadera, `roll` hacia el lado del golpe,
+ * `fx`/`fz` pies (semiancho y adelanto), `fy` pie levantado, `kneeY` polo de rodilla hacia arriba.
+ */
+export const RIG_FALL_KEYS = [
+  { t: 0.1, py: 0.32, pz: -0.06, pitch: -0.25, roll: 0.35, fx: 0.12, fz: 0.12, fy: 0.08, kneeY: 0.3 },
+  { t: 0.2, py: 0.13, pz: -0.1, pitch: -0.75, roll: 0.25, fx: 0.12, fz: 0.26, fy: 0.06, kneeY: 1 },
+  { t: 0.48, py: 0.12, pz: -0.1, pitch: -0.55, roll: 0.1, fx: 0.13, fz: 0.24, fy: 0, kneeY: 1 },
+  { t: 0.66, py: 0.22, pz: -0.04, pitch: 0.85, roll: 0, fx: 0.1, fz: 0.06, fy: 0, kneeY: 0.4 },
+  { t: 0.84, py: 0.38, pz: -0.03, pitch: 0.7, roll: 0, fx: 0.09, fz: 0.02, fy: 0, kneeY: 0 },
+] as const
+
 /** Diámetro visual de la bola en metros (exagerado: la real mide 7 cm y no se vería). */
 export const BALL_VISUAL_DIAMETER_M = 0.48
 
