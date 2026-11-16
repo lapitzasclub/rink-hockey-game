@@ -64,15 +64,20 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-41 | Vallas perimetrales | builder · sonnet | Gate B, WP-12 | ✅ 2026-11-16 |
 | WP-42 | Suelo y marcas | builder · sonnet | Gate B, WP-12, WP-02 | ✅ 2026-11-16 |
 | WP-43 | Gradas | builder · sonnet | Gate B | ✅ 2026-11-16 |
-| WP-50 | Árbitros | builder · sonnet | Gate C, D3 |✅ 2026-11-16 |
+| WP-50 | Árbitros | builder · sonnet | Gate C, D3 | ✅ 2026-11-16 |
 | WP-51 | Mesa de árbitros y sancionados | builder · sonnet | Gate C, WP-12 | ✅ 2026-11-16 |
-| WP-52 | Banquillos, entrenadores y delegados | builder · sonnet | Gate C, WP-12 | ⬜ |
+| WP-52 | Banquillos, entrenadores y delegados | builder · sonnet | Gate C, WP-12 | ➡️ absorbido por WP-69 |
 | WP-60 | HUD unificado | builder · sonnet | Gate A | ✅ 2026-11-16 |
 | WP-61 | Luz y sombras | builder · sonnet | Gate C, WP-40…43 | ✅ 2026-11-16 |
 | WP-62 | Rendimiento | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
 | WP-63 | Móvil | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
 | WP-64 | Partido de humo (IA contra IA) | builder · sonnet | — | ✅ 2026-11-16 |
 | WP-65 | Escala de pista parametrizada (D11) | builder · sonnet | WP-64 | ✅ 2026-11-16 |
+| **Segunda pasada** | El usuario rechazó el entorno (2026-11-16): gradas, banquillos, mesa y porterías | | | |
+| WP-66 | Capturas de detalle y por evento en el partido | builder · sonnet | — | ⬜ |
+| WP-67 | Portería y portero legibles (v2) | engineer · opus | — | ⬜ |
+| WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
+| WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ⬜ |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos
@@ -100,6 +105,10 @@ Dos WPs en paralelo nunca comparten archivo propio. `MatchScene.ts` lo serializa
 | `systems/officials.ts`, `render/officials.ts` (nuevos) | WP-50 |
 | `ui/createHud.ts`, `ui/arcadeHud.ts` | WP-60 |
 | `render/lighting.ts` (nuevo) | WP-61 |
+| `scenes/LabScene.ts`, `scenes/lab/labParams.ts`, `scenes/lab/labSmoke.ts`, `tools/gfx-shot.ps1` | WP-66 |
+| `render/rink/goal.ts`, el orden de profundidad del portero | WP-67 |
+| `render/arena.ts` (gradas, público y recinto) | WP-68 |
+| `render/rink/{benches,table}.ts`, `render/benchPlayers.ts`, la zona de sancionados, `render/officials.ts` y `puppet/kit.ts` (aspecto) | WP-69 |
 | `constants.ts` (gameplay) | solo WP-44, y WP-32 si el coordinador aprueba un cambio |
 | `systems/{ball,physics,rules,ai}.ts` | solo WP-44. Excepción: una línea por acción para registrar eventos visuales (WP-32, WP-33), listada en el encargo |
 
@@ -560,6 +569,90 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 Ningún caso tuvo atascos, NaN, jugadores fuera de pista ni errores. Entre 40 y 36 m no hay diferencia significativa en ninguna métrica: 36 m solo cambia la imagen, con un 11 % más de tamaño en pantalla. A 34 m, el arcade sí cambia de equilibrio: más goles y menos paradas. Se elige 36 × 18 m (D11).
 
 **Pendiente:** varias distancias tácticas siguen en px y no escalan, a propósito: ai.ts stepOut, matchFlow ±55/±34/220/54, rules.ts 40, `AI_SHOOT_DISTANCE` y `AI_MARK_RADIUS`. Revisarlas si se juega a 34 m.
+
+### Segunda pasada (2026-11-16)
+
+El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en perspectiva y tamaños pero no se ven bien, no hay árbitro, la mesa de árbitros es fea y estática, los banquillos son feos… sigue habiendo problema con las porterías». Sobre la portería concretó: «el portero y portería se solapan, hay un cuarto poste en el suelo, casi no tiene fondo».
+
+**Causa en el proceso:** WP-43, WP-51 y WP-52 se aceptaron con capturas de pista entera, donde estos elementos ocupan pocos píxeles, y el listón era «está y a escala».
+
+**Desde ahora:** WORKFLOW §6 exige captura de detalle por elemento y el listón «¿se vería bien en un juego indie publicado?», tomando como referencia la calidad de los jugadores.
+
+### WP-66 — Capturas de detalle y por evento en el partido
+
+- **Rol:** gfx-builder · sonnet.
+- **Propios:** `LabScene.ts`, `lab/labParams.ts`, `lab/labSmoke.ts` (solo exponer el paso), `tools/gfx-shot.ps1` y WORKFLOW §8. En `MatchScene.ts` solo un candado de cámara.
+
+**Encargo:**
+
+- En `lab=match`, `zoom`, `cx` y `cy` mueven la cámara principal y la bloquean: ni seguimiento ni zoom dinámico del arcade.
+- `follow=ball|referee|goalie-blue|goalie-red` centra la cámara en ese objeto.
+- `at=goal|foul|card|save|<ms>` (con `auto=1`) avanza la simulación a paso fijo hasta el evento, deja `after=` ms (400 por defecto) y congela.
+- Nuevo set `-Set detail` en `gfx-shot.ps1` con estas capturas: gradas cercana, lejana y lateral; banquillo azul y rojo; mesa; portería izquierda y derecha; árbitro; reacción al gol (banquillos y mesa); gesto de falta.
+
+**Aceptación:**
+
+- Tres capturas con distinto `cx` dan imágenes distintas.
+- `at=goal` muestra el marcador con un gol.
+- `at=foul&follow=referee` muestra al árbitro de cerca.
+- Consola sin errores.
+
+### WP-67 — Portería y portero legibles (v2)
+
+- **Rol:** gfx-engineer · opus.
+- **Propios:** `render/rink/goal.ts`, el bloque visual de portería en `artSpec.ts`, el orden de profundidad del portero y la escena `goal` del lab. `GOAL_*` y `GOALIE_*` solo con humo de 20 corridas por modo.
+
+**Diagnóstico:**
+
+- Con la cámara lateral, el plano de la boca (YZ) se ve de canto: postes y larguero se funden en una barra naranja inclinada.
+- La red tiene muy poco fondo en pantalla.
+- El portero se coloca sobre la línea, encima del marco.
+- Hay una barra en el suelo que se lee como un cuarto poste.
+
+**Encargo:** que la portería se lea al instante como portería de rink hockey desde la cámara de partido:
+
+- dos postes y larguero separados;
+- boca mirando al centro;
+- red con fondo real (REGLAMENTO-MEDIDAS);
+- base en el suelo que no parezca un poste;
+- portero delante de la boca con la oclusión correcta;
+- la bola dentro de la jaula física siempre se ve dentro de la red.
+
+**Aceptación:**
+
+- A zoom 1 en `reglamento`, cualquiera reconoce las dos porterías y su boca.
+- A zoom 3 cumple el listón de calidad.
+- Humo sin cambios significativos si se tocó el juego.
+
+### WP-68 — Gradas y recinto (v2)
+
+- **Rol:** gfx-engineer · opus.
+- **Propios:** `render/arena.ts` (gradas, público y suelo del recinto fuera de la pista), su bloque en `artSpec.ts` y su compatibilidad con `lighting.ts`. En `MatchScene.ts`, una línea de enganche de gol.
+
+**Encargo:**
+
+- Arquitectura legible: escalones con contrahuella, filas de asientos, pasillos con escaleras y barandilla o cristal en la primera fila.
+- Público en bustos con el contorno y el sombreado del estilo A, más apagado y oscuro que la pista para que esta resalte.
+- Peñas con los colores de cada equipo, asientos vacíos creíbles, movimiento barato en reposo y salto en el gol.
+- Rellenar la franja negra vacía entre las vallas y las gradas.
+- Dentro del presupuesto de SPEC §12.
+
+**Aceptación:** capturas de detalle de las gradas cercana, lejana y lateral que cumplan el listón; la pista sigue siendo lo que más destaca; FPS sin pérdida apreciable.
+
+### WP-69 — Banquillos, mesa, sancionados y árbitro legible (v2)
+
+- **Rol:** gfx-engineer · opus.
+- **Lee:** SPEC §9.
+- **Propios:** `render/rink/{benches,table}.ts`, `render/benchPlayers.ts`, la zona de sancionados, y el aspecto de `render/officials.ts` y `puppet/kit.ts`. En `MatchScene.ts`, solo los enganches de reacción.
+
+**Encargo:** absorbe WP-52 y rehace WP-51.
+
+- **Banquillos:** banco con respaldo, puerta y cartel; suplentes sentados con el rig (piernas, patines y variedad); entrenador de pie que gesticula; delegado sentado.
+- **Mesa:** faldón con el logo de la competición; oficiales con el rig que siguen la bola con la cabeza y apuntan en las faltas; reloj y bocina en el gol.
+- **Reacciones de SPEC §9:** los suplentes se levantan en el gol y el entrenador se lleva las manos a la cabeza en un gol en contra.
+- **Árbitro:** que se lea a escala de partido (detalle amarillo en el torso, silueta clara sobre el suelo azul).
+
+**Aceptación:** capturas de detalle (banquillos, mesa, árbitro y reacción al gol con `at=goal`) que cumplan el listón.
 
 ### Gate F — Revisión final
 
