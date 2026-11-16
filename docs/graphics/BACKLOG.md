@@ -57,7 +57,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-32 | Stick a dos manos y acciones | engineer · opus | WP-30 | ✅ 2026-11-16 |
 | WP-33 | Portero: posturas y paradas | builder · sonnet | WP-31, WP-32 | ✅ 2026-11-16 |
 | WP-34 | UI sobre jugadores | builder · sonnet | WP-30 | ✅ 2026-11-16 |
-| Gate C | Personajes y animación | coordinador + usuario | WP-31…34 | ⬜ |
+| Gate C | Personajes y animación | coordinador + usuario | WP-31…34 | ✅ 2026-11-16 (coordinador por delegación; la prueba en vivo del usuario pasa al Gate F) |
 | WP-40 | Portería reglamentaria | builder · sonnet | Gate B, WP-12, D2 | ✅ 2026-11-16 |
 | WP-44 | Física de portería a escala (solo si D2 = real) | builder · sonnet | WP-40 | ✅ 2026-11-16 |
 | WP-41 | Vallas perimetrales | builder · sonnet | Gate B, WP-12 | ✅ 2026-11-16 |
