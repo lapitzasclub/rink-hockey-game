@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import { BALL_CARRY_GAP, BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BALL_WALL_MARGIN, BULLY_CLUSTER_RADIUS, BULLY_CONTEST_GAP, GOAL_NET_HOLD_X, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
-import type { Ball, BullyCandidate, Player, TeamColor, Vector } from '../types'
+import type { Ball, BullyCandidate, Player, Vector } from '../types'
+import { scorerAtGoal } from '../formation'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControllablePlayers } from './playerHelpers'
 
@@ -379,6 +380,7 @@ export function checkGoal(
   ball: Ball,
   ballVelocity: Vector,
   enteredFromFront: { left: boolean; right: boolean },
+  players: Player[],
 ) {
   const top = RINK.y + RINK.height / 2 - GOAL_HALF_H + BALL_RADIUS
   const bottom = RINK.y + RINK.height / 2 + GOAL_HALF_H - BALL_RADIUS
@@ -390,7 +392,7 @@ export function checkGoal(
 
   if (enteredFromFront.left && ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS) {
     return {
-      scorer: 'red' as TeamColor,
+      scorer: scorerAtGoal(players, 'left'),
       holdX: leftGoalLineX - GOAL_NET_HOLD_X,
       holdY: Phaser.Math.Clamp(ball.y, top + 6, bottom - 6),
     }
@@ -398,7 +400,7 @@ export function checkGoal(
 
   if (enteredFromFront.right && ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS) {
     return {
-      scorer: 'blue' as TeamColor,
+      scorer: scorerAtGoal(players, 'right'),
       holdX: rightGoalLineX + GOAL_NET_HOLD_X,
       holdY: Phaser.Math.Clamp(ball.y, top + 6, bottom - 6),
     }

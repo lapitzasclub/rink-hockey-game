@@ -35,7 +35,7 @@ src/
   game/
     constants.ts             Todas las constantes de física y gameplay (tuning aquí)
     types.ts                 Tipos: Player, Vector, ActiveBully, ActiveFoulRestart, GameMode, PowerupKind
-    formation.ts             Posiciones iniciales por formación
+    formation.ts             Posiciones de formación por lado y helpers de lado (teamSide, scorerAtGoal, attackDir, switchSides)
     utils.ts                 Helpers generales
     entities/
       createBall.ts
@@ -141,7 +141,7 @@ Formato preferido: `/** ... */` en funciones o módulos clave. Inline solo cuand
 
 ### Mecánicas implementadas
 
-- Partido a dos partes de 25:00 de juego (reglamento). El reloj del marcador corre acelerado: cada parte dura los minutos reales elegidos en Ajustes → General (2, 3, 5, 8, 12 o 25 = tiempo real; por defecto 3). La tarjeta azul son 2 min de juego, escalados con el reloj (`matchTime.scale` y `gameToRealMs` en matchClock.ts). Las faltas de equipo se reinician en el descanso
+- Partido a dos partes de 25:00 de juego (reglamento). El reloj del marcador corre acelerado: cada parte dura los minutos reales elegidos en Ajustes → General (2, 3, 5, 8, 12 o 25 = tiempo real; por defecto 3). La tarjeta azul son 2 min de juego, escalados con el reloj (`matchTime.scale` y `gameToRealMs` en matchClock.ts). Las faltas de equipo se reinician en el descanso. En el descanso los equipos cambian de campo y saca el rojo
 - Kickoff, bully, foul restarts: free-hit, direct-free-hit, penalty
 - Stamina por jugador, sprint con drenaje y recuperación
 - Robo con probabilidades distintas por ángulo (frontal / lateral / espalda) y cuatro resultados: éxito, bola suelta, fallo silencioso o falta
@@ -263,13 +263,18 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-16 (sesión 25, cont.) — cambio de campo en el descanso
+
+- El lado que defiende cada equipo vive solo en `player.side`, y `switchSides` lo invierte en el descanso (`MatchScene.startSecondHalf`). Los equipos se colocan ya en su nueva mitad durante el cartel «Descanso · cambio de campo», el marcador pasa a 25:00 y 2ª parte, y saca el rojo.
+- Lo que suponía «azul = izquierda» ahora sale del lado: formaciones (`getFormation(player.side)`), bola del saque, gol (`scorerAtGoal`: marca quien ataca esa portería), bola retenida en la red tras gol, red que se ilumina, foco de cámara del gol arcade y colocación del bully (`attackDir`). Los helpers están en `formation.ts`. La IA, los porteros, las faltas y los penaltis ya usaban `side`. Los banquillos y la mesa no cambian.
+- Validación: `npm run build` pasa. En navegador, tras el descanso los porteros se intercambian y `checkGoal` en la 2.ª parte da el gol de la portería izquierda al azul. Un partido nuevo vuelve a empezar con el azul a la izquierda. Humo reglamento con 2 corridas de 420 s (cruzan el descanso): 0 atascos, 0 fuera de pista y 0 errores.
+
 ### 2026-11-16 (sesión 25, cont.) — partido a dos partes de 25 minutos
 
 - `PERIOD_COUNT` 4 → 2 y `HALF_GAME_SECONDS` = 25 × 60; fuera `MATCH_DURATION` y `ARCADE_PERIOD_DURATION`. Los dos modos comparten duración.
 - Reloj acelerado al estilo de los juegos de deporte: el marcador cuenta 25:00 por parte y el tick de 1 s de juego se dispara cada `1000 / matchTime.scale` ms reales. La escala sale de `getHalfRealMinutes()` (ui/prefs.ts, `rh-half-minutes`, `?half=N` para pruebas). Por defecto son 3 min reales por parte: unos 7–8 min con paradas y descanso, parecido a lo que duraba antes (4 × 90 s en arcade, 4 × 120 s en reglamento).
 - Tarjeta azul en tiempo de juego, y la cuenta atrás de sancionados del marcador en m:ss de juego. Reloj en rojo en el último minuto de juego. Marcador con «1ª PARTE» y «2ª PARTE»; descanso de 2,6 s con «Descanso / Empieza la 2ª parte».
 - Ajustes → General → «Duración de cada parte»: selector con flechas dibujadas (← → o clic). Durante un partido avisa de que se aplica en el siguiente. Las tarjetas del menú muestran «2 × N MIN» y se actualizan al momento.
-- Pendiente (no hecho): cambio de campo en el descanso. La IA y las formaciones asumen el azul a la izquierda.
 - Validación: `npm run build` pasa. Con `?half=0.15`, el reloj avanza al ritmo esperado, entra el descanso, empieza la 2.ª parte y el partido termina en «Empate / Pulsa U para continuar». El selector y las tarjetas del menú se actualizan.
 
 ### 2026-11-16 (sesión 25, cont.) — pausa, controles, mando y UI por dispositivo

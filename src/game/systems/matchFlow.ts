@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, PENALTY_SPOT_OFFSET, FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK } from '../constants'
-import { getFormation } from '../formation'
+import { attackDir, getFormation, teamSide } from '../formation'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControlledPlayer } from './playerHelpers'
 import { updateVisuals } from './visuals'
@@ -22,12 +22,10 @@ export function resetKickoffState(options: {
   ballVelocity: Vector
 }) {
   const { team, players, ball, currentPeriod } = options
-  const blue = getFormation('left')
-  const red = getFormation('right')
-
+  // Formación según el lado que defiende cada equipo (cambia en el descanso)
   for (const player of players) {
     const index = Number(player.id.split('-')[1])
-    const formation = player.team === 'blue' ? blue[index] : red[index]
+    const formation = getFormation(player.side)[index]
     player.home = { x: formation.x, y: formation.y }
     player.pos = { x: formation.x, y: formation.y }
     player.velocity = { x: 0, y: 0 }
@@ -38,7 +36,8 @@ export function resetKickoffState(options: {
     player.goalieRecoverUntil = 0
   }
 
-  ball.x = GAME_WIDTH / 2 + (team === 'blue' ? -22 : 22)
+  // La bola, un poco hacia el campo propio del equipo que saca
+  ball.x = GAME_WIDTH / 2 + (teamSide(players, team) === 'left' ? -22 : 22)
   ball.y = GAME_HEIGHT / 2
 
   return {
@@ -67,7 +66,8 @@ export function applyGoalReset(options: {
   ball: Ball
 }) {
   const { scorer, players, ball } = options
-  if (scorer === 'blue') {
+  // El que marca ataca la portería contraria a su lado
+  if (teamSide(players, scorer) === 'left') {
     ball.x = getGoalLineX('right') + GOAL_NET_HOLD_X
     ball.y = Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54)
   } else {
@@ -75,11 +75,9 @@ export function applyGoalReset(options: {
     ball.y = Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54)
   }
 
-  const blue = getFormation('left')
-  const red = getFormation('right')
   for (const player of players) {
     const index = Number(player.id.split('-')[1])
-    const formation = player.team === 'blue' ? blue[index] : red[index]
+    const formation = getFormation(player.side)[index]
     player.home = { x: formation.x, y: formation.y }
     player.pos = { x: formation.x, y: formation.y }
     player.velocity = { x: 0, y: 0 }
@@ -156,9 +154,9 @@ export function startBullyState(options: {
   const blue = findPlayerById(players, bluePlayerId)
   const red = findPlayerById(players, redPlayerId)
 
-  // Facing inmediato; la posición la alcanza updateBullyState con lerp
-  if (blue) blue.facing = { x: 1, y: 0 }
-  if (red) red.facing = { x: -1, y: 0 }
+  // Facing inmediato hacia la portería rival; la posición la alcanza updateBullyState con lerp
+  if (blue) blue.facing = { x: attackDir(blue), y: 0 }
+  if (red) red.facing = { x: attackDir(red), y: 0 }
 
   return {
     ballVelocity: { x: 0, y: 0 },
@@ -331,13 +329,11 @@ export function updateBullyState(options: {
   const red = findPlayerById(players, bully.redPlayerId)
 
   // Jugadores se acercan a la posición de bully a velocidad de sprint
-  if (blue) {
-    movePlayerToward(blue, bully.x - BULLY_PLAYER_OFFSET, bully.y, dt)
-    blue.facing = { x: 1, y: 0 }
-  }
-  if (red) {
-    movePlayerToward(red, bully.x + BULLY_PLAYER_OFFSET, bully.y, dt)
-    red.facing = { x: -1, y: 0 }
+  // Cada uno desde su campo, mirando a la portería rival
+  for (const p of [blue, red]) {
+    if (!p) continue
+    movePlayerToward(p, bully.x - attackDir(p) * BULLY_PLAYER_OFFSET, bully.y, dt)
+    p.facing = { x: attackDir(p), y: 0 }
   }
 
   ball.x = bully.x

@@ -57,8 +57,7 @@ export function tickMatchClock(options: {
       period: currentPeriod,
       teamFouls: { blue: 0, red: 0 },
     }
-    options.centerText.setText(`Descanso
-Empieza la ${currentPeriod}ª parte`).setVisible(true)
+    options.centerText.setText(`Descanso · cambio de campo\nEmpieza la ${currentPeriod}ª parte`).setVisible(true)
     return {
       remainingSeconds: options.matchDuration,
       currentPeriod,

@@ -94,7 +94,7 @@ export function checkAndApplyGoal(options: {
   time: number
   enteredFromFront: { left: boolean; right: boolean }
 }) {
-  const goal = checkGoal(options.ball, options.ballVelocity, options.enteredFromFront)
+  const goal = checkGoal(options.ball, options.ballVelocity, options.enteredFromFront, options.players)
   if (!goal) return null
 
   options.ball.x = goal.holdX

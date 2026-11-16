@@ -13,7 +13,7 @@ import {
 } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
-import { getFormation } from '../game/formation'
+import { getFormation, switchSides, teamSide } from '../game/formation'
 import { drawRink, createGoalNetFlash } from '../game/render/drawRink'
 import { createArena, type Arena } from '../game/render/arena'
 import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../game/render/benchPlayers'
@@ -307,9 +307,13 @@ export class MatchScene extends Phaser.Scene {
           finishMatch: () => this.finishMatch(),
         })
         this.remainingSeconds = next.remainingSeconds
+        const newHalf = next.currentPeriod !== this.currentPeriod
+        if (newHalf) this.startSecondHalf()
         this.currentPeriod = next.currentPeriod
         this.ruleState = next.ruleState
         if (typeof next.restartAt === 'number') this.restartAt = next.restartAt
+        // El marcador no se refresca durante la pausa del descanso: que ya muestre 25:00 y 2ª parte
+        if (newHalf) this.updateHud()
       },
     })
 
@@ -819,8 +823,9 @@ export class MatchScene extends Phaser.Scene {
     if (this.arcade) this.celebrateArcadeGoal(next.redScore > this.redScore ? 'red' : 'blue', time)
     else this.cameras.main.shake(300, 0.011)
     this.tweens.add({ targets: this.goalFlash, alpha: { from: 0.42, to: 0 }, duration: 460, ease: 'Expo.Out' })
-    // Flash de red: el equipo rojo marca en la portería izquierda, el azul en la derecha
-    const scoredNet = next.redScore > this.redScore ? this.leftGoalNet : this.rightGoalNet
+    // Flash de la red atacada: la contraria al lado que defiende el que marca (cambia en el descanso)
+    const scorerTeam: TeamColor = next.redScore > this.redScore ? 'red' : 'blue'
+    const scoredNet = teamSide(this.players, scorerTeam) === 'left' ? this.rightGoalNet : this.leftGoalNet
     this.tweens.add({ targets: scoredNet, alpha: { from: 0.9, to: 0 }, duration: 700, ease: 'Expo.Out' })
     this.ballVelocity = next.ballVelocity
     this.ballCarrierId = next.ballCarrierId
@@ -833,7 +838,7 @@ export class MatchScene extends Phaser.Scene {
   private celebrateArcadeGoal(scorer: TeamColor, time: number) {
     if (!this.arcade || !this.fx) return
     const result = this.arcade.onGoal(scorer, this.players, time)
-    const netSide = scorer === 'red' ? 'left' : 'right'
+    const netSide = teamSide(this.players, scorer) === 'left' ? 'right' : 'left'
     const net = worldToScreen(getGoalLineX(netSide), RINK.y + RINK.height / 2)
     this.centerText.setVisible(false)
     this.cameraDirector.focusGoal(net.x, net.y, time + ARCADE_GOAL_CELEBRATION_MS - 700)
@@ -1066,6 +1071,18 @@ export class MatchScene extends Phaser.Scene {
       return
     }
     this.centerText.setText(`${result}\n${hint}`).setVisible(true)
+  }
+
+  /**
+   * Descanso: los equipos cambian de campo, como en el reglamento. Se colocan
+   * ya en su nueva mitad mientras dura el cartel del descanso; al terminar,
+   * el reinicio pendiente da el saque al rojo (el azul sacó en la 1.ª parte).
+   */
+  private startSecondHalf() {
+    switchSides(this.players)
+    this.resetKickoff('red')
+    this.lastTouch = 'blue'
+    this.cameraDirector.snapTo(this.ball)
   }
 
   /** Resumen para la cabecera del menú de pausa del shell. */
