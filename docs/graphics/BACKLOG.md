@@ -11,10 +11,10 @@ Paquetes de trabajo (WP) para la renovación gráfica.
 
 | ID | Decisión | Opciones | Recomendación | Antes de | Estado |
 |---|---|---|---|---|---|
-| D1 | Estilo de arte | A cartoon limpio · B pixel-art HD · C semirrealista TV | A | Gate B (WP-30) | ⬜ |
+| D1 | Estilo de arte | A cartoon limpio · B pixel-art HD · C semirrealista TV | A | Gate B (WP-30) | ✅ A, cartoon limpio (2026-11-16, coordinador por delegación) |
 | D2 | Tamaño de la portería | **Real** (1,70 × 1,05 m visual y física, con reajuste del portero y la IA) · **Exagerada** (visual real ×1,5 y física actual) | Real | WP-40 | ✅ Real (2026-11-15) |
 | D3 | Árbitros en arcade | sí (silbato y gol, sin tarjetas) · no | sí | WP-50 | ✅ sí (2026-11-15, coordinador por delegación) |
-| D4 | Casco de jugador de campo | casco ligero sin rejilla · sin casco | casco ligero | WP-20 (se enseñan ambos) | ⬜ |
+| D4 | Casco de jugador de campo | casco ligero sin rejilla · sin casco | casco ligero | WP-20 (se enseñan ambos) | ✅ casco ligero en el color del equipo (2026-11-16, coordinador por delegación) |
 | D5 | Commitear las sesiones 21–22 pendientes antes de empezar | sí · no | sí (los worktrees parten de HEAD) | primer `/gfx` | ✅ sí — commits b14abd2, c78de1a (2026-11-15) |
 | D6 | Commit automático por WP aceptado (`gfx(WP-XX): ...`, sin autoría) | sí · no (todo en secuencia, sin worktrees) | sí | primer WP en paralelo | ✅ sí (2026-11-15) |
 | D7 | Archivar el work log antiguo de AGENTS.md en `docs/worklog-archive.md` | sí · no | sí (ahorra ~8 k tokens por agente) | WP-01 | ✅ sí (2026-11-15) |
@@ -50,8 +50,8 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-10 | Cámara única | engineer · opus | WP-00 | ✅ 2026-11-15 |
 | WP-11 | Migrar todo a la cámara única | builder · sonnet | WP-10, WP-12 | ✅ 2026-11-15 |
 | Gate A | Perspectiva y escalas | coordinador | WP-11 | ✅ 2026-11-15 (FIGURE_EXAG 1,15 sin cambios) |
-| WP-20 | Tres prototipos de estilo | engineer · opus | Gate A | ⬜ |
-| Gate B | Elección de estilo (D1, D4) | usuario | WP-20 | ⬜ |
+| WP-20 | Tres prototipos de estilo | engineer · opus | Gate A | ✅ 2026-11-16 |
+| Gate B | Elección de estilo (D1, D4) | usuario | WP-20 | ✅ 2026-11-16 (D1 = A, D4 = casco ligero) |
 | WP-30 | Rig 2D jerárquico + equipamiento | engineer · opus | Gate B | ⬜ |
 | WP-31 | Locomoción quad | engineer · opus | WP-30 | ⬜ |
 | WP-32 | Stick a dos manos y acciones | engineer · opus | WP-30 | ⬜ |

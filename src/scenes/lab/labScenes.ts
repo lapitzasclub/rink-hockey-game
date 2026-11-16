@@ -7,6 +7,7 @@ import { getGoalLineX } from '../../game/utils'
 import type { Ball, Role, TeamColor } from '../../game/types'
 import { createFigure, type FigureSpec, type LabFigure } from './labFigures'
 import type { LabParams } from './labParams'
+import { createStylePrototypes } from './stylePrototypes'
 
 /** Encuadre de cámara en coordenadas de pantalla (el mundo ya se dibuja proyectado). */
 export interface LabFrame {
@@ -205,11 +206,9 @@ function officialsScene(): LabBuild {
   return { figures: [], frame: { sx: GAME_WIDTH / 2, sy: 95, zoom: 2 } }
 }
 
-/** Escena vacía con título, base para las pruebas de estilo (WP-20). */
+/** Prototipos de estilo A, B y C sobre la pista (WP-20). */
 function styleScene(ctx: LabBuildCtx): LabBuild {
-  ctx.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'WP-20', {
-    fontFamily: '"Courier New", Courier, monospace', fontSize: '48px', color: '#ffffff',
-  }).setOrigin(0.5)
+  createStylePrototypes(ctx.scene)
   return { figures: [], frame: DEFAULT_FRAME }
 }
 
@@ -220,7 +219,7 @@ function noLabels(b: LabBuild): LabBuild {
 }
 
 /** Escenas que necesitan el pabellón y la pista dibujados. */
-export const WORLD_SCENES = new Set(['rink', 'scale', 'goal', 'players', 'officials'])
+export const WORLD_SCENES = new Set(['rink', 'scale', 'goal', 'players', 'officials', 'style'])
 
 export function buildLabScene(ctx: LabBuildCtx): LabBuild {
   switch (ctx.params.scene) {

@@ -108,7 +108,7 @@ Bandas en `artSpec.ts` (`DEPTH.*`). La profundidad dentro de cada banda va por l
 
 ---
 
-## §4 Estilo (D1, pendiente del Gate B)
+## §4 Estilo: A, cartoon limpio (D1, Gate B ✅ 2026-11-16)
 
 Reglas comunes a cualquier estilo:
 
@@ -129,7 +129,9 @@ Prototipos del WP-20 (se dibujan los tres en `?lab=style`: jugador de campo de f
 | Sombreado | plano + 1 sombra | paleta limitada, render a baja resolución ×3, filtro nearest | degradado suave |
 | Encaje con el modo arcade (cabezones) | natural | bueno | regular |
 | Coste de animar por rig | bajo | medio (hay que cuidar la rejilla de píxel) | alto |
-| Recomendación del coordinador | **sí** | — | — |
+| Elegido en el Gate B | **sí** | — | — |
+
+Referencia del estilo elegido: `?lab=style` (fila A y recuadro A ×3). El esqueleto 3D con IK de brazos (`src/scenes/lab/style/rig.ts`), las piezas (`parts.ts`) y el pintor vectorial (`paintVector.ts`) del prototipo son el punto de partida de WP-30. `paintPixel.ts` (B) se puede borrar en WP-30. D4: casco ligero sin rejilla en el color del equipo; sin casco, solo como variante opcional.
 
 ---
 

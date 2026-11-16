@@ -28,6 +28,8 @@ src/
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
   scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
   scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV)
+  scenes/lab/stylePrototypes.ts  prototipos de estilo de WP-20 (A, B, C) en `?lab=style`
+  scenes/lab/style/          rig, parts, paintVector, paintPixel: prototipos de estilo de WP-20; base del rig de WP-30
   game/
     constants.ts             Todas las constantes de física y gameplay (tuning aquí)
     types.ts                 Tipos: Player, Vector, ActiveBully, ActiveFoulRestart, GameMode, PowerupKind
@@ -240,6 +242,8 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 ### 2026-11-16 (sesión 24, cont.) — renovación gráfica (/gfx)
 
 - WP-60: videomarcador común (`ui/scoreboard.ts`) en Russo One para ambos modos: goles, periodo y reloj; en reglamento, además, faltas por equipo y sancionados con cuenta atrás. Esquina superior izquierda, sin tapar banquillos. Fuera la tipografía monoespaciada y la línea de stamina.
+- WP-20: tres prototipos de estilo en `?lab=style` (A cartoon, B pixel-art y C semirrealista) con esqueleto 3D, IK de brazos y pintores por estilo (`src/scenes/lab/style/`).
+- Gate B ✅ (coordinador, por delegación del usuario): D1 = A (cartoon limpio): es el único que se lee bien a 57 px, escala limpio con `s` y sale barato con rig por piezas. D4 = casco ligero en el color del equipo.
 
 ### 2026-11-15 (sesión 24) — renovación gráfica (/gfx)
 
