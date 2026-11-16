@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
 import { BOARD_W, RINK_CORNER_R, roundedRectWorldPts } from './drawRink'
-import { DEPTH, FIGURE_EXAG, FLOOR_STYLE, PX_PER_M, STANDS } from './artSpec'
+import { DEPTH, FIGURE_EXAG, FLOOR_STYLE, PX_PER_M, STANDS, STANDS_STYLE as SS } from './artSpec'
 import { project } from './viewTransform'
 
 type Pt = { x: number, y: number }
@@ -22,12 +22,12 @@ const FLOOR_KEY = 'arena-floor'
  */
 export const ARENA_BOUNDS = { x: -340, y: -260, width: GAME_WIDTH + 680, height: GAME_HEIGHT + 520 }
 
-const STAND_TIERS = 22
-const STAND_FIRST_OFFSET = 22   // pasillo entre valla y primera fila (mundo)
-const STAND_TIER_DEPTH = 26     // fondo de cada escalón (mundo)
+const STAND_TIERS = SS.tiers
+const STAND_FIRST_OFFSET = SS.firstOffsetM * PX_PER_M   // pasillo entre valla y primera fila (mundo)
+const STAND_TIER_DEPTH = SS.tierDepthM * PX_PER_M       // fondo de cada escalón (mundo)
 const STAND_FIRST_HEIGHT = STANDS.firstHeightM * PX_PER_M   // altura de la primera fila (px de mundo)
 const STAND_TIER_RISE = STANDS.tierRiseM * PX_PER_M          // subida por escalón (px de mundo)
-const FAN_SPACING = 20          // separación entre asientos (mundo)
+const FAN_SPACING = SS.seatSpacingM * PX_PER_M          // separación entre asientos (mundo)
 /** Alto del dibujo de un espectador en sus unidades locales (drawFan). */
 const FAN_LOCAL_H = 16.5
 
@@ -75,11 +75,15 @@ export function createArena(scene: Phaser.Scene): Arena {
 
   return {
     update(time, excitement) {
-      const cheering = time < cheerUntil
+      const left = cheerUntil - time
+      const cheering = left > 0
+      // El salto se atenúa en el último tramo para no cortar en seco
+      const fade = cheering ? Math.min(1, left / SS.cheerFadeMs) : 0
+      const idleAmp = 0.4 + excitement * 1.8
       for (const layer of layers) {
         if (!layer.ampScale) continue
-        const amp = cheering ? 5 : 0.4 + excitement * 1.8
-        const freq = cheering ? 0.016 : 0.004 + excitement * 0.007
+        const amp = cheering ? idleAmp + (SS.cheerAmp - idleAmp) * fade : idleAmp
+        const freq = cheering ? SS.cheerFreq : 0.004 + excitement * 0.007
         const bob = Math.abs(Math.sin(time * freq + layer.phase))
         layer.image.y = ARENA_BOUNDS.y - bob * amp * layer.ampScale
       }
@@ -209,22 +213,29 @@ function paintFans(far: CanvasRenderingContext2D[], near: CanvasRenderingContext
     const z = STAND_FIRST_HEIGHT + i * STAND_TIER_RISE
     const ow = o + BOARD_W
     const ring = roundedRectWorldPts(RINK.x - ow, RINK.y - ow, RINK.width + ow * 2, RINK.height + ow * 2, RINK_CORNER_R + ow, 10)
-    const shade = 0.62 - i * 0.022
+    const shade = 0.62 - i * 0.02
+    const empty = SS.emptyRate + (SS.emptyRateTop - SS.emptyRate) * (i / (STAND_TIERS - 1))
     // Recorre el anillo a paso constante en mundo: asientos equiespaciados
     for (let k = 0; k < ring.length; k++) {
       const a = ring[k]
       const b = ring[(k + 1) % ring.length]
       const len = Math.hypot(b.x - a.x, b.y - a.y)
       for (let d = rand() * FAN_SPACING; d < len; d += FAN_SPACING * (0.9 + rand() * 0.2)) {
-        if (rand() < 0.08) continue
         const wx = a.x + ((b.x - a.x) * d) / len
         const wy = a.y + ((b.y - a.y) * d) / len
         const p = standToScreen(wx, wy, z)
         if (p.x < B.x - 10 || p.x > B.x + B.width + 10 || p.y < B.y - 10 || p.y > B.y + B.height + 30) continue
         const t = (wy - RINK.y) / RINK.height
         const s = ((STANDS.fanHeightM * PX_PER_M) / FAN_LOCAL_H) * p.s * FIGURE_EXAG
-        if (t > 1) drawFanBack(near, p.x, p.y, s, rand)
-        else drawFan(far[rand() < 0.5 ? 0 : 1], p.x, p.y, s, shade, rand)
+        const isNear = t > 1
+        const ctx = isNear ? near : far[rand() < 0.5 ? 0 : 1]
+        const light = isNear ? 0.3 : shade
+        if (rand() < empty) {
+          drawSeat(ctx, p.x, p.y, s, light)
+          continue
+        }
+        if (isNear) drawFanBack(ctx, p.x, p.y, s, light, rand)
+        else drawFan(ctx, p.x, p.y, s, light, rand)
       }
     }
   }
@@ -234,35 +245,69 @@ function pick<T>(list: T[], rand: () => number) {
   return list[Math.floor(rand() * list.length)]
 }
 
-/** Espectador sentado de frente; (x, y) es el asiento. */
+/** Asiento vacío: respaldo y banco, sin espectador. */
+function drawSeat(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, light: number) {
+  const sx = s * SS.fanWidthK
+  ctx.fillStyle = css(0x24324d, light * 1.1)
+  ctx.fillRect(x - 5 * sx, y - 7 * s, 10 * sx, 7 * s)
+  ctx.fillStyle = css(0x3a4c70, light * 1.1)
+  ctx.fillRect(x - 5 * sx, y - 2 * s, 10 * sx, 2 * s)
+}
+
+/** Espectador sentado de frente; (x, y) es el asiento. `s` escala el alto, el ancho usa `fanWidthK`. */
 function drawFan(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, light: number, rand: () => number) {
+  const sx = s * SS.fanWidthK
   const shirt = pick(SHIRTS, rand)
-  if (rand() < 0.12) {
-    // Brazos en alto / bufanda del equipo
-    ctx.strokeStyle = css(rand() < 0.5 ? 0x2f6fe0 : 0xd8343a, light)
-    ctx.lineWidth = 1.6 * s
+  const team = rand() < 0.5 ? 0x2f6fe0 : 0xd8343a
+  if (rand() < SS.armsUpRate) {
+    // Brazos en alto
+    ctx.strokeStyle = css(team, light)
+    ctx.lineWidth = 1.6 * sx
     ctx.beginPath()
-    ctx.moveTo(x - 4 * s, y - 6 * s); ctx.lineTo(x - 6 * s, y - 16 * s)
-    ctx.moveTo(x + 4 * s, y - 6 * s); ctx.lineTo(x + 6 * s, y - 16 * s)
+    ctx.moveTo(x - 4 * sx, y - 6 * s); ctx.lineTo(x - 6 * sx, y - 16 * s)
+    ctx.moveTo(x + 4 * sx, y - 6 * s); ctx.lineTo(x + 6 * sx, y - 16 * s)
     ctx.stroke()
   }
   ctx.fillStyle = css(shirt, light)
-  ctx.beginPath(); ctx.ellipse(x, y - 4 * s, 5.4 * s, 5 * s, 0, Math.PI, Math.PI * 2); ctx.fill()
-  ctx.fillRect(x - 5.4 * s, y - 4 * s, 10.8 * s, 4 * s)
+  ctx.beginPath(); ctx.ellipse(x, y - 4 * s, 5.4 * sx, 5 * s, 0, Math.PI, Math.PI * 2); ctx.fill()
+  ctx.fillRect(x - 5.4 * sx, y - 4 * s, 10.8 * sx, 4 * s)
+  const r = rand()
+  if (r < SS.stripeRate) {
+    // Camiseta a rayas
+    ctx.fillStyle = css(0xf2f2f2, light)
+    ctx.fillRect(x - 5.2 * sx, y - 6.2 * s, 10.4 * sx, 1.3 * s)
+    ctx.fillRect(x - 5.4 * sx, y - 3.4 * s, 10.8 * sx, 1.3 * s)
+  } else if (r < SS.stripeRate + SS.scarfRate) {
+    // Bufanda de equipo
+    ctx.fillStyle = css(team, light)
+    ctx.fillRect(x - 3.6 * sx, y - 8.6 * s, 7.2 * sx, 1.8 * s)
+    ctx.fillRect(x + 1 * sx, y - 8.6 * s, 1.8 * sx, 5 * s)
+  }
   ctx.fillStyle = css(pick(SKINS, rand), light)
-  ctx.beginPath(); ctx.arc(x, y - 11.5 * s, 3.3 * s, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = css(pick(HAIR, rand), light)
-  ctx.beginPath(); ctx.arc(x, y - 12.6 * s, 3.3 * s, Math.PI * 1.05, Math.PI * 1.95); ctx.fill()
+  ctx.beginPath(); ctx.ellipse(x, y - 11.5 * s, 3.3 * sx, 3.3 * s, 0, 0, Math.PI * 2); ctx.fill()
+  if (r > 1 - SS.hoodRate) {
+    // Capucha: del color de la ropa
+    ctx.fillStyle = css(shirt, light * 0.9)
+    ctx.beginPath(); ctx.ellipse(x, y - 12.2 * s, 3.9 * sx, 3.9 * s, 0, Math.PI * 0.95, Math.PI * 2.05); ctx.fill()
+  } else {
+    ctx.fillStyle = css(pick(HAIR, rand), light)
+    ctx.beginPath(); ctx.ellipse(x, y - 12.6 * s, 3.3 * sx, 3.3 * s, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.fill()
+  }
 }
 
 /** Espectador de las filas cercanas, de espaldas y en penumbra. */
-function drawFanBack(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, rand: () => number) {
-  const light = 0.3
-  ctx.fillStyle = css(pick(SHIRTS, rand), light)
-  ctx.beginPath(); ctx.ellipse(x, y - 4 * s, 6.5 * s, 6 * s, 0, Math.PI, Math.PI * 2); ctx.fill()
-  ctx.fillRect(x - 6.5 * s, y - 4 * s, 13 * s, 6 * s)
-  ctx.fillStyle = css(pick(HAIR, rand), light * 1.1)
-  ctx.beginPath(); ctx.arc(x, y - 12 * s, 4 * s, 0, Math.PI * 2); ctx.fill()
+function drawFanBack(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, light: number, rand: () => number) {
+  const sx = s * SS.fanWidthK
+  const shirt = pick(SHIRTS, rand)
+  ctx.fillStyle = css(shirt, light)
+  ctx.beginPath(); ctx.ellipse(x, y - 4 * s, 6 * sx, 6 * s, 0, Math.PI, Math.PI * 2); ctx.fill()
+  ctx.fillRect(x - 6 * sx, y - 4 * s, 12 * sx, 6 * s)
+  if (rand() < SS.stripeRate) {
+    ctx.fillStyle = css(0xf2f2f2, light)
+    ctx.fillRect(x - 5.6 * sx, y - 3 * s, 11.2 * sx, 1.2 * s)
+  }
+  ctx.fillStyle = css(rand() < SS.hoodRate ? shirt : pick(HAIR, rand), light * 1.1)
+  ctx.beginPath(); ctx.ellipse(x, y - 12 * s, 3.6 * sx, 4 * s, 0, 0, Math.PI * 2); ctx.fill()
 }
 
 // ─── Suelo ────────────────────────────────────────────────────────────────────

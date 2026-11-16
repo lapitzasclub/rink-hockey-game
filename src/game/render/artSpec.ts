@@ -181,8 +181,8 @@ export const BOARDS = {
   topColor: 0xd5e1ee,
 } as const
 
-/** Gradas: altura de la primera fila y subida por escalón, en metros; altura de un espectador sentado. */
-export const STANDS = { firstHeightM: 0.42, tierRiseM: 0.53, fanHeightM: 1.25 } as const
+/** Gradas: altura de la primera fila y subida por escalón, en metros; altura del dibujo de un espectador (con brazos; sentado, la cabeza llega ≈ 1,7 m: nunca menor que un jugador). */
+export const STANDS = { firstHeightM: 0.42, tierRiseM: 0.53, fanHeightM: 1.9 } as const
 
 /**
  * Banquillos del lado lejano, en metros desde la cara exterior de la valla
@@ -204,6 +204,32 @@ export const BENCH = {
   wallHeightM: 1.7,
   /** Altura equivalente de un jugador sentado con los patines hacia delante (m). */
   seatedHeightM: 1.4,
+} as const
+
+// ─── Gradas (WP-43) ─────────────────────────────────────────────────────────
+
+/** Gradas (WP-43): geometría del anfiteatro y variedad del público. */
+export const STANDS_STYLE = {
+  /** Pasillo entre la cara exterior de la valla y la primera fila (m). Deja ver la publicidad de la valla cercana. */
+  firstOffsetM: 2.5,
+  /** Fondo de cada escalón (m) y nº de escalones. */
+  tierDepthM: 0.85,
+  tiers: 24,
+  /** Separación media entre asientos (m) y ancho relativo del espectador respecto a su alto. */
+  seatSpacingM: 0.7,
+  fanWidthK: 0.55,
+  /** Probabilidad de asiento vacío (crece hacia las filas altas). */
+  emptyRate: 0.07,
+  emptyRateTop: 0.22,
+  /** Probabilidades de ropa: rayas, bufanda de equipo, capucha, brazos en alto. */
+  stripeRate: 0.16,
+  scarfRate: 0.1,
+  hoodRate: 0.14,
+  armsUpRate: 0.1,
+  /** Salto en gol: amplitud (px) y frecuencia (rad/ms); el último tramo se atenúa (ms). */
+  cheerAmp: 5,
+  cheerFreq: 0.016,
+  cheerFadeMs: 700,
 } as const
 
 /** Zona de sancionados junto a la mesa: distancia a la valla exterior, al centro y entre figuras (m). */
