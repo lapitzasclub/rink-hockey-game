@@ -7,8 +7,8 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   GOAL_HALF_H,
+  GOALIE_ZONE_RADIUS,
   MATCH_DURATION,
-  PENALTY_AREA_DEPTH,
   RINK,
   STICK_SWING_MS,
 } from '../game/constants'
@@ -974,21 +974,20 @@ export class MatchScene extends Phaser.Scene {
     if (this.isArcade) return
     if (this.ruleState.pendingFoul || this.ruleState.pendingBully) return
     const centerY = RINK.y + RINK.height / 2
-    const foulRadius = GOAL_HALF_H * 2
+    const foulRadius = GOALIE_ZONE_RADIUS
 
     for (const goalie of this.players) {
       if (goalie.role !== 'goalie') continue
       if (this.ballCarrierId !== goalie.id) continue
 
       const gx = getGoalLineX(goalie.side)
-      // Centro de la zona = punto de penalti (PENALTY_AREA_DEPTH desde la línea de portería)
-      const spotX = goalie.side === 'left' ? gx + PENALTY_AREA_DEPTH : gx - PENALTY_AREA_DEPTH
+      // Zona protegida: semicírculo pegado a la portería, centrado en la línea de gol
       const rivalTeam = goalie.team === 'blue' ? 'red' : 'blue'
 
       for (const rival of this.players) {
         if (rival.team !== rivalTeam || rival.role === 'goalie') continue
         if (rival.suspendedUntil && rival.suspendedUntil > time) continue
-        const dist = Math.hypot(rival.pos.x - spotX, rival.pos.y - centerY)
+        const dist = Math.hypot(rival.pos.x - gx, rival.pos.y - centerY)
         if (dist < foulRadius) {
           registerGoalieZoneFoul(this.ruleState, rival, goalie, time)
           return

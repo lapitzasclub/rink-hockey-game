@@ -388,7 +388,7 @@ export function checkGoal(
   const leftGoalLineX = getGoalLineX('left')
   const rightGoalLineX = getGoalLineX('right')
 
-  if (enteredFromFront.left && ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS - 6) {
+  if (enteredFromFront.left && ballVelocity.x < 0 && ball.x <= leftGoalLineX - BALL_RADIUS) {
     return {
       scorer: 'red' as TeamColor,
       holdX: leftGoalLineX - 10,
@@ -396,7 +396,7 @@ export function checkGoal(
     }
   }
 
-  if (enteredFromFront.right && ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS + 6) {
+  if (enteredFromFront.right && ballVelocity.x > 0 && ball.x >= rightGoalLineX + BALL_RADIUS) {
     return {
       scorer: 'blue' as TeamColor,
       holdX: rightGoalLineX + 10,

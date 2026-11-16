@@ -153,6 +153,17 @@ function goalScene(ctx: LabBuildCtx): LabBuild {
     { team: 'red', role: 'pivot', x: gx + 95, y: MID_Y - 55, angle: Math.PI, aimAhead: true },
     { team: 'red', role: 'wing', x: gx - 58, y: MID_Y + 45, angle: Math.PI * 0.75, aimAhead: true },
   ]
+  // set=occlusion: un jugador dentro de la portería y otro justo detrás de la red, solapándola
+  if (ctx.params.set === 'occlusion') {
+    const c = worldToScreen(gx - 4, MID_Y)
+    return {
+      figures: build(ctx, [
+        { team: 'red', role: 'wing', x: gx - 8, y: MID_Y + 2, angle: Math.PI, aimAhead: true },
+        { team: 'blue', role: 'defender', x: gx - 22, y: MID_Y - 34, angle: 0, aimAhead: true },
+      ]),
+      frame: { sx: c.x, sy: c.y, zoom: 5 },
+    }
+  }
   const c = worldToScreen(gx + 10, MID_Y)
   return { figures: build(ctx, specs), frame: { sx: c.x, sy: c.y, zoom: 2.4 } }
 }

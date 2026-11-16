@@ -7,6 +7,8 @@ import {
   AI_STEAL_ATTEMPT_CHANCE,
   AI_STEAL_ENGAGE_FRONT_DOT,
   GAME_HEIGHT,
+  GOALIE_AI_MAX_Y,
+  GOALIE_AI_TRACK,
   GOALIE_DISTRIBUTION_DELAY_MS,
   GOALIE_SAVE_RADIUS,
   MANUAL_STEAL_RANGE,
@@ -48,7 +50,7 @@ export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt:
   const dxBall = ballX - goalLineX
   const dyBall = ballY - goalCenterY
   const angleWeight = Phaser.Math.Clamp(Math.abs(dxBall) / 300, 0.35, 1)
-  const targetY = Phaser.Math.Clamp(goalCenterY + dyBall * angleWeight * 0.68, goalCenterY - 110, goalCenterY + 110)
+  const targetY = Phaser.Math.Clamp(goalCenterY + dyBall * angleWeight * GOALIE_AI_TRACK, goalCenterY - GOALIE_AI_MAX_Y, goalCenterY + GOALIE_AI_MAX_Y)
 
   const ballDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ballX, ballY)
   const stepOut = ballDistance < GOALIE_SAVE_RADIUS + 20 ? 30 : 16

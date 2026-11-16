@@ -299,3 +299,43 @@ export const STANDS_STYLE = {
 
 /** Zona de sancionados junto a la mesa: distancia a la valla exterior, al centro y entre figuras (m). */
 export const PENALTY_BOX = { setbackM: 0.7, centerGapM: 1.4, stepM: 1.1 } as const
+
+// ─── Portería (WP-40) ───────────────────────────────────────────────────────
+
+/**
+ * Aspecto de la portería (SPEC §10). La boca (ancho) y el fondo salen de
+ * `GOAL_HALF_H` y `GOAL_BACK_DEPTH` (gameplay); aquí solo lo que es visual.
+ * Frente naranja fluorescente, estructura trasera y red blancas (REGLAMENTO §4).
+ */
+export const GOAL_VIS = {
+  /** Alto interior de la boca en metros (1,05 m). */
+  heightM: 1.05,
+  /** Grosor del tubo en px de pantalla a s = 1 (real Ø 7,5 cm ≈ 2 px; se exagera). */
+  tubePx: 3.4,
+  /** Tubo del arco trasero, relativo al delantero. */
+  rearTubeScale: 0.62,
+  /** Chaflán de las esquinas superiores a 45° (px de mundo). */
+  bevelPx: 5,
+  /** Altura del arco superior trasero respecto a la boca (la red cae hacia atrás). */
+  rearTopFrac: 0.78,
+  /** Distancia de la red colgante interior a la línea de gol (0,40 m en px). */
+  innerNetSetbackPx: 0.4 * PX_PER_M,
+  /** Altura de la red colgante interior respecto a la boca. */
+  innerNetHeightFrac: 0.82,
+  /** Segmentos del arco trasero. */
+  arcSegments: 14,
+  /** Líneas de malla verticales/horizontales dibujadas por panel. */
+  meshRings: 3,
+  colors: {
+    tube: 0xff6a00,
+    tubeEdge: 0xa83a00,
+    tubeShine: 0xffc79a,
+    rear: 0xf4f6fa,
+    rearEdge: 0x9aa6b8,
+    net: 0xffffff,
+    netFill: 0xdfe8f4,
+    floor: 0x0a1828,
+    flash: 0xffffff,
+  },
+  alpha: { netFill: 0.2, topFill: 0.36, innerFill: 0.16, mesh: 0.32, meshInner: 0.26, shadow: 0.3, floor: 0.22 },
+} as const

@@ -249,6 +249,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - WP-41: vallas sin facetas (28 segmentos por esquina), canto, rodapié y sombra; publicidad en las 4 vallas con hueco en las puertas de los banquillos; redes de protección tras las porterías. Corte de la valla cercana con la variante `edge`: la bola nunca queda tapada. Pendiente para WP-43: el público cercano tapa la cara exterior de la valla cercana.
 - WP-43: gradas con escalones reales, huecos y ropa variada (rayas, bufanda, capucha), y salto en el gol reutilizando `cheer()`. Hay un pasillo de 2,5 m entre la valla y la primera fila, así que el público cercano ya no tapa la publicidad de la valla cercana. Escala: el público cercano es mayor que los jugadores cercanos y el lejano, menor (`STANDS_STYLE` en artSpec.ts).
 - WP-30: rig 2D con IK de dos huesos (`src/game/render/puppet/`), 8 vistas cacheadas en atlas, capas locomoción/tronco/acciones/portero, poses de pie y sentada; Player gana rig/pose.
+- gfx WP-40/44: portería reglamentaria 1,70 × 1,05 m (tubos, red doble, partida trasera/delantera); física a escala: GOAL_HALF_H 25,5, GOAL_BACK_DEPTH 18, portero GOALIE_RADIUS 9 / SAVE 7 / CLAIM 7, tiro asistido IA 1 y humano 0,75, zona de falta del portero centrada en la línea de gol; goles arcade +16 % (6 semillas).
 
 ### 2026-11-15 (sesión 24) — renovación gráfica (/gfx)
 

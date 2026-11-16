@@ -2,13 +2,13 @@ export const GAME_WIDTH = 1280
 export const GAME_HEIGHT = 720
 export const MATCH_DURATION = 120
 export const PLAYER_RADIUS = 18
-export const GOALIE_RADIUS = 20
+export const GOALIE_RADIUS = 9
 export const BALL_RADIUS = 6
 export const GOAL_WIDTH = 28
-export const GOAL_HEIGHT = 150
-/** Semialtura interior de la portería (apertura real entre postes). */
-export const GOAL_HALF_H = (GOAL_HEIGHT - 36) / 2   // = 57
-export const GOAL_BACK_DEPTH = 34
+/** Semialtura interior de la portería: boca de 1,70 m reglamentarios (51 px a 30 px/m en Y). */
+export const GOAL_HALF_H = 25.5
+/** Fondo de la red: arco trasero de 0,64 m (≈ 18 px en X). */
+export const GOAL_BACK_DEPTH = 18
 export const GOAL_LINE_OFFSET = 86
 export const GOAL_NET_HOLD_X = 10
 export const GOAL_POST_REBOUND = 0.82
@@ -38,8 +38,12 @@ export const PASS_POWER = 520
 export const SHOT_POWER = 700
 export const DUMP_RELEASE_POWER = 160
 export const STEAL_RELEASE_POWER = 190
-export const GOALIE_SAVE_RADIUS = 34
-export const GOALIE_CLAIM_RADIUS = 22
+export const GOALIE_SAVE_RADIUS = 7
+/** Recorrido lateral máximo del portero desde el centro de la boca (poste + margen). */
+export const GOALIE_AI_MAX_Y = GOAL_HALF_H + 6
+/** Fracción del ángulo bola-portería que sigue el portero IA (menos = más batible). */
+export const GOALIE_AI_TRACK = 0.25
+export const GOALIE_CLAIM_RADIUS = 7
 export const BALL_MAGNET_MAX_SPEED = 220
 export const GOALIE_DISTRIBUTION_DELAY_MS = 550
 export const FOUL_CHANCE_ON_STEAL = 0.28
@@ -65,7 +69,12 @@ export const STEAL_LOOSE_BALL_POWER = 245
 export const STEAL_LOOSE_BALL_IGNORE_MS = 220
 export const PASS_ASSIST_CONE_DOT = 0.45
 export const PASS_ASSIST_BLEND = 0.55
-export const SHOT_ASSIST_BLEND = 0.68
+/** Mezcla del tiro asistido de la IA hacia el punto de apuntado (1 = puntería exacta). */
+export const SHOT_ASSIST_BLEND = 1
+/** Idem para el jugador humano: conserva el 25 % de su propia dirección. */
+export const SHOT_ASSIST_BLEND_HUMAN = 0.75
+/** Desvío vertical máximo (px) del punto de tiro asistido respecto al centro de la boca. */
+export const SHOT_AIM_MAX_OFFSET = 14
 export const POSSESSION_RELEASE_COOLDOWN_MS = 260
 export const GOALIE_RELEASE_COOLDOWN_MS = 900
 export const GOALIE_DISTRIBUTION_POWER = 640
@@ -104,7 +113,7 @@ export const STICK_SWING_MS = 160
 /**
  * Radio del semicírculo D del portero (0,85 m × 30 px/m = 25,5 → 26 px).
  * Diámetro visual = apertura interior de la portería (1,70 m).
- * Nota: la zona de foul se comprueba con un radio mayor (GOAL_HEIGHT) en MatchScene.
+ * Nota: la zona de falta del portero (MatchScene) usa este radio centrado en la línea de gol.
  */
 export const GOALIE_ZONE_RADIUS = 26
 /** Profundidad del área de portería desde la línea de gol (5,40 m × 28,5 px/m) */

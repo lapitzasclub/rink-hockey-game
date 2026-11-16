@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, RINK, SHOT_ASSIST_BLEND } from '../constants'
+import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN } from '../constants'
 import type { Player, Vector } from '../types'
+import { getGoalLineX } from '../utils'
 
 /**
  * Elige el mejor receptor de pase en función de la mirada del pasador y la
@@ -106,20 +107,23 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
  * Combina la mirada del portador con la dirección al centro de la portería
  * rival (SHOT_ASSIST_BLEND) para reducir tiros absurdos en ángulo cerrado.
  *
- * La corrección vertical se limita a ±36 px desde el centro para no forzar
+ * La corrección vertical se limita a ±SHOT_AIM_MAX_OFFSET px desde el centro para no forzar
  * tiros al palo en jugadores muy adelantados.
  */
 export function getAssistedShotDirection(player: Player, fallbackDirection: Vector): Vector {
-  const targetX = player.side === 'left' ? RINK.x + RINK.width + 24 : RINK.x - 24
-  const targetY = GAME_HEIGHT / 2 + Phaser.Math.Clamp(player.pos.y - GAME_HEIGHT / 2, -36, 36)
+  // Se apunta a la línea de gol (no al fondo de pista): con la boca real, el error angular importa
+  const targetX = getGoalLineX(player.side === 'left' ? 'right' : 'left')
+  const targetY = GAME_HEIGHT / 2 + Phaser.Math.Clamp(player.pos.y - GAME_HEIGHT / 2, -SHOT_AIM_MAX_OFFSET, SHOT_AIM_MAX_OFFSET)
 
   const raw = { x: targetX - player.pos.x, y: targetY - player.pos.y }
   const rawLength = Math.hypot(raw.x, raw.y) || 1
   const goalDirection = { x: raw.x / rawLength, y: raw.y / rawLength }
 
+  // La IA (rojo y porteros) apunta exacto; el humano conserva influencia sobre la dirección
+  const blend = player.team === 'red' || player.role === 'goalie' ? SHOT_ASSIST_BLEND : SHOT_ASSIST_BLEND_HUMAN
   const blended = {
-    x: fallbackDirection.x * (1 - SHOT_ASSIST_BLEND) + goalDirection.x * SHOT_ASSIST_BLEND,
-    y: fallbackDirection.y * (1 - SHOT_ASSIST_BLEND) + goalDirection.y * SHOT_ASSIST_BLEND,
+    x: fallbackDirection.x * (1 - blend) + goalDirection.x * blend,
+    y: fallbackDirection.y * (1 - blend) + goalDirection.y * blend,
   }
   const length = Math.hypot(blended.x, blended.y) || 1
   return { x: blended.x / length, y: blended.y / length }

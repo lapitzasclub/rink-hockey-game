@@ -58,8 +58,8 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-33 | Portero: posturas y paradas | builder · sonnet | WP-31, WP-32 | ⬜ |
 | WP-34 | UI sobre jugadores | builder · sonnet | WP-30 | ⬜ |
 | Gate C | Personajes y animación | coordinador + usuario | WP-31…34 | ⬜ |
-| WP-40 | Portería reglamentaria | builder · sonnet | Gate B, WP-12, D2 | ⬜ |
-| WP-44 | Física de portería a escala (solo si D2 = real) | builder · sonnet | WP-40 | ⬜ |
+| WP-40 | Portería reglamentaria | builder · sonnet | Gate B, WP-12, D2 | ✅ 2026-11-16 |
+| WP-44 | Física de portería a escala (solo si D2 = real) | builder · sonnet | WP-40 | ✅ 2026-11-16 |
 | WP-41 | Vallas perimetrales | builder · sonnet | Gate B, WP-12 | ✅ 2026-11-16 |
 | WP-42 | Suelo y marcas | builder · sonnet | Gate B, WP-12, WP-02 | ✅ 2026-11-16 |
 | WP-43 | Gradas | builder · sonnet | Gate B | ✅ 2026-11-16 |
