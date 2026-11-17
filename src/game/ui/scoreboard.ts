@@ -11,9 +11,11 @@ const PANEL_H_FULL = 58
 const PANEL_H_COMPACT = 52
 const PANEL_Y = 6
 const BLOCK_W = 90
-/** Con partido externo: columna del escudo dentro de cada bloque y lado del escudo. */
-const CREST_COL = 34
-const CREST_SIZE = 24
+/** Con partido externo: escudo junto al tanteo en la fila de arriba, por el lado exterior del bloque. */
+const CREST_SIZE = 22
+/** Distancia del centro del bloque al centro del escudo y al del tanteo. */
+const CREST_DX = 21
+const SCORE_DX = 15
 
 const hexStr = (c: number) => `#${c.toString(16).padStart(6, '0')}`
 /** Luminancia relativa aproximada (0..1) para elegir texto claro u oscuro sobre un color. */
@@ -74,39 +76,39 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
   const mk = (x: number, y: number, size: number, color: string, text = '') =>
     scene.add.text(x, y, text, { fontFamily: ARCADE_FONT, fontSize: `${size}px`, color }).setOrigin(0.5).setDepth(51)
 
-  // Con escudo, el marcador se desplaza al lado opuesto de la columna del escudo
-  const shift = external ? CREST_COL / 2 : 0
-  const leftX = left + BLOCK_W / 2 + shift
-  const rightX = left + PANEL_W - BLOCK_W / 2 - shift
+  // Con partido externo, el tanteo se aparta del lado exterior, donde va el escudo; las faltas siguen centradas
+  const leftCenter = left + BLOCK_W / 2
+  const rightCenter = left + PANEL_W - BLOCK_W / 2
+  const leftX = leftCenter + (external ? SCORE_DX : 0)
+  const rightX = rightCenter - (external ? SCORE_DX : 0)
   const scoreStyle = (i: { text: string, stroke: string }) => ({ fontFamily: ARCADE_FONT, fontSize: '34px', color: i.text, stroke: i.stroke, strokeThickness: 5 })
   const scoreY = PANEL_Y + (showFouls ? 22 : PANEL_H / 2)
   const leftScoreText = scene.add.text(leftX, scoreY, '0', scoreStyle(leftInk)).setOrigin(0.5).setDepth(51)
   const rightScoreText = scene.add.text(rightX, scoreY, '0', scoreStyle(rightInk)).setOrigin(0.5).setDepth(51)
   const foulsSize = external ? 11 : 12
-  const leftFouls = mk(leftX, PANEL_Y + 46, foulsSize, external ? leftInk.text : '#dcebff')
-  const rightFouls = mk(rightX, PANEL_Y + 46, foulsSize, external ? rightInk.text : '#ffe2e5')
+  const leftFouls = mk(leftCenter, PANEL_Y + 46, foulsSize, external ? leftInk.text : '#dcebff')
+  const rightFouls = mk(rightCenter, PANEL_Y + 46, foulsSize, external ? rightInk.text : '#ffe2e5')
   const clock = mk(left + PANEL_W / 2, PANEL_Y + (showFouls ? 21 : 17), 28, '#ffe36a', '25:00')
   const period = mk(left + PANEL_W / 2, PANEL_Y + (showFouls ? 45 : 39), 13, '#9fb6cf')
 
   if (external) {
     registrarEscudos(scene.textures)
     // Escudo (o abreviatura grande si no hay) sobre un disco claro: el color del escudo coincide con el de la camiseta
-    const badge = (slot: 'blue' | 'red', cx: number) => {
+    const badge = (slot: 'blue' | 'red', cx: number, ink: { text: string, stroke: string }) => {
       const team = equipoDeHueco(slot)!
       const key = claveEscudo(ladoDeHueco(slot))
-      const cy = PANEL_Y + 18
       if (key) {
-        panel.fillStyle(0xffffff, 0.93)
-        panel.fillCircle(cx, cy, CREST_SIZE / 2 + 3)
-        const img = scene.add.image(cx, cy, key).setDepth(51)
+        // Centrado en el disco sea cual sea la proporción del escudo
+        panel.fillStyle(0xffffff, 0.95)
+        panel.fillCircle(cx, scoreY, CREST_SIZE / 2 + 3)
+        const img = scene.add.image(cx, scoreY, key).setOrigin(0.5).setDepth(51)
         img.setScale(CREST_SIZE / Math.max(img.width, img.height))
-        mk(cx, PANEL_Y + 41, 11, '#ffffff', team.abrev).setStroke('#050b13', 3)
       } else {
-        mk(cx, cy + 4, 15, '#ffffff', team.abrev).setStroke('#050b13', 4)
+        mk(cx, scoreY, 12, ink.text, team.abrev.slice(0, 3)).setStroke(ink.stroke, 3)
       }
     }
-    badge(leftSlot, left + CREST_COL / 2 + 2)
-    badge(rightSlot, left + PANEL_W - CREST_COL / 2 - 2)
+    badge(leftSlot, leftCenter - CREST_DX, leftInk)
+    badge(rightSlot, rightCenter + CREST_DX, rightInk)
   }
 
   const susStyle = { fontFamily: ARCADE_FONT, fontSize: '15px', stroke: '#050b13', strokeThickness: 4 }

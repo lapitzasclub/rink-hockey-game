@@ -618,6 +618,9 @@ export const PLAYER_UI = {
   barEdgeAlpha: 0.8,
   /** Relleno según nivel (alto = cian del TURBO del HUD, medio, bajo) y umbrales. */
   barColors: [0x4de6ff, 0xf5c64f, 0xff4d5c],
+  /** Etiqueta de dorsal y nombre entre el anillo y la barra: cuerpo (px) y separación sobre la barra (px a s = 1). */
+  nameFontPx: 11,
+  nameGapPx: 1,
   barMid: 0.5,
   barLow: 0.25,
 } as const

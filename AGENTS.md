@@ -272,6 +272,12 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-17 — partido por enlace: nombre del jugador, marcador y pausa
+
+- Etiqueta de dorsal y nombre (`Player.nameTag`, creada en `createPlayer` solo para controlables) entre el anillo y la barra de stamina del jugador controlado. El nombre sale de la plantilla del partido externo (`EquipoExterno.nombres`, en el mismo orden que `dorsales`; `nameFor` en render/puppet/kit.ts); sin partido o en un hueco generado, solo el dorsal. Tamaños en `PLAYER_UI.nameFontPx` y `nameGapPx`.
+- Videomarcador con partido: escudo y tanteo juntos en la fila de arriba, con el escudo en el lado exterior de cada bloque; las faltas, centradas en el bloque para que no se salgan. Sin escudo, la abreviatura ocupa su sitio.
+- Menú de pausa: con partido, escudo encima del nombre a cada lado del tanteo (rejilla de cinco columnas), local a la izquierda y cada tanteo con el color de su camiseta y dorsal.
+
 ### 2026-11-17 — partido desde loyola-hockey-matches (paso 2: selección y cierre)
 
 - Menú con partido (`MenuScene`): sin cinta de subtítulo; fila local | visitante con escudo, nombre y «TU EQUIPO», línea con competición, fecha y hora, y botón «PARTIDO LIBRE (L)». Las tarjetas de modo bajan 28 px. `descartarPartido()` (externalMatch.ts) limpia el estado sin tocar el hash.

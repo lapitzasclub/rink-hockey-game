@@ -39,6 +39,8 @@ export interface EquipoExterno {
   plantilla: JugadorExterno[]
   /** Dorsales finales de la 5 en pista: [portero, campo×4]; los huecos ya están generados. */
   dorsales: string[]
+  /** Nombres de la 5 en pista, en el mismo orden que `dorsales`; null en los huecos generados. */
+  nombres: (string | null)[]
 }
 
 export interface PartidoExterno {
@@ -92,7 +94,7 @@ function jugador(v: unknown): JugadorExterno | null {
 }
 
 /** Portero y 4 de campo según el contrato; los dorsales ausentes se generan sin repetir. */
-function dorsalesEnPista(plantilla: JugadorExterno[]): string[] {
+function enPista(plantilla: JugadorExterno[]): { dorsales: string[], nombres: (string | null)[] } {
   const primeros = (rol: JugadorExterno['rol'], n: number) => {
     const delRol = plantilla.filter(j => j.rol === rol)
     return [...delRol.filter(j => j.titular), ...delRol.filter(j => !j.titular)].slice(0, n)
@@ -111,9 +113,10 @@ function dorsalesEnPista(plantilla: JugadorExterno[]): string[] {
     usados.add(d)
     return d
   }
-  const out = [asignar(porteros[0], ['1', ...DORSALES_CAMPO])]
-  for (let i = 0; i < 4; i++) out.push(asignar(campo[i], DORSALES_CAMPO))
-  return out
+  const dorsales = [asignar(porteros[0], ['1', ...DORSALES_CAMPO])]
+  for (let i = 0; i < 4; i++) dorsales.push(asignar(campo[i], DORSALES_CAMPO))
+  const nombres = [porteros[0], ...Array.from({ length: 4 }, (_, i) => campo[i])].map(j => j?.nombre || null)
+  return { dorsales, nombres }
 }
 
 function equipo(v: unknown, lado: Lado): EquipoExterno | null {
@@ -140,7 +143,7 @@ function equipo(v: unknown, lado: Lado): EquipoExterno | null {
     equipacion: equipacion as EquipacionExterna,
     segunda: v.segunda === true,
     plantilla,
-    dorsales: dorsalesEnPista(plantilla),
+    ...enPista(plantilla),
   }
 }
 

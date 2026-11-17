@@ -1,4 +1,5 @@
 import { playUiBack } from '../game/audio/sounds'
+import { getLadoHumano, getPartidoExterno, type EquipoExterno } from '../game/externalMatch'
 import { focusFirst } from './menuNav'
 
 export type PauseSummary = { mode: 'arcade' | 'classic', period: number, remainingSeconds: number, blue: number, red: number, ended: boolean }
@@ -11,6 +12,19 @@ const CONFIRM_TEXT: Record<ConfirmKind, string> = {
 }
 
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`
+
+/** Escudo y nombre de un lado del marcador de la pausa; sin equipo, el lado se oculta. */
+function paintSide(side: HTMLElement, team: EquipoExterno | null) {
+  side.hidden = !team
+  if (!team) return
+  const crest = side.querySelector<HTMLImageElement>('.pause-crest')!
+  crest.hidden = !team.escudo
+  if (team.escudo && crest.src !== team.escudo) crest.src = team.escudo
+  const name = side.querySelector<HTMLElement>('.pause-name')!
+  name.textContent = team.nombre
+  side.title = team.nombre
+}
 
 /**
  * Menú de pausa del partido: continuar, reiniciar, ajustes, controles y salir.
@@ -36,8 +50,22 @@ export function createPauseMenu(deps: {
     root.querySelector('#pause-kicker')!.textContent = s.ended
       ? `${mode} · FINAL`
       : `${mode} · ${s.period}ª PARTE · ${fmtClock(s.remainingSeconds)}`
-    root.querySelector('#pause-blue')!.textContent = String(s.blue)
-    root.querySelector('#pause-red')!.textContent = String(s.red)
+    // Con partido externo, el local a la izquierda (como el videomarcador) y cada tanteo con el color de su camiseta
+    const partido = getPartidoExterno()
+    const localIsBlue = !partido || getLadoHumano() === 'local'
+    const left = root.querySelector<HTMLElement>('#pause-left')!
+    const right = root.querySelector<HTMLElement>('#pause-right')!
+    left.textContent = String(localIsBlue ? s.blue : s.red)
+    right.textContent = String(localIsBlue ? s.red : s.blue)
+    for (const [el, team] of [[left, partido?.local], [right, partido?.visitante]] as const) {
+      el.style.background = team ? hex(team.equipacion.camiseta) : ''
+      el.style.color = team ? hex(team.equipacion.dorsal) : ''
+    }
+    paintSide(root.querySelector<HTMLElement>('#pause-side-left')!, partido?.local ?? null)
+    paintSide(root.querySelector<HTMLElement>('#pause-side-right')!, partido?.visitante ?? null)
+    root.querySelector('.pause-score')!.setAttribute('aria-label', partido
+      ? `Marcador: ${partido.local.nombre} ${left.textContent}, ${partido.visitante.nombre} ${right.textContent}`
+      : 'Marcador')
   }
 
   const showView = (view: 'main' | 'confirm') => {

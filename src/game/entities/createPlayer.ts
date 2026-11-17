@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import { PLAYER_UI, WORLD_PX_PER_M } from '../render/artSpec'
 import { createProceduralPuppetTextures } from '../render/createProceduralPuppetTextures'
-import { playerKit, lookFor } from '../render/puppet/kit'
+import { playerKit, lookFor, nameFor } from '../render/puppet/kit'
 import { createPose } from '../render/puppet/pose'
 import { PuppetRig, createContactShadow } from '../render/puppet/rig'
 import type { Player, Role, TeamColor, TeamSide } from '../types'
@@ -56,6 +56,18 @@ export function createPlayer(
     staminaBar.setData('bg', bg)
   }
 
+  // Dorsal y nombre (de la plantilla del partido externo, si lo hay) sobre la barra del jugador controlado
+  const name = nameFor(id, team, role)
+  const nameTag = controllable
+    ? scene.add.text(x, y, name ? `${look.number}  ${name.toUpperCase()}` : look.number, {
+      fontFamily: FONT,
+      fontSize: `${PLAYER_UI.nameFontPx}px`,
+      color: '#ffffff',
+      stroke: '#06101a',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 1).setVisible(false)
+    : null
+
   const labelY = role === 'goalie' ? -64 : -58
   const label = scene.add.text(x, y + labelY, getRoleShort(role), {
     fontFamily: FONT,
@@ -69,7 +81,7 @@ export function createPlayer(
     id, team, side, role,
     container: rig.container, rig, pose: createPose(),
     hand: look.hand, skin: look.skin, hair: look.hair, number: look.number,
-    shadow, selectionRing, label, staminaBar,
+    shadow, selectionRing, label, staminaBar, nameTag,
     pos: { x, y },
     velocity: { x: 0, y: 0 },
     facing: { x: side === 'left' ? 1 : -1, y: 0 },

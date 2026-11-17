@@ -137,6 +137,7 @@ export function updateVisuals(
       ;(player.selectionRing.getData('band') as Phaser.GameObjects.Arc).setVisible(false)
       player.staminaBar?.setVisible(false)
       ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
+      player.nameTag?.setVisible(false)
       pose.yaw = 0
       seatedPose(pose)
       player.rig.apply(pose)
@@ -229,13 +230,18 @@ export function updateVisuals(
       const bg = player.staminaBar.getData('bg') as Phaser.GameObjects.Rectangle
       player.staminaBar.setVisible(active)
       bg.setVisible(active)
+      player.nameTag?.setVisible(active)
       if (active) {
         const stamina = clamp01((player.stamina ?? 100) / 100)
         const [hi, mid, low] = PLAYER_UI.barColors
         // Tamaños en px de pantalla: metros de mundo por la escala local del suelo
         const w = PLAYER_UI.barWM * WORLD_PX_PER_M.x * gx
         const h = PLAYER_UI.barHPx * gx
-        const y = sp.y + PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.y * gy + PLAYER_UI.barGapPx * gx + h / 2
+        // Bajo el anillo: primero la etiqueta de dorsal y nombre y, debajo, la barra
+        const ringBottom = sp.y + PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.y * gy
+        const tagH = player.nameTag ? player.nameTag.height + PLAYER_UI.nameGapPx * gx : 0
+        const y = ringBottom + PLAYER_UI.barGapPx * gx + tagH + h / 2
+        player.nameTag?.setPosition(sp.x, y - h / 2 - PLAYER_UI.nameGapPx * gx).setDepth(DEPTH.FX)
         bg.setPosition(sp.x, y).setSize(w, h).setDepth(DEPTH.FX - 0.001)
         player.staminaBar.setFillStyle(stamina > PLAYER_UI.barMid ? hi : stamina > PLAYER_UI.barLow ? mid : low)
         player.staminaBar.setPosition(sp.x - w / 2, y).setSize(Math.max(1, w * stamina), h).setDepth(DEPTH.FX)

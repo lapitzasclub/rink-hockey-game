@@ -406,6 +406,45 @@ button {
 .pause-score-team--red { background: #c0303d; }
 .pause-score-sep { color: var(--c-text-muted); }
 
+/* Partido externo: escudo encima del nombre a cada lado del tanteo, en columnas iguales que no desbordan la tarjeta */
+.pause-score:has(.pause-side:not([hidden])) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
+  width: 100%;
+}
+
+.pause-side {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pause-side[hidden] { display: none; }
+
+.pause-crest {
+  width: 32px;
+  height: 32px;
+  padding: 3px;
+  box-sizing: border-box;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 50%;
+}
+
+.pause-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 1px;
+  text-align: center;
+  color: var(--c-text-dim);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .pause-list,
 .pause-confirm {
   display: grid;

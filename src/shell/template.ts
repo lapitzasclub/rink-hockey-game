@@ -68,9 +68,11 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
           <span id="pause-kicker" class="pause-kicker"></span>
           <h2 id="pause-title" class="pause-title">PAUSA</h2>
           <div class="pause-score" aria-label="Marcador">
-            <span class="pause-score-team pause-score-team--blue" id="pause-blue">0</span>
+            <span class="pause-side" id="pause-side-left" hidden><img class="pause-crest" alt="" hidden><span class="pause-name"></span></span>
+            <span class="pause-score-team pause-score-team--blue" id="pause-left">0</span>
             <span class="pause-score-sep">–</span>
-            <span class="pause-score-team pause-score-team--red" id="pause-red">0</span>
+            <span class="pause-score-team pause-score-team--red" id="pause-right">0</span>
+            <span class="pause-side" id="pause-side-right" hidden><img class="pause-crest" alt="" hidden><span class="pause-name"></span></span>
           </div>
         </header>
         <nav class="pause-list" data-view="main" aria-label="Menú de pausa">

@@ -51,15 +51,29 @@ function hash(text: string): number {
   return h >>> 0
 }
 
+/** Orden de alta del jugador, sacado del sufijo numérico de su id (`blue-3` → 3). */
+function orderOf(id: string): number {
+  const digits = /(\d+)$/.exec(id)
+  return digits ? Number(digits[1]) : hash(id)
+}
+
+/** Posición en la 5 del partido externo ([portero, campo×4]) que ocupa un jugador. */
+function squadIndex(id: string, role: Role): number {
+  return role === 'goalie' ? 0 : 1 + ((orderOf(id) - 1 + 4) % 4)
+}
+
+/** Nombre del jugador en la plantilla del partido externo; null sin partido o en un hueco generado. */
+export function nameFor(id: string, team: TeamColor, role: Role): string | null {
+  return equipoDeHueco(team)?.nombres[squadIndex(id, role)] ?? null
+}
+
 /** Variedad determinista por id: mano del stick, piel, pelo y dorsal de la plantilla del equipo. */
 export function lookFor(id: string, team: TeamColor, role: Role): PlayerLook {
   const h = hash(id)
-  const digits = /(\d+)$/.exec(id)
-  const order = digits ? Number(digits[1]) : h
+  const order = orderOf(id)
   const field = TEAM_NUMBERS[team].field
   // Plantilla del partido externo: [portero, campo×4]; el generado de la plantilla sustituye a TEAM_NUMBERS
-  const squad = equipoDeHueco(team)?.dorsales
-  const squadNumber = squad && (role === 'goalie' ? squad[0] : squad[1 + ((order - 1 + 4) % 4)])
+  const squadNumber = equipoDeHueco(team)?.dorsales[squadIndex(id, role)]
   return {
     // Diestros mayoría (≈ 2 de cada 3), como en el juego real
     hand: h % 3 === 0 ? 'L' : 'R',

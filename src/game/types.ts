@@ -50,6 +50,8 @@ export type Player = {
   sprinting?: boolean
   ballProtectionUntil?: number
   staminaBar?: Phaser.GameObjects.Rectangle | null
+  /** Dorsal y nombre sobre la barra de stamina; solo los controlables. */
+  nameTag?: Phaser.GameObjects.Text | null
   stickSwingUntil?: number
   anim?: { type: 'pass' | 'shot' | 'turbo' | 'steal' | 'receive' | 'check' | 'celebrate' | 'save'; at: number; save?: 'split' | 'glove' | 'stick' | 'body'; side?: 1 | -1 }
   /** Angulo del stick en coordenadas mundo; el render puede usar otro por perspectiva. */
