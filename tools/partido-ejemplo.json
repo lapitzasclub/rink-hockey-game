@@ -1,0 +1,124 @@
+{
+  "v": 1,
+  "origen": "loyola-hockey-matches",
+  "partidoId": "ejemplo-001",
+  "competicion": "Liga Ejemplo · 1ª División",
+  "fecha": "2026-11-21",
+  "hora": "18:30",
+  "pista": "Polideportivo Ejemplo",
+  "sugerido": "local",
+  "local": {
+    "nombre": "Loyola Hockey Club",
+    "abrev": "LOY",
+    "escudo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAiklEQVR42u3XuQ3AIBAF0e2EktymuzSJIweWgL01XyKfly0i755ik+/aAMZ1p34AAAAAAAAAAAAAAACwA/AjAwAAAIAtQCWE/K10fAtAZoSsrHR8lgPvKD4aoRIfhVCNbwHwRJjEeyFM460RLvFWCNd4bURIfAuABiI0/hSRIn4XkSp+FZEynrHCm1HyfJVZ+oF5AAAAAElFTkSuQmCC",
+    "equipacion": {
+      "camiseta": "#1f4fa8",
+      "pantalon": "#ffffff",
+      "medias": "#ffffff",
+      "detalle": "#ffffff",
+      "dorsal": "#ffffff"
+    },
+    "segunda": false,
+    "plantilla": [
+      {
+        "nombre": "Ana G.",
+        "dorsal": "1",
+        "rol": "portero",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Marta R.",
+        "dorsal": "7",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": true
+      },
+      {
+        "nombre": "Lucía P.",
+        "dorsal": "10",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Irene S.",
+        "dorsal": "23",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Carmen T.",
+        "dorsal": null,
+        "rol": "jugador",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Sara L.",
+        "dorsal": "5",
+        "rol": "jugador",
+        "titular": false,
+        "capitan": false
+      },
+      {
+        "nombre": "Elena M.",
+        "dorsal": "12",
+        "rol": "portero",
+        "titular": false,
+        "capitan": false
+      }
+    ]
+  },
+  "visitante": {
+    "nombre": "Patín Ejemplo",
+    "abrev": "PEJ",
+    "escudo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAlElEQVR42u3WsQ2AMAxE0dSMwgzs39OwTmioKBBJ7Phi/ZPc/9e5lGd1sZX30gDO/ZA+AAAAAAAAAAAAAAAA+AHqtWkfAAAAAGgClkB8xcsj/sSnAEgiWuLlED3xKg/eUHw0wiQ+CmEanwIwE+ESPwvhGu+NmBLvhZgab40IiU8BsECExo8iJOJ7EVLxrQjJeMYW3g1PdPRVJfTpRgAAAABJRU5ErkJggg==",
+    "equipacion": {
+      "camiseta": "#d12a3c",
+      "pantalon": "#ffd60a",
+      "medias": "#ffd60a",
+      "detalle": "#ffd60a",
+      "dorsal": "#ffffff"
+    },
+    "segunda": false,
+    "plantilla": [
+      {
+        "nombre": "Pablo A.",
+        "dorsal": "1",
+        "rol": "portero",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Javi C.",
+        "dorsal": "4",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": true
+      },
+      {
+        "nombre": "Rubén D.",
+        "dorsal": "9",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Iván F.",
+        "dorsal": "11",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": false
+      },
+      {
+        "nombre": "Hugo N.",
+        "dorsal": "99",
+        "rol": "jugador",
+        "titular": true,
+        "capitan": false
+      }
+    ]
+  }
+}

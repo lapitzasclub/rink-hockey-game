@@ -3,6 +3,7 @@ import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MenuScene } from './scenes/MenuScene'
 import { MatchScene } from './scenes/MatchScene'
+import { initPartidoExterno } from './game/externalMatch'
 import { playUiMove } from './game/audio/sounds'
 import { consumePad, pollGamepad } from './game/input/gamepad'
 import { getInputMode, onInputModeChange, type InputMode } from './game/input/inputMode'
@@ -25,7 +26,12 @@ const fontReady = Promise.race([
   new Promise(resolve => setTimeout(resolve, 1500)),
 ]).catch(() => undefined)
 
-void fontReady.then(async () => {
+// Enlace de partido (#partido=...): si es válido, equipos, equipaciones y escudos vienen de fuera; si no, juego normal
+const partidoReady = initPartidoExterno().catch(e => console.warn('[partido] error al cargar el partido externo', e))
+// Cambiar solo el fragmento no recarga la página: se recarga para que el juego arranque con el partido nuevo
+window.addEventListener('hashchange', () => { if (window.location.hash.startsWith('#partido=')) window.location.reload() })
+
+void Promise.all([fontReady, partidoReady]).then(async () => {
   // Laboratorio gráfico: solo DEV y con ?lab=; el import dinámico queda fuera del build de producción
   const labScene = import.meta.env.DEV && new URLSearchParams(window.location.search).has('lab')
     ? (await import('./scenes/LabScene')).LabScene

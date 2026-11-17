@@ -8,6 +8,8 @@ import { playUiConfirm, playUiMove, playUiThump } from '../game/audio/sounds'
 import type { GameMode } from '../game/types'
 import { consumePad } from '../game/input/gamepad'
 import { getHalfRealMinutes, onHalfRealMinutesChange } from '../game/ui/prefs'
+import { claveEscudo, descartarPartido, equipoDeHueco, getLadoHumano, getPartidoExterno, ladoDeHueco, registrarEscudos, setLadoHumano, type Lado } from '../game/externalMatch'
+import { teamKit } from '../game/render/puppet/kit'
 import { getInputMode, onInputModeChange, PAD_GLYPH } from '../game/input/inputMode'
 
 type MenuData = { blueScore?: number; redScore?: number; blueFouls?: number; redFouls?: number; mode?: GameMode }
@@ -92,6 +94,7 @@ export class MenuScene extends Phaser.Scene {
   private beams: Phaser.GameObjects.Image[] = []
   private starting = false
   private reducedMotion = false
+  private pickerRedraw: (() => void) | null = null
 
   constructor() {
     super('menu')
@@ -104,6 +107,7 @@ export class MenuScene extends Phaser.Scene {
     this.chevrons = []
     this.beams = []
     this.starting = false
+    this.pickerRedraw = null
     this.drift = { t: 0 }
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -130,6 +134,8 @@ export class MenuScene extends Phaser.Scene {
     // Mando (el shell ya lo sondeó en este frame y se queda con lo que use un panel abierto)
     if (!this.isBlockedByDom()) {
       if (consumePad('left') || consumePad('right')) this.select(this.selected === 'arcade' ? 'classic' : 'arcade')
+      if (this.pickerRedraw && (consumePad('up') || consumePad('down'))) this.pickSide(getLadoHumano() === 'local' ? 'visitante' : 'local')
+      if (this.pickerRedraw && consumePad('back')) this.partidoLibre()
       if (consumePad('confirm')) this.startMatch()
     }
     const t = this.drift.t
@@ -186,10 +192,13 @@ export class MenuScene extends Phaser.Scene {
     const logoY = hasResult ? 82 : 168
     const logo = this.createLogo(cx, logoY, hasResult ? 0.62 : 1)
     logo.setName('logo')
-    if (!hasResult) this.createRibbon(cx, logoY + 80).setName('ribbon')
-    else this.createResult(cx, 228, data)
+    if (!hasResult && !getPartidoExterno()) this.createRibbon(cx, logoY + 80).setName('ribbon')
+    else if (hasResult) this.createResult(cx, 228, data)
 
-    const cardsY = hasResult ? 452 : 430
+    // Partido externo: la persona elige qué equipo controla (el local siempre se muestra a la izquierda)
+    if (getPartidoExterno()) this.createTeamPicker(cx, hasResult ? 322 : 292)
+
+    const cardsY = (hasResult ? 452 : 430) + (getPartidoExterno() ? 28 : 0)
     MODES.forEach((def, i) => this.createModeCard(def, cx + (i === 0 ? -UI.cardGap / 2 : UI.cardGap / 2), cardsY))
     this.chevrons = [0, 1].map(() => this.add.graphics({ y: cardsY }).setName('chevron'))
     this.refreshCards(false)
@@ -280,17 +289,22 @@ export class MenuScene extends Phaser.Scene {
 
   /** Marcador final tipo videomarcador tras volver de un partido. */
   private createResult(x: number, y: number, data: MenuData) {
-    const blue = data.blueScore!
-    const red = data.redScore!
+    // Con partido externo el local va a la izquierda aunque lo controle el equipo 'red'
+    const swapped = !!getPartidoExterno() && ladoDeHueco('blue') === 'visitante'
+    const blue = swapped ? data.redScore! : data.blueScore!
+    const red = swapped ? data.blueScore! : data.redScore!
+    const leftSlot = swapped ? 'red' : 'blue'
+    const rightSlot = swapped ? 'blue' : 'red'
+    const ext = getPartidoExterno() ? { left: equipoDeHueco(leftSlot)!, right: equipoDeHueco(rightSlot)! } : null
     const container = this.add.container(x, y).setName('result')
     const g = this.add.graphics()
     g.fillStyle(0x000000, 0.5)
     g.fillPoints(slantPts(560, 128, 30, 6, 8), true)
     g.fillStyle(0x0b1828, 0.95)
     g.fillPoints(slantPts(560, 128, 30), true)
-    g.fillStyle(0x1d5fb0, 1)
+    g.fillStyle(ext ? teamKit(leftSlot).jersey : 0x1d5fb0, 1)
     g.fillPoints(slantPts(170, 96, 22, -150, 0), true)
-    g.fillStyle(0xc0303d, 1)
+    g.fillStyle(ext ? teamKit(rightSlot).jersey : 0xc0303d, 1)
     g.fillPoints(slantPts(170, 96, 22, 150, 0), true)
     g.lineStyle(2, 0xffffff, 0.14)
     g.strokePoints(slantPts(560, 128, 30), true)
@@ -304,20 +318,109 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: ARCADE_FONT, fontSize: '68px', color: '#ffffff', stroke: C.ink, strokeThickness: 8,
     }).setOrigin(0.5)
     container.add([score(-150, blue), score(150, red)])
-    container.add(this.add.text(-150, 36, 'AZUL', { fontFamily: ARCADE_FONT, fontSize: '14px', color: '#cfe4ff' }).setOrigin(0.5))
-    container.add(this.add.text(150, 36, 'ROJO', { fontFamily: ARCADE_FONT, fontSize: '14px', color: '#ffd6da' }).setOrigin(0.5))
+    container.add(this.add.text(-150, 36, ext?.left.abrev ?? 'AZUL', { fontFamily: ARCADE_FONT, fontSize: '14px', color: ext ? '#ffffff' : '#cfe4ff', stroke: C.ink, strokeThickness: 3 }).setOrigin(0.5))
+    container.add(this.add.text(150, 36, ext?.right.abrev ?? 'ROJO', { fontFamily: ARCADE_FONT, fontSize: '14px', color: ext ? '#ffffff' : '#ffd6da', stroke: C.ink, strokeThickness: 3 }).setOrigin(0.5))
 
-    const winner = blue > red ? '¡GANA EL AZUL!' : red > blue ? '¡GANA EL ROJO!' : '¡EMPATE!'
+    const winnerName = (left: boolean) => ext ? (left ? ext.left : ext.right).abrev : left ? 'EL AZUL' : 'EL ROJO'
+    const winner = blue > red ? `¡GANA ${winnerName(true)}!` : red > blue ? `¡GANA ${winnerName(false)}!` : '¡EMPATE!'
     const winnerColor = blue > red ? C.blue : red > blue ? C.red : '#e8f4ff'
     container.add(this.add.text(0, -6, winner, {
       fontFamily: ARCADE_FONT, fontSize: '22px', color: winnerColor, stroke: C.ink, strokeThickness: 5, align: 'center',
       wordWrap: { width: 110 },
     }).setOrigin(0.5))
     if (data.mode === 'classic') {
-      container.add(this.add.text(0, 42, `faltas ${data.blueFouls ?? 0} · ${data.redFouls ?? 0}`, {
+      const fl = swapped ? [data.redFouls ?? 0, data.blueFouls ?? 0] : [data.blueFouls ?? 0, data.redFouls ?? 0]
+      container.add(this.add.text(0, 42, `faltas ${fl[0]} · ${fl[1]}`, {
         fontFamily: ARCADE_FONT, fontSize: '13px', color: '#7f9cbf',
       }).setOrigin(0.5))
     }
+  }
+
+  /** Selector del equipo que controla la persona: dos píldoras (local a la izquierda), clic o ↑/↓ para cambiar. */
+  private createTeamPicker(cx: number, y: number) {
+    registrarEscudos(this.textures)
+    const W = 300, H = 46, GAP = 16
+    const container = this.add.container(cx, y).setName('picker')
+    const g = this.add.graphics()
+    container.add(g)
+    const lados: Lado[] = ['local', 'visitante']
+    const clip = (t: string) => (t.length > 22 ? `${t.slice(0, 20)}..` : t)
+    const tags: Phaser.GameObjects.Text[] = []
+    const px = (i: number) => (i === 0 ? -(W / 2 + GAP / 2) : W / 2 + GAP / 2)
+    lados.forEach((lado, i) => {
+      const slot = ladoDeHueco('blue') === lado ? 'blue' : 'red'
+      const team = equipoDeHueco(slot)!
+      const x = px(i)
+      const key = claveEscudo(lado)
+      if (key) {
+        const img = this.add.image(x - W / 2 + 26, 0, key)
+        img.setScale(26 / Math.max(img.width, img.height))
+        container.add(img)
+      } else {
+        container.add(this.add.text(x - W / 2 + 26, 0, team.abrev, { fontFamily: ARCADE_FONT, fontSize: '14px', color: '#ffffff' }).setOrigin(0.5))
+      }
+      container.add(this.add.text(x - W / 2 + 52, -12, lado === 'local' ? 'LOCAL' : 'VISITANTE', { fontFamily: ARCADE_FONT, fontSize: '10px', color: '#9fb6cf' }).setOrigin(0, 0.5))
+      container.add(this.add.text(x - W / 2 + 52, 7, clip(team.nombre), { fontFamily: ARCADE_FONT, fontSize: '15px', color: '#ffffff', stroke: C.ink, strokeThickness: 3 }).setOrigin(0, 0.5))
+      const tag = this.add.text(x + W / 2 - 10, -12, 'TU EQUIPO', { fontFamily: ARCADE_FONT, fontSize: '10px', color: '#ffb347' }).setOrigin(1, 0.5)
+      tags.push(tag)
+      container.add(tag)
+      const zone = this.add.zone(x, 0, W, H).setInteractive({ useHandCursor: true })
+      zone.on('pointerdown', () => this.pickSide(lado))
+      container.add(zone)
+    })
+    this.pickerRedraw = () => {
+      g.clear()
+      lados.forEach((lado, i) => {
+        const slot = ladoDeHueco('blue') === lado ? 'blue' : 'red'
+        const active = getLadoHumano() === lado
+        const x = px(i)
+        g.fillStyle(0x0b1828, active ? 0.95 : 0.6)
+        g.fillRoundedRect(x - W / 2, -H / 2, W, H, 8)
+        g.fillStyle(teamKit(slot).jersey, active ? 1 : 0.6)
+        g.fillRoundedRect(x - W / 2, -H / 2, 8, H, { tl: 8, bl: 8, tr: 0, br: 0 })
+        // Disco claro bajo el escudo: su color principal es el de la camiseta
+        g.fillStyle(0xffffff, active ? 0.92 : 0.5)
+        g.fillCircle(x - W / 2 + 26, 0, 17)
+        g.lineStyle(active ? 3 : 1, active ? C.orange : 0xffffff, active ? 1 : 0.18)
+        g.strokeRoundedRect(x - W / 2, -H / 2, W, H, 8)
+        tags[i].setVisible(active)
+      })
+    }
+    // Competición, fecha y hora si vienen en el enlace (a la izquierda; el botón a la derecha)
+    const p = getPartidoExterno()!
+    const info = [p.competicion, [p.fecha, p.hora].filter(Boolean).join(' ')].filter(Boolean).join(' - ')
+    const rowY = H / 2 + 20
+    if (info) container.add(this.add.text(-W - GAP / 2, rowY, info.length > 46 ? `${info.slice(0, 44)}..` : info, { fontFamily: ARCADE_FONT, fontSize: '11px', color: '#cfe4ff', stroke: C.ink, strokeThickness: 3 }).setOrigin(0, 0.5))
+    // Salida al modo normal: botón (clic o toque), tecla L o B del mando
+    const bw = 170, bh = 24, by = rowY, bx = W + GAP / 2 - bw / 2
+    const bg = this.add.graphics()
+    bg.fillStyle(0x0b1828, 0.85)
+    bg.fillRoundedRect(bx - bw / 2, by - bh / 2, bw, bh, 6)
+    bg.lineStyle(1, 0xffffff, 0.3)
+    bg.strokeRoundedRect(bx - bw / 2, by - bh / 2, bw, bh, 6)
+    container.add(bg)
+    container.add(this.add.text(bx, by, 'PARTIDO LIBRE (L)', { fontFamily: ARCADE_FONT, fontSize: '11px', color: '#ffffff' }).setOrigin(0.5))
+    const free = this.add.zone(bx, by, bw + 16, bh + 12).setInteractive({ useHandCursor: true })
+    free.on('pointerdown', () => this.partidoLibre())
+    container.add(free)
+    this.pickerRedraw()
+    // Los escudos se añadieron antes que el disco: el disco va debajo
+    container.sendToBack(g)
+  }
+
+  /** Descarta el partido externo y reabre el menú normal (el hash se conserva para recargar). */
+  private partidoLibre() {
+    if (this.starting || this.isBlockedByDom() || !getPartidoExterno()) return
+    descartarPartido()
+    playUiConfirm()
+    this.scene.restart({ mode: this.selected })
+  }
+
+  private pickSide(lado: Lado) {
+    if (this.starting || this.isBlockedByDom() || getLadoHumano() === lado) return
+    setLadoHumano(lado)
+    playUiMove()
+    this.pickerRedraw?.()
   }
 
   /** Pie de las tarjetas: dos partes y su duración real (Ajustes → General). */
@@ -569,7 +672,8 @@ export class MenuScene extends Phaser.Scene {
     const result = byName('result')
     const prompt = byName('prompt')
     const hints = byName('hints')
-    const rest = [ribbon, result, hints].filter(Boolean) as Phaser.GameObjects.Container[]
+    const picker = byName('picker')
+    const rest = [ribbon, result, hints, picker].filter(Boolean) as Phaser.GameObjects.Container[]
 
     this.cameras.main.fadeIn(this.reducedMotion ? 200 : 700, 0, 0, 0)
 
@@ -619,6 +723,10 @@ export class MenuScene extends Phaser.Scene {
       ch.setAlpha(0)
       this.tweens.add({ targets: ch, alpha: 1, duration: 240, delay: 1050 })
     }
+    if (picker) {
+      picker.setAlpha(0)
+      this.tweens.add({ targets: picker, alpha: 1, duration: 300, delay: 900 })
+    }
     if (hints) {
       hints.setAlpha(0)
       this.tweens.add({ targets: hints, alpha: 1, duration: 300, delay: 1100 })
@@ -659,6 +767,12 @@ export class MenuScene extends Phaser.Scene {
     for (const code of ['LEFT', 'RIGHT', 'A', 'D'] as const) {
       keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[code]).on('down', toggle)
     }
+    for (const code of ['UP', 'DOWN', 'W', 'S'] as const) {
+      keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[code]).on('down', () => {
+        if (this.pickerRedraw) this.pickSide(getLadoHumano() === 'local' ? 'visitante' : 'local')
+      })
+    }
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', () => this.partidoLibre())
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => this.startMatch())
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.startMatch())
   }

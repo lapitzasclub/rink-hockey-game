@@ -60,6 +60,7 @@ import { actionPrompt } from '../game/input/inputMode'
 import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
 import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle, startCrowdAmbience } from '../game/audio/sounds'
 import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
+import { equipoDeHueco, nombreDeHueco } from '../game/externalMatch'
 import { ArcadeController } from '../game/systems/arcade'
 import { celebrateGoal } from '../game/render/puppet/actions'
 import { CameraDirector } from '../game/systems/cameraDirector'
@@ -846,13 +847,16 @@ export class MatchScene extends Phaser.Scene {
     this.fx.burst(scorer, net.x, net.y, 46)
     this.fx.burst('gold', net.x, net.y, 30)
     if (result.fireGoal) this.fx.burst('fire', net.x, net.y, 36)
-    const teamName = scorer === 'blue' ? 'AZUL' : 'ROJO'
+    const external = equipoDeHueco(scorer)
+    const teamName = external?.abrev ?? (scorer === 'blue' ? 'AZUL' : 'ROJO')
     this.fx.showBanner('¡GOOOL!', ArcadeController.teamHex(scorer), result.sub || `GOL ${teamName}`, 1700)
     playCrowdRoar(result.onFireStarted || result.fireGoal ? 1 : 0.65)
     if (!result.onFireStarted) {
       announceOneOf(result.fireGoal
         ? ['¡Gol de fuego!', '¡La red está ardiendo!']
-        : ['¡Goool!', '¡Qué golazo!', '¡Gol, gol, gol!', '¡Directo a la red!'], true)
+        : external
+          ? [`¡Gol de ${external.nombre}!`, '¡Goool!', `¡${external.nombre} marca!`, '¡Gol, gol, gol!']
+          : ['¡Goool!', '¡Qué golazo!', '¡Gol, gol, gol!', '¡Directo a la red!'], true)
     }
   }
 
@@ -1059,8 +1063,8 @@ export class MatchScene extends Phaser.Scene {
   private finishMatch() {
     this.matchEnded = true
     const result = this.blueScore === this.redScore ? 'Empate'
-      : this.blueScore > this.redScore ? '¡Gana el azul!'
-      : '¡Gana el rojo!'
+      : this.blueScore > this.redScore ? `¡Gana ${nombreDeHueco('blue', 'el azul')}!`
+      : `¡Gana ${nombreDeHueco('red', 'el rojo')}!`
     const hint = `Pulsa ${actionPrompt('shoot')} para continuar`
     if (this.fx) {
       const winner: TeamColor | null = this.blueScore === this.redScore ? null : this.blueScore > this.redScore ? 'blue' : 'red'

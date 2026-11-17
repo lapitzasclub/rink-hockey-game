@@ -35,6 +35,7 @@ src/
   game/
     constants.ts             Todas las constantes de física y gameplay (tuning aquí)
     types.ts                 Tipos: Player, Vector, ActiveBully, ActiveFoulRestart, GameMode, PowerupKind
+    externalMatch.ts         Partido externo (enlace de partido v1 de loyola-hockey-matches, `#partido=<base64url JSON>`): validación a mano del payload, estado (equipo que controla la persona), escudos como texturas `escudo-local|visitante` y huecos 'blue' (humano) / 'red' (IA) → equipo del partido
     formation.ts             Posiciones de formación por lado y helpers de lado (teamSide, scorerAtGoal, attackDir, switchSides)
     utils.ts                 Helpers generales
     entities/
@@ -78,6 +79,8 @@ src/
       gamepad.ts             Gamepad API: sondeo por frame y botones lógicos con «recién pulsado» consumible
       inputMode.ts           Último dispositivo usado (touch/keyboard/gamepad) y textos de botón por dispositivo
 tools/
+  partido-ejemplo.json       Payload v1 de ejemplo (dos equipos con escudo y plantilla)
+  partido-url.mjs            `node tools/partido-url.mjs [payload.json] [urlJuego]` imprime la URL con `#partido=`
   generate-comfy-asset.ps1   Helper para generar borradores 2D con ComfyUI local
   gfx-shot.ps1               Capturas headless (Chrome/Edge) + volcado de consola para el workflow gráfico
   gfx-smoke.ps1              Partido de humo IA contra IA headless (`?lab=match&auto=1`): imprime `[smoke] {json}`
@@ -149,6 +152,11 @@ Formato preferido: `/** ... */` en funciones o módulos clave. Inline solo cuand
 - Física de portería como jaula
 - Fullscreen, controles táctiles y teclado
 
+### Partido por enlace
+
+- `<URL_JUEGO>/#partido=<base64url JSON>` (contrato v1 de loyola-hockey-matches). El menú muestra local | visitante con escudos y nombres, competición, fecha y hora si vienen, y la persona elige su equipo (clic, toque, ↑/↓, W/S o cruceta; preseleccionado `sugerido`). Después se elige ARCADE o REGLAMENTO como siempre.
+- «PARTIDO LIBRE» (clic, toque, tecla L o B del mando) descarta el partido en esa sesión. El hash no se borra: recargar la pestaña restaura el partido, y salir de un partido vuelve al menú con el partido aún activo.
+
 ### Modo arcade (por defecto)
 
 Estilo NBA Jam manteniendo el 5v5 y relajando las reglas. Se elige en el menú; REGLAMENTO conserva las reglas oficiales.
@@ -213,6 +221,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 
 ### Pendiente
 
+- [x] Partido por enlace (`#partido=`): carga, equipaciones, selector de equipo y «Partido libre»
 - [ ] Playtest y tuning del modo arcade (frecuencia de powerups, potencia de tiros turbo/fuego, probabilidad de batir al portero, zoom de cámara)
 - [ ] Verificar el modo arcade en móvil (S+A, legibilidad del HUD con zoom)
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
@@ -262,6 +271,22 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-17 — partido desde loyola-hockey-matches (paso 2: selección y cierre)
+
+- Menú con partido (`MenuScene`): sin cinta de subtítulo; fila local | visitante con escudo, nombre y «TU EQUIPO», línea con competición, fecha y hora, y botón «PARTIDO LIBRE (L)». Las tarjetas de modo bajan 28 px. `descartarPartido()` (externalMatch.ts) limpia el estado sin tocar el hash.
+- Roadmap: partido por enlace completado (carga, equipaciones, selector y salida al modo normal).
+- Verificado con `tools/gfx-shot.ps1` (con `--force-prefers-reduced-motion` en una copia temporal para saltar la animación de entrada): menú con partido y sin él.
+- Pendiente: el atajo ↑/↓ y L no figuran en la barra de ayudas; el menú con resultado final y partido no se ha visto en captura.
+- Tras la revisión: dorsales repetidos en el payload se tratan como ausentes y se genera uno libre (`dorsalesEnPista`); el texto de sanciones del marcador aclara camisetas oscuras (`legible`). El banner arcade de gol y final y el ganador del menú siguen en azul/rojo fijos.
+
+### 2026-11-17 — partido desde loyola-hockey-matches (paso 1: carga y equipaciones)
+
+- `game/externalMatch.ts` lee y valida `#partido=` (v1, sin librerías; payload inválido → juego normal y `console.warn`). `main.ts` lo espera junto a la fuente y recarga la página si cambia el fragmento.
+- Los huecos internos siguen siendo 'blue' (humano) y 'red' (IA). `teamKit(team)` y `lookFor` (render/puppet/kit.ts) toman colores y dorsales del partido (casco = camiseta, guantes = detalle; dorsales: portero + 4 de la plantilla, huecos generados sin repetir). `RigKit.id` incluye los colores para que las cachés de atlas no mezclen equipaciones. Sin partido, `TEAM_KITS` / `TEAM_NUMBERS` como antes.
+- Videomarcador (`ui/scoreboard.ts`): con partido, local a la izquierda y visitante a la derecha sea cual sea el humano, bloque del color de la camiseta, escudo sobre disco claro y abreviatura. El texto de gol/falta, el banner y el locutor usan los nombres (`nombreDeHueco`).
+- Menú: selector de equipo (clic, ↑/↓ o cruceta; preseleccionado `sugerido`) y resultado final con nombres.
+- Pendiente: el anillo de selección, arcadeFx y los colores de partículas siguen en azul/rojo por hueco; la plantilla solo aporta dorsales (los nombres de jugador no se muestran).
 
 ### 2026-11-16 (sesión 25, cont.) — cambio de campo en el descanso
 

@@ -2,6 +2,7 @@ import { BLUE_CARD_DURATION_MS, DIRECT_FREE_HIT_FOUL_THRESHOLD } from '../consta
 import { gameToRealMs } from './matchClock'
 import { SANCTION } from '../types'
 import type { Player, TeamColor } from '../types'
+import { nombreDeHueco } from '../externalMatch'
 
 export type BullyParticipant = {
   bluePlayerId: string
@@ -60,8 +61,8 @@ export function registerStealFoul(state: RuleState, offender: Player, victim: Pl
     restartY,
     sanction,
     message: isDirect
-      ? `Tarjeta azul, ${offender.team === 'blue' ? 'azul' : 'rojo'} (${fouls} faltas)`
-      : `Falta de ${offender.team === 'blue' ? 'azul' : 'rojo'} (${fouls})`,
+      ? `Tarjeta azul, ${nombreDeHueco(offender.team, offender.team === 'blue' ? 'azul' : 'rojo')} (${fouls} faltas)`
+      : `Falta de ${nombreDeHueco(offender.team, offender.team === 'blue' ? 'azul' : 'rojo')} (${fouls})`,
   }
 }
 

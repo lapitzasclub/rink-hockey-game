@@ -16,6 +16,10 @@ npm install
 npm run dev
 ```
 
+### Abrir un partido por URL
+
+El juego acepta un partido de loyola-hockey-matches en el fragmento de la URL: `<URL_JUEGO>/#partido=<base64url(JSON)>` (contrato v1: equipos, escudos, equipaciones y plantilla). El menú muestra los dos equipos, deja elegir cuál controlas y ofrece «Partido libre» para volver al modo normal. Un enlace inválido se ignora. Para probar en local: `node tools/partido-url.mjs` imprime una URL con el ejemplo `tools/partido-ejemplo.json`.
+
 Build de producción:
 
 ```bash

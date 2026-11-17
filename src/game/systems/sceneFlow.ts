@@ -4,6 +4,7 @@ import { getControlledPlayer, selectBestControlledPlayer } from './playerHelpers
 import { updateVisuals } from './visuals'
 import { checkGoal } from './ball'
 import { applyGoalReset } from './matchFlow'
+import { nombreDeHueco } from '../externalMatch'
 
 /**
  * Espera el retardo de celebración de gol y lanza el kickoff cuando expira.
@@ -109,11 +110,11 @@ export function checkAndApplyGoal(options: {
 
   if (goal.scorer === 'red') {
     next.redScore += 1
-    options.centerText.setText('¡Gol rojo!').setVisible(true)
+    options.centerText.setText(`¡Gol ${nombreDeHueco('red', 'rojo')}!`).setVisible(true)
     applyGoalReset({ scorer: goal.scorer, players: options.players, ball: options.ball })
   } else {
     next.blueScore += 1
-    options.centerText.setText('¡Gol azul!').setVisible(true)
+    options.centerText.setText(`¡Gol ${nombreDeHueco('blue', 'azul')}!`).setVisible(true)
     applyGoalReset({ scorer: goal.scorer, players: options.players, ball: options.ball })
   }
 
