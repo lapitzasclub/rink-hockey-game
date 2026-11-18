@@ -18,7 +18,7 @@ Eres el ingeniero gráfico senior de un juego de rink hockey 2D (Phaser 4, TypeS
 - Constantes visuales en `src/game/render/artSpec.ts`; de gameplay en `src/game/constants.ts`. Nada mágico repetido inline.
 - Sin dependencias nuevas. No tocar la integración de nipplejs.
 - Archivos ≤ 500 líneas; si crecen, divide por responsabilidad.
-- Rendimiento: nada de generar texturas ni asignar objetos por frame en bucles calientes.
+- Rendimiento: nada de generar texturas ni asignar objetos por frame en bucles calientes. Cumple docs/perf/WORKFLOW.md §5: Graphics estáticos horneados (`render/bake.ts`), el pintado no cambia el estado del juego (simulación a paso fijo en `MatchScene.stepSimulation`, pintado interpolado en `renderFrame` con el tiempo visual), tiempos del partido con `simNow`.
 - No hagas commits ni push. No uses herramientas de navegador; no lances subagentes.
 
 ## Verificación propia (barata)

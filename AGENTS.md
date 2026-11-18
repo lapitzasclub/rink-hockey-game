@@ -27,7 +27,7 @@ src/
   shell/                     Shell DOM: template (marcado e iconos SVG), pauseMenu, settingsPanel (pestañas, volumen, reasignación de teclas), menuNav (navegación tipo consola), fullscreen
   style.css                  Shell DOM con estética de juego; visibilidad por `data-scene` (menu/match) y `data-input` (keyboard/gamepad/touch)
   scenes/MenuScene.ts        Menú: pabellón real de fondo con cámara a la deriva, logo, tarjetas ARCADE / REGLAMENTO (localStorage `rh-mode`), resultado final
-  scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido
+  scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido: simulación a paso fijo (stepSimulation) y pintado interpolado (renderFrame)
   scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
   scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV); labActionStrips y labGoalieStrips: tiras de acciones y portero; labSmoke: partido de humo
   scenes/lab/stylePrototypes.ts  prototipos de estilo de WP-20 (A, B, C) en `?lab=style`
@@ -38,6 +38,7 @@ src/
     externalMatch.ts         Partido externo (enlace de partido v1 de loyola-hockey-matches, `#partido=<base64url JSON>`): validación a mano del payload, estado (equipo que controla la persona), escudos como texturas `escudo-local|visitante` y huecos 'blue' (humano) / 'red' (IA) → equipo del partido
     formation.ts             Posiciones de formación por lado y helpers de lado (teamSide, scorerAtGoal, attackDir, switchSides)
     utils.ts                 Helpers generales
+    perf/perfMonitor.ts      Monitor de rendimiento: panel `?perf=1` (también en producción) e informe `[perf] {json}` con `?perfMs=N`
     entities/
       createBall.ts
       createPlayer.ts
@@ -49,7 +50,9 @@ src/
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
       puppet/                Rig 2D por huesos con IK de dos huesos, atlas de vistas cacheadas y capas de pose (WP-30); locomoción quad (WP-31: locomotion.ts, locomotionGaits.ts); stick y acciones (WP-32: upperBody.ts, actions.ts, actionClips.ts); portero (WP-33: goalie.ts, goalieClips.ts)
-      arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade)
+      arcadeFx.ts            Partículas, auras, estela de bola, bloques de hielo, banners (modo arcade); densidad según la calidad
+      bake.ts                Horneado de Graphics estáticos en texturas (bakeGraphics, bakeGraphicsSince): drawRink, redes, HUD
+      quality.ts             Calidad gráfica auto/alta/media/baja (`rh-quality`, `?quality=`): horneado, partículas, público; bajada automática aprendida (`rh-quality-auto`)
     systems/
       ai.ts                  IA de portero y jugadores de campo
       arcade.ts              ArcadeController: turbo, tiros turbo/fuego, cargas, rachas, powerups, rubber-band
@@ -68,6 +71,7 @@ src/
       createHud.ts
       matchHud.ts
       arcadeHud.ts           Barra de turbo y línea de estado (arcade)
+      hudLayout.ts           Anclaje del HUD a las esquinas visibles con zonas seguras; en táctil el turbo sube bajo el marcador
       scoreboard.ts          Videomarcador común (ambos modos)
       prefs.ts               Preferencias: etiquetas de rol (`?labels=1|0`) y minutos reales por parte (`?half=N`)
     audio/
@@ -84,16 +88,24 @@ tools/
   generate-comfy-asset.ps1   Helper para generar borradores 2D con ComfyUI local
   gfx-shot.ps1               Capturas headless (Chrome/Edge) + volcado de consola para el workflow gráfico
   gfx-smoke.ps1              Partido de humo IA contra IA headless (`?lab=match&auto=1`): imprime `[smoke] {json}`
+  perf-bench.mjs             Banco de rendimiento headless (CDP, sin dependencias): perfiles escritorio/portatil/movil/movil-bajo y `--soft`; imprime `[perf-bench] {json}`
+  perf-trace.mjs             Resumen de una traza de Chrome: tiempo propio y total por función
 docs/
   graphics/                  Renovación gráfica: WORKFLOW (proceso y roles), SPEC (biblia de arte, medidas, cámara),
                              AUDIT (diagnóstico 2026-11-15), BACKLOG (WPs, decisiones, propiedad de archivos), shots/
+  perf/                      Rendimiento y pulido: WORKFLOW (presupuestos, herramientas y reglas para todo el desarrollo),
+                             BACKLOG (paquetes P-XX con medidas), bench/ (resultados en bruto del banco)
 .claude/
   agents/gfx-*.md            Agentes del workflow gráfico: engineer (opus), builder (sonnet), qa (haiku)
+  agents/perf-*.md           Agentes del workflow de rendimiento: engineer (opus), builder (sonnet), qa (haiku)
   commands/gfx.md            /gfx — coordinador del workflow gráfico
+  commands/perf.md           /perf — coordinador del workflow de rendimiento
 .openclaw/
   skills/
     comfyui-asset-generation/SKILL.md
 public/
+  manifest.webmanifest       PWA: pantalla completa y orientación apaisada al instalarla
+  icon.svg                   Icono (favicon y manifiesto)
   assets/
     players.png              Sprites ilustrados de jugadores y bola
     goalie-blue.png          Sprite ilustrado del portero azul
@@ -109,7 +121,9 @@ public/
 - `btn-switch` se pasa a `createMobileJoystick` pero no tiene elemento HTML ni binding; en móvil el cambio de jugador se gestiona con B (botón de pase) cuando no hay posesión — comportamiento contextual intencional.
 - **Dos cámaras en MatchScene**: la principal (mundo, con zoom en arcade) y una de UI fija. Todo objeto nuevo se enruta en `ADDED_TO_SCENE`: lo creado dentro de `withUi(() => ...)` lo ignora la principal; el resto lo ignora la UI. Cualquier HUD/overlay nuevo debe crearse dentro de `withUi`.
 - La cámara trabaja en coordenadas de pantalla ya proyectadas (`worldToScreen`); la física sigue en mundo.
-- **Scale.EXPAND**: el lienzo ocupa toda la ventana (sin bandas negras). El área de juego sigue siendo 1280×720 centrada; el pabellón (`ARENA_BOUNDS` en `arena.ts`) rellena lo que sobra. Las cámaras se reajustan en `MatchScene.fitCameras` (evento `RESIZE`) y `CameraDirector.refit`; el HUD queda dentro del área 16:9.
+- **Scale.EXPAND**: el lienzo ocupa la ventana. El área de diseño sigue siendo 1280×720 centrada; el pabellón (`ARENA_BOUNDS` en `arena.ts`) rellena lo que sobra. `#game-host` limita la proporción a 4:3–2,6:1 (siempre apaisado; fuera de ese rango, bandas). Las cámaras se reajustan en `MatchScene.fitCameras` (evento `RESIZE`) y `CameraDirector.refit`; el HUD se ancla a las esquinas visibles con `HudLayout`, fuera de las zonas seguras.
+- **Bucle del partido** (docs/perf/WORKFLOW.md §5): `update` acumula el tiempo real (marca de rAF, no el `delta` de Phaser, que se recorta sin foco) y ejecuta `stepSimulation` en pasos fijos de `SIM_STEP_MS` (60 Hz, máx. `SIM_MAX_STEPS` por fotograma); después `renderFrame` pinta una vez con jugadores y bola interpolados y el tiempo visual `vt`. Las marcas de tiempo del partido usan `simNow` (no `this.time.now`, que corre en las pausas) y el reloj del marcador lo avanza la simulación. El ángulo del stick (contactos) lo fija `updateStickAngles` en la simulación. Las partículas se emiten por paso de simulación.
+- **Horneado**: todo lo que dibuja `drawRink`, las redes de gol, el panel del marcador y el fondo del turbo se pintan una vez en canvas y se sustituyen por Images (`render/bake.ts`); los grandes, solo en sus tiras de baldosas con contenido (`addTrimmedImages`, también público y viñeta). La textura se nombra por contenido y resolución (una por nivel de calidad para todo el mundo) y la comparten menú y partido. Un Graphics nuevo que no cambie debe hornearse.
 - **Gradas** (`arena.ts`): anillos concéntricos alrededor de la valla (`roundedRectWorldPts` desplazado) proyectados con `standToScreen` (misma perspectiva que la pista + retroceso tras el fondo + altura del escalón). Se pintan una vez en canvas: estructura (profundidad -6), dos capas de público que se mecen (-5) y filas cercanas de espaldas (21, delante del tablero).
 - **Menú**: `MenuScene` usa el mismo enrutado de dos cámaras que MatchScene (mundo = `createArena` + `drawRink`; UI fija). Las ayudas inferiores y el texto «jugar» se rehacen al cambiar de dispositivo (`onInputModeChange`). El menú ignora teclas, toques y mando si el shell tiene `has-overlay` o está en vertical. Con `prefers-reduced-motion` no hay intro, deriva de cámara ni bucles.
 - **Shell** (`main.ts`): en cada STEP del juego, antes de las escenas, sondea el mando, lo aplica a los paneles abiertos y fija `data-scene`. Al abrir un panel apaga el teclado de Phaser (`game.input.keyboard.enabled`) para que Espacio y flechas no lleguen al juego ni sufran preventDefault, y al cerrarlo hace `resetKeys`. El partido se pausa con pausa o ajustes abiertos, o con el táctil en vertical. Solo reanuda lo que pausó el propio shell, así el congelado del laboratorio no se pisa. Esc: ajustes → pausa → partido; en el menú abre los ajustes. Al ocultar la pestaña se abre la pausa.
@@ -151,6 +165,9 @@ Formato preferido: `/** ... */` en funciones o módulos clave. Inline solo cuand
 - IA básica de portero (cubre portería, intercepta, distribuye) y jugadores de campo (pressing, repliegue, pases, tiros)
 - Física de portería como jaula
 - Fullscreen, controles táctiles y teclado
+- La velocidad del juego es la misma con cualquier pantalla (50, 60, 120, 144 Hz) y resolución: la simulación avanza a 60 pasos por segundo. Por debajo de 12 fps se ralentiza en vez de dar saltos
+- Tras un gol, en el descanso y al final, los jugadores se deslizan hasta frenar y el equipo que marca celebra (antes se quedaban congelados a media zancada); se colocan en formación al sacar
+- Ajustes → General → Gráficos → «Calidad gráfica»: AUTO (por defecto; elige según el equipo y baja sola si el partido no llega a ~45 fps), ALTA, MEDIA o BAJA. Cambia la nitidez de la pista horneada, la densidad de partículas y si el público se mueve; en BAJA las gradas lejanas son una sola capa
 
 ### Partido por enlace
 
@@ -191,7 +208,7 @@ Stick izquierdo o cruceta: mover · X/B: tiro y robo · A: pase y cambio · RT/R
 
 ### Controles (móvil)
 
-Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio), S (sprint/turbo), S+A (tiro turbo/carga en arcade). Pantalla completa desde el botón del menú o desde Ajustes; en Android además fija el apaisado (`screen.orientation.lock`). En vertical se muestra el aviso «gira el móvil» y el partido queda en pausa.
+Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio), S (sprint/turbo), S+A (tiro turbo/carga en arcade). Joystick y botones escalan con la pantalla (`vmin`, con topes) y respetan las zonas seguras. En táctil la barra de turbo del arcade va bajo el marcador, no bajo el joystick. Pantalla completa desde el botón del menú o desde Ajustes; en Android además fija el apaisado (`screen.orientation.lock`), y el manifiesto pide apaisado al instalarlo. En vertical se muestra el aviso «gira el móvil», el partido queda en pausa y el juego deja de pintarse.
 
 ## Roadmap
 
@@ -218,6 +235,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Modo arcade estilo NBA Jam (cámara dinámica, turbo, cargas, powerups, racha de fuego, locutor, HUD arcade) con selección de modo en el menú
 - Menús con aspecto de videojuego: menú principal sobre el pabellón, acceso directo a pantalla completa, ajustes renovados y aviso de orientación en móvil
 - Menú de pausa (Esc / Start / botón táctil), ajustes por pestañas con volúmenes, reasignación de teclas, soporte de mando y UI adaptada a teclado, mando o táctil
+- Rendimiento y formato: simulación a paso fijo (velocidad igual con cualquier pantalla), pista horneada, calidad gráfica con modo automático, formato apaisado responsivo y workflow de rendimiento (`docs/perf/`, `/perf`)
 
 ### Pendiente
 
@@ -227,6 +245,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
 - [ ] Separar sistema de reglas en módulo propio (`systems/rules.ts` puede crecer)
 - [ ] UI definitiva, sprites finales → sustituido por la renovación gráfica: ver `docs/graphics/BACKLOG.md` (cámara única, rig con patines quad y stick a dos manos, porterías y vallas reglamentarias, árbitros, mesa, entrenadores, HUD unificado)
+- [ ] Rendimiento pendiente: ver `docs/perf/BACKLOG.md` (P-08 resolución nítida en pantallas grandes, a decidir; P-09 suelo en una textura; P-10 coste del rig; P-11 menú; P-12 pruebas en móviles reales; P-13 memoria del pabellón)
 
 ### Backlog
 
@@ -271,6 +290,19 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-18 (sesión 26) — rendimiento, velocidad constante y formato apaisado
+
+- **Velocidad variable con la resolución o el refresco (corregido).** El rozamiento de jugadores y bola (`PLAYER_FRICTION`, `BALL_FRICTION`), los empujes de separación, el imán de la bola y las probabilidades de la IA se aplicaban por fotograma, y `dt` se recortaba a 33 ms: a 50 Hz los jugadores iban un ~20 % más rápido que a 60 Hz, a 144 Hz bastante más lentos, y por debajo de 30 fps todo se ralentizaba. Ahora `MatchScene.update` acumula el tiempo real (marca de rAF; el `delta` de Phaser se recorta a 16,7 ms con la ventana sin foco) y ejecuta `stepSimulation` en pasos fijos de 1/60 s (`SIM_*` en constants.ts); `renderFrame` pinta una vez interpolando jugadores y bola. Tiempos del partido con `simNow`; el reloj del marcador lo avanza la simulación (fuera el `time.addEvent`); el ángulo del stick pasa a `updateStickAngles` (simulación). Comprobado: con CPU ×3 a 36 fps, 5,1 s simulados en 5,04 s reales.
+- **Celebración visible.** Tras un gol, en el descanso y al final los jugadores se deslizan hasta frenar y el equipo que marca celebra (`celebrateGoal` existía pero no se veía: el pintado se congelaba). `applyGoalReset` ya no teletransporta: lo hace el saque.
+- **Render.** Horneado de Graphics estáticos (`render/bake.ts`): 30 Graphics y ~38 000 comandos que WebGL re-triangulaba cada fotograma, un tercio del coste. Los horneados grandes, el público y la viñeta se colocan solo en sus tiras de baldosas con contenido (`addTrimmedImages`): sin eso, la GPU por software caía de 10 a 7 fps por rellenar rectángulos casi transparentes. Una sola resolución de horneado del mundo por nivel (menú y modos la comparten; las de otro nivel se podan). Anillo del controlado y sombra de la bola como texturas; el reloj del marcador ya no hace `setColor` cada fotograma (re-rasterizaba el texto). Partículas por paso de simulación y con densidad según la calidad.
+- **Calidad gráfica** (`render/quality.ts`, Ajustes → General → Gráficos): AUTO/ALTA/MEDIA/BAJA. Auto elige por núcleos, memoria y táctil y baja un nivel si dos ventanas de 3 s no llegan a ~45 fps con el equipo cargado (lógica + envío del pintado ≥ 45 % del fotograma, o fotogramas irregulares): una pantalla limitada a 30 Hz no la baja (`QUALITY_WATCH`). La bajada se recuerda 7 días. El regulador no actúa en el laboratorio ni en el banco. BAJA funde las gradas lejanas en una capa y deja quieto al público.
+- **Formato apaisado responsivo.** `#game-host` entre 4:3 y 2,6:1; HUD anclado a las esquinas visibles con zonas seguras (`ui/hudLayout.ts`); en táctil la barra de turbo va bajo el marcador (antes quedaba debajo del joystick); joystick y botones en `vmin` con topes y `env(safe-area-inset-*)`; `viewport-fit=cover`, manifiesto PWA apaisado e icono (adiós al 404 del favicon); en vertical táctil el juego deja de pintarse detrás del aviso. El menú hornea la pista a su zoom máximo.
+- **Workflow de rendimiento** (`docs/perf/WORKFLOW.md`, `BACKLOG.md`, `/perf`, agentes `perf-engineer|builder|qa`): presupuestos por perfil de dispositivo, reglas de rendimiento para todo el desarrollo (§5), banco headless `tools/perf-bench.mjs` (CDP sin dependencias, `?lab=match&ai=1&perfMs=`), panel `?perf=1` (también en producción), `tools/perf-trace.mjs` y scripts `npm run typecheck|perf|perf:trace`. `?lab=match&ai=1`: IA contra IA en tiempo real; `driveBlueRestarts` sale de labSmoke para reutilizarlo.
+- **Revisión independiente** del bucle (subagente): sin fallos graves. Corregido lo que encontró: el regulador de calidad (ver arriba), horneados duplicados por escena, gestos de árbitro fechados con el fotograma anterior (`Officials.syncTime` al empezar cada paso), redondeo del paso manual del laboratorio (tolerancia de 1 µs) y posible temblor de la inclinación a 120/144 Hz (también se interpolan las velocidades). En el humo y en `ai=1`, el sacador azul de las faltas apuntaba siempre a +x, también tras el cambio de campo; ahora apunta a la portería que ataca (cambia las referencias de reglamento del humo a partir de esta sesión).
+- **Medidas** (mediana de 3; tope de 50 Hz en el equipo): perfil `movil` (CPU ×4, 844×390@3), arcade de 24,7 a 49,7 fps y render de 30,0 a 5,6 ms; `movil-bajo` (CPU ×6, 740×360@2), arcade de 11,3 a 47,6 fps y reglamento de 23,3 a 49,9. Tabla completa en `docs/perf/BACKLOG.md` y en bruto en `docs/perf/bench/`.
+- **Humo** (20 corridas por modo, nuevo frente a base a78720b): sin diferencias (todos los IC 95 % se solapan). Reglamento 1,18 ± 0,20 frente a 1,28 ± 0,16 goles/min; arcade 2,00 ± 0,19 frente a 2,06 ± 0,35. 0 atascos y 0 errores.
+- Pendiente: P-08 (render a la resolución de la pantalla en calidad alta) espera decisión DP-1; probar en móviles reales con `?perf=1` (P-12).
 
 ### 2026-11-17 — partido por enlace: nombre del jugador, marcador y pausa
 

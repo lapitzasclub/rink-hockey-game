@@ -1,0 +1,23 @@
+== arcade movil-bajo
+[perf-bench] {"profile":"movil-bajo","mode":"arcade","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":44.8,"frameP50":20,"frameP95":40,"frameP99":40.3,"updateAvg":6.96,"updateP95":11.5,"renderAvg":11.06,"renderP95":18.2,"jankPerMin":275.87920964334535,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 3050 Ti Laptop GPU (0x000025A0) Direct3D11 vs_"},"quality":"calidad media (auto)"}
+== reglamento movil-bajo
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":37.6,"frameP50":20,"frameP95":40.1,"frameP99":40.4,"updateAvg":8.37,"updateP95":14.7,"renderAvg":13.77,"renderP95":22.7,"jankPerMin":633.0685203574975,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 3050 Ti Laptop GPU (0x000025A0) Direct3D11 vs_"},"quality":"calidad media (auto)"}
+== humo reglamento
+goalsPerMin             1.16 ± 0.21  (sd 0.46, n 20)
+shotsPerMin             6.61 ± 0.91  (sd 1.95, n 20)
+onTargetPerMin          4.38 ± 0.67  (sd 1.43, n 20)
+savePct                60.45 ± 8.67  (sd 18.58, n 20)
+foulsPerMin             9.79 ± 0.63  (sd 1.36, n 20)
+redMinusBluePerMin      0.31 ± 0.27  (sd 0.58, n 20)
+totales: atascos 0 (0,0 s) · fuera de pista 0 · errores de consola 0 · fallidas 0
+[smoke-agg] {"mode":"reglamento","extra":"","smokeMs":240000,"runs":20,"goalsPerMin":{"mean":1.162,"ci95":0.215,"sd":0.461,"n":20},"shotsPerMin":{"mean":6.612,"ci95":0.909,"sd":1.949,"n":20},"onTargetPerMin":{"mean":4.375,"ci95":0.667,"sd":1.429,"n":20},"savePct":{"mean":60.449,"ci95":8.67,"sd":18.584,"n":20},"foulsPerMin":{"mean":9.788,"ci95":0.635,"sd":1.36,"n":20},"redMinusBluePerMin":{"mean":0.312,"ci95":0.27,"sd":0.579,"n":20},"badPlayerFrames":0,"jamSec":0,"failed":0,"consoleErrors":0,"jams":0}
+== humo arcade
+goalsPerMin             2.11 ± 0.33  (sd 0.70, n 20)
+shotsPerMin             9.93 ± 1.09  (sd 2.35, n 20)
+onTargetPerMin          7.11 ± 0.90  (sd 1.92, n 20)
+savePct                65.08 ± 5.60  (sd 12.01, n 20)
+foulsPerMin             0.00 ± 0.00  (sd 0.00, n 20)
+redMinusBluePerMin      0.64 ± 0.36  (sd 0.76, n 20)
+totales: atascos 0 (0,0 s) · fuera de pista 0 · errores de consola 0 · fallidas 0
+[smoke-agg] {"mode":"arcade","extra":"","smokeMs":240000,"runs":20,"goalsPerMin":{"mean":2.112,"ci95":0.329,"sd":0.705,"n":20},"shotsPerMin":{"mean":9.925,"ci95":1.095,"sd":2.347,"n":20},"onTargetPerMin":{"mean":7.112,"ci95":0.897,"sd":1.924,"n":20},"savePct":{"mean":65.081,"ci95":5.601,"sd":12.005,"n":20},"foulsPerMin":{"mean":0,"ci95":0,"sd":0,"n":20},"redMinusBluePerMin":{"mean":0.638,"ci95":0.356,"sd":0.763,"n":20},"badPlayerFrames":0,"jamSec":0,"failed":0,"consoleErrors":0,"jams":0}
+FIN

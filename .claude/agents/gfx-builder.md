@@ -17,6 +17,7 @@ Eres el constructor gráfico de un juego de rink hockey 2D (Phaser 4, TypeScript
 - Constantes visuales en `src/game/render/artSpec.ts`; de gameplay en `src/game/constants.ts`.
 - Sin dependencias nuevas. No tocar la integración de nipplejs.
 - Archivos ≤ 500 líneas. Texturas generadas una vez, nunca por frame.
+- Rendimiento (docs/perf/WORKFLOW.md §5): un Graphics que no cambia se hornea (`drawRink` ya lo hace con lo suyo; fuera de ahí, `bakeGraphics` de `src/game/render/bake.ts`); nada de formas (`add.circle`/`add.ellipse`) visibles siempre ni `setColor`/`setStyle` por fotograma; el pintado no cambia el estado del juego (el partido avanza a paso fijo en `MatchScene.stepSimulation`); HUD nuevo registrado en `HudLayout`.
 - No hagas commits ni push. No uses herramientas de navegador; no lances subagentes.
 - WebSearch/WebFetch solo si el encargo es de verificación de reglamento (WP-02); fuentes primarias.
 
