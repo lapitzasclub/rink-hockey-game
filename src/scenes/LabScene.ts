@@ -7,7 +7,8 @@ import { worldToScreen } from '../game/render/viewTransform'
 import { setVisualHeadScale } from '../game/systems/visuals'
 import { poseFigure, type LabFigure } from './lab/labFigures'
 import { readLabParams, seedMathRandom, type LabParams } from './lab/labParams'
-import { startSmoke } from './lab/labSmoke'
+import { driveBlueRestarts, startSmoke } from './lab/labSmoke'
+import { autopilot } from '../game/systems/playerControl'
 import { atHooks, freezeMatch, lockMatchCamera, wantsCameraLock } from './lab/labAt'
 import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
 
@@ -17,6 +18,7 @@ import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
  * Escenas: rink, scale, goal, players (&strip=), officials, style, match (&mode=, &freeze=).
  * Parámetros comunes: zoom, cx, cy (centro en mundo), t (ms), anim=1, hud=0.
  * En match, zoom/cx/cy bloquean la cámara; follow= y at=<evento>&auto=1&after= (ver WORKFLOW §8).
+ * `ai=1`: IA contra IA en tiempo real y con render (banco de rendimiento, docs/perf/WORKFLOW.md).
  */
 export class LabScene extends Phaser.Scene {
   private params!: LabParams
@@ -114,6 +116,13 @@ export class LabScene extends Phaser.Scene {
     if (this.params.at && !this.params.auto) console.warn('[at] requiere auto=1; se ignora')
     if (this.params.auto && this.params.at) startSmoke(match, mode, 1e9, atHooks(match, this.params))
     else if (this.params.auto) startSmoke(match, mode, this.params.smokeMs)
+    else if (this.params.ai) {
+      autopilot.on = true
+      match.events.once(Phaser.Scenes.Events.CREATE, () => {
+        const stop = driveBlueRestarts(match)
+        match.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { stop(); autopilot.on = false })
+      })
+    }
     if (freeze !== null && !(this.params.auto && this.params.at)) window.setTimeout(() => freezeMatch(match, this.params), freeze)
   }
 

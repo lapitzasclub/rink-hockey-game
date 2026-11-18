@@ -3,7 +3,6 @@ import { BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, DIRECT_FREE_HIT_SPOT_OFFSET, PENAL
 import { attackDir, getFormation, teamSide } from '../formation'
 import { getGoalLineX } from '../utils'
 import { findPlayerById, getControlledPlayer } from './playerHelpers'
-import { updateVisuals } from './visuals'
 import type { ActiveBully, ActiveFoulRestart, Ball, Player, TeamColor, Vector } from '../types'
 import { createRuleState, type RuleState } from './rules'
 
@@ -56,9 +55,10 @@ export function resetKickoffState(options: {
 }
 
 /**
- * Congela la bola dentro de la red tras un gol y devuelve a todos los jugadores
- * a su posición de formación. No resetea el estado de reglas — eso ocurre en
- * resetKickoffState, que se llama después del retardo de celebración.
+ * Congela la bola dentro de la red tras un gol. Los jugadores se quedan donde
+ * están para celebrarlo (MatchScene los deja deslizarse hasta frenar);
+ * resetKickoffState los coloca en formación al acabar la celebración. No
+ * resetea el estado de reglas: eso también ocurre en resetKickoffState.
  */
 export function applyGoalReset(options: {
   scorer: TeamColor
@@ -73,15 +73,6 @@ export function applyGoalReset(options: {
   } else {
     ball.x = getGoalLineX('left') - GOAL_NET_HOLD_X
     ball.y = Phaser.Math.Clamp(ball.y, GAME_HEIGHT / 2 - 54, GAME_HEIGHT / 2 + 54)
-  }
-
-  for (const player of players) {
-    const index = Number(player.id.split('-')[1])
-    const formation = getFormation(player.side)[index]
-    player.home = { x: formation.x, y: formation.y }
-    player.pos = { x: formation.x, y: formation.y }
-    player.velocity = { x: 0, y: 0 }
-    player.facing = { x: player.side === 'left' ? 1 : -1, y: 0 }
   }
 }
 
@@ -347,12 +338,4 @@ export function updateBullyState(options: {
   const remaining = Math.ceil((bully.releaseAt - time) / 1000)
   centerText.setText(remaining > 0 ? `Bully — ${remaining}` : 'Bully — ¡Ya!').setVisible(true)
   return false
-}
-
-/**
- * Re-sincroniza los visuales inmediatamente después de un kickoff para que el
- * primer frame no muestre posiciones residuales del estado anterior.
- */
-export function refreshKickoffVisuals(scenePlayers: Player[], controlledPlayerIndex: number, ball: Ball, ballCarrierId: string | null, timeNow: number) {
-  updateVisuals(scenePlayers, getControlledPlayer(scenePlayers, controlledPlayerIndex), ball, ballCarrierId, timeNow)
 }

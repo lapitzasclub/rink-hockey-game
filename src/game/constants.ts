@@ -27,6 +27,20 @@ export const K = RINK_LENGTH_BASE_M / RINK_LENGTH_M
 
 export const GAME_WIDTH = 1280
 export const GAME_HEIGHT = 720
+
+/**
+ * Simulación a paso fijo: física, IA y reglas avanzan siempre en pasos de 1/60 s,
+ * sea cual sea el refresco de la pantalla (50, 60, 120, 144 Hz) o el tamaño del
+ * lienzo. El ajuste de rozamientos y probabilidades "por paso" se hizo a 60 Hz.
+ */
+export const SIM_HZ = 60
+export const SIM_STEP_MS = 1000 / SIM_HZ
+/** Pasos máximos por fotograma: por debajo de SIM_HZ / SIM_MAX_STEPS fps el juego se ralentiza en vez de dar saltos. */
+export const SIM_MAX_STEPS = 5
+/** Tope del tiempo real que se recupera de un fotograma (pestaña oculta, parón del navegador). */
+export const SIM_MAX_FRAME_MS = 250
+/** Salto (px de mundo, |dx| + |dy|) en un paso a partir del cual no se interpola: saques, faltas y teletransportes. */
+export const SIM_SNAP_DIST = 40
 export const PLAYER_RADIUS = 18 * K
 export const GOALIE_RADIUS = 9 * K
 export const BALL_RADIUS = 6 * K

@@ -26,6 +26,7 @@ type MatchView = Phaser.Scene & {
   lastTouch: Team
   ruleState: { teamFouls: Record<Team, number> }
   activeFoulRestart: unknown
+  simNow: number
   officials?: { refs?: Array<{ x: number, y: number, gesture: unknown }> }
 }
 
@@ -104,7 +105,7 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
     let carded = false
     for (const q of s.players) {
       const su = q.suspendedUntil ?? 0
-      if (su > (prev.susp.get(q.id) ?? 0) && su > s.time.now) carded = true
+      if (su > (prev.susp.get(q.id) ?? 0) && su > s.simNow) carded = true
       prev.susp.set(q.id, su)
     }
     const hit = atMs !== null ? ms >= atMs

@@ -2,9 +2,18 @@ import * as Phaser from 'phaser'
 import { GAME_HEIGHT, STAMINA_MAX } from '../constants'
 import { ARCADE_FONT } from '../render/arcadeFx'
 import type { Player } from '../types'
+import { bakeGraphics } from '../render/bake'
 
 const BAR_W = 220
 const BAR_H = 14
+const BAR_Y = GAME_HEIGHT - 34
+/** Borde superior del HUD de turbo en el área de diseño. */
+const HUD_TOP = BAR_Y - 26
+/**
+ * Desplazamiento vertical en táctil: el bloque sube de abajo a la izquierda a justo
+ * bajo el marcador compacto del arcade (y = 66), lejos del joystick (HudLayout).
+ */
+export const ARCADE_HUD_TOUCH_DY = 66 - HUD_TOP
 
 /**
  * HUD extra del modo arcade (el videomarcador es común, ver scoreboard.ts):
@@ -13,18 +22,20 @@ const BAR_H = 14
  */
 export function createArcadeHud(scene: Phaser.Scene) {
   const barX = 24
-  const barY = GAME_HEIGHT - 34
+  const barY = BAR_Y
   const barBg = scene.add.graphics().setDepth(50)
   barBg.fillStyle(0x050b13, 0.82)
   barBg.fillRoundedRect(barX - 8, barY - 26, BAR_W + 16, BAR_H + 34, 8)
   barBg.fillStyle(0x1a2838, 1)
   barBg.fillRect(barX, barY, BAR_W, BAR_H)
+  bakeGraphics(barBg, 'turbo-bg')
   const bar = scene.add.rectangle(barX, barY, BAR_W, BAR_H, 0x3ee8ff).setOrigin(0, 0).setDepth(51)
   const barLabel = scene.add.text(barX, barY - 22, 'TURBO', { fontFamily: ARCADE_FONT, fontSize: '15px', color: '#3ee8ff' }).setDepth(51)
   // Doble chevrón dibujado (sin caracteres Unicode) mientras se esprinta
-  const chevrons = scene.add.graphics({ x: barX + barLabel.width + 10, y: barY - 14 }).setDepth(51).setVisible(false)
-  chevrons.fillStyle(0x3ee8ff, 1)
-  for (const dx of [0, 9]) chevrons.fillTriangle(dx, -6, dx + 8, 0, dx, 6)
+  const chevronsG = scene.add.graphics({ x: barX + barLabel.width + 10, y: barY - 14 }).setDepth(51).setVisible(false)
+  chevronsG.fillStyle(0x3ee8ff, 1)
+  for (const dx of [0, 9]) chevronsG.fillTriangle(dx, -6, dx + 8, 0, dx, 6)
+  const chevrons = bakeGraphics(chevronsG, 'turbo-chev')
   const status = scene.add.text(barX + BAR_W + 22, barY - 2, '', {
     fontFamily: ARCADE_FONT,
     fontSize: '16px',

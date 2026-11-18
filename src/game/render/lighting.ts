@@ -9,10 +9,12 @@ import { getGoalLineX } from '../utils'
 import { ARENA_BOUNDS } from './arena'
 import { DEPTH, LIGHT, PX_PER_M } from './artSpec'
 import { project } from './viewTransform'
+import { addTrimmedImages } from './bake'
 
 const POOL_KEY = 'light-pool'
 const VIGNETTE_KEY = 'light-vignette'
 const TEX = 128
+const VIGNETTE_SIZE = 256
 
 /** Pozo: degradado radial blanco que se suma al suelo (hornea una sola vez). */
 function ensurePoolTexture(scene: Phaser.Scene) {
@@ -32,7 +34,7 @@ function ensurePoolTexture(scene: Phaser.Scene) {
 /** Viñeta: centro transparente y borde oscuro; se estira a la zona del pabellón (queda elíptica). */
 function ensureVignetteTexture(scene: Phaser.Scene) {
   if (scene.textures.exists(VIGNETTE_KEY)) return
-  const size = 256
+  const size = VIGNETTE_SIZE
   const tex = scene.textures.createCanvas(VIGNETTE_KEY, size, size)
   if (!tex) return
   const ctx = tex.getContext()
@@ -74,8 +76,9 @@ export function createLighting(scene: Phaser.Scene) {
   addPool(scene, getGoalLineX('left') + inset, cy, LIGHT.goalPoolRadius, LIGHT.goalPoolAlpha)
   addPool(scene, getGoalLineX('right') - inset, cy, LIGHT.goalPoolRadius, LIGHT.goalPoolAlpha)
 
+  // Viñeta estirada a todo el pabellón, pero solo sus baldosas con sombra: el centro transparente no se rellena
   const B = ARENA_BOUNDS
-  scene.add.image(B.x, B.y, VIGNETTE_KEY).setOrigin(0, 0)
-    .setDisplaySize(B.width, B.height)
-    .setDepth(DEPTH.STANDS_NEAR + 4)
+  for (const img of addTrimmedImages(scene, VIGNETTE_KEY, B.x, B.y, B.width / VIGNETTE_SIZE, B.height / VIGNETTE_SIZE, VIGNETTE_SIZE / 8)) {
+    img.setDepth(DEPTH.STANDS_NEAR + 4)
+  }
 }

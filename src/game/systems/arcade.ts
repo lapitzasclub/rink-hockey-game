@@ -489,7 +489,12 @@ export class ArcadeController {
    * Retoques visuales que se aplican después de updateVisuals: volteretas de
    * carga, bloques de hielo, auras de fuego/turbo/imán, portero muro y estela.
    */
-  postVisuals(players: Player[], ball: Ball, ballVelocity: Vector, timeNow: number) {
+  /**
+   * Retoques visuales tras la pose (tambaleo, hielo, muro) y partículas. `emitSteps`
+   * son los pasos de simulación del fotograma: se emite por paso y no por fotograma,
+   * así estelas y auras tienen la misma densidad a 30, 60 o 144 fps.
+   */
+  postVisuals(players: Player[], ball: Ball, ballVelocity: Vector, timeNow: number, emitSteps: number) {
     for (const player of players) {
       const c = player.container
       const suspended = !isActive(player, timeNow)
@@ -507,13 +512,15 @@ export class ArcadeController {
       if (player.role === 'goalie' && (player.wallUntil ?? 0) > timeNow) {
         c.setScale(c.scaleX * 1.28, c.scaleY * 1.28)
       }
-      if (player.onFire || player.fireShotReady) this.fx.aura('fire', c.x, c.y - 20)
-      else if ((player.turboUntil ?? 0) > timeNow && Math.hypot(player.velocity.x, player.velocity.y) > 60) this.fx.aura('turbo', c.x, c.y)
-      if ((player.magnetUntil ?? 0) > timeNow) this.fx.aura('magnet', c.x, c.y)
+      if (!emitSteps) continue
+      if (player.onFire || player.fireShotReady) this.fx.aura('fire', c.x, c.y - 20, emitSteps)
+      else if ((player.turboUntil ?? 0) > timeNow && Math.hypot(player.velocity.x, player.velocity.y) > 60) this.fx.aura('turbo', c.x, c.y, emitSteps)
+      if ((player.magnetUntil ?? 0) > timeNow) this.fx.aura('magnet', c.x, c.y, emitSteps)
     }
 
+    if (!emitSteps) return
     const bs = ball.visual
-    this.fx.ballTrail(bs.x, bs.y, Math.hypot(ballVelocity.x, ballVelocity.y), this.shotFx?.kind ?? null)
+    this.fx.ballTrail(bs.x, bs.y, Math.hypot(ballVelocity.x, ballVelocity.y), this.shotFx?.kind ?? null, emitSteps)
   }
 
   /** Texto de estado del jugador controlado para el HUD arcade. */

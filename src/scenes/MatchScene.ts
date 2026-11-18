@@ -9,24 +9,29 @@ import {
   GOALIE_ZONE_RADIUS,
   HALF_GAME_SECONDS,
   RINK,
+  SIM_MAX_FRAME_MS,
+  SIM_MAX_STEPS,
+  SIM_SNAP_DIST,
+  SIM_STEP_MS,
   STICK_SWING_MS,
 } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation, switchSides, teamSide } from '../game/formation'
 import { drawRink, createGoalNetFlash } from '../game/render/drawRink'
+import { bakeGraphics } from '../game/render/bake'
 import { createArena, type Arena } from '../game/render/arena'
 import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../game/render/benchPlayers'
 import {
   updateBallPosition,
 } from '../game/systems/ball'
 import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot, shouldAIPassToOpenMate, shouldAIAttemptSteal } from '../game/systems/ai'
-import { resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
+import { applySkating, resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
 import {
   findPlayerById,
   getControlledPlayer,
 } from '../game/systems/playerHelpers'
-import { setVisualHeadScale, updateVisuals } from '../game/systems/visuals'
+import { setVisualHeadScale, updateStickAngles, updateVisuals } from '../game/systems/visuals'
 import type { ActiveBully, ActiveFoulRestart, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
 import { worldToScreen } from '../game/render/viewTransform'
 import { createHud } from '../game/ui/createHud'
@@ -36,7 +41,6 @@ import { createMobileJoystick } from '../game/input/mobileJoystick'
 import { createRuleState, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
 import { getGoalLineX } from '../game/utils'
 import {
-  refreshKickoffVisuals,
   resetKickoffState,
   startBullyState,
   startFoulRestartState,
@@ -56,8 +60,8 @@ import { getHalfRealMinutes } from '../game/ui/prefs'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
 import { consumePad, padAxis, padHeld } from '../game/input/gamepad'
-import { actionPrompt } from '../game/input/inputMode'
-import { checkAndApplyGoal, handlePendingRestart, handleSpecialMatchStates, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
+import { actionPrompt, getInputMode, onInputModeChange } from '../game/input/inputMode'
+import { checkAndApplyGoal, handlePendingRestart, maybeSwitchControlledPlayer } from '../game/systems/sceneFlow'
 import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, playShot, playSteal, playWhistle, startCrowdAmbience } from '../game/audio/sounds'
 import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
 import { equipoDeHueco, nombreDeHueco } from '../game/externalMatch'
@@ -66,7 +70,9 @@ import { celebrateGoal } from '../game/render/puppet/actions'
 import { CameraDirector } from '../game/systems/cameraDirector'
 import { createOfficials, type Officials } from '../game/systems/officials'
 import { ArcadeFx } from '../game/render/arcadeFx'
-import { createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
+import { ARCADE_HUD_TOUCH_DY, createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
+import { HudLayout, safeAreaInsetsCss } from '../game/ui/hudLayout'
+import { QUALITY_WATCH, crowdAnimated, downgradeAutoQuality, onQualityChange, particleDensity, qualityWatchEnabled } from '../game/render/quality'
 
 export type MatchSceneData = { mode?: GameMode }
 
@@ -106,8 +112,8 @@ export class MatchScene extends Phaser.Scene {
   private stuckCarrierStartTime = 0
   private stuckCarrierOrigin: Vector | null = null
   private goalFlash!: Phaser.GameObjects.Rectangle
-  private leftGoalNet!: Phaser.GameObjects.Graphics
-  private rightGoalNet!: Phaser.GameObjects.Graphics
+  private leftGoalNet!: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics
+  private rightGoalNet!: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics
   private aimIndicator!: Phaser.GameObjects.Graphics
   // Flag persistente: la pelota cruzó la línea de portería desde el lado campo (boca abierta).
   // Se resetea cuando la pelota sale de la zona de portería. Evita goles falsos por detrás.
@@ -118,6 +124,9 @@ export class MatchScene extends Phaser.Scene {
   private mode: GameMode = 'arcade'
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
+  private hudLayout = new HudLayout()
+  /** Regulador de calidad: calentamiento, ventana en curso (intervalos, trabajo en ms) y ventanas lentas seguidas. */
+  private qualityWatch = { warm: 0, acc: 0, frames: 0, busy: 0, slow: 0, intervals: new Float32Array(512) }
   private cameraDirector!: CameraDirector
   /** Solo lab (WP-66): si es true, la cámara principal no sigue ni cambia de zoom. */
   labCameraLock = false
@@ -126,6 +135,26 @@ export class MatchScene extends Phaser.Scene {
   private arcadeHud: ArcadeHud | null = null
   private crowd: { setIntensity(v: number): void, stop(): void } | null = null
   private arena!: Arena
+  /**
+   * Reloj de la simulación (ms): avanza solo en pasos fijos de SIM_STEP_MS. Todas las
+   * marcas de tiempo del partido (sanciones, saques, animaciones) se miden con él.
+   */
+  simNow = 0
+  /** Tiempo real pendiente de simular (< SIM_STEP_MS tras cada fotograma). */
+  private simAcc = 0
+  /** Marca de rAF del fotograma anterior; 0 = no contar el hueco (inicio o vuelta de una pausa). */
+  private lastFrameTime = 0
+  /** Tiempo de simulación acumulado para el tick de 1 s de juego del marcador. */
+  private clockAcc = 0
+  /** Tiempo visual del último fotograma: da el dt de las animaciones, continuo entre pasos. */
+  private visualNow = 0
+  /**
+   * Posiciones y velocidades (x, y, vx, vy) de jugadores y bola al empezar el último
+   * paso; el último bloque es la bola. La velocidad también se interpola: la
+   * locomoción saca de ella aceleración y giro, que a 120/144 Hz darían saltos.
+   */
+  private prevPos = new Float64Array(0)
+  private curPos = new Float64Array(0)
 
   constructor() {
     super('match')
@@ -165,6 +194,11 @@ export class MatchScene extends Phaser.Scene {
     this.fx = null
     this.arcadeHud = null
     this.crowd = null
+    this.simAcc = 0
+    this.clockAcc = 0
+    this.lastFrameTime = 0
+    this.hudLayout = new HudLayout()
+    this.qualityWatch = { warm: 0, acc: 0, frames: 0, busy: 0, slow: 0, intervals: new Float32Array(512) }
   }
 
   private get isArcade() {
@@ -206,28 +240,40 @@ export class MatchScene extends Phaser.Scene {
     })
   }
 
-  /** Con Scale.EXPAND el lienzo cambia de tamaño: la UI se mantiene centrada en el área 16:9. */
+  /**
+   * Con Scale.EXPAND el lienzo cambia de tamaño: la cámara de UI sigue centrada en el
+   * área 16:9 y el HUD se ancla a las esquinas de lo que se ve, fuera de las zonas seguras.
+   */
   private fitCameras() {
     const { width, height } = this.scale.gameSize
     this.cameras.main.setSize(width, height)
     this.uiCamera.setSize(width, height)
     this.uiCamera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2)
     if (!this.labCameraLock) this.cameraDirector?.refit()
+    const css = safeAreaInsetsCss()
+    const k = width / Math.max(1, this.scale.displaySize.width)   // px de juego por px CSS
+    this.hudLayout.fit(
+      { x: GAME_WIDTH / 2 - width / 2, y: GAME_HEIGHT / 2 - height / 2, width, height },
+      { left: css.left * k, top: css.top * k, right: css.right * k, bottom: css.bottom * k },
+      getInputMode() === 'touch',
+    )
   }
 
   /** Inicializa escena, entidades, HUD y estado de saque inicial. */
   create() {
+    this.simNow = this.time.now
+    this.visualNow = this.simNow
     this.setupCameras()
     setVisualHeadScale(this.isArcade ? ARCADE_HEAD_SCALE : 1)
     this.arena = createArena(this)
     drawRink(this)
     this.benchPlayers = createBenchPlayers(this)
     const nets = createGoalNetFlash(this)
-    this.leftGoalNet  = nets.left
-    this.rightGoalNet = nets.right
+    this.leftGoalNet  = bakeGraphics(nets.left, 'net-left', true)
+    this.rightGoalNet = bakeGraphics(nets.right, 'net-right', true)
     this.createInput()
     if (this.isArcade) {
-      this.fx = new ArcadeFx(this, (build) => this.withUi(build))
+      this.fx = new ArcadeFx(this, (build) => this.withUi(build), particleDensity())
       // Antes que los jugadores: la capa de powerups queda por debajo
       this.arcade = new ArcadeController(this, this.fx)
     }
@@ -238,13 +284,33 @@ export class MatchScene extends Phaser.Scene {
     this.withUi(() => {
       this.goalFlash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 3, GAME_HEIGHT * 3, 0xffec88)
         .setAlpha(0).setDepth(45)
+      const hudStart = this.sys.displayList.length
       const hud = createHud(this, !this.isArcade)
       this.scoreboard = hud.scoreboard
       this.centerText = hud.centerText.setDepth(55)
+      this.hudLayout.capture(this, hudStart, 'top-left', { exclude: [hud.centerText] })
       if (this.isArcade) {
+        const arcadeStart = this.sys.displayList.length
         this.arcadeHud = createArcadeHud(this)
+        // En táctil, bajo el marcador: abajo a la izquierda quedaría debajo del joystick
+        this.hudLayout.capture(this, arcadeStart, 'bottom-left', { touch: { anchor: 'top-left', dy: ARCADE_HUD_TOUCH_DY } })
       }
     })
+    const offInputMode = onInputModeChange(() => this.fitCameras())
+    const offQuality = onQualityChange(() => this.applyQuality())
+    // El regulador suma también lo que cuesta enviar el pintado a la GPU (después de update)
+    let renderStart = 0
+    const onPreRender = () => { renderStart = performance.now() }
+    const onPostRender = () => { if (renderStart) this.qualityWatch.busy += performance.now() - renderStart }
+    this.game.events.on(Phaser.Core.Events.PRE_RENDER, onPreRender)
+    this.game.events.on(Phaser.Core.Events.POST_RENDER, onPostRender)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      offInputMode()
+      offQuality()
+      this.game.events.off(Phaser.Core.Events.PRE_RENDER, onPreRender)
+      this.game.events.off(Phaser.Core.Events.POST_RENDER, onPostRender)
+    })
+    this.applyQuality()
     this.cameraDirector = new CameraDirector(this.cameras.main, this.isArcade)
     this.fitCameras()
     this.mobileJoystick = createMobileJoystick({
@@ -268,7 +334,7 @@ export class MatchScene extends Phaser.Scene {
     this.resetKickoff('blue')
     this.cameraDirector.snapTo(this.ball)
     if (this.arcade) {
-      this.arcade.start(this.players, this.time.now)
+      this.arcade.start(this.players, this.simNow)
       this.crowd = startCrowdAmbience()
       this.crowd.setIntensity(0.3)
       this.fx?.showBanner('¡A JUGAR!', '#ffe36a', 'MODO ARCADE', 1100)
@@ -281,6 +347,9 @@ export class MatchScene extends Phaser.Scene {
       stopAnnouncer()
     }
     const onResume = () => {
+      // El tiempo en pausa no se simula ni cuenta para el regulador de calidad
+      this.lastFrameTime = 0
+      this.qualityWatch.busy = 0
       this.input.keyboard?.resetKeys()
       this.crowd?.setIntensity(this.getCrowdIntensity())
     }
@@ -291,72 +360,241 @@ export class MatchScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.RESUME, onResume)
     })
 
-    this.time.addEvent({
-      // Un segundo de juego por tick
-      delay: 1000 / matchTime.scale,
-      loop: true,
-      callback: () => {
-        const next = tickMatchClock({
-          matchEnded: this.matchEnded,
-          restartAt: this.restartAt,
-          remainingSeconds: this.remainingSeconds,
-          currentPeriod: this.currentPeriod,
-          ruleState: this.ruleState,
-          centerText: this.centerText,
-          timeNow: this.time.now,
-          matchDuration: this.periodDuration,
-          finishMatch: () => this.finishMatch(),
-        })
-        this.remainingSeconds = next.remainingSeconds
-        const newHalf = next.currentPeriod !== this.currentPeriod
-        if (newHalf) this.startSecondHalf()
-        this.currentPeriod = next.currentPeriod
-        this.ruleState = next.ruleState
-        if (typeof next.restartAt === 'number') this.restartAt = next.restartAt
-        // El marcador no se refresca durante la pausa del descanso: que ya muestre 25:00 y 2ª parte
-        if (newHalf) this.updateHud()
-      },
-    })
-
+    this.savePrevPositions()
     this.updateHud()
   }
 
   /**
-   * Tick principal del partido.
+   * Fotograma: la simulación avanza a paso fijo (SIM_STEP_MS) tantas veces como
+   * tiempo real haya pasado y después se pinta una vez, interpolando jugadores y
+   * bola entre los dos últimos pasos. Así la velocidad del juego no depende del
+   * refresco de la pantalla ni de lo que tarde en pintarse el lienzo.
+   */
+  update(time: number, delta: number) {
+    const frameStart = performance.now()
+    if (this.matchEnded && this.handleEndOfMatchInput()) return
+    // Tiempo real entre fotogramas (marca de rAF). El delta de Phaser no sirve: se suaviza
+    // y se recorta a 16,7 ms con la ventana sin foco, y el juego iría a cámara lenta.
+    const frameMs = this.lastFrameTime > 0 ? time - this.lastFrameTime : delta
+    this.lastFrameTime = time
+    this.watchQuality(frameMs)
+    this.simAcc += Math.min(Math.max(0, frameMs), SIM_MAX_FRAME_MS)
+    let steps = 0
+    // La tolerancia absorbe el redondeo de `now += STEP` en el paso manual del laboratorio
+    while (this.simAcc >= SIM_STEP_MS - 1e-3 && steps < SIM_MAX_STEPS) {
+      this.savePrevPositions()
+      this.simNow += SIM_STEP_MS
+      this.stepSimulation(this.simNow, SIM_STEP_MS / 1000)
+      this.simAcc -= SIM_STEP_MS
+      steps++
+    }
+    // Dispositivo demasiado lento: se descarta el atraso en vez de encadenar pasos (espiral de la muerte)
+    if (steps === SIM_MAX_STEPS) this.simAcc = Math.min(this.simAcc, SIM_STEP_MS * 0.5)
+    this.renderFrame(Math.max(0, this.simAcc) / SIM_STEP_MS, steps)
+    this.qualityWatch.busy += performance.now() - frameStart
+  }
+
+  /**
+   * Regulador de calidad en auto: si el partido no llega a ~45 fps durante dos
+   * ventanas seguidas, baja un nivel (menos partículas ya; pista y público más
+   * ligeros desde el próximo partido). Los huecos largos (pestaña oculta) no cuentan.
+   */
+  private watchQuality(frameMs: number) {
+    const q = this.qualityWatch
+    if (!qualityWatchEnabled || frameMs <= 0 || frameMs > SIM_MAX_FRAME_MS) return
+    if (q.warm < QUALITY_WATCH.warmupMs) {
+      q.warm += frameMs
+      q.busy = 0
+      return
+    }
+    if (q.frames < q.intervals.length) q.intervals[q.frames] = frameMs
+    q.acc += frameMs
+    q.frames++
+    if (q.acc < QUALITY_WATCH.windowMs) return
+    const n = Math.min(q.frames, q.intervals.length)
+    const avg = q.acc / q.frames
+    const busy = q.busy / q.frames
+    const sorted = Array.from(q.intervals.subarray(0, n)).sort((a, b) => a - b)
+    const median = sorted[n >> 1]
+    const jank = sorted.filter(v => v > median * 1.5).length / n
+    q.acc = 0
+    q.frames = 0
+    q.busy = 0
+    const loaded = busy > avg * QUALITY_WATCH.busyShare || jank > QUALITY_WATCH.jankShare
+    q.slow = avg > QUALITY_WATCH.slowFrameMs && loaded ? q.slow + 1 : 0
+    if (q.slow >= QUALITY_WATCH.slowWindows) {
+      q.slow = 0
+      downgradeAutoQuality()
+    }
+  }
+
+  /** Aplica lo que se puede cambiar en caliente al cambiar la calidad (Ajustes o regulador). */
+  private applyQuality() {
+    this.fx?.setDensity(particleDensity())
+    this.arena.setCrowdAnimated(crowdAnimated())
+  }
+
+  /** Con el partido acabado, tiro/A vuelve al menú con el resultado. Devuelve true si sale. */
+  private handleEndOfMatchInput() {
+    const touchReturn = this.joystickInput.shoot && !this.prevTouchButtons.shoot
+    this.prevTouchButtons = { pass: !!this.joystickInput.pass, shoot: !!this.joystickInput.shoot, switch: !!this.joystickInput.switch }
+    if (!(this.justDown('shoot') || touchReturn)) return false
+    this.scene.start('menu', {
+      blueScore: this.blueScore,
+      redScore: this.redScore,
+      blueFouls: this.ruleState.teamFouls.blue,
+      redFouls: this.ruleState.teamFouls.red,
+      mode: this.mode,
+    })
+    return true
+  }
+
+  /** Un segundo de juego del marcador cada `1000 / matchTime.scale` ms de simulación. */
+  private advanceMatchClock() {
+    this.clockAcc += SIM_STEP_MS
+    const tickMs = 1000 / matchTime.scale
+    while (this.clockAcc >= tickMs) {
+      this.clockAcc -= tickMs
+      this.tickClock()
+    }
+  }
+
+  private tickClock() {
+    const next = tickMatchClock({
+      matchEnded: this.matchEnded,
+      restartAt: this.restartAt,
+      remainingSeconds: this.remainingSeconds,
+      currentPeriod: this.currentPeriod,
+      ruleState: this.ruleState,
+      centerText: this.centerText,
+      timeNow: this.simNow,
+      matchDuration: this.periodDuration,
+      finishMatch: () => this.finishMatch(),
+    })
+    this.remainingSeconds = next.remainingSeconds
+    const newHalf = next.currentPeriod !== this.currentPeriod
+    if (newHalf) this.startSecondHalf()
+    this.currentPeriod = next.currentPeriod
+    this.ruleState = next.ruleState
+    if (typeof next.restartAt === 'number') this.restartAt = next.restartAt
+  }
+
+  /** Guarda dónde empiezan jugadores y bola el paso que va a simularse (para interpolar al pintar). */
+  private savePrevPositions() {
+    const n = this.players.length
+    if (this.prevPos.length !== (n + 1) * 4) {
+      this.prevPos = new Float64Array((n + 1) * 4)
+      this.curPos = new Float64Array((n + 1) * 4)
+    }
+    const prev = this.prevPos
+    for (let i = 0; i < n; i++) {
+      const p = this.players[i]
+      prev[i * 4] = p.pos.x
+      prev[i * 4 + 1] = p.pos.y
+      prev[i * 4 + 2] = p.velocity.x
+      prev[i * 4 + 3] = p.velocity.y
+    }
+    prev[n * 4] = this.ball.x
+    prev[n * 4 + 1] = this.ball.y
+    prev[n * 4 + 2] = this.ballVelocity.x
+    prev[n * 4 + 3] = this.ballVelocity.y
+  }
+
+  /** Mueve jugadores y bola a su posición interpolada (alpha 0..1 entre los dos últimos pasos). */
+  private applyInterpolation(alpha: number) {
+    const n = this.players.length
+    const prev = this.prevPos
+    const cur = this.curPos
+    const lerp = (i: number, o: { x: number, y: number }, v: { x: number, y: number }) => {
+      const k = i * 4
+      cur[k] = o.x
+      cur[k + 1] = o.y
+      cur[k + 2] = v.x
+      cur[k + 3] = v.y
+      v.x = prev[k + 2] + (v.x - prev[k + 2]) * alpha
+      v.y = prev[k + 3] + (v.y - prev[k + 3]) * alpha
+      if (Math.abs(o.x - prev[k]) + Math.abs(o.y - prev[k + 1]) > SIM_SNAP_DIST) return
+      o.x = prev[k] + (o.x - prev[k]) * alpha
+      o.y = prev[k + 1] + (o.y - prev[k + 1]) * alpha
+    }
+    for (let i = 0; i < n; i++) lerp(i, this.players[i].pos, this.players[i].velocity)
+    lerp(n, this.ball, this.ballVelocity)
+  }
+
+  /** Devuelve jugadores y bola a su estado de simulación tras pintar. */
+  private restoreInterpolation() {
+    const n = this.players.length
+    const cur = this.curPos
+    const put = (i: number, o: { x: number, y: number }, v: { x: number, y: number }) => {
+      o.x = cur[i * 4]
+      o.y = cur[i * 4 + 1]
+      v.x = cur[i * 4 + 2]
+      v.y = cur[i * 4 + 3]
+    }
+    for (let i = 0; i < n; i++) put(i, this.players[i].pos, this.players[i].velocity)
+    put(n, this.ball, this.ballVelocity)
+  }
+
+  /**
+   * Pinta un fotograma: pabellón, árbitros, cámara, jugadores, efectos y HUD con las
+   * posiciones interpoladas. El tiempo visual va un paso por detrás de la simulación y
+   * avanza de forma continua aunque en este fotograma no haya habido paso.
+   */
+  private renderFrame(alpha: number, steps: number) {
+    const vt = this.simNow - (1 - alpha) * SIM_STEP_MS
+    const visualDt = Math.min(Math.max(0, vt - this.visualNow), 100) / 1000
+    this.visualNow = vt
+    const controlled = this.players.length ? getControlledPlayer(this.players, this.controlledPlayerIndex) : null
+    this.applyInterpolation(alpha)
+    try {
+      updateBenchPlayers(this.benchPlayers, vt)
+      this.officials.update(vt, visualDt, this.ball, this.players)
+      this.arena.update(vt, this.matchEnded ? 0.9 : this.getCrowdIntensity())
+      if (!this.labCameraLock) this.cameraDirector.update({
+        dt: visualDt,
+        timeNow: vt,
+        ball: this.ball,
+        ballVelocity: this.ballVelocity,
+        controlled,
+      })
+      if (controlled) updateVisuals(this.players, controlled, this.ball, this.ballCarrierId, vt)
+      // Partículas: tantas emisiones como pasos de simulación, para que la densidad no dependa de los fps
+      this.arcade?.postVisuals(this.players, this.ball, this.ballVelocity, vt, this.restartAt > 0 || this.matchEnded ? 0 : steps)
+    } finally {
+      this.restoreInterpolation()
+    }
+    this.updateHud()
+  }
+
+  /**
+   * Celebraciones, descanso y final: la lógica del partido está parada, pero los
+   * jugadores se deslizan hasta frenar en vez de quedarse congelados a media zancada.
+   */
+  private coastPlayers(dt: number) {
+    for (const player of this.players) {
+      if (player.suspendedUntil && player.suspendedUntil > this.simNow) continue
+      player.sprinting = false
+      applySkating(player, dt)
+    }
+  }
+
+  /**
+   * Paso fijo de la simulación (SIM_STEP_MS).
    *
    * Orden importante:
    * 1. input y decisiones,
    * 2. movimiento,
    * 3. balón/posesión/contactos,
-   * 4. visuales,
-   * 5. reglas de gol y HUD.
+   * 4. ángulo del stick (lo usan los contactos del paso siguiente),
+   * 5. reglas de gol.
+   * Lo visual (pose, cámara, HUD) se hace en renderFrame, una vez por fotograma.
    */
-  update(time: number, delta: number) {
-    const dt = Math.min(delta / 1000, 0.033)
-    // joystickInput ya se actualiza por nipplejs
-    updateBenchPlayers(this.benchPlayers, time)
-    this.officials.update(time, dt, this.ball, this.players)
-    this.arena.update(time, this.matchEnded ? 0.9 : this.getCrowdIntensity())
-    if (!this.labCameraLock) this.cameraDirector.update({
-      dt,
-      timeNow: time,
-      ball: this.ball,
-      ballVelocity: this.ballVelocity,
-      controlled: this.players.length ? getControlledPlayer(this.players, this.controlledPlayerIndex) : null,
-    })
-
+  private stepSimulation(time: number, dt: number) {
+    // Los gestos que dispara este paso (falta, bully, gol) empiezan en su tiempo, no en el del último fotograma
+    this.officials.syncTime(time)
+    this.advanceMatchClock()
     if (this.matchEnded) {
-      const touchReturn = this.joystickInput.shoot && !this.prevTouchButtons.shoot
-      this.prevTouchButtons = { pass: !!this.joystickInput.pass, shoot: !!this.joystickInput.shoot, switch: !!this.joystickInput.switch }
-      if (this.justDown('shoot') || touchReturn) {
-        this.scene.start('menu', {
-          blueScore: this.blueScore,
-          redScore: this.redScore,
-          blueFouls: this.ruleState.teamFouls.blue,
-          redFouls: this.ruleState.teamFouls.red,
-          mode: this.mode,
-        })
-      }
+      this.coastPlayers(dt)
       return
     }
 
@@ -369,22 +607,17 @@ export class MatchScene extends Phaser.Scene {
     })
 
     if (this.restartAt > 0) {
-      this.syncBallVisual()  // mantener balón visible en red durante la celebración
+      this.coastPlayers(dt)
       return
     }
 
-    if (handleSpecialMatchStates({
-      activeBully: this.activeBully,
-      activeFoulRestart: this.activeFoulRestart,
-      players: this.players,
-      controlledPlayerIndex: this.controlledPlayerIndex,
-      ball: this.ball,
-      ballCarrierId: this.ballCarrierId,
-      timeNow: time,
-      updateBullyState: () => this.updateBullyState(time, dt),
-      updateFoulRestartState: () => this.updateFoulRestartState(time, dt),
-      updateHud: () => this.updateHud(),
-    })) return
+    // Bully o saque de falta: solo avanza su ritual (colocación, cuenta atrás, ejecución)
+    if (this.activeBully || this.activeFoulRestart) {
+      if (this.activeBully) this.updateBullyState(time, dt)
+      else this.updateFoulRestartState(time, dt)
+      updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
+      return
+    }
 
     updateSuspendedPlayers(this.players, time, dt)
     if (this.arcade) {
@@ -434,11 +667,9 @@ export class MatchScene extends Phaser.Scene {
     this.handleLooseBallContacts()
     this.checkGoalieZoneFoul(time)
     this.handleRuleRestarts()
-    updateVisuals(this.players, getControlledPlayer(this.players, this.controlledPlayerIndex), this.ball, this.ballCarrierId, time)
-    this.arcade?.postVisuals(this.players, this.ball, this.ballVelocity, time)
+    // La punta del stick (contactos con la bola) sale de su ángulo, que se fija aquí y no al pintar
+    updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
     this.checkGoalState(time)
-    this.syncBallVisual()  // re-sincronizar si el gol recolocó el balón tras updateVisuals
-    this.updateHud()
   }
 
   /** Registra las teclas del jugador humano y las recrea si se reasignan (desde la pausa). */
@@ -498,7 +729,7 @@ export class MatchScene extends Phaser.Scene {
       sprintHeld: this.isDown('sprint'),
       isTouchDevice: this.isTouchDevice,
       dt,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
     })
 
     const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
@@ -540,19 +771,19 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       ballCarrierId: this.ballCarrierId,
       dt,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
       updateGoalieAI,
       updateFieldPlayerAI,
     })
 
     for (const player of this.players) {
-      if (player.suspendedUntil && player.suspendedUntil > this.time.now) continue
+      if (player.suspendedUntil && player.suspendedUntil > this.simNow) continue
       if (player.team === 'blue' && player.role !== 'goalie' && !autopilot.on) continue
       const hasBall = this.ballCarrierId === player.id
 
       if (player.team === 'red' || autopilot.on) {
         if (hasBall) {
-          if (player.role === 'goalie' && shouldGoaliePass(player, this.time.now)) this.tryPass(player)
+          if (player.role === 'goalie' && shouldGoaliePass(player, this.simNow)) this.tryPass(player)
           else if (shouldAIShoot(player)) this.tryShot(player, (player.stamina ?? 0) > 45 && Math.random() < 0.45)
           else {
             // Pasa con más frecuencia si hay un compañero libre más cerca del gol
@@ -566,7 +797,7 @@ export class MatchScene extends Phaser.Scene {
             if (!checked) this.tryManualSteal(player)
           }
         }
-      } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.time.now)) {
+      } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.simNow)) {
         this.tryPass(player)
       }
     }
@@ -581,7 +812,7 @@ export class MatchScene extends Phaser.Scene {
       ballVelocity: this.ballVelocity,
       players: this.players,
       ballCarrierId: this.ballCarrierId,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
     })
     if (!result) return
     if (result.ballCarrierId) playSave()
@@ -631,7 +862,7 @@ export class MatchScene extends Phaser.Scene {
   private handleLooseBallContacts() {
     const result = handleLooseBallContactsAction({
       ballCarrierId: this.ballCarrierId,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
       ballIgnoreContactsUntil: this.ballIgnoreContactsUntil,
       players: this.players,
       ball: this.ball,
@@ -650,11 +881,11 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       players: this.players,
       ballCarrierId: this.ballCarrierId,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
     })
     if (!result) return
     playPass()
-    player.stickSwingUntil = this.time.now + STICK_SWING_MS
+    player.stickSwingUntil = this.simNow + STICK_SWING_MS
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
@@ -671,17 +902,17 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       players: this.players,
       ballCarrierId: this.ballCarrierId,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
       powerMultiplier: shot.power,
     })
     if (!result) return
     if (!shot.kind) playShot()
-    player.stickSwingUntil = this.time.now + STICK_SWING_MS
+    player.stickSwingUntil = this.simNow + STICK_SWING_MS
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
     if (this.arcade) {
-      this.arcade.onShotReleased(player, this.players, this.ball, this.ballVelocity, shot, this.time.now)
+      this.arcade.onShotReleased(player, this.players, this.ball, this.ballVelocity, shot, this.simNow)
       this.cameraDirector.punchZoom(shot.kind === 'fire' ? 0.16 : shot.kind === 'turbo' ? 0.09 : 0.04)
       if (shot.kind === 'fire') this.cameras.main.shake(180, 0.005)
     }
@@ -690,7 +921,7 @@ export class MatchScene extends Phaser.Scene {
   /** Carga arcade; devuelve true si se ejecutó. */
   private tryCheck(player: Player) {
     if (!this.arcade) return false
-    const result = this.arcade.tryCheck(player, this.players, this.ball, this.ballCarrierId, this.time.now)
+    const result = this.arcade.tryCheck(player, this.players, this.ball, this.ballCarrierId, this.simNow)
     if (!result) return false
     if (result.ball) this.applyBallChange(result.ball)
     this.cameraDirector.punchZoom(0.06)
@@ -721,14 +952,14 @@ export class MatchScene extends Phaser.Scene {
       players: this.players,
       ball: this.ball,
       ballCarrierId: this.ballCarrierId,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
       ruleState: this.ruleState,
       allowFouls: !this.isArcade,
     })
     if (!result) return
     if (result.lastTouch) {
       playSteal()
-      player.stickSwingUntil = this.time.now + STICK_SWING_MS
+      player.stickSwingUntil = this.simNow + STICK_SWING_MS
     }
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
@@ -747,7 +978,7 @@ export class MatchScene extends Phaser.Scene {
         this.ball.x = bully.x
         this.ball.y = bully.y
         this.applyBallChange({ ballCarrierId: null, ballVelocity: { x: Math.cos(angle) * 280, y: Math.sin(angle) * 280 } })
-        this.ballIgnoreContactsUntil = this.time.now + 160
+        this.ballIgnoreContactsUntil = this.simNow + 160
         const sp = worldToScreen(bully.x, bully.y)
         this.fx?.burst('white', sp.x, sp.y, 12)
         this.fx?.floatText(sp.x, sp.y - 40, '¡MELÉ!', '#ffffff', 20)
@@ -888,7 +1119,7 @@ export class MatchScene extends Phaser.Scene {
     this.stuckCarrierStartTime = nextState.stuckCarrierStartTime
     this.stuckCarrierOrigin = nextState.stuckCarrierOrigin
     this.ruleState = nextState.ruleState
-    refreshKickoffVisuals(this.players, this.controlledPlayerIndex, this.ball, this.ballCarrierId, this.time.now)
+    updateStickAngles(this.players, this.ball, this.ballCarrierId, this.simNow)
     this.officials.whistle()
     playWhistle()
   }
@@ -899,7 +1130,7 @@ export class MatchScene extends Phaser.Scene {
       foul,
       players: this.players,
       ball: this.ball,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
     })
     this.ballVelocity = nextState.ballVelocity
     this.ballCarrierId = nextState.ballCarrierId
@@ -916,7 +1147,7 @@ export class MatchScene extends Phaser.Scene {
       redPlayerId,
       players: this.players,
       ball: this.ball,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
     })
     this.ballVelocity = nextState.ballVelocity
     this.ballCarrierId = nextState.ballCarrierId
@@ -985,12 +1216,6 @@ export class MatchScene extends Phaser.Scene {
       shoot: !!this.joystickInput.shoot,
       switch: !!this.joystickInput.switch,
     }
-  }
-
-  /** Sincroniza el visual del balón con su posición mundo → pantalla. */
-  private syncBallVisual() {
-    const s = worldToScreen(this.ball.x, this.ball.y)
-    this.ball.visual.setPosition(s.x, s.y)
   }
 
   /** Dibuja un rastro punteado en la dirección de puntería del ejecutante. */
@@ -1111,14 +1336,14 @@ export class MatchScene extends Phaser.Scene {
       redScore: this.redScore,
       ruleState: this.ruleState,
       players: this.players,
-      timeNow: this.time.now,
+      timeNow: this.simNow,
     })
     if (this.arcadeHud && this.arcade) {
       const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
       this.arcadeHud.update({
         controlled,
-        statusLine: this.arcade.getStatusLine(controlled, this.players, this.time.now),
-        timeNow: this.time.now,
+        statusLine: this.arcade.getStatusLine(controlled, this.players, this.simNow),
+        timeNow: this.simNow,
       })
     }
   }

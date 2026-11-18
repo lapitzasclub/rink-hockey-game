@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser'
-import type { ActiveBully, ActiveFoulRestart, Ball, TeamColor, Player } from '../types'
-import { getControlledPlayer, selectBestControlledPlayer } from './playerHelpers'
-import { updateVisuals } from './visuals'
+import type { Ball, TeamColor, Player } from '../types'
+import { selectBestControlledPlayer } from './playerHelpers'
 import { checkGoal } from './ball'
 import { applyGoalReset } from './matchFlow'
 import { nombreDeHueco } from '../externalMatch'
@@ -24,41 +23,6 @@ export function handlePendingRestart(options: {
     return 0
   }
   return options.restartAt
-}
-
-/**
- * Cortocircuita el tick normal del partido durante bully o falta.
- *
- * Actualiza el modo especial activo, refresca visuales y HUD, y devuelve true
- * para que la escena omita el resto de la lógica del frame.
- */
-export function handleSpecialMatchStates(options: {
-  activeBully: ActiveBully | null
-  activeFoulRestart: ActiveFoulRestart | null
-  players: Player[]
-  controlledPlayerIndex: number
-  ball: Ball
-  ballCarrierId: string | null
-  timeNow: number
-  updateBullyState: () => void
-  updateFoulRestartState: () => void
-  updateHud: () => void
-}) {
-  if (options.activeBully) {
-    options.updateBullyState()
-    updateVisuals(options.players, getControlledPlayer(options.players, options.controlledPlayerIndex), options.ball, options.ballCarrierId, options.timeNow)
-    options.updateHud()
-    return true
-  }
-
-  if (options.activeFoulRestart) {
-    options.updateFoulRestartState()
-    updateVisuals(options.players, getControlledPlayer(options.players, options.controlledPlayerIndex), options.ball, options.ballCarrierId, options.timeNow)
-    options.updateHud()
-    return true
-  }
-
-  return false
 }
 
 /**

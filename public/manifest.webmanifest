@@ -1,0 +1,15 @@
+{
+  "name": "Rink Hockey Game",
+  "short_name": "Rink Hockey",
+  "description": "Juego de hockey sobre patines en el navegador",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#08111b",
+  "theme_color": "#08111b",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

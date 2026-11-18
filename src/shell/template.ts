@@ -122,6 +122,16 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
             </button>
             <p id="half-length-note" class="settings-note">Dos partes de 25:00 en el marcador, como en el reglamento; el reloj corre acelerado.</p>
             ${toggleRow('btn-role-labels', 'Etiquetas de rol sobre los jugadores')}
+            <h3 class="settings-section-title">GRÁFICOS</h3>
+            <button id="quality" class="settings-row settings-row--stepper" data-nav>
+              <span>Calidad gráfica</span>
+              <span class="stepper" aria-hidden="true">
+                <span class="stepper-arrow" data-step="-1">${ICON.arrowLeft}</span>
+                <span id="quality-value" class="stepper-value"></span>
+                <span class="stepper-arrow" data-step="1">${ICON.arrowRight}</span>
+              </span>
+            </button>
+            <p id="quality-note" class="settings-note"></p>
           </section>
 
           <section class="settings-pane" id="pane-audio" role="tabpanel" aria-labelledby="tab-audio" data-pane="audio" hidden>

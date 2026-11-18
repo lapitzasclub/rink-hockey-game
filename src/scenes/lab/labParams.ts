@@ -18,6 +18,8 @@ export interface LabParams {
   /** Partido de humo IA contra IA (WP-64) y ms de juego a medir. */
   auto: boolean
   smokeMs: number
+  /** IA contra IA en tiempo real, con render (banco de rendimiento, `tools/perf-bench.mjs`). */
+  ai: boolean
   /** WP-66: evento a esperar (goal|foul|card|save|<ms>) y ms de juego extra antes de congelar. */
   at: string | null
   after: number
@@ -51,6 +53,7 @@ export function readLabParams(search: string): LabParams {
     pen: num(q, 'pen') ?? 0,
     auto: q.get('auto') === '1',
     smokeMs: num(q, 'smokeMs') ?? 120000,
+    ai: q.get('ai') === '1',
     at: q.get('at') || null,
     after: num(q, 'after') ?? 400,
     follow: q.get('follow'),

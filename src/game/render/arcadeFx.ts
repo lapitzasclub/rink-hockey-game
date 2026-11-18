@@ -119,11 +119,18 @@ export class ArcadeFx {
 
   private readonly scene: Phaser.Scene
   private readonly withUi: <T>(build: () => T) => T
+  /** Fracción de partículas que se emiten (calidad gráfica: 1 alta, menos en equipos modestos). */
+  private density = 1
 
-  constructor(scene: Phaser.Scene, withUi: <T>(build: () => T) => T) {
+  constructor(scene: Phaser.Scene, withUi: <T>(build: () => T) => T, density = 1) {
     this.scene = scene
     this.withUi = withUi
+    this.density = density
     createArcadeFxTextures(scene)
+  }
+
+  setDensity(density: number) {
+    this.density = Phaser.Math.Clamp(density, 0.2, 1)
   }
 
   private emitter(key: EmitterKey) {
@@ -166,21 +173,26 @@ export class ArcadeFx {
     }
   }
 
-  /** Estela de la bola según el tipo de tiro activo; `speed` en px/s mundo. */
-  ballTrail(x: number, y: number, speed: number, kind: 'turbo' | 'fire' | null) {
-    if (kind === 'fire') this.emitter('trail-fire').emitParticleAt(x, y, 3)
-    else if (kind === 'turbo') this.emitter('trail-turbo').emitParticleAt(x, y, 2)
-    else if (speed > 430) this.emitter('trail-white').emitParticleAt(x, y, 1)
+  /** Estela de la bola según el tipo de tiro activo; `speed` en px/s mundo. `n` = pasos de simulación del fotograma. */
+  ballTrail(x: number, y: number, speed: number, kind: 'turbo' | 'fire' | null, n = 1) {
+    const k = this.density
+    if (kind === 'fire') this.emitter('trail-fire').emitParticleAt(x, y, Math.max(1, Math.round(3 * n * k)))
+    else if (kind === 'turbo') this.emitter('trail-turbo').emitParticleAt(x, y, Math.max(1, Math.round(2 * n * k)))
+    else if (speed > 430 && Math.random() < k) this.emitter('trail-white').emitParticleAt(x, y, n)
   }
 
-  aura(kind: 'fire' | 'turbo' | 'magnet', x: number, y: number) {
-    if (kind === 'fire') this.emitter('aura-fire').emitParticleAt(x + Phaser.Math.Between(-10, 10), y + Phaser.Math.Between(-6, 18), 1)
-    else if (kind === 'turbo') this.emitter('aura-turbo').emitParticleAt(x + Phaser.Math.Between(-6, 6), y + 16, 1)
-    else if (Math.random() < 0.35) this.emitter('aura-magnet').emitParticleAt(x, y, 1)
+  /** Aura de un jugador; `n` = pasos de simulación del fotograma (una emisión por paso). */
+  aura(kind: 'fire' | 'turbo' | 'magnet', x: number, y: number, n = 1) {
+    for (let i = 0; i < n; i++) {
+      if (Math.random() >= this.density) continue
+      if (kind === 'fire') this.emitter('aura-fire').emitParticleAt(x + Phaser.Math.Between(-10, 10), y + Phaser.Math.Between(-6, 18), 1)
+      else if (kind === 'turbo') this.emitter('aura-turbo').emitParticleAt(x + Phaser.Math.Between(-6, 6), y + 16, 1)
+      else if (Math.random() < 0.35) this.emitter('aura-magnet').emitParticleAt(x, y, 1)
+    }
   }
 
   burst(kind: 'gold' | 'ice' | 'fire' | 'white' | 'blue' | 'red', x: number, y: number, count = 24) {
-    this.emitter(`burst-${kind}`).explode(count, x, y)
+    this.emitter(`burst-${kind}`).explode(Math.max(4, Math.round(count * this.density)), x, y)
   }
 
   /** Muestra u oculta el bloque de hielo sobre un jugador congelado. */

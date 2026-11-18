@@ -3,6 +3,7 @@ import { getVolume, playUiBack, playUiMove, setVolume, type VolumeChannel } from
 import { BIND_ACTIONS, getBindings, keyText, labelForEvent, RESERVED_CODES, resetBindings, setBinding, type BindAction } from '../game/input/keyBindings'
 import { HALF_REAL_MINUTES_OPTIONS } from '../game/constants'
 import { areRoleLabelsEnabled, getHalfRealMinutes, setHalfRealMinutes, setRoleLabelsEnabled } from '../game/ui/prefs'
+import { QUALITY_LABEL, QUALITY_PREFS, getQualityPref, onQualityChange, qualityTier, setQualityPref } from '../game/render/quality'
 import { focusFirst } from './menuNav'
 import { keyGlyph } from './template'
 
@@ -98,6 +99,36 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
     e.preventDefault()
     stepHalf(e.key === 'ArrowLeft' ? -1 : 1)
   })
+
+  // Calidad gráfica: AUTO (según el equipo y bajando sola si no llega), ALTA, MEDIA o BAJA
+  const qualityBtn = $<HTMLButtonElement>('#quality')!
+  const qualityValue = $<HTMLElement>('#quality-value')!
+  const qualityNote = $<HTMLElement>('#quality-note')!
+  const paintQuality = () => {
+    const pref = getQualityPref()
+    qualityValue.textContent = QUALITY_LABEL[pref]
+    qualityBtn.setAttribute('aria-label', `Calidad gráfica: ${QUALITY_LABEL[pref]}`)
+    const using = pref === 'auto' ? `En uso: ${qualityTier()}. Se ajusta sola al equipo.` : 'Efectos y público según el nivel elegido.'
+    qualityNote.textContent = deps.isMatchRunning() ? `${using} La nitidez de la pista cambia en el próximo partido.` : using
+  }
+  const stepQuality = (dir: number, sound = true) => {
+    const i = Math.max(0, QUALITY_PREFS.indexOf(getQualityPref()))
+    const next = QUALITY_PREFS[Math.min(QUALITY_PREFS.length - 1, Math.max(0, i + dir))]
+    if (next === QUALITY_PREFS[i]) return
+    setQualityPref(next)
+    paintQuality()
+    if (sound) playUiMove()
+  }
+  qualityBtn.addEventListener('click', (e) => {
+    const arrow = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')
+    stepQuality(arrow ? Number(arrow.dataset.step) : 1, false)
+  })
+  qualityBtn.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    stepQuality(e.key === 'ArrowLeft' ? -1 : 1)
+  })
+  onQualityChange(paintQuality)
 
   const announcerBtn = $<HTMLButtonElement>('#btn-announcer')!
   announcerBtn.addEventListener('click', () => {
@@ -216,6 +247,7 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
 
   const syncToggles = (isFullscreen: boolean) => {
     paintHalf()
+    paintQuality()
     setSwitch(fullscreenBtn, isFullscreen)
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
     setSwitch(announcerBtn, isAnnouncerEnabled())
@@ -225,6 +257,7 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
     returnFocus = from ?? (document.activeElement as HTMLElement | null)
     renderBindings()
     paintHalf()
+    paintQuality()
     setTab(tab)
     panel.hidden = false
     deps.onVisibilityChange()

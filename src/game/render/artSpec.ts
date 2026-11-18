@@ -608,6 +608,8 @@ export const PLAYER_UI = {
   ringBandColor: { blue: 0x0a2a6e, red: 0xd81f26 },
   ringBandAlpha: 0.95,
   ringFillAlpha: 0.1,
+  /** Supermuestreo de la textura del anillo (px de textura por px de mundo): nítido con el zoom arcade. */
+  ringTexScale: 3,
   /** Barra: ancho (m), alto (px a s = 1), separación bajo el anillo (px), fondo y borde. */
   barWM: 0.9,
   barHPx: 4,

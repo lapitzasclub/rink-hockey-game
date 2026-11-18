@@ -12,6 +12,7 @@ import { fullscreenSupported, isFullscreen, onFullscreenChange, toggleFullscreen
 import { attachMenuNav } from './shell/menuNav'
 import { createSettingsPanel } from './shell/settingsPanel'
 import { createPauseMenu, type PauseSummary } from './shell/pauseMenu'
+import { qualityText } from './game/render/quality'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
@@ -50,6 +51,12 @@ void Promise.all([fontReady, partidoReady]).then(async () => {
     },
   })
   game.events.on(Phaser.Core.Events.STEP, onStep)
+  syncPortraitSleep()
+  // Monitor de rendimiento (?perf=1 panel, ?perfMs=N informe en consola): carga diferida, fuera del arranque normal
+  if (/[?&]perf(Ms)?=/.test(window.location.search)) {
+    const g = game
+    void import('./game/perf/perfMonitor').then(m => m.setupPerfFromUrl(g, () => `  calidad ${qualityText()}`))
+  }
   // Acceso para depurar y simular desde la consola; no llega a producción
   if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game
 })
@@ -197,10 +204,18 @@ window.addEventListener('resize', () => game?.scale.refresh())
 
 // ─── Orientación (móvil) ─────────────────────────────────────────────────────
 
+/** En vertical (táctil) el aviso de girar tapa el juego: no se pinta nada, ahorra batería. */
+function syncPortraitSleep() {
+  if (!game) return
+  if (isPortraitBlocked()) game.pause()
+  else if (game.isPaused) game.resume()
+}
+
 // El aviso lo muestra el CSS (#rotate-overlay); en partido además se abre la pausa
 const onOrientation = () => {
   const blocked = isPortraitBlocked()
   shell.classList.toggle('is-portrait', blocked)
+  syncPortraitSleep()
   if (blocked && activeScene === 'match' && !pause.isOpen()) pause.open()
   else syncOverlays()
 }

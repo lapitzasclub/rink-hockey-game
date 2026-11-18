@@ -3,6 +3,7 @@ import { CLOCK_WARNING_GAME_SECONDS, PERIOD_COUNT } from '../constants'
 import { ARCADE_FONT } from '../render/arcadeFx'
 import { claveEscudo, equipoDeHueco, ladoDeHueco, registrarEscudos } from '../externalMatch'
 import { teamKit } from '../render/puppet/kit'
+import { bakeGraphics } from '../render/bake'
 
 /** Videomarcador en la esquina superior izquierda: no toca banquillos (x 320-960) ni valla lejana. */
 const MARGIN = 16
@@ -111,6 +112,9 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
     badge(rightSlot, rightCenter + CREST_DX, rightInk)
   }
 
+  // El panel ya no cambia: textura en vez de volver a triangularlo cada fotograma
+  bakeGraphics(panel, 'scoreboard')
+
   const susStyle = { fontFamily: ARCADE_FONT, fontSize: '15px', stroke: '#050b13', strokeThickness: 4 }
   const leftSusColor = external ? hexStr(legible(leftColor)) : '#6fb1ff'
   const rightSusColor = external ? hexStr(legible(rightColor)) : '#ff7b8a'
@@ -119,6 +123,7 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
 
   let lastLeft = 0
   let lastRight = 0
+  let lastClockColor = ''
   const pop = (t: Phaser.GameObjects.Text) => {
     scene.tweens.add({ targets: t, scale: { from: 1.8, to: 1 }, duration: 420, ease: 'Back.Out' })
   }
@@ -141,7 +146,12 @@ export function createScoreboard(scene: Phaser.Scene, showFouls = true) {
       const m = Math.floor(s.remainingSeconds / 60)
       const sec = s.remainingSeconds % 60
       clock.setText(`${m}:${sec.toString().padStart(2, '0')}`)
-      clock.setColor(s.remainingSeconds <= CLOCK_WARNING_GAME_SECONDS ? '#ff5d6c' : '#ffe36a')
+      // setColor vuelve a rasterizar el texto aunque el color no cambie: solo al cruzar el último minuto
+      const clockColor = s.remainingSeconds <= CLOCK_WARNING_GAME_SECONDS ? '#ff5d6c' : '#ffe36a'
+      if (clockColor !== lastClockColor) {
+        clock.setColor(clockColor)
+        lastClockColor = clockColor
+      }
       period.setText(PERIOD_COUNT === 2 ? `${s.currentPeriod}ª PARTE` : `${s.currentPeriod} / ${PERIOD_COUNT}`)
       if (showFouls) leftSus.setText(fmt(s.suspensions, leftSlot))
       if (showFouls) rightSus.setText(fmt(s.suspensions, rightSlot))

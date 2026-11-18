@@ -26,7 +26,7 @@ type MatchView = Phaser.Scene & {
   ball: { x: number, y: number }
   ballVelocity: { x: number, y: number }
   ballCarrierId: string | null
-  players: Array<{ id: string, team: Team, role: string, pos: { x: number, y: number }, velocity: { x: number, y: number }, suspendedUntil?: number, facing: { x: number, y: number } }>
+  players: Array<{ id: string, team: Team, side: 'left' | 'right', role: string, pos: { x: number, y: number }, velocity: { x: number, y: number }, suspendedUntil?: number, facing: { x: number, y: number } }>
   blueScore: number
   redScore: number
   lastTouch: Team
@@ -35,6 +35,8 @@ type MatchView = Phaser.Scene & {
   activeBully: unknown
   restartAt: number
   matchEnded: boolean
+  /** Reloj de la simulación (paso fijo): las marcas de tiempo del partido se comparan con él. */
+  simNow: number
   joystickInput: { x: number, y: number, pass: boolean, shoot: boolean }
 }
 
@@ -42,6 +44,25 @@ type MatchView = Phaser.Scene & {
 export interface SmokeHooks {
   onStep: (ms: number, stop: () => void) => void
   onDone: () => void
+}
+
+/**
+ * Pulso de pase del sacador azul en los saques de falta: sustituye a la tecla que
+ * pulsaría el humano cuando la IA juega por los dos equipos. Devuelve cómo pararlo.
+ */
+export function driveBlueRestarts(match: Phaser.Scene) {
+  const s = match as MatchView
+  const drive = () => {
+    const f = s.activeFoulRestart
+    const taker = f && s.players?.find(p => p.id === f.takerPlayerId)
+    const press = !!(taker && taker.team === 'blue' && s.simNow >= f!.readyAt)
+    // Hacia la portería rival: el azul ataca a la derecha en la 1.ª parte y a la izquierda tras el descanso
+    s.joystickInput.x = press ? (taker!.side === 'right' ? -1 : 1) : 0
+    s.joystickInput.y = 0
+    s.joystickInput.pass = press
+  }
+  match.events.on(Phaser.Scenes.Events.UPDATE, drive)
+  return () => { match.events.off(Phaser.Scenes.Events.UPDATE, drive) }
 }
 
 export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, hooks?: SmokeHooks) {
@@ -74,15 +95,6 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
   const prevSusp = new Map<string, number>()
   let pending: null | { team: Team, onTarget: boolean, age: number } = null
 
-  /** Pulso de pase del sacador azul: sustituye a la tecla que pulsaría el humano. */
-  const drive = () => {
-    const f = s.activeFoulRestart
-    const taker = f && s.players?.find(p => p.id === f.takerPlayerId)
-    const press = !!(taker && taker.team === 'blue' && s.time.now >= f!.readyAt)
-    s.joystickInput.x = press ? 1 : 0
-    s.joystickInput.y = 0
-    s.joystickInput.pass = press
-  }
 
   const snapshot = (final: boolean) => ({ ...st, sec: Math.round(ms / 100) / 10, consoleErrors: errors, final })
 
@@ -122,11 +134,11 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     }
     for (const p of s.players) {
       const su = p.suspendedUntil ?? 0
-      if (su > (prevSusp.get(p.id) ?? 0) && su > s.time.now) st.blueCards[p.team]++
+      if (su > (prevSusp.get(p.id) ?? 0) && su > s.simNow) st.blueCards[p.team]++
       prevSusp.set(p.id, su)
       // Validez de jugadores: NaN o fuera de pista (los sancionados esperan en el banquillo)
       const bad = ![p.pos.x, p.pos.y, p.velocity.x, p.velocity.y].every(Number.isFinite) ||
-        (!(su > s.time.now) && (p.pos.x < RINK.x - 12 || p.pos.x > RINK.x + RINK.width + 12 || p.pos.y < RINK.y - 12 || p.pos.y > RINK.y + RINK.height + 40))
+        (!(su > s.simNow) && (p.pos.x < RINK.x - 12 || p.pos.x > RINK.x + RINK.width + 12 || p.pos.y < RINK.y - 12 || p.pos.y > RINK.y + RINK.height + 40))
       if (bad) { st.badPlayerFrames++; st.badSample ||= `${p.id}@${Math.round(p.pos.x)},${Math.round(p.pos.y)}` }
     }
 
@@ -195,14 +207,14 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     done = true
     autopilot.on = false
     if (!hooks) console.log('[smoke] ' + JSON.stringify(snapshot(true)))
-    match.events.off(Phaser.Scenes.Events.UPDATE, drive)
+    stopDrive()
     match.events.off(Phaser.Scenes.Events.POST_UPDATE, post)
     console.error = origError
     window.removeEventListener('error', onErr)
     hooks?.onDone()
   }
   const post = (_t: number, delta: number) => observe(delta)
-  match.events.on(Phaser.Scenes.Events.UPDATE, drive)
+  const stopDrive = driveBlueRestarts(match)
   match.events.on(Phaser.Scenes.Events.POST_UPDATE, post)
 
   // Simulación acelerada: el bucle de Phaser se detiene y la escena avanza a pasos fijos sin

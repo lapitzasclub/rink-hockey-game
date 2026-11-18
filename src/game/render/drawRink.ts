@@ -11,6 +11,7 @@ import { drawAds } from './rink/ads'
 import { drawFieldDots, drawGoalCrease, drawPenaltyArea } from './rink/markings'
 import { drawGoal3D } from './rink/goal'
 import { createLighting } from './lighting'
+import { bakeGraphicsSince } from './bake'
 
 // API pública (los consumidores externos importan de aquí)
 export { RINK_CORNER_R, BOARD_W, BOARD_FAR_H, roundedRectWorldPts } from './rink/geometry'
@@ -22,8 +23,12 @@ export { createGoalNetFlash } from './rink/goal'
  * explícitamente con worldToScreen (convergencia X + curva Y no-lineal).
  * Ya no se usa g.setScale como atajo — permite que el campo aparezca
  * trapezoidal con filas lejanas más comprimidas que las cercanas.
+ *
+ * Todo lo que se dibuja aquí es estático: al final se hornea en texturas
+ * (bake.ts), nítidas hasta el zoom habitual de la cámara arcade.
  */
 export function drawRink(scene: Phaser.Scene) {
+  const firstObject = scene.sys.displayList.length
   const gBenches = scene.add.graphics().setDepth(DEPTH.OFFCOURT_FAR)
   drawBenches(gBenches)
   drawOfficialsTable(scene)
@@ -75,4 +80,5 @@ export function drawRink(scene: Phaser.Scene) {
 
   // Pozos de luz cenitales y viñeteado del pabellón (WP-61)
   createLighting(scene)
+  bakeGraphicsSince(scene, firstObject, 'rink')
 }

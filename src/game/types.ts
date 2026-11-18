@@ -35,7 +35,8 @@ export type Player = {
   /** Dorsal. */
   number: string
   shadow: Phaser.GameObjects.Image
-  selectionRing: Phaser.GameObjects.Arc
+  /** Anillo del jugador controlado: textura de anillo (borde y banda del equipo) que visuals.ts aplana con la perspectiva. */
+  selectionRing: Phaser.GameObjects.Image
   label: Phaser.GameObjects.Text
   pos: Vector
   velocity: Vector

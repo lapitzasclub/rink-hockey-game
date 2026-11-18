@@ -10,6 +10,31 @@ import { getRoleShort } from '../utils'
 const FONT = '"Russo One", sans-serif'
 
 /**
+ * Textura del anillo de selección (una por equipo, se pinta una vez): relleno muy
+ * suave, borde claro y banda del equipo. Antes eran dos círculos Shape que WebGL
+ * volvía a triangular en cada fotograma.
+ */
+function ringTexture(scene: Phaser.Scene, team: TeamColor) {
+  const key = `player-ring-${team}`
+  if (scene.textures.exists(key)) return key
+  const S = PLAYER_UI.ringTexScale
+  const r = PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.x
+  const size = Math.ceil((r + PLAYER_UI.ringEdgePx) * 2 * S) + 2
+  const c = size / 2
+  const band = PLAYER_UI.ringBandColor[team]
+  const g = scene.make.graphics({ x: 0, y: 0 }, false)
+  g.fillStyle(band, PLAYER_UI.ringFillAlpha)
+  g.fillCircle(c, c, r * S)
+  g.lineStyle(PLAYER_UI.ringEdgePx * S, PLAYER_UI.ringEdgeColor, PLAYER_UI.ringEdgeAlpha)
+  g.strokeCircle(c, c, r * S)
+  g.lineStyle(PLAYER_UI.ringBandPx * S, band, PLAYER_UI.ringBandAlpha)
+  g.strokeCircle(c, c, (r - (PLAYER_UI.ringEdgePx + PLAYER_UI.ringBandPx) / 2) * S)
+  g.generateTexture(key, size, size)
+  g.destroy()
+  return key
+}
+
+/**
  * Monta un jugador con el rig 2D jerárquico (WP-30): kit del equipo, dorsal y
  * variedad (mano, piel, pelo) deterministas por id. Las texturas del rig se
  * pintan una vez por pieza y vista y se comparten entre jugadores.
@@ -35,16 +60,8 @@ export function createPlayer(
   const shadow = createContactShadow(scene, x, y)
   const rig = new PuppetRig(scene, kind, playerKit(team, kind, look), stickSide, x, y)
 
-  // Anillo: borde claro (selectionRing) y banda de equipo (dato 'band'); visuals.ts los escala con gx/gy a elipse
-  const ringR = PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.x
-  const bandColor = PLAYER_UI.ringBandColor[team]
-  const selectionRing = scene.add.circle(x, y, ringR)
-  selectionRing.setStrokeStyle(PLAYER_UI.ringEdgePx, PLAYER_UI.ringEdgeColor, PLAYER_UI.ringEdgeAlpha)
-  selectionRing.setFillStyle(bandColor, PLAYER_UI.ringFillAlpha)
-  selectionRing.setVisible(false)
-  const band = scene.add.circle(x, y, ringR - (PLAYER_UI.ringEdgePx + PLAYER_UI.ringBandPx) / 2)
-  band.setStrokeStyle(PLAYER_UI.ringBandPx, bandColor, PLAYER_UI.ringBandAlpha).setFillStyle().setVisible(false)
-  selectionRing.setData('band', band)
+  // Anillo: borde claro y banda del equipo en una textura; visuals.ts la escala con gx/gy a elipse
+  const selectionRing = scene.add.image(x, y, ringTexture(scene, team)).setVisible(false)
 
   // Barra de stamina: fondo oscuro con borde claro (dato 'bg') y relleno que visuals.ts recorta según el nivel
   const staminaBar = controllable

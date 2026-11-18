@@ -101,11 +101,12 @@ export function updateVisuals(
   const ballDiam = BALL_VISUAL_DIAMETER_M * PX_PER_M * foot.s * FIGURE_EXAG
   const ballDepth = bandDepth('COURT', foot.y)
   ball.visual.setPosition(foot.x, foot.y - ballDiam / 2).setDisplaySize(ballDiam, ballDiam).setDepth(ballDepth + 0.004)
-  const ballShadow = ball.visual.getData('shadow') as Phaser.GameObjects.Ellipse | undefined
+  const ballShadow = ball.visual.getData('shadow') as Phaser.GameObjects.Image | undefined
   if (ballShadow) {
     projectGround(ball.x, ball.y)
+    const k = ballDiam / (2 * SHADOW_FRAME_RADIUS * RIG_TEX_SUPERSAMPLE)
     ballShadow.setVisible(ball.visual.visible).setPosition(foot.x, foot.y)
-      .setSize(ballDiam * 1.1, ballDiam * 0.45).setDepth(ballDepth - 0.006)
+      .setScale(k * 1.1, k * 0.45).setDepth(ballDepth - 0.006)
   }
 
   const penPos = buildPenaltyPositions(players, timeNow)
@@ -134,7 +135,6 @@ export function updateVisuals(
         .setDepth(bandDepth('OFFCOURT_FAR', sp.y))
       player.shadow.setVisible(false)
       player.selectionRing.setVisible(false)
-      ;(player.selectionRing.getData('band') as Phaser.GameObjects.Arc).setVisible(false)
       player.staminaBar?.setVisible(false)
       ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
       player.nameTag?.setVisible(false)
@@ -146,7 +146,6 @@ export function updateVisuals(
       continue
     }
 
-    const facingAngle = Math.atan2(player.facing.y, player.facing.x)
     const isGoalie = player.role === 'goalie'
     const speed = Math.hypot(player.velocity.x, player.velocity.y)
     const moving = speed > MOVING_SPEED
@@ -163,23 +162,12 @@ export function updateVisuals(
       .setScale(gx * sh * SHADOW_W * (1 + speedRatio * 0.18), gy * sh * SHADOW_H * (1 - speedRatio * 0.12))
       .setDepth(depth - 0.006)
     // Anillo: apoyado en el suelo, entre la sombra y los patines; la elipse sale de gx/gy
-    player.selectionRing.setPosition(sp.x, sp.y).setScale(gx, gy).setDepth(depth - 0.004)
-    const band = player.selectionRing.getData('band') as Phaser.GameObjects.Arc
-    band.setPosition(sp.x, sp.y).setScale(gx, gy).setDepth(depth - 0.0035)
+    player.selectionRing.setPosition(sp.x, sp.y).setScale(gx / PLAYER_UI.ringTexScale, gy / PLAYER_UI.ringTexScale).setDepth(depth - 0.004)
     player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setDepth(DEPTH.FX)
     player.label.setAlpha(labelsOn ? 1 : 0)   // alfa y no visibilidad: el lab oculta las etiquetas con setVisible
 
-    // Stick en mundo (fuente de verdad del contacto, ver getStickTip): hacia la bola, o adelante si la lleva
-    const aimX = carrying ? player.pos.x + player.facing.x * 40 : ball.x
-    const aimY = carrying ? player.pos.y + player.facing.y * 40 : ball.y
-    let stickAngle = Phaser.Math.Angle.Between(player.pos.x, player.pos.y, aimX, aimY)
-    let swing = -1
-    if ((player.stickSwingUntil ?? 0) > timeNow) {
-      const t = 1 - (player.stickSwingUntil! - timeNow) / STICK_SWING_MS
-      stickAngle = facingAngle + Math.sin(t * Math.PI) * 1.1
-      swing = clamp01(t)
-    }
-    player.stickWorldAngle = stickAngle
+    // El ángulo del stick en mundo (contactos) lo fija updateStickAngles en la simulación; aquí solo el gesto
+    const swing = (player.stickSwingUntil ?? 0) > timeNow ? clamp01(1 - (player.stickSwingUntil! - timeNow) / STICK_SWING_MS) : -1
 
     // Pose por capas en el marco del cuerpo
     const yaw = Math.atan2(player.facing.x, player.facing.y)
@@ -221,7 +209,6 @@ export function updateVisuals(
     // Anillo y barra solo para el jugador controlado
     const active = controlled.id === player.id
     player.selectionRing.setVisible(active)
-    band.setVisible(active)
 
     // Solo el rol: el jugador activo ya lo marca el anillo y el portador se ve con la bola
     if (labelsOn) player.label.setText(getRoleShort(player.role))
@@ -247,6 +234,26 @@ export function updateVisuals(
         player.staminaBar.setPosition(sp.x - w / 2, y).setSize(Math.max(1, w * stamina), h).setDepth(DEPTH.FX)
       }
     }
+  }
+}
+
+/**
+ * Ángulo del stick en mundo (fuente de verdad de los contactos, ver getStickTip):
+ * hacia la bola, adelante si la lleva, o el arco del golpe mientras dura. Es
+ * lógica de juego: se llama en cada paso de simulación, no al pintar.
+ */
+export function updateStickAngles(players: Player[], ball: Ball, ballCarrierId: string | null, timeNow: number) {
+  for (const player of players) {
+    if (player.suspendedUntil && player.suspendedUntil > timeNow) continue
+    if ((player.stickSwingUntil ?? 0) > timeNow) {
+      const t = 1 - (player.stickSwingUntil! - timeNow) / STICK_SWING_MS
+      player.stickWorldAngle = Math.atan2(player.facing.y, player.facing.x) + Math.sin(t * Math.PI) * 1.1
+      continue
+    }
+    const carrying = ballCarrierId === player.id
+    const aimX = carrying ? player.pos.x + player.facing.x * 40 : ball.x
+    const aimY = carrying ? player.pos.y + player.facing.y * 40 : ball.y
+    player.stickWorldAngle = Math.atan2(aimY - player.pos.y, aimX - player.pos.x)
   }
 }
 

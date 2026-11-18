@@ -69,6 +69,11 @@ export class Officials {
     return index === 0 ? RINK.y + R.laneM * MY : RINK.y + RINK.height - R.laneM * MY
   }
 
+  /** Tiempo de simulación del paso en curso: los gestos que se disparan en él empiezan ahí. */
+  syncTime(now: number) {
+    this.now = now
+  }
+
   /** Avanza el movimiento y dibuja; se llama cada frame (incluso en pausas del juego). */
   update(time: number, dt: number, ball: Ball, players: Player[]) {
     this.now = time

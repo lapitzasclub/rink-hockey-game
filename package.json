@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "perf": "node tools/perf-bench.mjs",
+    "perf:trace": "node tools/perf-trace.mjs"
   },
   "devDependencies": {
     "typescript": "~6.0.2",

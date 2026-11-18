@@ -3,6 +3,8 @@ import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
 import { BOARD_W, RINK_CORNER_R, roundedRectWorldPts } from './drawRink'
 import { DEPTH, FIGURE_EXAG, FLOOR_STYLE, PX_PER_M, STANDS, STANDS_STYLE as SS } from './artSpec'
 import { project } from './viewTransform'
+import { crowdAnimated } from './quality'
+import { addTrimmedImages } from './bake'
 
 type Pt = { x: number, y: number }
 
@@ -12,6 +14,8 @@ export type Arena = {
   update(time: number, excitement: number): void
   /** El público salta unos segundos (goles, final). */
   cheer(time: number, durationMs?: number): void
+  /** Calidad baja: el público se queda quieto (las capas vuelven a su sitio). */
+  setCrowdAnimated(on: boolean): void
 }
 
 const FLOOR_KEY = 'arena-floor'
@@ -70,11 +74,13 @@ function rinkScreenOutline() {
 
 export function createArena(scene: Phaser.Scene): Arena {
   paintFloor(scene)
-  const layers = buildStands(scene)
+  const layers = buildStands(scene, !crowdAnimated())
   let cheerUntil = 0
+  let animated = crowdAnimated()
 
   return {
     update(time, excitement) {
+      if (!animated) return
       const left = cheerUntil - time
       const cheering = left > 0
       // El salto se atenúa en el último tramo para no cortar en seco
@@ -84,12 +90,16 @@ export function createArena(scene: Phaser.Scene): Arena {
         if (!layer.ampScale) continue
         const amp = cheering ? idleAmp + (SS.cheerAmp - idleAmp) * fade : idleAmp
         const freq = cheering ? SS.cheerFreq : 0.004 + excitement * 0.007
-        const bob = Math.abs(Math.sin(time * freq + layer.phase))
-        layer.image.y = ARENA_BOUNDS.y - bob * amp * layer.ampScale
+        const dy = Math.abs(Math.sin(time * freq + layer.phase)) * amp * layer.ampScale
+        for (let i = 0; i < layer.images.length; i++) layer.images[i].y = layer.baseY[i] - dy
       }
     },
     cheer(time, durationMs = 2600) {
       cheerUntil = time + durationMs
+    },
+    setCrowdAnimated(on) {
+      animated = on
+      if (!on) for (const layer of layers) layer.images.forEach((img, i) => { img.y = layer.baseY[i] })
     },
   }
 }
@@ -112,37 +122,92 @@ function standRing(offset: number, z: number, segs = 10): (Pt & { t: number })[]
     .map(p => ({ ...standToScreen(p.x, p.y, z), t: (p.y - RINK.y) / RINK.height }))
 }
 
-type StandLayer = { image: Phaser.GameObjects.Image, phase: number, ampScale: number }
+/** Capa de gradas: sus tiras con contenido (recortadas) y la y de reposo de cada una. */
+type StandLayer = { images: Phaser.GameObjects.Image[], phase: number, ampScale: number, baseY: number[] }
+
+const STAND_KEYS = { structure: 'arena-stands', fansA: 'arena-fans-a', fansB: 'arena-fans-b', near: 'arena-near', flat: 'arena-stands-flat' }
+/** Esquina de la textura recortada del público cercano (px de pantalla); vale mientras exista la textura. */
+let nearOrigin = { x: ARENA_BOUNDS.x, y: ARENA_BOUNDS.y }
 
 /**
  * Gradas en anfiteatro: escalones concéntricos alrededor de la valla que
  * suben y se alejan con la perspectiva de la pista. Se pintan de fuera hacia
  * dentro (de atrás hacia delante) en canvas: estructura fija + dos capas de
  * público que se mecen. Las filas detrás del tablero cercano van en un canvas
- * aparte por delante del juego (espaldas del público).
+ * aparte por delante del juego (espaldas del público), recortado a su caja.
+ *
+ * Coste: cada capa es un rectángulo del tamaño del pabellón que la GPU rellena
+ * en todos los fotogramas. Con `flat` (calidad baja) estructura y público lejano
+ * se funden en una sola capa quieta: dos pasadas de relleno menos.
  */
-function buildStands(scene: Phaser.Scene): StandLayer[] {
+function buildStands(scene: Phaser.Scene, flat: boolean): StandLayer[] {
   const B = ARENA_BOUNDS
-  const keys = ['arena-stands', 'arena-fans-a', 'arena-fans-b', 'arena-near']
-  if (!scene.textures.exists(keys[0])) {
-    const canvases = keys.map(k => scene.textures.createCanvas(k, B.width, B.height)!)
-    const [structure, fansA, fansB, near] = canvases.map(c => {
-      const ctx = c.getContext()
-      ctx.translate(-B.x, -B.y)
-      return ctx
-    })
-    paintStandStructure(structure)
-    paintFans([fansA, fansB], near)
-    for (const c of canvases) c.refresh()
+  const K = STAND_KEYS
+  const tx = scene.textures
+  const ready = tx.exists(K.near) && (flat ? tx.exists(K.flat) : tx.exists(K.structure) && tx.exists(K.fansA) && tx.exists(K.fansB))
+  if (!ready) paintStands(scene, flat)
+  // Estructura (opaca) entera; el público, solo en las tiras con contenido: el centro (la pista) no se rellena
+  const layer = (key: string, depth: number, phase: number, ampScale: number, trim: boolean, x = B.x, y = B.y): StandLayer => {
+    const images = trim ? addTrimmedImages(scene, key, x, y, 1) : [scene.add.image(x, y, key).setOrigin(0, 0)]
+    images.forEach(img => img.setDepth(depth))
+    return { images, phase, ampScale, baseY: images.map(img => img.y) }
   }
-  const add = (key: string, depth: number) =>
-    scene.add.image(B.x, B.y, key).setOrigin(0, 0).setDepth(depth)
+  const near = layer(K.near, DEPTH.STANDS_NEAR, 1.1, 1.4, true, nearOrigin.x, nearOrigin.y)
+  if (flat) return [layer(K.flat, DEPTH.STANDS_FAR, 0, 0, false), near]
   return [
-    { image: add(keys[0], DEPTH.STANDS_FAR), phase: 0, ampScale: 0 },
-    { image: add(keys[1], DEPTH.STANDS_FAR + 1), phase: 0, ampScale: 1 },
-    { image: add(keys[2], DEPTH.STANDS_FAR + 1), phase: 2.2, ampScale: 1 },
-    { image: add(keys[3], DEPTH.STANDS_NEAR), phase: 1.1, ampScale: 1.4 },
+    layer(K.structure, DEPTH.STANDS_FAR, 0, 0, false),
+    layer(K.fansA, DEPTH.STANDS_FAR + 1, 0, 1, true),
+    layer(K.fansB, DEPTH.STANDS_FAR + 1, 2.2, 1, true),
+    near,
   ]
+}
+
+/** Pinta las gradas (una vez por sesión y nivel de calidad) y deja solo las texturas que se van a usar. */
+function paintStands(scene: Phaser.Scene, flat: boolean) {
+  const B = ARENA_BOUNDS
+  const K = STAND_KEYS
+  const tx = scene.textures
+  for (const key of Object.values(K)) if (tx.exists(key)) tx.remove(key)
+  const canvas = () => {
+    const c = document.createElement('canvas')
+    c.width = B.width
+    c.height = B.height
+    const ctx = c.getContext('2d')!
+    ctx.translate(-B.x, -B.y)
+    return { c, ctx }
+  }
+  const structure = canvas()
+  const fansA = canvas()
+  const fansB = canvas()
+  const near = canvas()
+  paintStandStructure(structure.ctx)
+  const box = paintFans([fansA.ctx, fansB.ctx], near.ctx)
+
+  // Público cercano: solo su caja (las filas de abajo), no el pabellón entero
+  const x0 = Math.max(0, Math.floor(box.minX - B.x))
+  const y0 = Math.max(0, Math.floor(box.minY - B.y))
+  const x1 = Math.min(B.width, Math.ceil(box.maxX - B.x))
+  const y1 = Math.min(B.height, Math.ceil(box.maxY - B.y))
+  const nearTex = tx.createCanvas(K.near, Math.max(1, x1 - x0), Math.max(1, y1 - y0))!
+  nearTex.getContext().drawImage(near.c, x0, y0, x1 - x0, y1 - y0, 0, 0, x1 - x0, y1 - y0)
+  nearTex.refresh()
+  nearOrigin = { x: B.x + x0, y: B.y + y0 }
+
+  if (flat) {
+    const t = tx.createCanvas(K.flat, B.width, B.height)!
+    const ctx = t.getContext()
+    for (const layer of [structure, fansA, fansB]) ctx.drawImage(layer.c, 0, 0)
+    t.refresh()
+    return
+  }
+  const upload = (key: string, src: HTMLCanvasElement) => {
+    const t = tx.createCanvas(key, B.width, B.height)!
+    t.getContext().drawImage(src, 0, 0)
+    t.refresh()
+  }
+  upload(K.structure, structure.c)
+  upload(K.fansA, fansA.c)
+  upload(K.fansB, fansB.c)
 }
 
 function paintStandStructure(ctx: CanvasRenderingContext2D) {
@@ -205,9 +270,11 @@ const AISLES: [number, number, number, number][] = [
   [RINK.x + RINK.width, RINK.y + RINK.height * 0.72, 1, 0],
 ]
 
+/** Pinta el público; devuelve la caja (px de pantalla) de lo pintado en `near`. */
 function paintFans(far: CanvasRenderingContext2D[], near: CanvasRenderingContext2D) {
   const rand = mulberry32(7)
   const B = ARENA_BOUNDS
+  const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
   for (let i = STAND_TIERS - 1; i >= 0; i--) {
     const o = STAND_FIRST_OFFSET + i * STAND_TIER_DEPTH + STAND_TIER_DEPTH * 0.45
     const z = STAND_FIRST_HEIGHT + i * STAND_TIER_RISE
@@ -230,6 +297,13 @@ function paintFans(far: CanvasRenderingContext2D[], near: CanvasRenderingContext
         const isNear = t > 1
         const ctx = isNear ? near : far[rand() < 0.5 ? 0 : 1]
         const light = isNear ? 0.3 : shade
+        if (isNear) {
+          // Holgura de sobra para la figura de espaldas (alto ~16, ancho ~12 en unidades locales)
+          box.minX = Math.min(box.minX, p.x - 10 * s)
+          box.maxX = Math.max(box.maxX, p.x + 10 * s)
+          box.minY = Math.min(box.minY, p.y - 20 * s)
+          box.maxY = Math.max(box.maxY, p.y + 6 * s)
+        }
         if (rand() < empty) {
           drawSeat(ctx, p.x, p.y, s, light)
           continue
@@ -239,6 +313,7 @@ function paintFans(far: CanvasRenderingContext2D[], near: CanvasRenderingContext
       }
     }
   }
+  return box
 }
 
 function pick<T>(list: T[], rand: () => number) {
