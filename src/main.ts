@@ -202,6 +202,12 @@ updateFullscreenUi()
 
 window.addEventListener('resize', () => game?.scale.refresh())
 
+// En Android, al entrar en pantalla completa las barras del navegador se van después
+// de `fullscreenchange` y de `resize`: el lienzo se quedaba con el alto viejo y
+// salían franjas negras. Se reajusta cuando el contenedor cambia de verdad.
+const gameHost = document.querySelector<HTMLElement>('#game-host')
+if (gameHost && typeof ResizeObserver !== 'undefined') new ResizeObserver(() => game?.scale.refresh()).observe(gameHost)
+
 // ─── Orientación (móvil) ─────────────────────────────────────────────────────
 
 /** En vertical (táctil) el aviso de girar tapa el juego: no se pinta nada, ahorra batería. */
