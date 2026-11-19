@@ -20,10 +20,9 @@ type MatchView = Phaser.Scene & {
   ball: Pos
   ballVelocity: Pos
   ballCarrierId: string | null
-  players: Array<{ id: string, team: Team, role: string, pos: Pos, suspendedUntil?: number }>
+  players: Array<{ id: string, team: Team, role: string, pos: Pos, suspendedUntil?: number, anim?: { type: string, at: number } }>
   blueScore: number
   redScore: number
-  lastTouch: Team
   ruleState: { teamFouls: Record<Team, number> }
   activeFoulRestart: unknown
   simNow: number
@@ -93,15 +92,20 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
   const s = match as MatchView
   const at = p.at ?? ''
   const atMs = /^\d+(\.\d+)?$/.test(at) ? Number(at) : null
-  const prev = { goals: 0, fouls: 0, foul: false, susp: new Map<string, number>(), carrierGk: false, speed: 0 }
+  const prev = { goals: 0, fouls: 0, foul: false, susp: new Map<string, number>(), saveAt: 0, gk: null as string | null, speed: 0 }
   let hitMs: number | null = null
 
   const detect = (ms: number): boolean => {
     const goals = s.blueScore + s.redScore
     const fouls = s.ruleState.teamFouls.blue + s.ruleState.teamFouls.red
     const foulNow = !!s.activeFoulRestart
+    // Parada: el portero bloca una bola rápida o arranca su clip de parada
     const carrier = s.ballCarrierId ? s.players.find(q => q.id === s.ballCarrierId) : undefined
-    const gk = carrier?.role === 'goalie' && carrier.team !== s.lastTouch
+    const gk = carrier?.role === 'goalie' ? carrier.id : null
+    let saveAt = prev.saveAt
+    for (const q of s.players) {
+      if (q.role === 'goalie' && q.anim?.type === 'save' && q.anim.at > saveAt) saveAt = q.anim.at
+    }
     let carded = false
     for (const q of s.players) {
       const su = q.suspendedUntil ?? 0
@@ -112,9 +116,9 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
       : at === 'goal' ? goals > prev.goals
       : at === 'foul' ? fouls > prev.fouls || (foulNow && !prev.foul)
       : at === 'card' ? carded
-      : at === 'save' ? gk && !prev.carrierGk && prev.speed > 150
+      : at === 'save' ? (gk !== null && gk !== prev.gk && prev.speed > 150) || saveAt > prev.saveAt
       : false
-    prev.goals = goals; prev.fouls = fouls; prev.foul = foulNow; prev.carrierGk = !!gk
+    prev.goals = goals; prev.fouls = fouls; prev.foul = foulNow; prev.saveAt = saveAt; prev.gk = gk
     prev.speed = Math.hypot(s.ballVelocity.x, s.ballVelocity.y)
     return hit
   }
