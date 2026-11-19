@@ -101,6 +101,32 @@ export const STAMINA_LOW_THRESHOLD = 18
 export const BALL_CONTROL_PROTECTION_BACK_EXTRA_MS = 220
 export const PASS_POWER = 520
 export const SHOT_POWER = 700
+/**
+ * Pase y tiro cargados del humano: mientras se mantiene el botón se llena la carga y al
+ * soltar sale con esa fuerza. Por debajo de TAP es una pulsación corta (fuerza normal);
+ * a FULL la carga está llena y a AUTO sale sola. Al máximo el pase va a ×PASS_MAX y el tiro
+ * a ×SHOT_MAX. Como en los juegos de deportes, más fuerza es menos precisión: el desvío crece
+ * con el cuadrado de la carga hasta SHOT_SPREAD / PASS_SPREAD rad (a media carga, un cuarto).
+ */
+export const CHARGE_TAP_MS = 110
+export const CHARGE_FULL_MS = 700
+export const CHARGE_AUTO_MS = 1150
+export const CHARGE_PASS_MAX = 1.5
+export const CHARGE_SHOT_MAX = 1.3
+export const CHARGE_SHOT_SPREAD = 0.12
+export const CHARGE_PASS_SPREAD = 0.07
+/**
+ * La IA carga igual que el humano (mismo tiempo, fuerza y desvío; puede perder la bola mientras
+ * carga), pero solo con espacio (PRESSURE_PX). Tiro: carga 0 hasta NEAR px de la portería y llena a FAR. Pase: carga de vez en
+ * cuando (PASS_CHANCE) hasta PASS_MAX. JITTER es el error con que elige la carga.
+ */
+export const AI_CHARGE_SHOT_NEAR = 140
+export const AI_CHARGE_SHOT_FAR = 480
+export const AI_CHARGE_PASS_CHANCE = 0.35
+export const AI_CHARGE_PASS_MAX = 0.7
+export const AI_CHARGE_JITTER = 0.25
+/** Con un rival a menos de esto (px) la IA no carga: la toca al momento, como haría un jugador. */
+export const AI_CHARGE_PRESSURE_PX = 110
 export const DUMP_RELEASE_POWER = 160
 export const STEAL_RELEASE_POWER = 190
 export const GOALIE_SAVE_RADIUS = 7 * K

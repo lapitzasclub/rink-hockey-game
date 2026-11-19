@@ -16,8 +16,7 @@ import {
   SIM_MAX_STEPS,
   SIM_SNAP_DIST,
   SIM_STEP_MS,
-  STICK_SWING_MS,
-} from '../game/constants'
+  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation, switchSides, teamSide } from '../game/formation'
@@ -47,6 +46,7 @@ import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
 import { createRuleState, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
 import { getGoalLineX } from '../game/utils'
+import { peekAIPassAim, setAIPassAim } from '../game/systems/targeting'
 import {
   resetKickoffState,
   startBullyState,
@@ -99,6 +99,11 @@ export class MatchScene extends Phaser.Scene {
   private isTouchDevice = window.matchMedia('(pointer: coarse)').matches
   private joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
   private prevTouchButtons = { pass: false, shoot: false, switch: false }
+  /** Pase o tiro que el humano está cargando (sale al levantar el botón). */
+  private charging: { action: 'pass' | 'shoot', start: number, player: Player, turbo: boolean } | null = null
+  /** Lo mismo en el lanzamiento de una falta o penalti, y la carga con que se soltó. */
+  private foulCharge: { action: 'pass' | 'shoot', start: number } | null = null
+  private foulChargeLevel = 0
   private mobileJoystick: { destroy(): void } | null = null
   private ball!: Ball
   private ballVelocity: Vector = { x: 0, y: 0 }
@@ -187,6 +192,7 @@ export class MatchScene extends Phaser.Scene {
     this.probe = !!data.probe
     this.joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
     this.prevTouchButtons = { pass: false, shoot: false, switch: false }
+    this.charging = null
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
     this.players = []
@@ -740,6 +746,55 @@ export class MatchScene extends Phaser.Scene {
     return this.keys[action].some(key => key.isDown)
   }
 
+  /**
+   * Carga del ejecutante humano de una falta: pulsar empieza a cargar y la acción se entrega a
+   * updateFoulRestartPhase como «recién pulsado» al soltar (o al llenarse del todo).
+   */
+  private foulChargeInput() {
+    const passDown = this.justDown('pass') || (this.joystickInput.pass && !this.prevTouchButtons.pass)
+    const shootDown = this.justDown('shoot') || (this.joystickInput.shoot && !this.prevTouchButtons.shoot)
+    this.prevTouchButtons = { pass: !!this.joystickInput.pass, shoot: !!this.joystickInput.shoot, switch: !!this.joystickInput.switch }
+    const foul = this.activeFoulRestart
+    const taker = foul ? findPlayerById(this.players, foul.takerPlayerId) : null
+    const idle = { passJustDown: false, shootJustDown: false }
+    if (!foul || !taker || taker.team !== 'blue' || this.simNow < foul.readyAt) { this.foulCharge = null; return idle }
+    if (!this.foulCharge && (passDown || shootDown)) this.foulCharge = { action: passDown ? 'pass' : 'shoot', start: this.simNow }
+    const c = this.foulCharge
+    if (!c) return idle
+    const elapsed = this.simNow - c.start
+    const level = Phaser.Math.Clamp((elapsed - CHARGE_TAP_MS) / (CHARGE_FULL_MS - CHARGE_TAP_MS), 0, 1)
+    taker.charge = { kind: c.action, level }
+    if (this.actionHeld(c.action) && elapsed < CHARGE_AUTO_MS) return idle
+    this.foulCharge = null
+    this.foulChargeLevel = level
+    return { passJustDown: c.action === 'pass', shootJustDown: c.action === 'shoot' }
+  }
+
+  /** Carga que busca la IA: el tiro según la distancia a la portería, el pase solo a veces. */
+  private aiChargeTarget(player: Player, action: 'pass' | 'shoot') {
+    for (const p of this.players) {
+      if (p.team !== player.team && (p.suspendedUntil ?? 0) <= this.simNow && Math.hypot(p.pos.x - player.pos.x, p.pos.y - player.pos.y) < AI_CHARGE_PRESSURE_PX) return 0
+    }
+    const jitter = (Math.random() * 2 - 1) * AI_CHARGE_JITTER
+    if (action === 'shoot') {
+      const d = Math.hypot(getGoalLineX(player.side === 'left' ? 'right' : 'left') - player.pos.x, GAME_HEIGHT / 2 - player.pos.y)
+      const base = (d - AI_CHARGE_SHOT_NEAR) / (AI_CHARGE_SHOT_FAR - AI_CHARGE_SHOT_NEAR)
+      return base <= 0 ? 0 : Phaser.Math.Clamp(base + jitter, 0.1, 1)
+    }
+    if (Math.random() >= AI_CHARGE_PASS_CHANCE) return 0
+    return Phaser.Math.Clamp(Math.random() * AI_CHARGE_PASS_MAX + jitter * 0.5, 0.1, AI_CHARGE_PASS_MAX)
+  }
+
+  /** Botón de pase o tiro mantenido en teclado, mando o táctil. */
+  private actionHeld(action: 'pass' | 'shoot') {
+    return this.keys[action].some(key => key.isDown) || padHeld(action) || !!this.joystickInput[action]
+  }
+
+  private cancelCharge() {
+    if (this.charging) this.charging.player.charge = undefined
+    this.charging = null
+  }
+
   /** Consume el «recién pulsado» de todas las teclas de la acción, como hacía JustDown con una sola. */
   private justDown(action: BindAction) {
     let hit = false
@@ -799,14 +854,28 @@ export class MatchScene extends Phaser.Scene {
     let switchPressed = false
 
     const turboHeld = this.isDown('sprint') || !!this.joystickInput.sprint
+    // Se pierde la carga si cambia el controlado o ya no lleva la bola
+    if (this.charging && (this.charging.player !== player || this.ballCarrierId !== player.id)) this.cancelCharge()
     // El portero controlado no roba ni carga: para solo, por posición
     if (actionPressed) {
-      if (this.ballCarrierId === player.id) this.tryShot(player, turboHeld)
+      if (this.ballCarrierId === player.id) { if (!this.charging) this.charging = { action: 'shoot', start: this.simNow, player, turbo: false } }
       else if (player.role !== 'goalie' && !(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
     }
     if (passPressed) {
-      if (this.ballCarrierId === player.id) this.tryPass(player)
+      if (this.ballCarrierId === player.id) { if (!this.charging) this.charging = { action: 'pass', start: this.simNow, player, turbo: false } }
       else switchPressed = true
+    }
+    if (this.charging) {
+      const c = this.charging
+      const elapsed = this.simNow - c.start
+      const level = Phaser.Math.Clamp((elapsed - CHARGE_TAP_MS) / (CHARGE_FULL_MS - CHARGE_TAP_MS), 0, 1)
+      c.turbo ||= turboHeld
+      player.charge = { kind: c.action, level }
+      if (!this.actionHeld(c.action) || elapsed >= CHARGE_AUTO_MS) {
+        this.cancelCharge()
+        if (c.action === 'shoot') this.tryShot(player, c.turbo, level)
+        else this.tryPass(player, level)
+      }
     }
 
     this.prevTouchButtons = {
@@ -841,6 +910,7 @@ export class MatchScene extends Phaser.Scene {
       if (player.suspendedUntil && player.suspendedUntil > this.simNow) continue
       if (player.team === 'blue' && player.role !== 'goalie' && !autopilot.on) continue
       const hasBall = this.ballCarrierId === player.id
+      if (player.aiCharge && !hasBall) { player.aiCharge = undefined; player.charge = undefined }
 
       if (player.team === 'red' || autopilot.on) {
         if (hasBall) {
@@ -848,9 +918,28 @@ export class MatchScene extends Phaser.Scene {
             if (shouldGoaliePass(player, this.simNow)) this.tryPass(player)
             continue
           }
-          const choice = decideCarrierAction(player, this.players, this.simNow)
-          if (choice === 'shoot') this.tryShot(player, (player.stamina ?? 0) > 45 && Math.random() < 0.45)
-          else if (choice === 'pass') this.tryPass(player)
+          if (!player.aiCharge) {
+            const choice = decideCarrierAction(player, this.players, this.simNow)
+            if (choice === 'shoot' || choice === 'pass') {
+              player.aiCharge = { action: choice, start: this.simNow, target: this.aiChargeTarget(player, choice), turbo: choice === 'shoot' && (player.stamina ?? 0) > 45 && Math.random() < 0.45, aim: choice === 'pass' ? peekAIPassAim(player.id) : null }
+            }
+          }
+          const c = player.aiCharge
+          if (c) {
+            const level = Phaser.Math.Clamp((this.simNow - c.start - CHARGE_TAP_MS) / (CHARGE_FULL_MS - CHARGE_TAP_MS), 0, 1)
+            player.charge = { kind: c.action, level }
+            // Sin carga sale al momento, como antes; con carga, al llegar a la buscada
+            if (c.target <= 0 || level >= c.target) {
+              player.aiCharge = undefined
+              player.charge = undefined
+              if (c.action === 'shoot') this.tryShot(player, c.turbo, c.target)
+              else {
+                // Otro pudo ocupar el hueco del pase decidido mientras este cargaba
+                if (c.aim) setAIPassAim(player.id, c.aim.x, c.aim.y)
+                this.tryPass(player, c.target)
+              }
+            }
+          }
         } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
           const carrier = findPlayerById(this.players, this.ballCarrierId)
           if (carrier && shouldAIAttemptSteal(player, carrier, this.isArcade)) {
@@ -938,13 +1027,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Ejecuta un pase hacia el mejor compañero detectado por heurística simple. */
-  private tryPass(player: Player) {
+  private tryPass(player: Player, charge = 0) {
     const result = tryPassAction({
       player,
       ball: this.ball,
       players: this.players,
       ballCarrierId: this.ballCarrierId,
       timeNow: this.simNow,
+      charge,
     })
     if (!result) return
     playPass()
@@ -968,7 +1058,7 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Ejecuta un tiro hacia una zona de portería con pequeña variación vertical. */
-  private tryShot(player: Player, wantsTurbo = false) {
+  private tryShot(player: Player, wantsTurbo = false, charge = 0) {
     if (this.ballCarrierId !== player.id) return
     // En arcade el tipo de tiro (normal / turbo / fuego) se decide antes de soltar
     const shot = this.arcade?.prepareShot(player, wantsTurbo) ?? { power: 1, kind: null, beatChance: 0 }
@@ -979,6 +1069,7 @@ export class MatchScene extends Phaser.Scene {
       ballCarrierId: this.ballCarrierId,
       timeNow: this.simNow,
       powerMultiplier: shot.power,
+      charge,
     })
     if (!result) return
     if (!shot.kind) playShot()
@@ -1278,10 +1369,9 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       controlledPlayerIndex: this.controlledPlayerIndex,
       centerText: this.centerText,
-      passJustDown: this.justDown('pass') || (this.joystickInput.pass && !this.prevTouchButtons.pass),
-      shootJustDown: this.justDown('shoot') || (this.joystickInput.shoot && !this.prevTouchButtons.shoot),
+      ...this.foulChargeInput(),
     })
-    if (!state) return
+    if (!state) { this.foulCharge = null; return }
     if (state.whistle) {
       this.officials.whistle()
       playWhistle()
@@ -1318,8 +1408,14 @@ export class MatchScene extends Phaser.Scene {
     if (!state.taker || !state.release) return
 
     this.ballCarrierId = state.taker.id
-    if (state.shouldPass && this.activeFoulRestart?.sanction === 'free-hit') this.tryPass(state.taker)
-    else if (state.shouldShot) this.tryShot(state.taker)
+    // Carga del humano al soltar; la IA elige la suya (fuerte en penalti y directa, suave en el libre)
+    const human = state.taker.team === 'blue'
+    const freeHit = this.activeFoulRestart?.sanction === 'free-hit'
+    const charge = human ? this.foulChargeLevel : freeHit ? this.aiChargeTarget(state.taker, 'pass') : Phaser.Math.Clamp(0.45 + Math.random() * 0.55, 0, 1)
+    this.foulChargeLevel = 0
+    state.taker.charge = undefined
+    if (state.shouldPass && freeHit) this.tryPass(state.taker, charge)
+    else if (state.shouldShot) this.tryShot(state.taker, false, charge)
     this.aimIndicator.clear()
     this.centerText.setVisible(false)
     this.ballIgnoreContactsUntil = 0

@@ -38,8 +38,7 @@ import {
   STUCK_BOARD_MARGIN,
   STUCK_BOARD_TIMEOUT_MS,
   STUCK_MAX_TRAVEL,
-  STUCK_RIVAL_RADIUS,
-} from '../constants'
+  STUCK_RIVAL_RADIUS, CHARGE_PASS_MAX, CHARGE_SHOT_MAX, CHARGE_SHOT_SPREAD, CHARGE_PASS_SPREAD } from '../constants'
 import {
   getBullyCandidate,
   kickBall,
@@ -262,11 +261,16 @@ export function tryPassAction(options: {
   players: Player[]
   ballCarrierId: string | null
   timeNow: number
+  /** Carga del humano, 0..1 (ver CHARGE_*). */
+  charge?: number
 }) {
   if (options.ballCarrierId !== options.player.id) return null
   const isGoalie = options.player.role === 'goalie'
-  const direction = isGoalie ? getGoalieDistributionDirection(options.players, options.player) : getAssistedPassDirection(options.players, options.player, getAimingDirection(options.player))
-  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, isGoalie ? GOALIE_DISTRIBUTION_POWER : PASS_POWER, options.timeNow, isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS, isGoalie ? GOALIE_RELEASE_DISTANCE : undefined)
+  const charge = options.charge ?? 0
+  const chargeMult = 1 + charge * (CHARGE_PASS_MAX - 1)
+  let direction = isGoalie ? getGoalieDistributionDirection(options.players, options.player) : getAssistedPassDirection(options.players, options.player, getAimingDirection(options.player))
+  if (charge > 0) direction = spreadDirection(direction, CHARGE_PASS_SPREAD * charge * charge)
+  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, (isGoalie ? GOALIE_DISTRIBUTION_POWER : PASS_POWER) * chargeMult, options.timeNow, isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS, isGoalie ? GOALIE_RELEASE_DISTANCE : undefined)
   startAnim(options.player, 'pass', options.timeNow)
 
   if (isGoalie) {
@@ -307,10 +311,17 @@ export function tryShotAction(options: {
   timeNow: number
   /** Potencia extra de tiros especiales arcade (turbo / fuego). */
   powerMultiplier?: number
+  /** Carga del humano, 0..1: más fuerza y algo de desvío (ver CHARGE_*). */
+  charge?: number
 }) {
   if (options.ballCarrierId !== options.player.id) return null
-  const direction = getAssistedShotDirection(options.player, getAimingDirection(options.player))
-  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, SHOT_POWER * (options.powerMultiplier ?? 1), options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
+  const charge = options.charge ?? 0
+  let direction = getAssistedShotDirection(options.player, getAimingDirection(options.player))
+  if (charge > 0) {
+    direction = spreadDirection(direction, CHARGE_SHOT_SPREAD * charge * charge)
+  }
+  const chargeMult = 1 + charge * (CHARGE_SHOT_MAX - 1)
+  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, SHOT_POWER * (options.powerMultiplier ?? 1) * chargeMult, options.timeNow, POSSESSION_RELEASE_COOLDOWN_MS)
   startAnim(options.player, (options.powerMultiplier ?? 1) > 1 ? 'turbo' : 'shot', options.timeNow)
   if (options.player.role === 'goalie') clearGoalieCatch(options.player)
   return {
@@ -443,4 +454,11 @@ export function tryManualStealAction(options: {
   }
 
   return null
+}
+
+/** Gira la dirección un ángulo al azar de hasta ±max rad (desvío por exceso de fuerza). */
+function spreadDirection(d: { x: number, y: number }, max: number) {
+  const a = (Math.random() * 2 - 1) * max
+  const c = Math.cos(a), s = Math.sin(a)
+  return { x: d.x * c - d.y * s, y: d.x * s + d.y * c }
 }

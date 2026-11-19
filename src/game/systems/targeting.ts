@@ -16,6 +16,11 @@ export function setAIPassAim(playerId: string, x: number, y: number) {
   aiPassAim.y = y
 }
 
+/** Dirección de pase decidida para ese jugador, si sigue pendiente (para guardarla mientras carga). */
+export function peekAIPassAim(playerId: string) {
+  return aiPassAim.playerId === playerId ? { x: aiPassAim.x, y: aiPassAim.y } : null
+}
+
 /**
  * Último pase de jugador de campo (humano o IA): receptor previsto. La IA de
  * equipo lo lee al quedar la bola suelta para que el receptor vaya a por ella.

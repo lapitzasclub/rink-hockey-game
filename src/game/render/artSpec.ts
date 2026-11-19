@@ -893,6 +893,9 @@ export const PLAYER_UI = {
   barEdgeAlpha: 0.8,
   /** Relleno según nivel (alto = cian del TURBO del HUD, medio, bajo) y umbrales. */
   barColors: [0x4de6ff, 0xf5c64f, 0xff4d5c],
+  /** Carga de pase (blanca) y de tiro (naranja) en la misma barra; llena, parpadea a `chargeFullColor`. */
+  chargeColors: { pass: 0xf2f6fb, shoot: 0xff9a2e },
+  chargeFullColor: 0xffe14d,
   /** Etiqueta de dorsal y nombre entre el anillo y la barra: cuerpo (px) y separación sobre la barra (px a s = 1). */
   nameFontPx: 11,
   nameGapPx: 1,

@@ -301,14 +301,17 @@ export function updateVisuals(
       player.staminaBar.setVisible(active)
       bg.setVisible(active)
       if (active) {
-        const stamina = clamp01((player.stamina ?? 100) / 100)
+        const charge = player.charge
+        const stamina = charge ? Math.max(0.04, clamp01(charge.level)) : clamp01((player.stamina ?? 100) / 100)
         const [hi, mid, low] = PLAYER_UI.barColors
         // Tamaños en px de pantalla: metros de mundo por la escala local del suelo
         const w = PLAYER_UI.barWM * WORLD_PX_PER_M.x * gx
         const h = PLAYER_UI.barHPx * gx
         const y = tagBottom + PLAYER_UI.nameGapPx * gx + h / 2
         bg.setPosition(sp.x, y).setSize(w, h).setDepth(DEPTH.FX - 0.001)
-        player.staminaBar.setFillStyle(stamina > PLAYER_UI.barMid ? hi : stamina > PLAYER_UI.barLow ? mid : low)
+        player.staminaBar.setFillStyle(charge
+          ? (charge.level >= 1 && Math.floor(timeNow / 90) % 2 === 0 ? PLAYER_UI.chargeFullColor : PLAYER_UI.chargeColors[charge.kind])
+          : stamina > PLAYER_UI.barMid ? hi : stamina > PLAYER_UI.barLow ? mid : low)
         player.staminaBar.setPosition(sp.x - w / 2, y).setSize(Math.max(1, w * stamina), h).setDepth(DEPTH.FX)
       }
     }

@@ -53,6 +53,10 @@ export type Player = {
   sprinting?: boolean
   ballProtectionUntil?: number
   staminaBar?: Phaser.GameObjects.Rectangle | null
+  /** Pase o tiro que el humano está cargando; la barra de stamina lo muestra mientras dura. */
+  charge?: { kind: 'pass' | 'shoot', level: number }
+  /** Carga en curso de la IA: acción, inicio, carga buscada y si pidió turbo. */
+  aiCharge?: { action: 'pass' | 'shoot', start: number, target: number, turbo: boolean, aim: Vector | null }
   /** Dorsal y nombre sobre la barra de stamina; solo los controlables. */
   nameTag?: Phaser.GameObjects.Text | null
   stickSwingUntil?: number
