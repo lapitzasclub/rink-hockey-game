@@ -47,6 +47,8 @@ const penNext = { blue: 0, red: 0 }
 const seated = new WeakSet<Player>()
 /** Último segundo de sanción escrito en la etiqueta (setText solo al cambiar). */
 const penSecs = new WeakMap<Player, number>()
+/** Fundido de la etiqueta de dorsal: alfa actual, último instante con la bola o el control y último pintado. */
+const tagFade = new WeakMap<Player, { a: number; seenAt: number; t: number }>()
 
 /** Posición de mundo del asiento de cada jugador suspendido (el lab puede forzarlo con el dato `penSeat`). Sin asignar por fotograma. */
 function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, { x: number; y: number }> {
@@ -150,6 +152,8 @@ export function updateVisuals(
       player.staminaBar?.setVisible(false)
       ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
       player.nameTag?.setVisible(false)
+      const f = tagFade.get(player)
+      if (f) { f.a = 0; f.seenAt = -Infinity }
       if (!seated.has(player)) {
         seated.add(player)
         pose.yaw = 0
@@ -230,22 +234,35 @@ export function updateVisuals(
     // Solo el rol: el jugador activo ya lo marca el anillo y el portador se ve con la bola
     if (labelsOn) player.label.setText(getRoleShort(player.role))
 
+    // Bajo el anillo: primero la etiqueta de dorsal y nombre y, debajo, la barra (solo el controlado)
+    const ringBottom = sp.y + PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.y * gy
+    const tagBottom = ringBottom + PLAYER_UI.barGapPx * gx + (player.nameTag ? player.nameTag.height : 0)
+    if (player.nameTag) {
+      // Se ve el controlado y quien tiene la bola (también el portero que la ha blocado); se queda un rato al perderla
+      const catchAt = player.goalieCatchTime ?? 0
+      const holding = carrying || (isGoalie && catchAt > 0 && timeNow >= catchAt && timeNow - catchAt < PLAYER_UI.nameCatchMaxMs)
+      let f = tagFade.get(player)
+      if (!f) { f = { a: 0, seenAt: -Infinity, t: timeNow }; tagFade.set(player, f) }
+      if (active || holding) f.seenAt = timeNow
+      const target = timeNow - f.seenAt <= PLAYER_UI.nameLingerMs ? 1 : 0
+      const step = Math.max(0, timeNow - f.t) / PLAYER_UI.nameFadeMs
+      f.t = timeNow
+      f.a = target > f.a ? Math.min(target, f.a + step) : Math.max(target, f.a - step)
+      player.nameTag.setVisible(f.a > 0).setAlpha(f.a)
+      if (f.a > 0) player.nameTag.setPosition(sp.x, tagBottom).setDepth(DEPTH.FX)
+    }
+
     if (player.staminaBar) {
       const bg = player.staminaBar.getData('bg') as Phaser.GameObjects.Rectangle
       player.staminaBar.setVisible(active)
       bg.setVisible(active)
-      player.nameTag?.setVisible(active)
       if (active) {
         const stamina = clamp01((player.stamina ?? 100) / 100)
         const [hi, mid, low] = PLAYER_UI.barColors
         // Tamaños en px de pantalla: metros de mundo por la escala local del suelo
         const w = PLAYER_UI.barWM * WORLD_PX_PER_M.x * gx
         const h = PLAYER_UI.barHPx * gx
-        // Bajo el anillo: primero la etiqueta de dorsal y nombre y, debajo, la barra
-        const ringBottom = sp.y + PLAYER_UI.ringRadiusM * WORLD_PX_PER_M.y * gy
-        const tagH = player.nameTag ? player.nameTag.height + PLAYER_UI.nameGapPx * gx : 0
-        const y = ringBottom + PLAYER_UI.barGapPx * gx + tagH + h / 2
-        player.nameTag?.setPosition(sp.x, y - h / 2 - PLAYER_UI.nameGapPx * gx).setDepth(DEPTH.FX)
+        const y = tagBottom + PLAYER_UI.nameGapPx * gx + h / 2
         bg.setPosition(sp.x, y).setSize(w, h).setDepth(DEPTH.FX - 0.001)
         player.staminaBar.setFillStyle(stamina > PLAYER_UI.barMid ? hi : stamina > PLAYER_UI.barLow ? mid : low)
         player.staminaBar.setPosition(sp.x - w / 2, y).setSize(Math.max(1, w * stamina), h).setDepth(DEPTH.FX)

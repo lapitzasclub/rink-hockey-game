@@ -73,17 +73,15 @@ export function createPlayer(
     staminaBar.setData('bg', bg)
   }
 
-  // Dorsal y nombre (de la plantilla del partido externo, si lo hay) sobre la barra del jugador controlado
+  // Dorsal y nombre (de la plantilla del partido externo, si lo hay): la ve el controlado y quien lleva la bola
   const name = nameFor(id, team, role)
-  const nameTag = controllable
-    ? scene.add.text(x, y, name ? `${look.number}  ${name.toUpperCase()}` : look.number, {
-      fontFamily: FONT,
-      fontSize: `${PLAYER_UI.nameFontPx}px`,
-      color: '#ffffff',
-      stroke: '#06101a',
-      strokeThickness: 3,
-    }).setOrigin(0.5, 1).setVisible(false)
-    : null
+  const nameTag = scene.add.text(x, y, name ? `${look.number}  ${name.toUpperCase()}` : look.number, {
+    fontFamily: FONT,
+    fontSize: `${PLAYER_UI.nameFontPx}px`,
+    color: '#ffffff',
+    stroke: PLAYER_UI.nameStroke[team],
+    strokeThickness: 3,
+  }).setOrigin(0.5, 1).setVisible(false)
 
   const labelY = role === 'goalie' ? -64 : -58
   const label = scene.add.text(x, y + labelY, getRoleShort(role), {

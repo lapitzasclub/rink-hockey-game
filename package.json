@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "perf": "node tools/perf-bench.mjs",
-    "perf:trace": "node tools/perf-trace.mjs"
+    "perf:trace": "node tools/perf-trace.mjs",
+    "test": "node --test \"tests/*.test.ts\""
   },
   "devDependencies": {
     "typescript": "~6.0.2",

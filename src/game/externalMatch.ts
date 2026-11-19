@@ -82,41 +82,56 @@ function texto(v: unknown, max: number): string | null {
 
 const color = (v: unknown): number | null => (typeof v === 'string' && RE_COLOR.test(v) ? parseInt(v.slice(1), 16) : null)
 
+/**
+ * Dorsal normalizado sin ceros a la izquierda («02» → «2»): así se pinta en la
+ * camiseta y así se comparan los repetidos. Acepta también un entero 0–999.
+ */
+function dorsal(v: unknown): string | null {
+  if (typeof v === 'number') return Number.isInteger(v) && v >= 0 && v <= 999 ? String(v) : null
+  return typeof v === 'string' && RE_DORSAL.test(v.trim()) ? String(Number(v.trim())) : null
+}
+
 function jugador(v: unknown): JugadorExterno | null {
   if (!esObjeto(v)) return null
   return {
     nombre: texto(v.nombre, 24) ?? '',
-    dorsal: typeof v.dorsal === 'string' && RE_DORSAL.test(v.dorsal) ? String(Number(v.dorsal)) : null,
+    dorsal: dorsal(v.dorsal),
     rol: v.rol === 'portero' ? 'portero' : 'jugador',
     titular: v.titular === true,
     capitan: v.capitan === true,
   }
 }
 
-/** Portero y 4 de campo según el contrato; los dorsales ausentes se generan sin repetir. */
-function enPista(plantilla: JugadorExterno[]): { dorsales: string[], nombres: (string | null)[] } {
+/**
+ * Portero y 4 de campo según el contrato: primero los titulares de cada rol, en
+ * el orden del payload, y se completa con suplentes. Los dorsales ausentes o
+ * repetidos se generan sin chocar con los reales de la 5 en pista.
+ */
+export function enPista(plantilla: JugadorExterno[]): { dorsales: string[], nombres: (string | null)[] } {
   const primeros = (rol: JugadorExterno['rol'], n: number) => {
     const delRol = plantilla.filter(j => j.rol === rol)
     return [...delRol.filter(j => j.titular), ...delRol.filter(j => !j.titular)].slice(0, n)
   }
-  const porteros = primeros('portero', 1)
   const campo = primeros('jugador', 4)
+  const cinco = [primeros('portero', 1)[0], ...Array.from({ length: 4 }, (_, i) => campo[i])]
+  // Primera pasada: los dorsales reales; el primero que lo trae se lo queda y el repetido pasa a generado
   const usados = new Set<string>()
+  const dorsales: (string | null)[] = cinco.map(j => {
+    if (!j?.dorsal || usados.has(j.dorsal)) return null
+    usados.add(j.dorsal)
+    return j.dorsal
+  })
+  // Segunda pasada: los huecos, sin pisar ninguno real aunque venga después
   const libre = (pool: string[]) => {
     let d = pool.find(n => !usados.has(n))
     for (let n = 20; d === undefined; n++) if (!usados.has(String(n))) d = String(n)
-    return d
-  }
-  // Un dorsal repetido en el payload se trata como ausente; cada asignado se marca como usado
-  const asignar = (j: JugadorExterno | undefined, pool: string[]) => {
-    const d = j?.dorsal && !usados.has(j.dorsal) ? j.dorsal : libre(pool)
     usados.add(d)
     return d
   }
-  const dorsales = [asignar(porteros[0], ['1', ...DORSALES_CAMPO])]
-  for (let i = 0; i < 4; i++) dorsales.push(asignar(campo[i], DORSALES_CAMPO))
-  const nombres = [porteros[0], ...Array.from({ length: 4 }, (_, i) => campo[i])].map(j => j?.nombre || null)
-  return { dorsales, nombres }
+  return {
+    dorsales: dorsales.map((d, i) => d ?? libre(i === 0 ? ['1', ...DORSALES_CAMPO] : DORSALES_CAMPO)),
+    nombres: cinco.map(j => j?.nombre || null),
+  }
 }
 
 function equipo(v: unknown, lado: Lado): EquipoExterno | null {

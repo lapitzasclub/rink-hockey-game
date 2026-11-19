@@ -841,6 +841,13 @@ export const PLAYER_UI = {
   /** Etiqueta de dorsal y nombre entre el anillo y la barra: cuerpo (px) y separación sobre la barra (px a s = 1). */
   nameFontPx: 11,
   nameGapPx: 1,
+  /** Contorno del texto por hueco: oscuro el propio, rojo el rival para distinguirlo sin leer el dorsal. */
+  nameStroke: { blue: '#06101a', red: '#9a1219' },
+  /** Fundido de la etiqueta (ms de 0 a 1) y cuánto se queda tras perder la bola, para no parpadear en rebotes y pases rápidos. */
+  nameFadeMs: 160,
+  nameLingerMs: 900,
+  /** Tope de la parada del portero (goalieCatchTime) como «tiene la bola», por si el temporizador quedara colgado. */
+  nameCatchMaxMs: 3000,
   barMid: 0.5,
   barLow: 0.25,
 } as const
