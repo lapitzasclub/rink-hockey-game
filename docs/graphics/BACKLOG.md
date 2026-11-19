@@ -79,7 +79,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-68 | Gradas y recinto (v2) | engineer · opus | — | ✅ 2026-11-19 |
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
 | WP-70 | Inclinación de perspectiva coherente: portería, vallas y redes de fondo | engineer · opus | WP-67 | ✅ 2026-11-19 |
-| WP-71 | Ajustes gráficos personalizables y prueba del equipo | engineer · opus | WP-68 | ⬜ |
+| WP-71 | Ajustes gráficos personalizables y prueba del equipo | engineer · opus | WP-68 | ✅ 2026-11-19 |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos

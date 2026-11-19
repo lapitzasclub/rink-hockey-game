@@ -18,6 +18,7 @@
   --z-hud-btn: 25;
   --z-pause: 48;
   --z-settings: 50;
+  --z-probe: 60;
   --z-rotate: 90;
   --font-game: "Russo One", "Arial Black", Impact, sans-serif;
   /* Inclinación común de botones y paneles: el mismo ángulo que las tarjetas del menú en Phaser */
@@ -1184,4 +1185,127 @@ canvas {
   .menu-item:focus {
     transform: none;
   }
+}
+
+/* Notas de coste de las opciones de gráficos: más apretadas, pegadas a su fila */
+#pane-graphics .settings-note {
+  margin-top: -2px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.menu-item--probe {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.menu-item--probe:disabled {
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
+
+.settings-note--probe {
+  color: var(--c-text);
+}
+
+/* ── Prueba del equipo ─────────────────────────────────────
+   Velo translúcido sin desenfoque: el partido de detrás es lo que se mide y un
+   backdrop-filter le sumaría una pasada de GPU a pantalla completa. */
+.probe-veil {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-probe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  background: radial-gradient(ellipse at center, rgba(4, 10, 20, 0.5) 0%, rgba(2, 5, 10, 0.78) 100%);
+  touch-action: none;
+}
+
+.probe-veil[hidden] {
+  display: none;
+}
+
+/* Durante la prueba no hay nada que pulsar: fuera joystick, botones y pausa */
+#game-shell:has(.probe-veil:not([hidden])) #mobile-controls,
+#game-shell:has(.probe-veil:not([hidden])) .hud-btn {
+  visibility: hidden;
+}
+
+.probe-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 92vw);
+  padding: 18px 24px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, var(--c-panel-hi) 0%, var(--c-panel) 60%);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  box-shadow: inset 0 0 0 2px rgba(77, 163, 255, 0.28);
+  font-family: var(--font-game);
+  color: var(--c-text);
+  text-align: center;
+}
+
+.probe-kicker {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--c-orange);
+}
+
+.probe-status {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 1px;
+  color: #fff;
+  text-shadow: 0 3px 0 var(--c-ink);
+}
+
+.probe-tier {
+  color: var(--c-orange);
+}
+
+.probe-track {
+  display: block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #23364f;
+}
+
+/* Barra de cada nivel: un transform animado (solo compositor), no cambia el pintado del juego */
+.probe-bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ffa94d, var(--c-orange));
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.probe-bar.is-running {
+  animation: probe-fill var(--probe-ms, 4000ms) linear forwards;
+}
+
+@keyframes probe-fill {
+  to { transform: scaleX(1); }
+}
+
+.probe-text {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--c-text-dim);
+}
+
+.probe-cancel {
+  width: auto;
+  margin-top: 2px;
+  padding-right: 26px;
 }

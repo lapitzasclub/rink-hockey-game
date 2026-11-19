@@ -119,7 +119,7 @@ export class ArcadeFx {
 
   private readonly scene: Phaser.Scene
   private readonly withUi: <T>(build: () => T) => T
-  /** Fracción de partículas que se emiten (calidad gráfica: 1 alta, menos en equipos modestos). */
+  /** Fracción de partículas que se emiten (calidad gráfica: 1 alta, menos en equipos modestos; 0 apagadas). */
   private density = 1
 
   constructor(scene: Phaser.Scene, withUi: <T>(build: () => T) => T, density = 1) {
@@ -130,7 +130,7 @@ export class ArcadeFx {
   }
 
   setDensity(density: number) {
-    this.density = Phaser.Math.Clamp(density, 0.2, 1)
+    this.density = Phaser.Math.Clamp(density, 0, 1)
   }
 
   private emitter(key: EmitterKey) {
@@ -176,6 +176,7 @@ export class ArcadeFx {
   /** Estela de la bola según el tipo de tiro activo; `speed` en px/s mundo. `n` = pasos de simulación del fotograma. */
   ballTrail(x: number, y: number, speed: number, kind: 'turbo' | 'fire' | null, n = 1) {
     const k = this.density
+    if (k <= 0) return
     if (kind === 'fire') this.emitter('trail-fire').emitParticleAt(x, y, Math.max(1, Math.round(3 * n * k)))
     else if (kind === 'turbo') this.emitter('trail-turbo').emitParticleAt(x, y, Math.max(1, Math.round(2 * n * k)))
     else if (speed > 430 && Math.random() < k) this.emitter('trail-white').emitParticleAt(x, y, n)
@@ -192,6 +193,7 @@ export class ArcadeFx {
   }
 
   burst(kind: 'gold' | 'ice' | 'fire' | 'white' | 'blue' | 'red', x: number, y: number, count = 24) {
+    if (this.density <= 0) return
     this.emitter(`burst-${kind}`).explode(Math.max(4, Math.round(count * this.density)), x, y)
   }
 

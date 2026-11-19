@@ -3,11 +3,11 @@ import { getVolume, playUiBack, playUiMove, setVolume, type VolumeChannel } from
 import { BIND_ACTIONS, getBindings, keyText, labelForEvent, RESERVED_CODES, resetBindings, setBinding, type BindAction } from '../game/input/keyBindings'
 import { HALF_REAL_MINUTES_OPTIONS } from '../game/constants'
 import { areRoleLabelsEnabled, getHalfRealMinutes, setHalfRealMinutes, setRoleLabelsEnabled } from '../game/ui/prefs'
-import { QUALITY_LABEL, QUALITY_PREFS, getQualityPref, onQualityChange, qualityTier, setQualityPref } from '../game/render/quality'
+import { bindGraphicsSettings } from './graphicsSettings'
 import { focusFirst } from './menuNav'
 import { keyGlyph } from './template'
 
-export type SettingsTab = 'general' | 'audio' | 'controls'
+export type SettingsTab = 'general' | 'graphics' | 'audio' | 'controls'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)
 
@@ -17,11 +17,18 @@ const setSwitch = (btn: HTMLElement | null, on: boolean) => btn?.setAttribute('a
 const isReserved = (code: number) => RESERVED_CODES.has(code) || code === 9
 
 /**
- * Panel de ajustes por pestañas (General, Audio, Controles). Incluye la
+ * Panel de ajustes por pestañas (General, Gráficos, Audio, Controles). Incluye la
  * reasignación de teclas: al elegir una casilla, la siguiente tecla pulsada
  * se captura en fase de captura y no llega ni al shell ni a Phaser.
  */
-export function createSettingsPanel(deps: { onVisibilityChange: () => void, onToggleFullscreen: () => void, isMatchRunning: () => boolean }) {
+export function createSettingsPanel(deps: {
+  onVisibilityChange: () => void
+  onToggleFullscreen: () => void
+  isMatchRunning: () => boolean
+  /** PROBAR EQUIPO (Gráficos): el shell cierra el panel y lanza la prueba. */
+  onProbe: () => void
+  onShowFps: (on: boolean) => void
+}) {
   const panel = $<HTMLElement>('#settings-panel')!
   const closeBtn = $<HTMLButtonElement>('#btn-settings-close')!
   const tabs = Array.from(panel.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
@@ -100,35 +107,7 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
     stepHalf(e.key === 'ArrowLeft' ? -1 : 1)
   })
 
-  // Calidad gráfica: AUTO (según el equipo y bajando sola si no llega), ALTA, MEDIA o BAJA
-  const qualityBtn = $<HTMLButtonElement>('#quality')!
-  const qualityValue = $<HTMLElement>('#quality-value')!
-  const qualityNote = $<HTMLElement>('#quality-note')!
-  const paintQuality = () => {
-    const pref = getQualityPref()
-    qualityValue.textContent = QUALITY_LABEL[pref]
-    qualityBtn.setAttribute('aria-label', `Calidad gráfica: ${QUALITY_LABEL[pref]}`)
-    const using = pref === 'auto' ? `En uso: ${qualityTier()}. Se ajusta sola al equipo.` : 'Efectos y público según el nivel elegido.'
-    qualityNote.textContent = deps.isMatchRunning() ? `${using} La nitidez de la pista cambia en el próximo partido.` : using
-  }
-  const stepQuality = (dir: number, sound = true) => {
-    const i = Math.max(0, QUALITY_PREFS.indexOf(getQualityPref()))
-    const next = QUALITY_PREFS[Math.min(QUALITY_PREFS.length - 1, Math.max(0, i + dir))]
-    if (next === QUALITY_PREFS[i]) return
-    setQualityPref(next)
-    paintQuality()
-    if (sound) playUiMove()
-  }
-  qualityBtn.addEventListener('click', (e) => {
-    const arrow = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')
-    stepQuality(arrow ? Number(arrow.dataset.step) : 1, false)
-  })
-  qualityBtn.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-    e.preventDefault()
-    stepQuality(e.key === 'ArrowLeft' ? -1 : 1)
-  })
-  onQualityChange(paintQuality)
+  const graphics = bindGraphicsSettings(deps)
 
   const announcerBtn = $<HTMLButtonElement>('#btn-announcer')!
   announcerBtn.addEventListener('click', () => {
@@ -247,34 +226,35 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
 
   const syncToggles = (isFullscreen: boolean) => {
     paintHalf()
-    paintQuality()
+    graphics.paint()
     setSwitch(fullscreenBtn, isFullscreen)
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
     setSwitch(announcerBtn, isAnnouncerEnabled())
   }
 
-  const open = (tab: SettingsTab = 'general', from?: HTMLElement | null) => {
+  /** `focus`: selector de lo que se enfoca al abrir (por defecto, la pestaña). */
+  const open = (tab: SettingsTab = 'general', from?: HTMLElement | null, focus = '[role="tab"][aria-selected="true"]') => {
     returnFocus = from ?? (document.activeElement as HTMLElement | null)
     renderBindings()
     paintHalf()
-    paintQuality()
+    graphics.paint()
     setTab(tab)
     panel.hidden = false
     deps.onVisibilityChange()
-    focusFirst(panel, '[role="tab"][aria-selected="true"]')
+    focusFirst(panel, focus)
   }
 
-  const close = () => {
+  const close = (sound = true) => {
     if (panel.hidden) return
     cancelCapture()
     panel.hidden = true
-    playUiBack()
+    if (sound) playUiBack()
     deps.onVisibilityChange()
     returnFocus?.focus({ preventScroll: true })
     returnFocus = null
   }
 
-  closeBtn.addEventListener('click', close)
+  closeBtn.addEventListener('click', () => close())
   // Cerrar al pulsar el fondo
   panel.addEventListener('click', (e) => {
     if (e.target === panel) close()
@@ -285,6 +265,7 @@ export function createSettingsPanel(deps: { onVisibilityChange: () => void, onTo
     close,
     isOpen: () => !panel.hidden,
     syncToggles,
+    probeMessage: graphics.setProbeMessage,
     root: panel,
   }
 }

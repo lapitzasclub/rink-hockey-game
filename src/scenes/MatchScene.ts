@@ -72,9 +72,11 @@ import { createOfficials, type Officials } from '../game/systems/officials'
 import { ArcadeFx } from '../game/render/arcadeFx'
 import { ARCADE_HUD_TOUCH_DY, createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
 import { HudLayout, safeAreaInsetsCss } from '../game/ui/hudLayout'
-import { QUALITY_WATCH, crowdAnimated, downgradeAutoQuality, onQualityChange, particleDensity, qualityWatchEnabled } from '../game/render/quality'
+import { crowdAnimated, onQualityChange, particleDensity, qualityWatchEnabled } from '../game/render/quality'
+import { QualityGovernor, type FrameWorkMeter } from '../game/render/qualityGovernor'
 
-export type MatchSceneData = { mode?: GameMode }
+/** `probe`: prueba del equipo (Ajustes → Gráficos): IA contra IA, sin locutor ni ambiente, sin regulador. */
+export type MatchSceneData = { mode?: GameMode, probe?: boolean }
 
 /**
  * Escena principal del partido.
@@ -125,8 +127,9 @@ export class MatchScene extends Phaser.Scene {
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
   private hudLayout = new HudLayout()
-  /** Regulador de calidad: calentamiento, ventana en curso (intervalos, trabajo en ms) y ventanas lentas seguidas. */
-  private qualityWatch = { warm: 0, acc: 0, frames: 0, busy: 0, slow: 0, intervals: new Float32Array(512) }
+  /** Regulador de calidad de auto; en la prueba del equipo solo mide (su `meter`). */
+  private governor = new QualityGovernor()
+  private probe = false
   private cameraDirector!: CameraDirector
   /** Solo lab (WP-66): si es true, la cámara principal no sigue ni cambia de zoom. */
   labCameraLock = false
@@ -166,6 +169,7 @@ export class MatchScene extends Phaser.Scene {
    */
   init(data: MatchSceneData = {}) {
     this.mode = data.mode ?? 'arcade'
+    this.probe = !!data.probe
     this.joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
     this.prevTouchButtons = { pass: false, shoot: false, switch: false }
     this.ballVelocity = { x: 0, y: 0 }
@@ -198,7 +202,12 @@ export class MatchScene extends Phaser.Scene {
     this.clockAcc = 0
     this.lastFrameTime = 0
     this.hudLayout = new HudLayout()
-    this.qualityWatch = { warm: 0, acc: 0, frames: 0, busy: 0, slow: 0, intervals: new Float32Array(512) }
+    this.governor = new QualityGovernor()
+  }
+
+  /** Lo que mide la prueba del equipo: el mismo trabajo por fotograma que el regulador. */
+  get qualityMeter(): FrameWorkMeter {
+    return this.governor.meter
   }
 
   private get isArcade() {
@@ -303,12 +312,15 @@ export class MatchScene extends Phaser.Scene {
     // El regulador suma también lo que cuesta enviar el pintado a la GPU (después de update)
     let renderStart = 0
     const onPreRender = () => { renderStart = performance.now() }
-    const onPostRender = () => { if (renderStart) this.qualityWatch.busy += performance.now() - renderStart }
+    const onPostRender = () => { if (renderStart) this.governor.meter.work(performance.now() - renderStart) }
     this.game.events.on(Phaser.Core.Events.PRE_RENDER, onPreRender)
     this.game.events.on(Phaser.Core.Events.POST_RENDER, onPostRender)
+    if (this.probe) autopilot.on = true
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       offInputMode()
       offQuality()
+      if (this.probe) autopilot.on = false
+      else if (qualityWatchEnabled) this.governor.matchOver()
       this.game.events.off(Phaser.Core.Events.PRE_RENDER, onPreRender)
       this.game.events.off(Phaser.Core.Events.POST_RENDER, onPostRender)
     })
@@ -337,10 +349,12 @@ export class MatchScene extends Phaser.Scene {
     this.cameraDirector.snapTo(this.ball)
     if (this.arcade) {
       this.arcade.start(this.players, this.simNow)
-      this.crowd = startCrowdAmbience()
-      this.crowd.setIntensity(0.3)
+      if (!this.probe) {
+        this.crowd = startCrowdAmbience()
+        this.crowd.setIntensity(0.3)
+      }
       this.fx?.showBanner('¡A JUGAR!', '#ffe36a', 'MODO ARCADE', 1100)
-      announce('¡Bienvenidos al hockey arcade!', true)
+      if (!this.probe) announce('¡Bienvenidos al hockey arcade!', true)
     }
 
     // Pausa del shell (menú de pausa, ajustes, móvil en vertical): silencio y teclas limpias al volver
@@ -351,7 +365,7 @@ export class MatchScene extends Phaser.Scene {
     const onResume = () => {
       // El tiempo en pausa no se simula ni cuenta para el regulador de calidad
       this.lastFrameTime = 0
-      this.qualityWatch.busy = 0
+      this.governor.resume()
       this.input.keyboard?.resetKeys()
       this.crowd?.setIntensity(this.getCrowdIntensity())
     }
@@ -379,9 +393,13 @@ export class MatchScene extends Phaser.Scene {
     // y se recorta a 16,7 ms con la ventana sin foco, y el juego iría a cámara lenta.
     const frameMs = this.lastFrameTime > 0 ? time - this.lastFrameTime : delta
     this.lastFrameTime = time
-    this.watchQuality(frameMs)
+    if (this.probe) {
+      this.governor.meter.frame(frameMs)
+      this.driveProbeRestart()
+    } else if (qualityWatchEnabled) this.governor.frame(frameMs, SIM_MAX_FRAME_MS)
     this.simAcc += Math.min(Math.max(0, frameMs), SIM_MAX_FRAME_MS)
     let steps = 0
+    const simStart = performance.now()
     // La tolerancia absorbe el redondeo de `now += STEP` en el paso manual del laboratorio
     while (this.simAcc >= SIM_STEP_MS - 1e-3 && steps < SIM_MAX_STEPS) {
       this.savePrevPositions()
@@ -392,42 +410,20 @@ export class MatchScene extends Phaser.Scene {
     }
     // Dispositivo demasiado lento: se descarta el atraso en vez de encadenar pasos (espiral de la muerte)
     if (steps === SIM_MAX_STEPS) this.simAcc = Math.min(this.simAcc, SIM_STEP_MS * 0.5)
+    this.governor.meter.sim(performance.now() - simStart, steps)
     this.renderFrame(Math.max(0, this.simAcc) / SIM_STEP_MS, steps)
-    this.qualityWatch.busy += performance.now() - frameStart
+    this.governor.meter.work(performance.now() - frameStart)
   }
 
-  /**
-   * Regulador de calidad en auto: si el partido no llega a ~45 fps durante dos
-   * ventanas seguidas, baja un nivel (menos partículas ya; pista y público más
-   * ligeros desde el próximo partido). Los huecos largos (pestaña oculta) no cuentan.
-   */
-  private watchQuality(frameMs: number) {
-    const q = this.qualityWatch
-    if (!qualityWatchEnabled || frameMs <= 0 || frameMs > SIM_MAX_FRAME_MS) return
-    if (q.warm < QUALITY_WATCH.warmupMs) {
-      q.warm += frameMs
-      q.busy = 0
-      return
-    }
-    if (q.frames < q.intervals.length) q.intervals[q.frames] = frameMs
-    q.acc += frameMs
-    q.frames++
-    if (q.acc < QUALITY_WATCH.windowMs) return
-    const n = Math.min(q.frames, q.intervals.length)
-    const avg = q.acc / q.frames
-    const busy = q.busy / q.frames
-    const sorted = Array.from(q.intervals.subarray(0, n)).sort((a, b) => a - b)
-    const median = sorted[n >> 1]
-    const jank = sorted.filter(v => v > median * 1.5).length / n
-    q.acc = 0
-    q.frames = 0
-    q.busy = 0
-    const loaded = busy > avg * QUALITY_WATCH.busyShare || jank > QUALITY_WATCH.jankShare
-    q.slow = avg > QUALITY_WATCH.slowFrameMs && loaded ? q.slow + 1 : 0
-    if (q.slow >= QUALITY_WATCH.slowWindows) {
-      q.slow = 0
-      downgradeAutoQuality()
-    }
+  /** Prueba del equipo: nadie toca los mandos, así que los saques del azul se hacen solos (como en el laboratorio). */
+  private driveProbeRestart() {
+    const f = this.activeFoulRestart
+    let taker: Player | null = null
+    if (f) for (const p of this.players) if (p.id === f.takerPlayerId) taker = p
+    const press = !!(f && taker && taker.team === 'blue' && this.simNow >= f.readyAt)
+    this.joystickInput.x = press && taker ? (taker.side === 'right' ? -1 : 1) : 0
+    this.joystickInput.y = 0
+    this.joystickInput.pass = press
   }
 
   /** Aplica lo que se puede cambiar en caliente al cambiar la calidad (Ajustes o regulador). */

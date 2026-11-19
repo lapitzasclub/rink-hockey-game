@@ -34,6 +34,16 @@ const sliderRow = (id: string, label: string) => `
     </span>
   </label>`
 
+const stepperRow = (id: string, label: string) => `
+  <button id="${id}" class="settings-row settings-row--stepper" data-nav>
+    <span>${label}</span>
+    <span class="stepper" aria-hidden="true">
+      <span class="stepper-arrow" data-step="-1">${ICON.arrowLeft}</span>
+      <span id="${id}-value" class="stepper-value"></span>
+      <span class="stepper-arrow" data-step="1">${ICON.arrowRight}</span>
+    </span>
+  </button>`
+
 const pad = (b: 'a' | 'b' | 'x' | 'y') => `<span class="pad-btn pad-btn--${b}">${b.toUpperCase()}</span>`
 const padWide = (label: string) => `<span class="pad-btn pad-btn--wide">${label}</span>`
 
@@ -102,6 +112,7 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
 
         <div class="settings-tabs" role="tablist" aria-label="Secciones de ajustes">
           <button class="settings-tab" role="tab" id="tab-general" aria-controls="pane-general" data-tab="general" data-nav>General</button>
+          <button class="settings-tab" role="tab" id="tab-graphics" aria-controls="pane-graphics" data-tab="graphics" data-nav>Gráficos</button>
           <button class="settings-tab" role="tab" id="tab-audio" aria-controls="pane-audio" data-tab="audio" data-nav>Audio</button>
           <button class="settings-tab" role="tab" id="tab-controls" aria-controls="pane-controls" data-tab="controls" data-nav>Controles</button>
         </div>
@@ -122,16 +133,24 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
             </button>
             <p id="half-length-note" class="settings-note">Dos partes de 25:00 en el marcador, como en el reglamento; el reloj corre acelerado.</p>
             ${toggleRow('btn-role-labels', 'Etiquetas de rol sobre los jugadores')}
-            <h3 class="settings-section-title">GRÁFICOS</h3>
-            <button id="quality" class="settings-row settings-row--stepper" data-nav>
-              <span>Calidad gráfica</span>
-              <span class="stepper" aria-hidden="true">
-                <span class="stepper-arrow" data-step="-1">${ICON.arrowLeft}</span>
-                <span id="quality-value" class="stepper-value"></span>
-                <span class="stepper-arrow" data-step="1">${ICON.arrowRight}</span>
-              </span>
-            </button>
+          </section>
+
+          <section class="settings-pane" id="pane-graphics" role="tabpanel" aria-labelledby="tab-graphics" data-pane="graphics" hidden>
+            <h3 class="settings-section-title">CALIDAD</h3>
+            ${stepperRow('quality', 'Calidad gráfica')}
             <p id="quality-note" class="settings-note"></p>
+            <h3 class="settings-section-title">OPCIONES</h3>
+            ${stepperRow('opt-bakeMax', 'Nitidez de la pista')}
+            <p id="opt-bakeMax-note" class="settings-note"></p>
+            ${stepperRow('opt-crowd', 'Público')}
+            <p id="opt-crowd-note" class="settings-note"></p>
+            ${stepperRow('opt-particles', 'Efectos y partículas')}
+            <p id="opt-particles-note" class="settings-note"></p>
+            <h3 class="settings-section-title">EQUIPO</h3>
+            <button id="btn-probe" class="menu-item menu-item--small menu-item--probe" data-nav>Probar equipo</button>
+            <p id="probe-note" class="settings-note settings-note--probe" role="status" aria-live="polite"></p>
+            ${toggleRow('btn-show-fps', 'Mostrar FPS')}
+            <p class="settings-note">Panel arriba con fps, tiempos de lógica y pintado y la calidad en uso. Coste despreciable.</p>
           </section>
 
           <section class="settings-pane" id="pane-audio" role="tabpanel" aria-labelledby="tab-audio" data-pane="audio" hidden>
@@ -182,6 +201,16 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
           </section>
         </div>
         ${navHints}
+      </div>
+    </div>
+
+    <div id="probe-veil" class="probe-veil" hidden role="alertdialog" aria-modal="true" aria-labelledby="probe-title" aria-describedby="probe-text">
+      <div class="probe-card">
+        <span id="probe-title" class="probe-kicker">PRUEBA DEL EQUIPO</span>
+        <p class="probe-status">Probando… <span id="probe-tier" class="probe-tier">ALTA</span></p>
+        <span class="probe-track" aria-hidden="true"><span id="probe-bar" class="probe-bar"></span></span>
+        <p id="probe-text" class="probe-text">Unos segundos de partido para elegir la calidad más alta que aguanta tu equipo.</p>
+        <button id="btn-probe-cancel" class="menu-item menu-item--small probe-cancel" data-nav>Cancelar</button>
       </div>
     </div>
 

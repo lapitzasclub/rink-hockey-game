@@ -134,7 +134,7 @@ function environment(game: Phaser.Game) {
 }
 
 /** Panel DOM con fps y percentiles; se refresca dos veces por segundo. */
-function mountOverlay(game: Phaser.Game, extra: () => string) {
+function mountOverlay(game: Phaser.Game, extra: () => string): { el: HTMLElement, timer: number } {
   const el = document.createElement('div')
   el.id = 'perf-hud'
   el.setAttribute('aria-hidden', 'true')
@@ -146,7 +146,7 @@ function mountOverlay(game: Phaser.Game, extra: () => string) {
   } satisfies Partial<CSSStyleDeclaration>)
   document.querySelector('#game-shell')?.appendChild(el)
   const m = perfMonitor(game)
-  window.setInterval(() => {
+  const timer = window.setInterval(() => {
     const s = m.snapshot()
     const env = environment(game)
     el.textContent =
@@ -154,6 +154,19 @@ function mountOverlay(game: Phaser.Game, extra: () => string) {
       `lógica ${s.updateMs.avg.toFixed(1)}  render ${s.renderMs.avg.toFixed(1)} (p95 ${s.renderMs.p95.toFixed(1)}) ms\n` +
       `tirones ${s.jank}  lienzo ${env.canvas.join('×')} dpr ${env.dpr}${extra()}`
   }, 500)
+  return { el, timer }
+}
+
+let overlay: { el: HTMLElement, timer: number } | null = null
+
+/** Enseña u oculta el panel (`?perf=1` o Ajustes → Gráficos → Mostrar FPS). La medida sigue igual. */
+export function setPerfOverlay(game: Phaser.Game, extra: () => string, on: boolean) {
+  if (on && !overlay) overlay = mountOverlay(game, extra)
+  else if (!on && overlay) {
+    window.clearInterval(overlay.timer)
+    overlay.el.remove()
+    overlay = null
+  }
 }
 
 /**
@@ -163,7 +176,7 @@ function mountOverlay(game: Phaser.Game, extra: () => string) {
 export function setupPerfFromUrl(game: Phaser.Game, extra: () => string = () => '') {
   const q = new URLSearchParams(window.location.search)
   const reportMs = Number(q.get('perfMs') ?? 0)
-  if (q.get('perf') === '1') mountOverlay(game, extra)
+  if (q.get('perf') === '1') setPerfOverlay(game, extra, true)
   if (!(reportMs > 0)) return
   const warm = Number(q.get('perfWarm') ?? 2000)
   const m = perfMonitor(game)

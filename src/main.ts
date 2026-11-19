@@ -12,7 +12,8 @@ import { fullscreenSupported, isFullscreen, onFullscreenChange, toggleFullscreen
 import { attachMenuNav } from './shell/menuNav'
 import { createSettingsPanel } from './shell/settingsPanel'
 import { createPauseMenu, type PauseSummary } from './shell/pauseMenu'
-import { qualityText } from './game/render/quality'
+import { getShowFps, qualityText } from './game/render/quality'
+import { createQualityProbe } from './shell/qualityProbe'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
@@ -55,11 +56,20 @@ void Promise.all([fontReady, partidoReady]).then(async () => {
   // Monitor de rendimiento (?perf=1 panel, ?perfMs=N informe en consola): carga diferida, fuera del arranque normal
   if (/[?&]perf(Ms)?=/.test(window.location.search)) {
     const g = game
-    void import('./game/perf/perfMonitor').then(m => m.setupPerfFromUrl(g, () => `  calidad ${qualityText()}`))
-  }
+    void import('./game/perf/perfMonitor').then(m => m.setupPerfFromUrl(g, perfExtra))
+  } else if (getShowFps()) showFps(true)
   // Acceso para depurar y simular desde la consola; no llega a producción
   if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game
 })
+
+const perfExtra = () => `  calidad ${qualityText()}`
+
+/** Ajustes → Gráficos → Mostrar FPS: el mismo panel que `?perf=1`, cargado al pedirlo. */
+function showFps(on: boolean) {
+  const g = game
+  if (!g) return
+  void import('./game/perf/perfMonitor').then(m => m.setPerfOverlay(g, perfExtra, on))
+}
 
 // ─── Estado del shell ────────────────────────────────────────────────────────
 
@@ -88,7 +98,18 @@ function onStep() {
   if (scene !== activeScene) {
     activeScene = scene
     shell.dataset.scene = scene
-    if (scene === 'match') autoFullscreen()
+    // La prueba del equipo arranca partidos sin gesto del usuario: ahí no se pide
+    if (scene === 'match' && !probe.isRunning()) autoFullscreen()
+  }
+  if (probe.isRunning()) {
+    // La prueba mide un partido que se ve: en vertical no se pinta, así que se cancela
+    if (isPortraitBlocked()) probe.cancel()
+    return
+  }
+  // `?probe=1`: la prueba arranca sola en cuanto hay menú (banco de pruebas y móvil por adb)
+  if (autoProbe && scene === 'menu') {
+    autoProbe = false
+    probe.start()
   }
   // Un partido que arranca con el móvil en vertical nace con el menú de pausa abierto
   if (scene === 'match' && isPortraitBlocked() && !pause.isOpen()) pause.open()
@@ -129,7 +150,22 @@ function syncOverlays() {
 const settings = createSettingsPanel({
   onVisibilityChange: syncOverlays,
   onToggleFullscreen: () => void toggleFullscreen(shell, isTouchDevice),
-  isMatchRunning: () => activeScene === 'match',
+  isMatchRunning: () => !!matchSummary(),
+  onProbe: () => {
+    settings.close(false)
+    probe.start()
+  },
+  onShowFps: showFps,
+})
+
+let autoProbe = new URLSearchParams(window.location.search).get('probe') === '1'
+const probe = createQualityProbe({
+  game: () => game,
+  // Al acabar se vuelve a Ajustes → Gráficos con el resultado a la vista
+  onFinish: (outcome, cancelled) => {
+    settings.open('graphics', settingsBtn, '#btn-probe')
+    settings.probeMessage(outcome ? '' : cancelled ? 'Prueba cancelada.' : 'No se pudo completar la prueba.')
+  },
 })
 
 const pause = createPauseMenu({
@@ -163,7 +199,8 @@ pauseBtn.addEventListener('click', () => { playUiMove(); pause.open() })
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !e.repeat) {
     e.preventDefault()
-    if (settings.isOpen()) settings.close()
+    if (probe.isRunning()) probe.cancel()
+    else if (settings.isOpen()) settings.close()
     else if (pause.isOpen()) pause.back()
     else if (activeScene === 'match') { playUiMove(); pause.open() }
     else if (activeScene === 'menu') { playUiMove(); settings.open('general', settingsBtn) }
@@ -177,7 +214,9 @@ document.addEventListener('keydown', (e) => {
 
 // Al cambiar de pestaña o minimizar, el partido se queda en pausa con el menú abierto
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && activeScene === 'match' && !pause.isOpen() && !matchSummary()?.ended) pause.open()
+  // Una prueba con la pestaña oculta no mide nada (el navegador para el pintado)
+  if (document.hidden && probe.isRunning()) probe.cancel()
+  else if (document.hidden && activeScene === 'match' && !pause.isOpen() && !matchSummary()?.ended) pause.open()
 })
 
 // ─── Pantalla completa ───────────────────────────────────────────────────────
@@ -258,6 +297,10 @@ function sendKey(key: string, target: EventTarget = document.activeElement ?? do
  * B vuelve y Start cierra; sin panel, Start abre la pausa (partido) o los ajustes (menú).
  */
 function handlePadInShell() {
+  if (probe.isRunning()) {
+    if (consumePad('back') || consumePad('start') || consumePad('confirm')) probe.cancel()
+    return
+  }
   if (pause.isOpen() || settings.isOpen()) {
     const el = document.activeElement as HTMLElement | null
     if (consumePad('up')) sendKey('ArrowUp')
