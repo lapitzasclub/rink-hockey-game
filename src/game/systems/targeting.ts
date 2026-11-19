@@ -1,41 +1,76 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN } from '../constants'
+import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, aiProfileFor } from '../constants'
 import type { Player, Vector } from '../types'
 import { autopilot } from './playerControl'
 import { getGoalLineX } from '../utils'
 
 /**
+ * Pase de la IA ya decidido (aiDecision): dirección exacta hacia el punto
+ * anticipado del receptor. Se consume en el siguiente getAssistedPassDirection.
+ */
+const aiPassAim = { playerId: '', x: 0, y: 0 }
+
+export function setAIPassAim(playerId: string, x: number, y: number) {
+  aiPassAim.playerId = playerId
+  aiPassAim.x = x
+  aiPassAim.y = y
+}
+
+/**
+ * Último pase de jugador de campo (humano o IA): receptor previsto. La IA de
+ * equipo lo lee al quedar la bola suelta para que el receptor vaya a por ella.
+ */
+export const passIntent = { serial: 0, team: 'blue' as Player['team'], receiverId: '' }
+
+/**
  * Elige el mejor receptor de pase en función de la mirada del pasador y la
  * distancia al gol rival. Solo considera compañeros dentro del cono frontal
- * definido por PASS_ASSIST_CONE_DOT.
+ * definido por PASS_ASSIST_CONE_DOT; un rival cerca de la línea penaliza.
  *
  * @returns El jugador con mejor puntuación, o null si no hay ninguno válido.
  */
 export function getBestPassTarget(players: Player[], player: Player): Player | null {
-  const teammates = players.filter(
-    (c) => c.team === player.team && c.id !== player.id && c.role !== 'goalie',
-  )
   const facingLength = Math.hypot(player.facing.x, player.facing.y) || 1
-  const facing = { x: player.facing.x / facingLength, y: player.facing.y / facingLength }
+  const fx = player.facing.x / facingLength
+  const fy = player.facing.y / facingLength
+  let best: Player | null = null
+  let bestScore = -Infinity
+  for (const candidate of players) {
+    if (candidate.team !== player.team || candidate.id === player.id || candidate.role === 'goalie') continue
+    const dx = candidate.pos.x - player.pos.x
+    const dy = candidate.pos.y - player.pos.y
+    const distance = Math.hypot(dx, dy) || 1
+    const facingDot = fx * (dx / distance) + fy * (dy / distance)
+    if (facingDot < PASS_ASSIST_CONE_DOT) continue
+    // Penalizar por distancia para evitar pases innecesariamente largos
+    const score = facingDot * 180 - distance * 0.3 - laneBlockPenalty(players, player, candidate)
+    if (score > bestScore) {
+      bestScore = score
+      best = candidate
+    }
+  }
+  return best
+}
 
-  return teammates
-    .map((candidate) => {
-      const dx = candidate.pos.x - player.pos.x
-      const dy = candidate.pos.y - player.pos.y
-      const distance = Math.hypot(dx, dy) || 1
-      const dir = { x: dx / distance, y: dy / distance }
-      const facingDot = facing.x * dir.x + facing.y * dir.y
-      // Penalizar por distancia para evitar pases innecesariamente largos
-      const score = facingDot * 180 - distance * 0.3
-      return { candidate, score, facingDot }
-    })
-    .filter((entry) => entry.facingDot >= PASS_ASSIST_CONE_DOT)
-    .sort((a, b) => b.score - a.score)[0]?.candidate ?? null
+/** Penalización (0..PASS_LANE_BLOCK_PENALTY) por rivales cerca de la línea pasador→receptor. */
+function laneBlockPenalty(players: Player[], from: Player, to: Player) {
+  const sx = to.pos.x - from.pos.x
+  const sy = to.pos.y - from.pos.y
+  const len2 = sx * sx + sy * sy || 1
+  let closest = Infinity
+  for (const r of players) {
+    if (r.team === from.team || r.role === 'goalie') continue
+    const u = Math.min(1, Math.max(0, ((r.pos.x - from.pos.x) * sx + (r.pos.y - from.pos.y) * sy) / len2))
+    const d = Math.hypot(r.pos.x - (from.pos.x + sx * u), r.pos.y - (from.pos.y + sy * u))
+    if (d < closest) closest = d
+  }
+  return closest >= PASS_LANE_CLEAR_DIST ? 0 : PASS_LANE_BLOCK_PENALTY * (1 - closest / PASS_LANE_CLEAR_DIST)
 }
 
 /**
  * Calcula una dirección de pase que mezcla el facing del jugador con la
- * dirección exacta al mejor compañero disponible (PASS_ASSIST_BLEND).
+ * dirección al mejor compañero disponible (PASS_ASSIST_BLEND), apuntando a
+ * donde estará. Si la IA ya decidió el pase, sale exacto hacia su punto.
  *
  * La asistencia evita pasar completamente en perpendicular al movimiento,
  * pero no sustituye la dirección del jugador — sigue siendo necesario mirar
@@ -43,9 +78,16 @@ export function getBestPassTarget(players: Player[], player: Player): Player | n
  */
 export function getAssistedPassDirection(players: Player[], player: Player, fallbackDirection: Vector): Vector {
   const target = getBestPassTarget(players, player)
+  if (aiPassAim.playerId === player.id) {
+    aiPassAim.playerId = ''
+    notePassIntent(player, target)
+    return { x: aiPassAim.x, y: aiPassAim.y }
+  }
+  notePassIntent(player, target)
   if (!target) return fallbackDirection
 
-  const raw = { x: target.pos.x - player.pos.x, y: target.pos.y - player.pos.y }
+  const lead = PASS_HUMAN_LEAD_S
+  const raw = { x: target.pos.x + target.velocity.x * lead - player.pos.x, y: target.pos.y + target.velocity.y * lead - player.pos.y }
   const rawLength = Math.hypot(raw.x, raw.y) || 1
   const dirToMate = { x: raw.x / rawLength, y: raw.y / rawLength }
 
@@ -55,6 +97,12 @@ export function getAssistedPassDirection(players: Player[], player: Player, fall
   }
   const length = Math.hypot(blended.x, blended.y) || 1
   return { x: blended.x / length, y: blended.y / length }
+}
+
+function notePassIntent(player: Player, target: Player | null) {
+  passIntent.serial++
+  passIntent.team = player.team
+  passIntent.receiverId = target?.id ?? ''
 }
 
 /**
@@ -121,11 +169,12 @@ export function getAssistedShotDirection(player: Player, fallbackDirection: Vect
   const goalDirection = { x: raw.x / rawLength, y: raw.y / rawLength }
 
   // La IA (rojo, porteros y el azul con piloto automático) apunta exacto; el humano conserva influencia sobre la dirección
-  const blend = player.team === 'red' || player.role === 'goalie' || autopilot.on ? SHOT_ASSIST_BLEND : SHOT_ASSIST_BLEND_HUMAN
-  const blended = {
-    x: fallbackDirection.x * (1 - blend) + goalDirection.x * blend,
-    y: fallbackDirection.y * (1 - blend) + goalDirection.y * blend,
-  }
-  const length = Math.hypot(blended.x, blended.y) || 1
-  return { x: blended.x / length, y: blended.y / length }
+  const isAi = player.team === 'red' || player.role === 'goalie' || autopilot.on
+  const blend = isAi ? SHOT_ASSIST_BLEND : SHOT_ASSIST_BLEND_HUMAN
+  const bx = fallbackDirection.x * (1 - blend) + goalDirection.x * blend
+  const by = fallbackDirection.y * (1 - blend) + goalDirection.y * blend
+  // Precisión del perfil de IA (E-04): error angular uniforme
+  const error = isAi ? aiProfileFor(player.team).shotErrorRad : 0
+  const angle = Math.atan2(by, bx) + (error > 0 ? (Math.random() * 2 - 1) * error : 0)
+  return { x: Math.cos(angle), y: Math.sin(angle) }
 }

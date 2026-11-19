@@ -1,10 +1,5 @@
 import * as Phaser from 'phaser'
 import {
-  AI_PRESS_DISTANCE,
-  AI_MARK_RADIUS,
-  AI_OPEN_MATE_GAP,
-  AI_SHOOT_DISTANCE,
-  AI_STEAL_ATTEMPT_CHANCE,
   AI_STEAL_ENGAGE_FRONT_DOT,
   GAME_HEIGHT,
   GOALIE_AI_MAX_Y,
@@ -14,9 +9,10 @@ import {
   MANUAL_STEAL_RANGE,
   PLAYER_SPRINT_ACCEL_MULTIPLIER,
   STAMINA_LOW_THRESHOLD,
+  aiProfileFor,
 } from '../constants'
+import { aiStateOf } from './aiDecision'
 import { seek } from './movement'
-import { findPlayerById } from './playerHelpers'
 import type { Player } from '../types'
 import { getGoalLineX, normalizedVector } from '../utils'
 
@@ -60,214 +56,31 @@ export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt:
   player.facing = normalizedVector(ballX - player.pos.x, ballY - player.pos.y, player.facing)
 }
 
+const seekTarget = { x: 0, y: 0 }
+
 /**
- * IA de jugadores de campo.
- *
- * Diferencia claramente el comportamiento por rol:
- * - Atacando: pivot da opción de pase cerca del portador, ala hace carrera
- *   hacia zona de remate, defensa mantiene posición de seguridad.
- * - Defendiendo: defensa presiona/cubre pasillo, ala marca ala rival,
- *   pivot cubre el canal central ante el portador.
- * - Bola suelta: solo el más cercano persigue, los demás apoyan o mantienen.
+ * IA de jugadores de campo: ejecuta el plan del paso que dejó prepareTeamAI
+ * (aiTeam.ts) — destino, intensidad, sprint y si mira a la bola.
  */
 export function updateFieldPlayerAI(
-  players: Player[],
+  _players: Player[],
   player: Player,
   ballX: number,
   ballY: number,
-  ballCarrierId: string | null,
+  _ballCarrierId: string | null,
   dt: number,
 ) {
-  const teammates = players.filter(p => p.team === player.team && p.role !== 'goalie')
-  const rivals = players.filter(p => p.team !== player.team && p.role !== 'goalie')
-  const hasBall = ballCarrierId === player.id
-  const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
-  const sameTeamHasBall = carrier?.team === player.team
-
-  const teamChaserOrder = [...teammates].sort((a, b) =>
-    Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ballX, ballY) -
-    Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ballX, ballY),
-  )
-  const pressureIndex = teamChaserOrder.findIndex(p => p.id === player.id)
-
-  const advance = player.side === 'left' ? 1 : -1
-  const opponentGoalX = getGoalLineX(player.side === 'left' ? 'right' : 'left')
-
-  let target = { ...player.home }
-  let intensity = 1
-
-  if (hasBall) {
-    // Portador: avanza hacia portería rival manteniendo carril lateral
-    target = {
-      x: player.pos.x + 80 * advance,
-      y: GAME_HEIGHT / 2 + Phaser.Math.Clamp(ballY - GAME_HEIGHT / 2, -130, 130),
-    }
-
-  } else if (ballCarrierId === null) {
-    // Bola suelta: solo el más cercano la persigue directamente
-    if (pressureIndex === 0) {
-      target = { x: ballX, y: ballY }
-      intensity = 1
-    } else if (pressureIndex === 1) {
-      target = {
-        x: ballX - advance * 48,
-        y: ballY + (player.home.y < GAME_HEIGHT / 2 ? -30 : 30),
-      }
-      intensity = 0.9
-    } else {
-      target = {
-        x: player.home.x + Phaser.Math.Clamp(ballX - player.home.x, -100, 100),
-        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -80, 80),
-      }
-      intensity = 0.8
-    }
-
-  } else if (sameTeamHasBall) {
-    // Equipo en posesión: posicionamiento ofensivo por rol
-    if (player.role === 'pivot') {
-      // Pivot: opción de pase inmediata, ligeramente adelantado al portador
-      if (carrier) {
-        target = {
-          x: carrier.pos.x + advance * 50,
-          y: carrier.pos.y + (player.home.y < GAME_HEIGHT / 2 ? -35 : 35),
-        }
-        intensity = 0.96
-      }
-    } else if (player.role === 'wing') {
-      // Ala: carrera hacia el área de remate por el carril exterior
-      const wingY = player.home.y < GAME_HEIGHT / 2
-        ? GAME_HEIGHT / 2 - 130
-        : GAME_HEIGHT / 2 + 130
-      const runX = Phaser.Math.Clamp(opponentGoalX - advance * 180, Math.min(player.home.x, opponentGoalX - 50), Math.max(player.home.x, opponentGoalX - 50))
-      target = { x: runX, y: wingY }
-      intensity = 0.92
-    } else if (player.role === 'defender') {
-      // Defensa: no sube demasiado, cubre contraataque desde posición media
-      target = {
-        x: player.home.x + advance * 55,
-        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -55, 55),
-      }
-      intensity = 0.8
-    } else {
-      target = {
-        x: player.home.x + advance * 80,
-        y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -80, 80),
-      }
-      intensity = 0.85
-    }
-
-  } else {
-    // Rival en posesión: cobertura defensiva por rol
-    const rivalCarrier = carrier && carrier.team !== player.team ? carrier : null
-
-    if (player.role === 'defender') {
-      if (rivalCarrier && pressureIndex === 0) {
-        // Defensa más cercana: cierra por delante al portador
-        const carrierDir = normalizedVector(rivalCarrier.facing.x, rivalCarrier.facing.y, { x: rivalCarrier.side === 'left' ? 1 : -1, y: 0 })
-        target = {
-          x: rivalCarrier.pos.x + carrierDir.x * (player.side === 'left' ? -28 : 28),
-          y: rivalCarrier.pos.y + carrierDir.y * 16,
-        }
-        intensity = 1
-      } else if (rivalCarrier) {
-        // Otra defensa: cubre el pasillo hacia portería propia
-        target = {
-          x: rivalCarrier.pos.x + (player.side === 'left' ? -85 : 85),
-          y: player.home.y + Phaser.Math.Clamp(rivalCarrier.pos.y - player.home.y, -55, 55),
-        }
-        intensity = 0.88
-      } else {
-        target = {
-          x: player.home.x,
-          y: player.home.y + Phaser.Math.Clamp(ballY - player.home.y, -55, 55),
-        }
-        intensity = 0.8
-      }
-
-    } else if (player.role === 'wing') {
-      // Ala: marca al ala rival o cubre el carril exterior
-      const opposingWing = rivals.find(r => r.role === 'wing' && Math.abs(r.home.y - player.home.y) < 60)
-      if (opposingWing && pressureIndex >= 2) {
-        target = {
-          x: Phaser.Math.Clamp(opposingWing.pos.x, player.home.x - 100, player.home.x + 140),
-          y: opposingWing.pos.y,
-        }
-        intensity = 0.88
-      } else if (rivalCarrier) {
-        target = {
-          x: rivalCarrier.pos.x + (player.side === 'left' ? -110 : 110),
-          y: player.home.y + Phaser.Math.Clamp(rivalCarrier.pos.y - player.home.y, -50, 50),
-        }
-        intensity = 0.84
-      } else {
-        target = { ...player.home }
-        intensity = 0.78
-      }
-
-    } else if (player.role === 'pivot') {
-      // Pivot: bloquea el canal central frente al portador o cubre el acceso a portería
-      if (rivalCarrier && pressureIndex <= 1) {
-        target = {
-          x: rivalCarrier.pos.x + (player.side === 'left' ? -65 : 65),
-          y: GAME_HEIGHT / 2 + Phaser.Math.Clamp(rivalCarrier.pos.y - GAME_HEIGHT / 2, -70, 70),
-        }
-        intensity = 0.92
-      } else if (rivalCarrier) {
-        target = {
-          x: rivalCarrier.pos.x + (player.side === 'left' ? -130 : 130),
-          y: GAME_HEIGHT / 2 + Phaser.Math.Clamp(rivalCarrier.pos.y - GAME_HEIGHT / 2, -80, 80),
-        }
-        intensity = 0.82
-      } else {
-        target = { ...player.home }
-        intensity = 0.78
-      }
-    }
-
-    // El más cercano siempre encima del portador, sea cual sea su rol: si se
-    // queda a distancia de cobertura (> alcance de robo) el juego se congela
-    if (rivalCarrier && pressureIndex === 0) {
-      const dir = normalizedVector(rivalCarrier.facing.x, rivalCarrier.facing.y, { x: rivalCarrier.side === 'left' ? 1 : -1, y: 0 })
-      target = {
-        x: rivalCarrier.pos.x + dir.x * AI_PRESS_DISTANCE,
-        y: rivalCarrier.pos.y + dir.y * AI_PRESS_DISTANCE,
-      }
-      intensity = 1
-    }
-  }
-
-  const distToTarget = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, target.x, target.y)
+  const st = aiStateOf(player)
   const canSprint = (player.stamina ?? 100) > STAMINA_LOW_THRESHOLD
-  const shouldSprint = canSprint && (
-    (ballCarrierId === null && pressureIndex === 0 && distToTarget > 80) ||
-    (!sameTeamHasBall && pressureIndex === 0 && distToTarget > 70) ||
-    (hasBall && distToTarget > 90)
-  )
-  player.sprinting = shouldSprint
-
-  seek(player, target, shouldSprint ? intensity * PLAYER_SPRINT_ACCEL_MULTIPLIER : intensity, dt)
-  player.facing = normalizedVector(target.x - player.pos.x, target.y - player.pos.y, player.facing)
-}
-
-/**
- * El atacante IA está en zona útil de tiro y mira razonablemente hacia la portería.
- *
- * Evita tiros desde ángulos muy cerrados o dando la espalda a portería.
- */
-export function shouldAIShoot(player: Player): boolean {
-  const goalX = getGoalLineX(player.side === 'right' ? 'left' : 'right')
-  const goalY = GAME_HEIGHT / 2
-
-  const dist = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, goalX, goalY)
-  if (dist > AI_SHOOT_DISTANCE) return false
-
-  // El jugador debe mirar razonablemente hacia portería
-  const dx = goalX - player.pos.x
-  const dy = goalY - player.pos.y
-  const len = Math.hypot(dx, dy) || 1
-  const facing = getAimingDirection(player)
-  const dot = facing.x * (dx / len) + facing.y * (dy / len)
-  return dot > 0.28
+  player.sprinting = canSprint && st.sprint
+  seekTarget.x = st.tx
+  seekTarget.y = st.ty
+  seek(player, seekTarget, player.sprinting ? st.intensity * PLAYER_SPRINT_ACCEL_MULTIPLIER : st.intensity, dt)
+  const fx = st.faceBall ? ballX - player.pos.x : st.tx - player.pos.x
+  const fy = st.faceBall ? ballY - player.pos.y : st.ty - player.pos.y
+  const len = Math.hypot(fx, fy)
+  // Sin destino ni bola que mirar conserva la mirada (evita girar en el sitio)
+  if (len > 4) player.facing = { x: fx / len, y: fy / len }
 }
 
 /**
@@ -291,36 +104,13 @@ export function shouldGoaliePass(player: Player, now: number) {
 }
 
 /**
- * El portador IA tiene un compañero desmarcado más cerca del gol rival.
- *
- * Activa una mayor probabilidad de pase para que la IA no solo corra y dispare.
- */
-export function shouldAIPassToOpenMate(player: Player, players: Player[]): boolean {
-  const teammates = players.filter(p => p.team === player.team && p.role !== 'goalie' && p.id !== player.id)
-  const rivals = players.filter(p => p.team !== player.team && p.role !== 'goalie')
-
-  const goalX = getGoalLineX(player.side === 'right' ? 'left' : 'right')
-  const goalY = GAME_HEIGHT / 2
-
-  const carrierDist = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, goalX, goalY)
-
-  for (const mate of teammates) {
-    const mateDist = Phaser.Math.Distance.Between(mate.pos.x, mate.pos.y, goalX, goalY)
-    if (mateDist >= carrierDist - AI_OPEN_MATE_GAP) continue
-    const marked = rivals.some(r => Phaser.Math.Distance.Between(r.pos.x, r.pos.y, mate.pos.x, mate.pos.y) < AI_MARK_RADIUS)
-    if (!marked) return true
-  }
-  return false
-}
-
-/**
  * Determina si un jugador IA debe intentar un robo este frame.
  *
  * Modula la probabilidad de intento según si el defensor persigue desde atrás
  * (muy bajo éxito) o si el portador va lento. Devuelve false si el portador
  * está fuera de rango o el ángulo de enganche es desfavorable.
  */
-export function shouldAIAttemptSteal(player: Player, carrier: Player): boolean {
+export function shouldAIAttemptSteal(player: Player, carrier: Player, arcade = false): boolean {
   const distance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y)
   if (distance > MANUAL_STEAL_RANGE) return false
 
@@ -334,9 +124,11 @@ export function shouldAIAttemptSteal(player: Player, carrier: Player): boolean {
   const carrierSpeed = Math.hypot(carrier.velocity.x, carrier.velocity.y)
   // Desde atrás (ambos van en la misma dirección): porcentaje drásticamente reducido
   const chasingFromBehind = engageDot > 0.6
+  const profile = aiProfileFor(player.team)
+  const base = profile.stealAttemptChance * (arcade ? profile.arcadeStealScale : 1)
   const attemptChance = chasingFromBehind
-    ? AI_STEAL_ATTEMPT_CHANCE * 0.18
-    : carrierSpeed > 150 ? AI_STEAL_ATTEMPT_CHANCE * 0.7 : AI_STEAL_ATTEMPT_CHANCE
+    ? base * 0.18
+    : carrierSpeed > 150 ? base * 0.7 : base
 
   return Math.random() < attemptChance
 }

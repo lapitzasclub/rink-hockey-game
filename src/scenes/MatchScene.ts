@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import {
-  ARCADE_AI_CHECK_CHANCE,
+  aiProfileFor,
   ARCADE_GOAL_CELEBRATION_MS,
   ARCADE_HEAD_SCALE,
   GAME_HEIGHT,
@@ -25,7 +25,8 @@ import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../gam
 import {
   updateBallPosition,
 } from '../game/systems/ball'
-import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot, shouldAIPassToOpenMate, shouldAIAttemptSteal } from '../game/systems/ai'
+import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIAttemptSteal } from '../game/systems/ai'
+import { decideCarrierAction } from '../game/systems/aiDecision'
 import { applySkating, resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
 import {
   findPlayerById,
@@ -759,16 +760,16 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
-   * Actualiza toda la IA no controlada por el usuario.
-   *
-   * Ahora mismo la IA sigue siendo simple, pero ya está preparada para ir
-   * creciendo como sistema separado sin inflar la escena.
+   * Actualiza toda la IA no controlada por el usuario: plan táctico y
+   * movimiento (updateTeamAIPlayers) y, después, las decisiones con bola
+   * (tirar, pasar, conducir) y los robos.
    */
   private updateTeamAI(dt: number) {
     updateTeamAIPlayers({
       players: this.players,
       controlledPlayerIndex: this.controlledPlayerIndex,
       ball: this.ball,
+      ballVelocity: this.ballVelocity,
       ballCarrierId: this.ballCarrierId,
       dt,
       timeNow: this.simNow,
@@ -783,17 +784,17 @@ export class MatchScene extends Phaser.Scene {
 
       if (player.team === 'red' || autopilot.on) {
         if (hasBall) {
-          if (player.role === 'goalie' && shouldGoaliePass(player, this.simNow)) this.tryPass(player)
-          else if (shouldAIShoot(player)) this.tryShot(player, (player.stamina ?? 0) > 45 && Math.random() < 0.45)
-          else {
-            // Pasa con más frecuencia si hay un compañero libre más cerca del gol
-            const passChance = shouldAIPassToOpenMate(player, this.players) ? 0.042 : 0.012
-            if (Math.random() < passChance) this.tryPass(player)
+          if (player.role === 'goalie') {
+            if (shouldGoaliePass(player, this.simNow)) this.tryPass(player)
+            continue
           }
+          const choice = decideCarrierAction(player, this.players, this.simNow)
+          if (choice === 'shoot') this.tryShot(player, (player.stamina ?? 0) > 45 && Math.random() < 0.45)
+          else if (choice === 'pass') this.tryPass(player)
         } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
           const carrier = findPlayerById(this.players, this.ballCarrierId)
-          if (carrier && shouldAIAttemptSteal(player, carrier)) {
-            const checked = this.isArcade && Math.random() < ARCADE_AI_CHECK_CHANCE && this.tryCheck(player)
+          if (carrier && shouldAIAttemptSteal(player, carrier, this.isArcade)) {
+            const checked = this.isArcade && Math.random() < aiProfileFor(player.team).checkChance && this.tryCheck(player)
             if (!checked) this.tryManualSteal(player)
           }
         }
