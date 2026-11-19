@@ -107,20 +107,20 @@ export const GOALIE_DISTRIBUTION_DELAY_MS = 550
 export const FOUL_CHANCE_ON_STEAL = 0.28
 export const MANUAL_STEAL_RANGE = 52 * K
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
-export const MANUAL_STEAL_FOUL_CHANCE = 0.12
+export const MANUAL_STEAL_FOUL_CHANCE = 0.08
 export const AI_STEAL_ATTEMPT_CHANCE = 0.08
 export const AI_STEAL_ENGAGE_FRONT_DOT = 0.08
 /** Distancia a la que el defensor más cercano se planta delante del portador rival. */
 export const AI_PRESS_DISTANCE = 26 * K
 export const STEAL_FRONT_SUCCESS_CHANCE = 0.03
 export const STEAL_FRONT_LOOSE_CHANCE = 0.05
-export const STEAL_FRONT_FOUL_CHANCE = 0.07
+export const STEAL_FRONT_FOUL_CHANCE = 0.045
 export const STEAL_SIDE_SUCCESS_CHANCE = 0.08
 export const STEAL_SIDE_LOOSE_CHANCE = 0.38
-export const STEAL_SIDE_FOUL_CHANCE = 0.16
+export const STEAL_SIDE_FOUL_CHANCE = 0.1
 export const STEAL_BACK_SUCCESS_CHANCE = 0.005
 export const STEAL_BACK_LOOSE_CHANCE = 0.06
-export const STEAL_BACK_FOUL_CHANCE = 0.62
+export const STEAL_BACK_FOUL_CHANCE = 0.45
 export const BALL_CARRIER_SHIELD_FRONT_DOT = 0.45
 export const BALL_CARRIER_SHIELD_BONUS = 0.08
 export const STEAL_LOOSE_BALL_POWER = 245
@@ -145,7 +145,15 @@ export const BULLY_SETUP_MS = 1400
 export const FOUL_SETUP_MS = 1100
 export const BULLY_CLUSTER_RADIUS = 52 * K
 export const BULLY_MIN_PLAYERS = 2
-export const STUCK_BALL_TIMEOUT_MS = 3000
+export const STUCK_BALL_TIMEOUT_MS = 2200
+/** Bola trabada contra la valla entre portador y rival: el árbitro corta antes (art. 13). */
+export const STUCK_BOARD_TIMEOUT_MS = 1300
+/** Distancia del portador a la valla para contar como bola pegada a ella. */
+export const STUCK_BOARD_MARGIN = 34 * K
+/** Rival a esta distancia del portador lo está trabando. */
+export const STUCK_RIVAL_RADIUS = 58 * K
+/** Lo que puede moverse el portador sin dejar de estar trabado. */
+export const STUCK_MAX_TRAVEL = 48 * K
 
 export const RINK = {
   x: 70,
@@ -173,8 +181,41 @@ export const CLOCK_WARNING_GAME_SECONDS = 60
 /** Pausa del descanso entre partes antes del saque (ms reales). */
 export const PERIOD_RESTART_DELAY_MS = 2600
 export const BULLY_PLAYER_OFFSET = 26 * K
+
+// ── Saques y faltas (reglamento World Skate 2026, art. 5, 13, 23, 27–30) ──
+/** Píxeles de mundo por metro a lo largo de la pista. */
+export const METER_PX = RINK.width / RINK_LENGTH_M
+/** Radio del círculo central (3 m): en el saque solo pueden estar dentro el ejecutante y un compañero. */
+export const CENTER_CIRCLE_RADIUS = 3 * METER_PX
+/** Distancia mínima de los rivales en libres indirectos y del resto de jugadores en el saque neutral (3 m). */
+export const RESTART_MIN_DISTANCE = 3 * METER_PX
+/** Distancia de la bola a la valla cuando la falta se señala pegada a ella (70 cm). */
+export const FREE_HIT_BOARD_MARGIN = 0.7 * METER_PX
+/** Velocidad a la que patinan los jugadores hacia su sitio en un saque (px/s): más que trote, menos que sprint. */
+export const RESTART_SKATE_SPEED = 390
+/** Frenada al llegar a su sitio (px/s²). */
+export const RESTART_SKATE_DECEL = 900
+/** Margen (px) para dar por colocado a un jugador. */
+export const RESTART_ARRIVE_PX = 6
+/** Tiempo mínimo de colocación del saque de centro antes del pitido (ms de simulación). */
+export const KICKOFF_MIN_SETUP_MS = 900
+/** Si alguien no ha llegado a su sitio en este tiempo, se pita igual y el resto se recoloca (ms). */
+export const KICKOFF_MAX_SETUP_MS = 7000
+/** Plazo para colocarse en un saque de falta o neutral antes de sacar igualmente (ms). */
+export const FOUL_MAX_SETUP_MS = 5000
+/** Pausa de la IA entre el pitido de un directo o penalti y el lanzamiento (ms). */
+export const FOUL_AI_AIM_MS = 450
+/** Cuántas faltas de equipo dan el primer libre directo y cada cuántas más se repite. */
+export const TEAM_FOUL_DIRECT_FIRST = 10
+export const TEAM_FOUL_DIRECT_EVERY = 5
+/** Probabilidad de que una falta de robo sea grave (tarjeta azul): por detrás o de lado. */
+export const SERIOUS_FOUL_CHANCE_BACK = 0.3
+export const SERIOUS_FOUL_CHANCE_OTHER = 0.06
+/** Ocasión clara de gol cortada con falta: portador a menos de esta distancia de la portería (px). */
+export const CLEAR_CHANCE_MAX_DIST = 9 * METER_PX
+/** Franja vertical (px) en la que un defensor cuenta como «entre el portador y la portería». */
+export const CLEAR_CHANCE_LANE = 2.2 * METER_PX
 export const MAX_BALL_SPEED = 760
-export const DIRECT_FREE_HIT_FOUL_THRESHOLD = 10
 /** Factor de velocidad máxima cuando la stamina está por debajo del umbral bajo */
 export const STAMINA_EXHAUSTED_SPEED_FACTOR = 0.78
 export const STICK_SWING_MS = 160

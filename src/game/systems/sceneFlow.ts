@@ -1,12 +1,13 @@
 import * as Phaser from 'phaser'
-import type { Ball, TeamColor, Player } from '../types'
+import type { Ball, Player } from '../types'
 import { selectBestControlledPlayer } from './playerHelpers'
 import { checkGoal } from './ball'
 import { applyGoalReset } from './matchFlow'
 import { nombreDeHueco } from '../externalMatch'
 
 /**
- * Espera el retardo de celebración de gol y lanza el kickoff cuando expira.
+ * Espera el retardo de la celebración del gol o del descanso y, al vencer,
+ * lanza el reinicio (el ritual del saque de centro).
  *
  * Devuelve 0 si el reinicio ya se ejecutó, o el mismo restartAt si aún no.
  */
@@ -14,12 +15,11 @@ export function handlePendingRestart(options: {
   time: number
   restartAt: number
   centerText: Phaser.GameObjects.Text
-  lastTouch: TeamColor
-  resetKickoff: (team: TeamColor) => void
+  onRestart: () => void
 }) {
   if (options.restartAt > 0 && options.time >= options.restartAt) {
     options.centerText.setVisible(false)
-    options.resetKickoff(options.lastTouch === 'blue' ? 'red' : 'blue')
+    options.onRestart()
     return 0
   }
   return options.restartAt

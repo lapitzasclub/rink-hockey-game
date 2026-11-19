@@ -52,7 +52,7 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'goalsBluePerMin', 'goalsRedPerMin', 'shotsBluePerMin', 'shotsRedPerMin', 'savePctBlue', 'savePctRed',
   'passesPerMin', 'passPct', 'passesDoneBluePerMin', 'passesDoneRedPerMin', 'possessionBluePct', 'stealsPerMin'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
-$tot = @{ jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0 }
+$tot = @{ jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
   if (-not $line) { $tot.failed++; Write-Output ("run {0}/{1}: SIN [smoke]" -f $i, $Runs); continue }
@@ -81,6 +81,9 @@ foreach ($i in 1..$Runs) {
     if ($ps -gt 0) { $samples.possessionBluePct += 100 * $j.possessionSec.blue / $ps }
     $samples.stealsPerMin += ($j.steals.blue + $j.steals.red) / $min
   }
+  # Reinicios del reglamento (E-05): sumados en el lote
+  $tot.freeHits += [int]$j.freeHits; $tot.directFreeHits += [int]$j.directFreeHits; $tot.penalties += [int]$j.penalties
+  $tot.neutralRestarts += [int]$j.neutralRestarts; $tot.blueCards += [int]($j.blueCards.blue + $j.blueCards.red)
   $tot.jams += $j.jams; $tot.jamSec += $j.jamSec; $tot.badPlayerFrames += $j.badPlayerFrames; $tot.consoleErrors += $j.consoleErrors
   Write-Output ("run {0}/{1}: goles {2}-{3} · tiros {4}-{5} · paradas {6}-{7} · pases {8}/{9}-{10}/{11} · atascos {12} · errores {13}" -f $i, $Runs, $j.goals.blue, $j.goals.red, $j.shots.blue, $j.shots.red, $j.savesBy.blue, $j.savesBy.red, $j.passesDone.blue, $j.passes.blue, $j.passesDone.red, $j.passes.red, $j.jams, $j.consoleErrors)
 }
@@ -99,5 +102,6 @@ foreach ($k in $keys) {
   Write-Output ([string]::Format($inv, "{0,-20} {1,7:F2} ± {2:F2}  (sd {3:F2}, n {4})", $k, $mean, $ci, $sd, $n))
 }
 foreach ($k in $tot.Keys) { $agg[$k] = $tot[$k] }
+Write-Output ("reinicios: libres {0} · directos {1} · penaltis {2} · neutrales {3} · azules {4}" -f $tot.freeHits, $tot.directFreeHits, $tot.penalties, $tot.neutralRestarts, $tot.blueCards)
 Write-Output ("totales: atascos {0} ({1:F1} s) · fuera de pista {2} · errores de consola {3} · fallidas {4}" -f $tot.jams, $tot.jamSec, $tot.badPlayerFrames, $tot.consoleErrors, $tot.failed)
 Write-Output ('[smoke-agg] ' + ($agg | ConvertTo-Json -Compress -Depth 4))

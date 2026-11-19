@@ -29,10 +29,11 @@ import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIShoot, s
 import { applySkating, resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
 import {
   findPlayerById,
+  getControllablePlayers,
   getControlledPlayer,
 } from '../game/systems/playerHelpers'
 import { setVisualHeadScale, updateStickAngles, updateVisuals } from '../game/systems/visuals'
-import type { ActiveBully, ActiveFoulRestart, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
+import type { ActiveBully, ActiveFoulRestart, ActiveKickoff, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
 import { worldToScreen } from '../game/render/viewTransform'
 import { createHud } from '../game/ui/createHud'
 import type { Scoreboard } from '../game/ui/scoreboard'
@@ -46,6 +47,7 @@ import {
   startFoulRestartState,
   updateBullyState as updateBullyPhase,
   updateFoulRestartState as updateFoulRestartPhase,
+  updateKickoffState,
 } from '../game/systems/matchFlow'
 import {
   handleBallControlAction,
@@ -111,6 +113,11 @@ export class MatchScene extends Phaser.Scene {
   private ballIgnoreContactsUntil = 0
   private activeBully: ActiveBully | null = null
   private activeFoulRestart: ActiveFoulRestart | null = null
+  private activeKickoff: ActiveKickoff | null = null
+  /** Quién saca el próximo saque de centro: el que encaja, o el rojo en la 2.ª parte. */
+  private nextKickoffTeam: TeamColor = 'blue'
+  /** El cambio de campo del descanso se hace al acabar el cartel, y los jugadores cruzan patinando. */
+  private pendingSideSwitch = false
   private stuckCarrierStartTime = 0
   private stuckCarrierOrigin: Vector | null = null
   private goalFlash!: Phaser.GameObjects.Rectangle
@@ -190,6 +197,9 @@ export class MatchScene extends Phaser.Scene {
     this.ballIgnoreContactsUntil = 0
     this.activeBully = null
     this.activeFoulRestart = null
+    this.activeKickoff = null
+    this.nextKickoffTeam = 'blue'
+    this.pendingSideSwitch = false
     this.stuckCarrierStartTime = 0
     this.stuckCarrierOrigin = null
     this.ballEnteredGoalFromFront = { left: false, right: false }
@@ -345,7 +355,7 @@ export class MatchScene extends Phaser.Scene {
       this.fx?.destroy()
       stopAnnouncer()
     })
-    this.resetKickoff('blue')
+    this.resetKickoff('blue', true)
     this.cameraDirector.snapTo(this.ball)
     if (this.arcade) {
       this.arcade.start(this.players, this.simNow)
@@ -461,6 +471,7 @@ export class MatchScene extends Phaser.Scene {
     const next = tickMatchClock({
       matchEnded: this.matchEnded,
       restartAt: this.restartAt,
+      paused: !!(this.activeKickoff || this.activeFoulRestart || this.activeBully),
       remainingSeconds: this.remainingSeconds,
       currentPeriod: this.currentPeriod,
       ruleState: this.ruleState,
@@ -602,8 +613,11 @@ export class MatchScene extends Phaser.Scene {
       time,
       restartAt: this.restartAt,
       centerText: this.centerText,
-      lastTouch: this.lastTouch,
-      resetKickoff: (team) => this.resetKickoff(team),
+      onRestart: () => {
+        if (this.pendingSideSwitch) switchSides(this.players)
+        this.pendingSideSwitch = false
+        this.resetKickoff(this.nextKickoffTeam, false)
+      },
     })
 
     if (this.restartAt > 0) {
@@ -611,9 +625,10 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
-    // Bully o saque de falta: solo avanza su ritual (colocación, cuenta atrás, ejecución)
-    if (this.activeBully || this.activeFoulRestart) {
-      if (this.activeBully) this.updateBullyState(time, dt)
+    // Saque de centro, de falta o neutral: solo avanza su ritual (colocación, pitido, ejecución)
+    if (this.activeKickoff || this.activeBully || this.activeFoulRestart) {
+      if (this.activeKickoff) this.updateKickoff(time, dt)
+      else if (this.activeBully) this.updateBullyState(time, dt)
       else this.updateFoulRestartState(time, dt)
       updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
       return
@@ -1071,6 +1086,8 @@ export class MatchScene extends Phaser.Scene {
     this.blueScore = next.blueScore
     this.redScore = next.redScore
     this.restartAt = this.isArcade ? time + ARCADE_GOAL_CELEBRATION_MS : next.restartAt
+    // Saca de centro el que encaja (art. 5.1)
+    this.nextKickoffTeam = scorerTeam === 'blue' ? 'red' : 'blue'
   }
 
   /** Celebración arcade: banner, cámara a la red, partículas, público y locutor. */
@@ -1098,8 +1115,12 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  /** Recoloca a todos los jugadores y reinicia la bola tras gol o al comienzo. */
-  private resetKickoff(team: TeamColor) {
+  /**
+   * Abre el saque de centro: bola al punto central y los jugadores patinan a su
+   * sitio (`snap` los coloca de golpe, solo al empezar el partido). El pitido
+   * llega en `updateKickoff` cuando están colocados.
+   */
+  private resetKickoff(team: TeamColor, snap: boolean) {
     this.aimIndicator.clear()
     for (const player of this.players) {
       player.stunUntil = 0
@@ -1109,26 +1130,45 @@ export class MatchScene extends Phaser.Scene {
       team,
       players: this.players,
       ball: this.ball,
-      currentPeriod: this.currentPeriod,
-      controlledPlayerIndex: this.controlledPlayerIndex,
-      ballCarrierId: this.ballCarrierId,
-      ballVelocity: this.ballVelocity,
+      ruleState: this.ruleState,
+      timeNow: this.simNow,
+      snap,
     })
 
     this.ballCarrierId = nextState.ballCarrierId
     this.ballVelocity = nextState.ballVelocity
     this.lastTouch = nextState.lastTouch
-    this.controlledPlayerIndex = nextState.controlledPlayerIndex
     this.lastLooseBallTime = nextState.lastLooseBallTime
-    this.ballIgnoreContactsUntil = nextState.ballIgnoreContactsUntil
+    this.ballIgnoreContactsUntil = Number.POSITIVE_INFINITY
     this.activeBully = nextState.activeBully
     this.activeFoulRestart = nextState.activeFoulRestart
+    this.activeKickoff = nextState.activeKickoff
     this.stuckCarrierStartTime = nextState.stuckCarrierStartTime
     this.stuckCarrierOrigin = nextState.stuckCarrierOrigin
     this.ruleState = nextState.ruleState
     updateStickAngles(this.players, this.ball, this.ballCarrierId, this.simNow)
+  }
+
+  /** Ritual del saque de centro: colocación y, al pitar, la bola para el que saca. */
+  private updateKickoff(time: number, dt: number) {
+    const kickoff = this.activeKickoff
+    if (!kickoff) return
+    this.ballVelocity = { x: 0, y: 0 }
+    this.ballCarrierId = null
+    const taker = updateKickoffState({ time, dt, kickoff, players: this.players, ball: this.ball })
+    if (!taker && kickoff.takerPlayerId) return
+    this.activeKickoff = null
+    this.ballIgnoreContactsUntil = 0
+    if (taker) {
+      this.ballCarrierId = taker.id
+      this.lastTouch = taker.team
+      if (taker.team === 'blue') {
+        const index = getControllablePlayers(this.players).findIndex((p) => p.id === taker.id)
+        if (index >= 0) this.controlledPlayerIndex = index
+      }
+    }
     this.officials.whistle()
-    this.events.emit('match:kickoff', { team, period: this.currentPeriod, time: this.simNow })
+    this.events.emit('match:kickoff', { team: kickoff.team, period: this.currentPeriod, time })
     playWhistle()
   }
 
@@ -1181,6 +1221,10 @@ export class MatchScene extends Phaser.Scene {
       shootJustDown: this.justDown('shoot') || (this.joystickInput.shoot && !this.prevTouchButtons.shoot),
     })
     if (!state) return
+    if (state.whistle) {
+      this.officials.whistle()
+      playWhistle()
+    }
 
     // Apuntería: IA auto, joystick táctil o teclado WASD/flechas
     const stickLen = Math.hypot(this.joystickInput.x, this.joystickInput.y)
@@ -1260,6 +1304,8 @@ export class MatchScene extends Phaser.Scene {
     if (!released) return
     this.ballIgnoreContactsUntil = 0
     this.activeBully = null
+    this.officials.whistle()
+    playWhistle()
   }
 
   /**
@@ -1285,7 +1331,7 @@ export class MatchScene extends Phaser.Scene {
         if (rival.suspendedUntil && rival.suspendedUntil > time) continue
         const dist = Math.hypot(rival.pos.x - gx, rival.pos.y - centerY)
         if (dist < foulRadius) {
-          registerGoalieZoneFoul(this.ruleState, rival, goalie, time)
+          registerGoalieZoneFoul(this.ruleState, this.players, rival, goalie, time)
           return
         }
       }
@@ -1311,15 +1357,19 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
-   * Descanso: los equipos cambian de campo, como en el reglamento. Se colocan
-   * ya en su nueva mitad mientras dura el cartel del descanso; al terminar,
-   * el reinicio pendiente da el saque al rojo (el azul sacó en la 1.ª parte).
+   * Descanso: los equipos cambian de campo, como en el reglamento. Mientras dura
+   * el cartel los jugadores frenan; al acabar cruzan patinando a su nueva mitad
+   * y saca el rojo (el azul sacó en la 1.ª parte).
    */
   private startSecondHalf() {
-    switchSides(this.players)
-    this.resetKickoff('red')
-    this.lastTouch = 'blue'
-    this.cameraDirector.snapTo(this.ball)
+    this.pendingSideSwitch = true
+    this.nextKickoffTeam = 'red'
+    this.activeFoulRestart = null
+    this.activeBully = null
+    this.activeKickoff = null
+    this.aimIndicator.clear()
+    this.ballCarrierId = null
+    this.ballVelocity = { x: 0, y: 0 }
   }
 
   /** Resumen para la cabecera del menú de pausa del shell. */

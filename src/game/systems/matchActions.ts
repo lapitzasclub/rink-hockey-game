@@ -16,6 +16,8 @@ import {
   MANUAL_STEAL_RANGE,
   MANUAL_STEAL_SUCCESS_CHANCE,
   STEAL_BACK_FOUL_CHANCE,
+  SERIOUS_FOUL_CHANCE_BACK,
+  SERIOUS_FOUL_CHANCE_OTHER,
   STEAL_BACK_LOOSE_CHANCE,
   STEAL_BACK_SUCCESS_CHANCE,
   STEAL_FRONT_FOUL_CHANCE,
@@ -31,7 +33,12 @@ import {
   POSSESSION_RELEASE_COOLDOWN_MS,
   SHOT_POWER,
   STEAL_RELEASE_POWER,
+  RINK,
   STUCK_BALL_TIMEOUT_MS,
+  STUCK_BOARD_MARGIN,
+  STUCK_BOARD_TIMEOUT_MS,
+  STUCK_MAX_TRAVEL,
+  STUCK_RIVAL_RADIUS,
 } from '../constants'
 import {
   getBullyCandidate,
@@ -131,15 +138,18 @@ export function handleBallControlAction(options: {
       return state
     }
 
-    const nearbyRivals = options.players.filter((player) => player.team !== carrier.team && Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y) < 54)
+    const nearbyRivals = options.players.filter((player) => player.team !== carrier.team && player.role !== 'goalie' && Phaser.Math.Distance.Between(player.pos.x, player.pos.y, carrier.pos.x, carrier.pos.y) < STUCK_RIVAL_RADIUS)
+    const againstBoard = carrier.pos.x - RINK.x < STUCK_BOARD_MARGIN || RINK.x + RINK.width - carrier.pos.x < STUCK_BOARD_MARGIN
+      || carrier.pos.y - RINK.y < STUCK_BOARD_MARGIN || RINK.y + RINK.height - carrier.pos.y < STUCK_BOARD_MARGIN
+    const stuckTimeout = againstBoard ? STUCK_BOARD_TIMEOUT_MS : STUCK_BALL_TIMEOUT_MS
     const carrierTravel = state.stuckCarrierOrigin ? Phaser.Math.Distance.Between(carrier.pos.x, carrier.pos.y, state.stuckCarrierOrigin.x, state.stuckCarrierOrigin.y) : 0
     const ballSpeed = Math.hypot(state.ballVelocity.x, state.ballVelocity.y)
 
-    if (nearbyRivals.length > 0 && carrierTravel < 42 && ballSpeed < 45) {
+    if (nearbyRivals.length > 0 && carrier.role !== 'goalie' && carrierTravel < STUCK_MAX_TRAVEL && ballSpeed < 45) {
       if (state.stuckCarrierStartTime === 0) {
         state.stuckCarrierStartTime = options.time
         state.stuckCarrierOrigin = { x: carrier.pos.x, y: carrier.pos.y }
-      } else if (options.time - state.stuckCarrierStartTime >= STUCK_BALL_TIMEOUT_MS) {
+      } else if (options.time - state.stuckCarrierStartTime >= stuckTimeout) {
         const rival = nearbyRivals.sort((a, b) => Phaser.Math.Distance.Between(a.pos.x, a.pos.y, carrier.pos.x, carrier.pos.y) - Phaser.Math.Distance.Between(b.pos.x, b.pos.y, carrier.pos.x, carrier.pos.y))[0]
         registerBully(options.ruleState, carrier.pos.x, carrier.pos.y, carrier.team === 'blue' ? { bluePlayerId: carrier.id, redPlayerId: rival.id } : { bluePlayerId: rival.id, redPlayerId: carrier.id })
         state.ballCarrierId = null
@@ -403,7 +413,9 @@ export function tryManualStealAction(options: {
   startAnim(options.player, 'steal', options.timeNow)
   const roll = Math.random()
   if (roll < foulChance) {
-    registerStealFoul(options.ruleState, options.player, carrier, carrier.pos.x, carrier.pos.y, options.timeNow)
+    // Por detrás y con el portador lanzado, la falta suele ser un enganche o una zancadilla: grave
+    const serious = Math.random() < (facingDot >= 0.35 ? SERIOUS_FOUL_CHANCE_BACK : SERIOUS_FOUL_CHANCE_OTHER)
+    registerStealFoul(options.ruleState, options.players, options.player, carrier, options.timeNow, serious)
     return { ballCarrierId: null, ballVelocity: { x: 0, y: 0 } }
   }
 

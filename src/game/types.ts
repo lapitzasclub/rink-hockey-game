@@ -91,14 +91,27 @@ export type ActiveBully = {
   x: number
   y: number
   releaseAt: number
+  /** Pasado este instante se pita aunque alguien no haya llegado a su sitio. */
+  deadline: number
 }
 
 export type ActiveFoulRestart = {
   takerPlayerId: string
   x: number
   y: number
+  /** Se retrasa mientras los jugadores aún van a su sitio (hasta `deadline`). */
   readyAt: number
+  deadline: number
   sanction: 'free-hit' | 'direct-free-hit' | 'penalty'
+}
+
+/** Saque de centro en preparación: los jugadores patinan a su sitio y el árbitro pita. */
+export type ActiveKickoff = {
+  team: TeamColor
+  takerPlayerId: string
+  partnerPlayerId: string | null
+  readyAt: number
+  deadline: number
 }
 
 export const ROLE = {

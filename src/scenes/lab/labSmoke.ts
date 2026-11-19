@@ -33,6 +33,7 @@ type MatchView = Phaser.Scene & {
   ruleState: { teamFouls: Pair }
   activeFoulRestart: null | { takerPlayerId: string, readyAt: number, sanction: string, x: number }
   activeBully: unknown
+  activeKickoff: unknown
   restartAt: number
   matchEnded: boolean
   /** Reloj de la simulación (paso fijo): las marcas de tiempo del partido se comparan con él. */
@@ -71,12 +72,14 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
   const st = {
     mode, sec: 0,
     goals: pair(), shots: pair(), onTarget: pair(), saves: pair(),
-    fouls: pair(), goalieZoneFouls: pair(), blueCards: pair(), freeHits: 0, directFreeHits: 0, penalties: 0,
+    fouls: pair(), goalieZoneFouls: pair(), blueCards: pair(), freeHits: 0, directFreeHits: 0, penalties: 0, neutralRestarts: 0, kickoffs: 0,
     possessionChanges: 0, jams: 0, jamSec: 0, badPlayerFrames: 0, badSample: '', consoleErrors: 0,
     // E-00: pases intentados y completados, robos, posesión (s con bola) y paradas hechas por el portero de cada equipo
     passes: pair(), passesDone: pair(), steals: pair(), possessionSec: pair(), savesBy: pair(),
   }
   let ms = 0
+  let prevBully: unknown = null
+  let prevKickoff: unknown = null
   let nextPartial = 30000
   let done = false
   let errors = 0
@@ -108,7 +111,7 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     if (done || !s.players?.length || !s.ball) return
     const dt = Math.min(delta, 33) / 1000
     ms += dt * 1000
-    const inPlay = !s.activeFoulRestart && !s.activeBully && s.restartAt <= 0
+    const inPlay = !s.activeFoulRestart && !s.activeBully && !s.activeKickoff && s.restartAt <= 0
 
     // Goles
     for (const t of ['blue', 'red'] as Team[]) {
@@ -127,12 +130,13 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
       if (af.sanction === 'penalty') st.penalties++
       else if (af.sanction === 'direct-free-hit') {
         st.directFreeHits++
-        // Aproximación de falta de zona del portero: directo sacado junto a una línea de gol
-        const nearGoal = Math.min(Math.abs(af.x - getGoalLineX('left')), Math.abs(af.x - getGoalLineX('right'))) < 70
-        if (nearGoal) st.goalieZoneFouls[af.x < RINK.x + RINK.width / 2 ? 'blue' : 'red']++
       } else st.freeHits++
     }
     prevFoulObj = af
+    if (s.activeBully && !prevBully) st.neutralRestarts++
+    prevBully = s.activeBully
+    if (s.activeKickoff && !prevKickoff) st.kickoffs++
+    prevKickoff = s.activeKickoff
     for (const t of ['blue', 'red'] as Team[]) {
       const n = s.ruleState.teamFouls[t]
       if (n > prevFouls[t]) st.fouls[t] += n - prevFouls[t]

@@ -20,11 +20,13 @@ export function gameToRealMs(gameMs: number) {
  *
  * Si el tiempo llega a cero y quedan periodos, inicia el siguiente con un
  * retardo de celebración. Si era el último periodo, llama a finishMatch.
- * Las faltas por equipo se resetean al inicio de cada nuevo periodo.
+ * Las faltas de equipo pasan de una parte a la otra (art. 17.2).
  */
 export function tickMatchClock(options: {
   matchEnded: boolean
   restartAt: number
+  /** Tiempo efectivo (art. 3): el reloj se para en los saques de centro, de falta y neutrales. */
+  paused?: boolean
   remainingSeconds: number
   currentPeriod: number
   ruleState: RuleState
@@ -33,7 +35,7 @@ export function tickMatchClock(options: {
   matchDuration: number
   finishMatch: () => void
 }) {
-  if (options.matchEnded || options.restartAt > 0) {
+  if (options.matchEnded || options.restartAt > 0 || options.paused) {
     return {
       remainingSeconds: options.remainingSeconds,
       currentPeriod: options.currentPeriod,
@@ -55,7 +57,6 @@ export function tickMatchClock(options: {
     const ruleState = {
       ...options.ruleState,
       period: currentPeriod,
-      teamFouls: { blue: 0, red: 0 },
     }
     options.centerText.setText(`Descanso · cambio de campo\nEmpieza la ${currentPeriod}ª parte`).setVisible(true)
     return {
