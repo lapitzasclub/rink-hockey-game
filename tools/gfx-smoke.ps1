@@ -48,7 +48,10 @@ if ($Runs -le 1) {
 }
 
 # Lote: una muestra por partido; el ruido entre partidos es grande, así que se compara por IC 95 %.
-$samples = @{ goalsPerMin = @(); shotsPerMin = @(); onTargetPerMin = @(); savePct = @(); foulsPerMin = @(); redMinusBluePerMin = @() }
+$keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin', 'redMinusBluePerMin',
+  'goalsBluePerMin', 'goalsRedPerMin', 'shotsBluePerMin', 'shotsRedPerMin', 'savePctBlue', 'savePctRed',
+  'passesPerMin', 'passPct', 'passesDoneBluePerMin', 'passesDoneRedPerMin', 'possessionBluePct', 'stealsPerMin'
+$samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 $tot = @{ jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
@@ -63,13 +66,28 @@ foreach ($i in 1..$Runs) {
   if ($sv + $g -gt 0) { $samples.savePct += 100 * $sv / ($sv + $g) }
   $samples.foulsPerMin += ($j.fouls.blue + $j.fouls.red) / $min
   $samples.redMinusBluePerMin += ($j.goals.red - $j.goals.blue) / $min
+  # E-00: métricas por equipo (los campos faltan en versiones anteriores del humo)
+  if ($null -ne $j.passes) {
+    $samples.goalsBluePerMin += $j.goals.blue / $min; $samples.goalsRedPerMin += $j.goals.red / $min
+    $samples.shotsBluePerMin += $j.shots.blue / $min; $samples.shotsRedPerMin += $j.shots.red / $min
+    # Paradas del portero azul frente a los goles que encaja (los del rojo), y al revés
+    if ($j.savesBy.blue + $j.goals.red -gt 0) { $samples.savePctBlue += 100 * $j.savesBy.blue / ($j.savesBy.blue + $j.goals.red) }
+    if ($j.savesBy.red + $j.goals.blue -gt 0) { $samples.savePctRed += 100 * $j.savesBy.red / ($j.savesBy.red + $j.goals.blue) }
+    $pa = $j.passes.blue + $j.passes.red; $pd = $j.passesDone.blue + $j.passesDone.red
+    $samples.passesPerMin += $pa / $min
+    if ($pa -gt 0) { $samples.passPct += 100 * $pd / $pa }
+    $samples.passesDoneBluePerMin += $j.passesDone.blue / $min; $samples.passesDoneRedPerMin += $j.passesDone.red / $min
+    $ps = $j.possessionSec.blue + $j.possessionSec.red
+    if ($ps -gt 0) { $samples.possessionBluePct += 100 * $j.possessionSec.blue / $ps }
+    $samples.stealsPerMin += ($j.steals.blue + $j.steals.red) / $min
+  }
   $tot.jams += $j.jams; $tot.jamSec += $j.jamSec; $tot.badPlayerFrames += $j.badPlayerFrames; $tot.consoleErrors += $j.consoleErrors
-  Write-Output ("run {0}/{1}: goles {2}-{3} · tiros {4} · paradas {5} · atascos {6} · errores {7}" -f $i, $Runs, $j.goals.blue, $j.goals.red, ($j.shots.blue + $j.shots.red), $sv, $j.jams, $j.consoleErrors)
+  Write-Output ("run {0}/{1}: goles {2}-{3} · tiros {4}-{5} · paradas {6}-{7} · pases {8}/{9}-{10}/{11} · atascos {12} · errores {13}" -f $i, $Runs, $j.goals.blue, $j.goals.red, $j.shots.blue, $j.shots.red, $j.savesBy.blue, $j.savesBy.red, $j.passesDone.blue, $j.passes.blue, $j.passesDone.red, $j.passes.red, $j.jams, $j.consoleErrors)
 }
 
 $agg = [ordered]@{ mode = $Mode; extra = $Extra; smokeMs = $SmokeMs; runs = $Runs - $tot.failed }
 $inv = [Globalization.CultureInfo]::InvariantCulture
-foreach ($k in 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin', 'redMinusBluePerMin') {
+foreach ($k in $keys) {
   $xs = @($samples[$k]); $n = $xs.Count
   if ($n -eq 0) { continue }
   $mean = ($xs | Measure-Object -Average).Average

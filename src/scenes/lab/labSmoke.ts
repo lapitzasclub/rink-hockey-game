@@ -73,6 +73,8 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     goals: pair(), shots: pair(), onTarget: pair(), saves: pair(),
     fouls: pair(), goalieZoneFouls: pair(), blueCards: pair(), freeHits: 0, directFreeHits: 0, penalties: 0,
     possessionChanges: 0, jams: 0, jamSec: 0, badPlayerFrames: 0, badSample: '', consoleErrors: 0,
+    // E-00: pases intentados y completados, robos, posesión (s con bola) y paradas hechas por el portero de cada equipo
+    passes: pair(), passesDone: pair(), steals: pair(), possessionSec: pair(), savesBy: pair(),
   }
   let ms = 0
   let nextPartial = 30000
@@ -94,6 +96,10 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
   const prevFouls = pair()
   const prevSusp = new Map<string, number>()
   let pending: null | { team: Team, onTarget: boolean, age: number } = null
+  /** Bola soltada por un portador sin tiro todavía: pase candidato hasta que alguien la recoja. */
+  let release: null | { team: Team, id: string, age: number, shot: boolean } = null
+  /** Dirección de ataque del equipo según su lado actual (cambia en el descanso). */
+  const attackDir = (team: Team) => (s.players.find(p => p.team === team)?.side === 'right' ? -1 : 1)
 
 
   const snapshot = (final: boolean) => ({ ...st, sec: Math.round(ms / 100) / 10, consoleErrors: errors, final })
@@ -147,7 +153,22 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     if (carrier) {
       if (lastCarrierTeam && lastCarrierTeam !== carrier.team) st.possessionChanges++
       lastCarrierTeam = carrier.team
+      st.possessionSec[carrier.team] += dt
+      const prev = prevCarrier ? s.players.find(p => p.id === prevCarrier) : undefined
+      // Robo: la bola pasa directamente de un portador al rival
+      if (prev && prev.team !== carrier.team) st.steals[carrier.team]++
+      if (!prevCarrier && release && !release.shot && carrier.id !== release.id) {
+        st.passes[release.team]++
+        if (carrier.team === release.team) st.passesDone[release.team]++
+      }
+      if (carrier.id !== prevCarrier) release = null
+    } else if (prevCarrier) {
+      const prev = s.players.find(p => p.id === prevCarrier)
+      // Un toque del rival (lastTouch) es un robo que deja la bola suelta, no un pase
+      if (prev && s.lastTouch === prev.team && inPlay) release = { team: prev.team, id: prev.id, age: 0, shot: false }
+      else { release = null; if (prev && inPlay) st.steals[prev.team === 'blue' ? 'red' : 'blue']++ }
     }
+    if (release && (release.age += dt * 1000) > 4000) release = null
 
     // Bola parada (atasco): tramos > JAM_SECONDS sin que la bola se mueva y con el juego vivo
     const moved = Math.hypot(s.ball.x - prevBall.x, s.ball.y - prevBall.y) / Math.max(dt, 1e-3)
@@ -165,8 +186,8 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     const speed = Math.hypot(s.ballVelocity.x, s.ballVelocity.y)
     if (speed >= SHOT_MIN_SPEED && prevSpeed < SHOT_MIN_SPEED * 0.6 && inPlay) {
       const team = (prevCarrier ? s.players.find(p => p.id === prevCarrier)?.team : null) ?? s.lastTouch
-      const dir = team === 'blue' ? 1 : -1
-      const lineX = getGoalLineX(team === 'blue' ? 'right' : 'left')
+      const dir = attackDir(team)
+      const lineX = getGoalLineX(dir > 0 ? 'right' : 'left')
       const dist = (lineX - s.ball.x) * dir
       if (s.ballVelocity.x * dir > 0 && dist > 0 && dist < SHOT_MAX_DIST) {
         const yAt = s.ball.y + s.ballVelocity.y * (dist / Math.abs(s.ballVelocity.x))
@@ -176,6 +197,7 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
           const onTarget = off < GOAL_HALF_H
           if (onTarget) st.onTarget[team]++
           pending = { team, onTarget, age: 0 }
+          if (release && release.team === team) release.shot = true
         }
       }
     }
@@ -186,10 +208,14 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     if (pending) {
       pending.age += dt * 1000
       const gk = carrier && carrier.role === 'goalie' && carrier.team !== pending.team
-      const dir = pending.team === 'blue' ? 1 : -1
-      const lineX = getGoalLineX(pending.team === 'blue' ? 'right' : 'left')
+      const dir = attackDir(pending.team)
+      const lineX = getGoalLineX(dir > 0 ? 'right' : 'left')
       const deflected = s.ballVelocity.x * dir < -40 && Math.abs(lineX - s.ball.x) < 70
-      if (pending.onTarget && (gk || deflected)) { st.saves[pending.team]++; pending = null }
+      if (pending.onTarget && (gk || deflected)) {
+        st.saves[pending.team]++
+        st.savesBy[pending.team === 'blue' ? 'red' : 'blue']++
+        pending = null
+      }
       else if (pending.age > SHOT_RESOLVE_MS) pending = null
     }
 
