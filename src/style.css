@@ -6,6 +6,9 @@
   --c-border: rgba(255, 255, 255, 0.18);
   --c-touch-idle: rgba(255, 255, 255, 0.14);
   --c-touch-pressed: rgba(255, 255, 255, 0.30);
+  /* Mismo cian que la barra de turbo (arcadeHud.ts) */
+  --c-touch-turbo: rgba(62, 232, 255, 0.85);
+  --c-touch-turbo-pressed: rgba(62, 232, 255, 0.38);
   --c-accent: #4da3ff;
   --c-orange: #ff8a1a;
   --c-text: #e3eefb;
@@ -105,33 +108,69 @@ button {
   background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 70%, rgba(255,255,255,0) 100%);
 }
 
+/*
+ * Botones en triángulo alrededor del pulgar: A (tiro) grande en la esquina, B (pase)
+ * a su izquierda y S (sprint y turbo) en la diagonal de arriba, a un deslizamiento
+ * de A y de B (mobileJoystick.ts). Así la franja de abajo queda libre.
+ */
 #right-buttons {
+  --a: clamp(62px, 19vmin, 84px);
+  --b: clamp(50px, 15vmin, 66px);
+  --gap: clamp(8px, 2.4vmin, 12px);
+  --d: calc(var(--a) / 2 + var(--b) / 2 + var(--gap));
   position: absolute;
   right: max(16px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
-  display: flex;
-  gap: clamp(8px, 2.6vmin, 14px);
-  pointer-events: auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 240px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: calc(var(--a) + var(--gap) + var(--b));
+  height: calc(var(--a) / 2 + 0.72 * var(--d) + var(--b) / 2);
+  pointer-events: none;
 }
 
 .touch-btn {
-  width: clamp(54px, 16vmin, 72px);
-  height: clamp(54px, 16vmin, 72px);
+  position: absolute;
+  width: var(--b);
+  height: var(--b);
+  padding: 0;
   border-radius: 50%;
   border: 2px solid var(--c-border);
   background: var(--c-touch-idle);
   color: #fff;
   font-family: var(--font-game);
-  font-size: clamp(18px, 5.6vmin, 24px);
+  font-size: calc(var(--b) * 0.36);
+  pointer-events: auto;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#btn-shoot {
+  right: 0;
+  bottom: 0;
+  width: var(--a);
+  height: var(--a);
+  font-size: calc(var(--a) * 0.36);
+}
+
+#btn-pass {
+  right: calc(var(--a) + var(--gap));
+  bottom: 0;
+}
+
+#btn-sprint {
+  right: calc(var(--a) / 2 + 0.72 * var(--d) - var(--b) / 2);
+  bottom: calc(var(--a) / 2 + 0.72 * var(--d) - var(--b) / 2);
+  border-color: var(--c-touch-turbo);
+  color: var(--c-touch-turbo);
 }
 
 .touch-btn.pressed {
   background: var(--c-touch-pressed);
   transform: scale(0.96);
+}
+
+#btn-sprint.pressed {
+  background: var(--c-touch-turbo-pressed);
+  color: #fff;
 }
 
 /* ── HUD buttons (pantalla completa + ajustes) ─────────── */

@@ -31,33 +31,79 @@ export function createMobileJoystick(options: {
     state.y = 0
   }
 
-  const bindButton = (element: HTMLElement | null, key: 'pass' | 'shoot' | 'switch' | 'sprint') => {
-    if (!element) return () => {}
-    const press = (event: Event) => {
-      event.preventDefault()
-      state[key] = true
-      element.classList.add('pressed')
+  type Btn = 'pass' | 'shoot' | 'sprint'
+  const elements: Partial<Record<Btn, HTMLElement>> = {}
+  if (passButton) elements.pass = passButton
+  if (shootButton) elements.shoot = shootButton
+  if (sprintButton) elements.sprint = sprintButton
+
+  /**
+   * Cada dedo se queda con el botón donde se apoyó. El de S además puede deslizarse
+   * hasta A o B sin soltar el turbo: un pulgar no pulsa dos botones a la vez, y así
+   * salen con una mano el tiro turbo y la carga.
+   */
+  const touches = new Map<number, { origin: Btn, over: Btn | null, rects: [Btn, DOMRect][] }>()
+
+  const refresh = () => {
+    const on: Record<Btn, boolean> = { pass: false, shoot: false, sprint: false }
+    for (const t of touches.values()) {
+      on[t.origin] = true
+      if (t.origin === 'sprint' && t.over && t.over !== 'sprint') on[t.over] = true
     }
-    const release = (event: Event) => {
-      event.preventDefault()
-      state[key] = false
-      element.classList.remove('pressed')
-    }
-    element.addEventListener('pointerdown', press)
-    element.addEventListener('pointerup', release)
-    element.addEventListener('pointercancel', release)
-    element.addEventListener('pointerleave', release)
-    return () => {
-      element.removeEventListener('pointerdown', press)
-      element.removeEventListener('pointerup', release)
-      element.removeEventListener('pointercancel', release)
-      element.removeEventListener('pointerleave', release)
+    for (const key of Object.keys(elements) as Btn[]) {
+      state[key] = on[key]
+      elements[key]!.classList.toggle('pressed', on[key])
     }
   }
 
-  const unbindPass = bindButton(passButton, 'pass')
-  const unbindShoot = bindButton(shootButton, 'shoot')
-  const unbindSprint = bindButton(sprintButton, 'sprint')
+  /** Margen de acierto al deslizar (px CSS): el pulgar tapa el borde del botón. */
+  const SLIDE_SLOP = 8
+  const hit = (rects: [Btn, DOMRect][], x: number, y: number): Btn | null => {
+    for (const [key, r] of rects) {
+      if (x >= r.left - SLIDE_SLOP && x <= r.right + SLIDE_SLOP && y >= r.top - SLIDE_SLOP && y <= r.bottom + SLIDE_SLOP) return key
+    }
+    return null
+  }
+
+  const unbinds: (() => void)[] = []
+  for (const [key, element] of Object.entries(elements) as [Btn, HTMLElement][]) {
+    const down = (event: PointerEvent) => {
+      event.preventDefault()
+      element.setPointerCapture?.(event.pointerId)
+      // Los rectángulos se toman al apoyar el dedo: durante el gesto no cambian
+      const rects = key === 'sprint'
+        ? (Object.entries(elements) as [Btn, HTMLElement][]).filter(([k]) => k !== 'sprint').map(([k, el]) => [k, el.getBoundingClientRect()] as [Btn, DOMRect])
+        : []
+      touches.set(event.pointerId, { origin: key, over: key, rects })
+      refresh()
+    }
+    const move = (event: PointerEvent) => {
+      const t = touches.get(event.pointerId)
+      if (!t || t.origin !== 'sprint') return
+      const over = hit(t.rects, event.clientX, event.clientY)
+      if (over !== t.over) {
+        t.over = over
+        refresh()
+      }
+    }
+    const up = (event: PointerEvent) => {
+      if (!touches.delete(event.pointerId)) return
+      event.preventDefault()
+      refresh()
+    }
+    element.addEventListener('pointerdown', down)
+    element.addEventListener('pointermove', move)
+    element.addEventListener('pointerup', up)
+    element.addEventListener('pointercancel', up)
+    element.addEventListener('lostpointercapture', up)
+    unbinds.push(() => {
+      element.removeEventListener('pointerdown', down)
+      element.removeEventListener('pointermove', move)
+      element.removeEventListener('pointerup', up)
+      element.removeEventListener('pointercancel', up)
+      element.removeEventListener('lostpointercapture', up)
+    })
+  }
 
   const manager = nipplejs.create({
     zone,
@@ -89,9 +135,8 @@ export function createMobileJoystick(options: {
       state.shoot = false
       state.switch = false
       state.sprint = false
-      unbindPass()
-      unbindShoot()
-      unbindSprint()
+      touches.clear()
+      for (const unbind of unbinds) unbind()
       manager?.destroy?.()
     },
   }
