@@ -13,7 +13,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-04 | Niveles de dificultad | ai-engineer · opus (+ UI sonnet) | ⬜ |
 | E-05 | Reglas: faltas de equipo, libre directo, penalti, saque neutral | coordinador | 🟨 |
 | E-12 | Transiciones sin teletransporte: gol, saque de centro, descanso | coordinador | 🟨 |
-| E-13 | Sombra de los jugadores y marcador del seleccionado | coordinador | ⬜ |
+| E-13 | Sombra de los jugadores y marcador del seleccionado | coordinador | ✅ 2026-11-20 |
 | E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
@@ -82,6 +82,7 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Objetivo:** sombra con la proporción del suelo; marcador del seleccionado que no parezca una marca de la pista y que diga hacia dónde mira.
 **Archivos:** `systems/visuals.ts`, `entities/createPlayer.ts`, `render/artSpec.ts` (`PLAYER_UI`).
 **Aceptación:** capturas de cerca antes y después en los dos modos y en móvil; banco movil-bajo sin regresión > 10 %.
+**Hecho:** sombra de 1,75 × 1,5 radios sobre los ejes del suelo (antes 2,6 × 0,82), con la misma proporción que el círculo central. Marcador: aro cian (azul) o rojo vivo con perfilado oscuro, sin el blanco de las líneas, y punta de flecha en el borde hacia donde mira, girada en el plano del suelo (`selectionArrow`, `PLAYER_UI.arrow*`). Capturas en `docs/evo/shots/E-13/`. El banco movil-bajo pasa al cierre (E-99) por decisión del usuario.
 
 ## E-10 — Animación: pendientes
 

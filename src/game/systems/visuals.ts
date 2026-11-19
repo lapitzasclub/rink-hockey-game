@@ -32,9 +32,12 @@ import { v3 } from '../render/puppet/vec'
 const LABEL_GAP = 8              // px de pantalla sobre la coronilla
 /** Velocidad (px de mundo/s) por debajo de la cual la figura no patina. */
 const MOVING_SPEED = 14
-/** Sombra de contacto en px de mundo, en múltiplos del radio físico (ancho y alto). */
-const SHADOW_W = 2.6
-const SHADOW_H = 0.82
+/**
+ * Sombra de contacto en px de mundo, en múltiplos del radio físico (ancho y alto).
+ * Casi redonda en el suelo: los ejes gx/gy ya la acortan como al círculo central.
+ */
+const SHADOW_W = 1.75
+const SHADOW_H = 1.5
 
 /** Limita un valor al rango 0..1 para interpolaciones visuales. */
 function clamp01(value: number) {
@@ -175,6 +178,7 @@ export function updateVisuals(
         .setDepth(bandDepth('OFFCOURT_FAR', sp.y))
       player.shadow.setVisible(false)
       player.selectionRing.setVisible(false)
+      player.selectionArrow.setVisible(false)
       player.staminaBar?.setVisible(false)
       ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
       player.nameTag?.setVisible(false)
@@ -256,6 +260,20 @@ export function updateVisuals(
     // Anillo y barra solo para el jugador controlado
     const active = controlled.id === player.id
     player.selectionRing.setVisible(active)
+    player.selectionArrow.setVisible(active)
+    if (active) {
+      // Flecha en el borde del aro, girada en el plano del suelo: la dirección pasa por gx/gy igual que el aro
+      const fl = Math.hypot(player.facing.x, player.facing.y) || 1
+      const fx = (player.facing.x / fl) * gx, fy = (player.facing.y / fl) * gy
+      const rr = (PLAYER_UI.ringRadiusM + PLAYER_UI.arrowGapM) * WORLD_PX_PER_M.x
+      const sl = Math.hypot(fx, fy) || 1
+      const kArrow = Math.sqrt(gx * gy) / PLAYER_UI.ringTexScale
+      player.selectionArrow
+        .setPosition(sp.x + (player.facing.x / fl) * rr * gx, sp.y + (player.facing.y / fl) * rr * gy)
+        .setRotation(Math.atan2(fy / sl, fx / sl))
+        .setScale(kArrow, kArrow * Math.min(1, 0.55 + 0.45 * Math.abs(fx / sl)))
+        .setDepth(depth - 0.004)
+    }
 
     // Solo el rol: el jugador activo ya lo marca el anillo y el portador se ve con la bola
     if (labelsOn) player.label.setText(getRoleShort(player.role))

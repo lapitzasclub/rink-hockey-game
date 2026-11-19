@@ -848,16 +848,24 @@ export const GOAL_VIS = {
 // UI sobre jugadores (WP-34)
 /** Anillo del jugador controlado (elipse en el suelo) y barra de stamina bajo los pies. */
 export const PLAYER_UI = {
-  /** Radio exterior del anillo (m) y grosor de borde y de banda (px de mundo, ~px de pantalla a s = 1). */
-  ringRadiusM: 0.7,
-  ringEdgePx: 2,
-  ringBandPx: 2,
-  /** Borde casi blanco, banda del color del equipo y relleno interior muy suave. */
-  ringEdgeColor: 0xf2f6fb,
-  ringEdgeAlpha: 0.9,
-  ringBandColor: { blue: 0x0a2a6e, red: 0xd81f26 },
+  /**
+   * Marcador del seleccionado (E-13): aro del color del equipo, vivo para
+   * despegarse del suelo azul y sin el blanco de las líneas de la pista, con un
+   * perfilado oscuro fino y una punta de flecha que señala hacia dónde mira.
+   * Radio exterior (m) y grosores (px de mundo, ~px de pantalla a s = 1).
+   */
+  ringRadiusM: 0.62,
+  ringEdgePx: 1.5,
+  ringBandPx: 3,
+  ringEdgeColor: 0x06101a,
+  ringEdgeAlpha: 0.55,
+  ringBandColor: { blue: 0x4de6ff, red: 0xff5a62 },
   ringBandAlpha: 0.95,
-  ringFillAlpha: 0.1,
+  ringFillAlpha: 0.12,
+  /** Flecha: largo y ancho (m) y separación por fuera del aro (m). */
+  arrowLenM: 0.38,
+  arrowWM: 0.5,
+  arrowGapM: -0.02,
   /** Supermuestreo de la textura del anillo (px de textura por px de mundo): nítido con el zoom arcade. */
   ringTexScale: 3,
   /** Barra: ancho (m), alto (px a s = 1), separación bajo el anillo (px), fondo y borde. */

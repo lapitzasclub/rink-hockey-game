@@ -23,13 +23,43 @@ function ringTexture(scene: Phaser.Scene, team: TeamColor) {
   const c = size / 2
   const band = PLAYER_UI.ringBandColor[team]
   const g = scene.make.graphics({ x: 0, y: 0 }, false)
+  const edge = PLAYER_UI.ringEdgePx, bandW = PLAYER_UI.ringBandPx
   g.fillStyle(band, PLAYER_UI.ringFillAlpha)
-  g.fillCircle(c, c, r * S)
-  g.lineStyle(PLAYER_UI.ringEdgePx * S, PLAYER_UI.ringEdgeColor, PLAYER_UI.ringEdgeAlpha)
-  g.strokeCircle(c, c, r * S)
-  g.lineStyle(PLAYER_UI.ringBandPx * S, band, PLAYER_UI.ringBandAlpha)
-  g.strokeCircle(c, c, (r - (PLAYER_UI.ringEdgePx + PLAYER_UI.ringBandPx) / 2) * S)
+  g.fillCircle(c, c, (r - edge) * S)
+  // Perfilado oscuro por fuera y por dentro de la banda: la separa del suelo y de las líneas
+  g.lineStyle((bandW + edge * 2) * S, PLAYER_UI.ringEdgeColor, PLAYER_UI.ringEdgeAlpha)
+  g.strokeCircle(c, c, (r - edge - bandW / 2) * S)
+  g.lineStyle(bandW * S, band, PLAYER_UI.ringBandAlpha)
+  g.strokeCircle(c, c, (r - edge - bandW / 2) * S)
   g.generateTexture(key, size, size)
+  g.destroy()
+  return key
+}
+
+/**
+ * Punta de flecha del marcador, apuntando a +x con la base en el origen de la
+ * imagen (origen 0, 0.5): visuals.ts la coloca en el borde del aro y la gira
+ * hacia donde mira el jugador, ya en el plano del suelo.
+ */
+function arrowTexture(scene: Phaser.Scene, team: TeamColor) {
+  const key = `player-arrow-${team}`
+  if (scene.textures.exists(key)) return key
+  const S = PLAYER_UI.ringTexScale
+  const len = PLAYER_UI.arrowLenM * WORLD_PX_PER_M.x * S
+  const w = PLAYER_UI.arrowWM * WORLD_PX_PER_M.x * S
+  const pad = Math.ceil(PLAYER_UI.ringEdgePx * S) + 1
+  const g = scene.make.graphics({ x: 0, y: 0 }, false)
+  const tri = (inset: number) => [
+    new Phaser.Math.Vector2(pad + inset, pad + inset * 1.2),
+    new Phaser.Math.Vector2(pad + len - inset * 1.6, pad + w / 2),
+    new Phaser.Math.Vector2(pad + inset, pad + w - inset * 1.2),
+    new Phaser.Math.Vector2(pad + inset + len * 0.28, pad + w / 2),
+  ]
+  g.fillStyle(PLAYER_UI.ringEdgeColor, PLAYER_UI.ringEdgeAlpha + 0.15)
+  g.fillPoints(tri(-PLAYER_UI.ringEdgePx * S), true)
+  g.fillStyle(PLAYER_UI.ringBandColor[team], 1)
+  g.fillPoints(tri(0), true)
+  g.generateTexture(key, Math.ceil(len + pad * 2), Math.ceil(w + pad * 2))
   g.destroy()
   return key
 }
@@ -62,6 +92,7 @@ export function createPlayer(
 
   // Anillo: borde claro y banda del equipo en una textura; visuals.ts la escala con gx/gy a elipse
   const selectionRing = scene.add.image(x, y, ringTexture(scene, team)).setVisible(false)
+  const selectionArrow = scene.add.image(x, y, arrowTexture(scene, team)).setOrigin(0, 0.5).setVisible(false)
 
   // Barra de stamina: fondo oscuro con borde claro (dato 'bg') y relleno que visuals.ts recorta según el nivel
   const staminaBar = controllable
@@ -96,7 +127,7 @@ export function createPlayer(
     id, team, side, role,
     container: rig.container, rig, pose: createPose(),
     hand: look.hand, skin: look.skin, hair: look.hair, number: look.number,
-    shadow, selectionRing, label, staminaBar, nameTag,
+    shadow, selectionRing, selectionArrow, label, staminaBar, nameTag,
     pos: { x, y },
     velocity: { x: 0, y: 0 },
     facing: { x: side === 'left' ? 1 : -1, y: 0 },
