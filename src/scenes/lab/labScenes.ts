@@ -3,6 +3,7 @@ import { BALL_RADIUS, GAME_HEIGHT, GAME_WIDTH, GOAL_BACK_DEPTH, GOAL_HALF_H, GOA
 import { createBall } from '../../game/entities/createBall'
 import { getFormation } from '../../game/formation'
 import { DEPTH, PX_PER_M, WORLD_PX_PER_M } from '../../game/render/artSpec'
+import { cheerCrowd } from '../../game/render/arena'
 import { project, worldToScreen, type Projected } from '../../game/render/viewTransform'
 import { updateVisuals } from '../../game/systems/visuals'
 import { getGoalLineX } from '../../game/utils'
@@ -69,6 +70,9 @@ function rinkScene(ctx: LabBuildCtx): LabBuild {
   // Con cx/cy la bola se coloca ahí (prueba de la valla cercana)
   ctx.ball.x = ctx.params.cx ?? MID_X
   ctx.ball.y = ctx.params.cy ?? MID_Y
+  // cheer=blue|red|all: el público celebra un gol (peña del equipo o todo el pabellón)
+  const cheer = new URLSearchParams(window.location.search).get('cheer')
+  if (cheer) cheerCrowd(ctx.scene, cheer === 'blue' || cheer === 'red' ? cheer : null, Infinity)
   return { figures: build(ctx, specs), frame: DEFAULT_FRAME }
 }
 

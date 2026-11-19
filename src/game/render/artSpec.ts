@@ -433,9 +433,6 @@ export const BOARDS = {
   topColor: 0xd5e1ee,
 } as const
 
-/** Gradas: altura de la primera fila y subida por escalón, en metros; altura del dibujo de un espectador (con brazos; sentado, la cabeza llega ≈ 1,7 m: nunca menor que un jugador). */
-export const STANDS = { firstHeightM: 0.42, tierRiseM: 0.53, fanHeightM: 1.9 } as const
-
 /**
  * Banquillos del lado lejano (WP-69, SPEC §9), en metros: los `…U` se miden
  * desde la línea central de la pista (el banco azul a la izquierda, el rojo
@@ -559,30 +556,150 @@ export const REFEREES = {
   shadowRadiusM: 0.4,
 } as const
 
-// ─── Gradas (WP-43) ─────────────────────────────────────────────────────────
+// ─── Gradas y pabellón (WP-43, WP-68) ───────────────────────────────────────
 
-/** Gradas (WP-43): geometría del anfiteatro y variedad del público. */
-export const STANDS_STYLE = {
-  /** Pasillo entre la cara exterior de la valla y la primera fila (m). Deja ver la publicidad de la valla cercana. */
-  firstOffsetM: 2.5,
-  /** Fondo de cada escalón (m) y nº de escalones. */
-  tierDepthM: 0.85,
-  tiers: 24,
-  /** Separación media entre asientos (m) y ancho relativo del espectador respecto a su alto. */
-  seatSpacingM: 0.7,
-  fanWidthK: 0.55,
-  /** Probabilidad de asiento vacío (crece hacia las filas altas). */
-  emptyRate: 0.07,
-  emptyRateTop: 0.22,
-  /** Probabilidades de ropa: rayas, bufanda de equipo, capucha, brazos en alto. */
-  stripeRate: 0.16,
-  scarfRate: 0.1,
-  hoodRate: 0.14,
-  armsUpRate: 0.1,
-  /** Salto en gol: amplitud (px) y frecuencia (rad/ms); el último tramo se atenúa (ms). */
-  cheerAmp: 5,
+/**
+ * Gradas (WP-68): anfiteatro de escalones con huella y contrahuella, asientos de
+ * plástico por bloques, pasillos con escalera, vomitorios y peto de cristal.
+ * Distancias en m desde la cara exterior de la valla; alturas en m.
+ */
+export const STANDS = {
+  /** Primera fila (frente del primer escalón) y profundidad/subida de cada escalón. */
+  firstM: 2,
+  tierDepthM: 0.8,
+  tierRiseM: 0.42,
+  /** Altura de la huella del primer escalón y nº de escalones del anillo. */
+  baseM: 0.4,
+  tiers: 22,
+  /** El fondo (detrás de banquillos y mesa) empieza más atrás y más alto: escalones que se quitan. */
+  farCutTiers: 2,
+  /** Asiento: paso entre asientos, posición en el escalón, altura del asiento y del respaldo. */
+  seatSpacingM: 0.56,
+  seatAtM: 0.36,
+  seatPanM: 0.42,
+  seatBackAtM: 0.62,
+  seatBackTopM: 0.8,
+  seatHalfM: 0.22,
+  /** Pasillos: ancho y posiciones (fracción de cada tramo) en rectas largas, fondos y curvas. */
+  aisleM: 1.1,
+  aislesLong: [0, 0.2, 0.4, 0.6, 0.8],
+  aislesEnd: [0, 0.5],
+  aislesCorner: [0, 0.5],
+  /** Vomitorios: ancho, alto de la boca y escalones que ocupan [desde, hasta] (índice del anillo). */
+  vomitoryM: 2.4,
+  vomitoryMouthM: 1.85,
+  vomitoryTiers: [2, 5],
+  vomitoryFarTiers: [5, 8],
+  /** Boca: fracción del ancho, marco/dintel (m), barandilla de las paredes laterales (m) y cartel de salida [ancho, alto] (m). */
+  vomitoryMouthK: 0.74,
+  vomitoryFrameM: 0.12,
+  vomitoryRailM: 0.85,
+  exitSignM: [0.62, 0.22],
+  /** Tira LED del muro alto del fondo: [desde, hasta] bajo la albardilla (m) y medio alto del halo (m). */
+  ledStripZ: [0.1, 0.36],
+  ledGlowM: 0.07,
+  /** Peto delantero (sobre la huella del primer escalón), cristal y pasamanos. */
+  parapetM: 0.55,
+  parapetThickM: 0.14,
+  glassM: 0.55,
+  railM: 0.9,
+  /** Bloque animado del público: `bandTiers` filas × hasta `chunkSeats` asientos (cajas pequeñas, poco atlas). */
+  bandTiers: 3,
+  chunkSeats: 7,
+  /** Resolución máxima del horneado de gradas (la textura grande no pasa de 4096 px). */
+  maxRes: 2,
+  /** El atlas del público va algo por debajo de la obra: figuras pequeñas, mucha superficie. */
+  atlasResK: 0.82,
+  /** Franjas en que se parte cada curva de la grada cercana para no guardar su caja medio vacía. */
+  nearCornerBands: 4,
+  /** La grada cercana (de espaldas, en sombra) a la resolución de la obra; si no, a la del público. */
+  nearFullRes: false,
+} as const
+
+/** Paleta del pabellón: neutra, más oscura y apagada que la pista (la pista manda). */
+export const STANDS_COLORS = {
+  /** Suelo del pabellón: gris oscuro con juntas cada `floorJointM` m y luz que se derrama de la pista. */
+  floor: 0x2b2e33,
+  floorJointM: 2,
+  floorJoint: 'rgba(0,0,0,0.22)',
+  floorGrain: ['rgba(255,255,255,0.035)', 'rgba(0,0,0,0.08)'],
+  floorSpill: 'rgba(150,175,205,0.045)',
+  backWall: 0x0a0d13,
+  tread: 0x3d4148,
+  riser: 0x23262c,
+  nosing: 0x8c7a3c,
+  parapet: 0x262a31,
+  coping: 0x5a606a,
+  glass: 'rgba(185,215,240,0.13)',
+  glassEdge: 'rgba(215,235,250,0.38)',
+  rail: 0x8d96a3,
+  tunnel: 0x07090e,
+  /** Luz tenue del pasillo al fondo del túnel. */
+  tunnelGlow: 0x1b222d,
+  exitSign: 0x3fae6a,
+  exitGlow: 'rgba(80,190,120,0.12)',
+  /** Tira LED del fondo: panel, línea encendida y halo (fríos y apagados: no compiten con la pista). */
+  ledPanel: 0x0c121b,
+  ledLine: 'rgba(120,180,225,0.62)',
+  ledGlow: 'rgba(110,170,220,0.14)',
+  /** Asientos por bloque (se alternan) y del graderío de cada peña. */
+  seats: [0x2a3b5c, 0x2a3b5c, 0x454b56],
+  /** Luz por fila: delante → fondo; la grada cercana va algo más en penumbra (espaldas). */
+  lightFront: 0.82,
+  lightBack: 0.46,
+  lightNear: 0.66,
+  /** Mezcla con gris de la ropa (0 = tal cual, 1 = gris). */
+  desat: 0.45,
+} as const
+
+/** Público (WP-68): bustos estilo A, peñas en los fondos, asientos vacíos y reacción al gol. */
+export const CROWD = {
+  /** Peña de cada fondo (azul a la izquierda en el laboratorio). */
+  penaLeft: 'blue',
+  penaRight: 'red',
+  /** Filas (índice del anillo) que ocupa cada peña. */
+  penaTiers: 10,
+  /** Asientos vacíos: delante → fondo. */
+  emptyFront: 0.1,
+  emptyBack: 0.2,
+  /** Peña: vacíos y probabilidad de vestir de su color o con bufanda. */
+  penaEmpty: 0.04,
+  penaShirt: 0.72,
+  penaScarf: 0.45,
+  /** Asientos de la peña: color del club oscurecido. */
+  penaSeatK: 0.55,
+  /** Gorro, bufanda y pelo largo en el público neutro. */
+  beanieRate: 0.1,
+  scarfRate: 0.08,
+  longHairRate: 0.28,
+  baldRate: 0.08,
+  /** Prenda de arriba (chaqueta, sudadera, deportiva; el resto camiseta) y móvil en la mano. */
+  jacketRate: 0.26,
+  hoodieRate: 0.2,
+  sportRate: 0.14,
+  phoneRate: 0.07,
+  /** Pantalla del móvil encendida. */
+  phoneGlow: 0xa8d8ff,
+  /** Trazo del contorno (px de mundo) y alfa: más fino que en los jugadores. */
+  outline: 0.75,
+  outlineAlpha: 0.75,
+  /** Grada cercana: fracción de las filas 0..armsRows−1 que levanta los brazos en el gol. */
+  armsRows: 4,
+  armsRate: 0.45,
+  /** Vaivén: amplitud en reposo (px) + extra con la emoción, y frecuencias (rad/ms). */
+  idleAmp: 0.3,
+  idleExcite: 1.4,
+  idleFreq: 0.004,
+  idleFreqExcite: 0.006,
+  /** Gol: salto de la peña que marca, del resto y su frecuencia; duración y atenuación (ms). */
+  cheerAmpPena: 5,
+  cheerAmp: 2.6,
   cheerFreq: 0.016,
+  cheerMs: 2600,
   cheerFadeMs: 700,
+  /** Calidad baja: solo las peñas se mecen, con esta fracción de amplitud y de ritmo. */
+  liteIdleK: 0.7,
+  liteFreqK: 0.45,
 } as const
 
 /**

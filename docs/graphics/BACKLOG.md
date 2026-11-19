@@ -76,7 +76,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | **Segunda pasada** | El usuario rechazó el entorno (2026-11-16): gradas, banquillos, mesa y porterías | | | |
 | WP-66 | Capturas de detalle y por evento en el partido | builder · sonnet | — | ✅ 2026-11-16 |
 | WP-67 | Portería y portero legibles (v2) | engineer · opus | — | ✅ 2026-11-19 |
-| WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
+| WP-68 | Gradas y recinto (v2) | engineer · opus | — | ✅ 2026-11-19 |
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
 | WP-70 | Inclinación de perspectiva coherente: portería, vallas y redes de fondo | engineer · opus | WP-67 | ✅ 2026-11-19 |
 | WP-71 | Ajustes gráficos personalizables y prueba del equipo | engineer · opus | WP-68 | ⬜ |
@@ -656,6 +656,14 @@ El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en per
 - El público lateral son pastillas: con la cámara de arcade cerca de las porterías se ve a menudo y no pasa el listón.
 - Los vomitorios se leen como rectángulos negros duros.
 - La franja oscura entre los banquillos y la grada lejana: comprobar si alguna cámara de partido la enseña.
+
+**Cierre (2026-11-19, segunda ronda):**
+
+- Bustos laterales de tres cuartos (`stands/sideFan.ts`); vomitorios con dintel, luz de túnel, cartel de salida y barandilla (`stands/vomitory.ts`); franja LED en el peto del fondo; una fila más tapa la franja oscura sobre los banquillos.
+- Las gradas siguen la inclinación de WP-70 (`projectLeaned`, cizalla de cada espectador al hornear): el público de los fondos se inclina con la red de protección.
+- Por niveles: el arte es el mismo en baja y en media. En baja el público neutro va horneado y quieto; las peñas se mecen y saltan en el gol. En media se anima todo por bandas y la grada cercana tiene brazos.
+- Render en `movil-bajo` calidad baja (pares alternados): reglamento 5,51 / 5,06 ms en main frente a 5,37 / 3,88; arcade, mediana de 3 pares, 5,81 frente a 5,07. En media: reglamento 6,56 ms (95 fps), arcade 8,14 ms (73 fps), dentro de los presupuestos de `docs/perf/WORKFLOW.md` §2. OnePlus 9 Pro en arcade: 60 fps. Consola limpia en Chrome.
+- Objetos en media: 355 (155 de gradas) frente a 231; en baja, 195 frente a 182. Texturas de gradas en media: 11,8 Mpx frente a 9,6.
 
 ### WP-70 — Inclinación de perspectiva coherente (portería, vallas y redes de fondo)
 

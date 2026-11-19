@@ -1,63 +1,113 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../constants'
-import { BOARD_W, RINK_CORNER_R, roundedRectWorldPts } from './drawRink'
-import { DEPTH, FIGURE_EXAG, FLOOR_STYLE, PX_PER_M, STANDS, STANDS_STYLE as SS } from './artSpec'
+import type { TeamColor } from '../types'
+import { RINK_CORNER_R, roundedRectWorldPts } from './drawRink'
+import { CROWD, DEPTH, FLOOR_STYLE } from './artSpec'
 import { project } from './viewTransform'
 import { crowdAnimated } from './quality'
-import { addTrimmedImages } from './bake'
+import { mulberry32 } from './stands/layout'
+import { placeStands, showCheerFrame } from './stands/crowd'
+
+export { ARENA_BOUNDS } from './stands/layout'
 
 type Pt = { x: number, y: number }
 
-/** Pabellón alrededor de la pista: suelo pintado, gradas y público animado. */
+/** Pabellón alrededor de la pista: suelo de la pista, gradas y público animado. */
 export type Arena = {
   /** excitement 0..1: amplitud y ritmo del vaivén del público. */
   update(time: number, excitement: number): void
-  /** El público salta unos segundos (goles, final). */
-  cheer(time: number, durationMs?: number): void
-  /** Calidad baja: el público se queda quieto (las capas vuelven a su sitio). */
+  /** El público salta unos segundos (goles, final); con `team`, sobre todo su peña. */
+  cheer(time: number, durationMs?: number, team?: TeamColor | null): void
+  /** Calidad baja: el público neutro se queda quieto (vuelve a su sitio); las peñas siguen, más calmadas. */
   setCrowdAnimated(on: boolean): void
 }
 
 const FLOOR_KEY = 'arena-floor'
+/** Un `cheer` sin equipo justo después de uno con equipo no lo borra (el evento de gol puede llegar antes). */
+const TEAM_KEEP_MS = 200
+
+const pending = new WeakMap<Phaser.Scene, { team: TeamColor | null, durationMs: number }>()
 
 /**
- * Zona de pantalla que cubre el pabellón. Excede 1280×720 porque el canvas se
- * expande a la ventana (Scale.EXPAND) y la cámara ve más allá en pantallas anchas.
+ * Hace saltar al público de la escena (laboratorio: `cheer=`). Si el pabellón
+ * aún no existe, se aplica en su primer fotograma.
  */
-export const ARENA_BOUNDS = { x: -340, y: -260, width: GAME_WIDTH + 680, height: GAME_HEIGHT + 520 }
-
-const STAND_TIERS = SS.tiers
-const STAND_FIRST_OFFSET = SS.firstOffsetM * PX_PER_M   // pasillo entre valla y primera fila (mundo)
-const STAND_TIER_DEPTH = SS.tierDepthM * PX_PER_M       // fondo de cada escalón (mundo)
-const STAND_FIRST_HEIGHT = STANDS.firstHeightM * PX_PER_M   // altura de la primera fila (px de mundo)
-const STAND_TIER_RISE = STANDS.tierRiseM * PX_PER_M          // subida por escalón (px de mundo)
-const FAN_SPACING = SS.seatSpacingM * PX_PER_M          // separación entre asientos (mundo)
-/** Alto del dibujo de un espectador en sus unidades locales (drawFan). */
-const FAN_LOCAL_H = 16.5
-
-const SHIRTS = [
-  0x2f6fe0, 0x2f6fe0, 0x4a8cf0, 0xd8343a, 0xd8343a, 0xe85a50,
-  0xe8eef5, 0xf0c43a, 0x2a3242, 0x6b7686, 0x3a9a5a, 0xe07a2a, 0x8a4fd0,
-]
-const SKINS = [0xf1c8a5, 0xe2b08a, 0xc68b62, 0x9a6744, 0x6e4a32, 0xf5d6bd]
-const HAIR = [0x2a1a10, 0x4a2e18, 0x111111, 0x8a5a2a, 0xd8b060, 0x5a5a5a]
-
-/** RNG determinista: el pabellón sale igual en cada partido. */
-function mulberry32(seed: number) {
-  let a = seed
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+export function cheerCrowd(scene: Phaser.Scene, team: TeamColor | null, durationMs: number = CROWD.cheerMs) {
+  pending.set(scene, { team, durationMs })
 }
 
-function css(color: number, k = 1, alpha = 1) {
-  const r = Math.round(((color >> 16) & 0xff) * k)
-  const g = Math.round(((color >> 8) & 0xff) * k)
-  const b = Math.round((color & 0xff) * k)
-  return `rgba(${Math.min(255, r)},${Math.min(255, g)},${Math.min(255, b)},${alpha})`
+export function createArena(scene: Phaser.Scene): Arena {
+  paintFloor(scene)
+  // Calidad baja al crear: obra con el público neutro horneado y solo las peñas animadas
+  const lite = !crowdAnimated()
+  const stands = placeStands(scene, lite)
+  /** Se mece todo el público (si no, solo las peñas). */
+  let full = !lite
+  let cheerUntil = 0
+  let cheerTeam: TeamColor | null = null
+  let teamAt = -Infinity
+  let lastTime = 0
+
+  const restNeutral = () => {
+    for (const live of stands.blocks) if (live.block.team === null) live.img.y = live.baseY
+  }
+
+  const arena: Arena = {
+    update(time, excitement) {
+      lastTime = time
+      const p = pending.get(scene)
+      if (p) {
+        pending.delete(scene)
+        arena.cheer(time, p.durationMs, p.team)
+      }
+      const left = cheerUntil - time
+      const cheering = left > 0
+      // El salto se apaga en el último tramo para no cortar en seco
+      const fade = cheering ? Math.min(1, left / CROWD.cheerFadeMs) : 0
+      const idleAmp = (CROWD.idleAmp + excitement * CROWD.idleExcite) * (full ? 1 : CROWD.liteIdleK)
+      const idleFreq = (CROWD.idleFreq + excitement * CROWD.idleFreqExcite) * (full ? 1 : CROWD.liteFreqK)
+      for (const live of stands.blocks) {
+        const team = live.block.team
+        if (!full && team === null) continue
+        const mine = cheering && cheerTeam !== null && team === cheerTeam
+        showCheerFrame(live, mine)
+        let amp = idleAmp
+        let freq = idleFreq
+        if (cheering) {
+          if (mine) { amp = idleAmp + (CROWD.cheerAmpPena - idleAmp) * fade; freq = CROWD.cheerFreq }
+          else if (team !== null && cheerTeam !== null) amp = idleAmp * 0.4
+          else { amp = idleAmp + (CROWD.cheerAmp - idleAmp) * fade; freq = CROWD.cheerFreq }
+        }
+        live.img.y = live.baseY - Math.abs(Math.sin(time * freq + live.block.phase)) * amp
+      }
+      const arms = stands.arms
+      if (arms) {
+        arms.setVisible(cheering)
+        if (cheering) {
+          arms.setAlpha(fade)
+          arms.y = stands.armsBaseY - Math.abs(Math.sin(time * CROWD.cheerFreq * 0.8)) * CROWD.cheerAmp * 0.6
+        }
+      }
+    },
+    cheer(time, durationMs = CROWD.cheerMs, team?: TeamColor | null) {
+      cheerUntil = time + durationMs
+      if (team !== undefined) {
+        cheerTeam = team
+        teamAt = time
+      } else if (time - teamAt > TEAM_KEEP_MS) cheerTeam = null
+    },
+    setCrowdAnimated(on) {
+      full = on && !lite
+      if (!full) restNeutral()
+    },
+  }
+
+  const onGoal = ({ team }: { team: TeamColor }) => arena.cheer(lastTime, CROWD.cheerMs, team)
+  scene.events.on('match:goal', onGoal)
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off('match:goal', onGoal)
+  })
+  return arena
 }
 
 function tracePath(ctx: CanvasRenderingContext2D, pts: Pt[]) {
@@ -70,319 +120,6 @@ function tracePath(ctx: CanvasRenderingContext2D, pts: Pt[]) {
 function rinkScreenOutline() {
   return roundedRectWorldPts(RINK.x, RINK.y, RINK.width, RINK.height, RINK_CORNER_R, 14)
     .map(p => project(p.x, p.y, 0))
-}
-
-export function createArena(scene: Phaser.Scene): Arena {
-  paintFloor(scene)
-  const layers = buildStands(scene, !crowdAnimated())
-  let cheerUntil = 0
-  let animated = crowdAnimated()
-
-  return {
-    update(time, excitement) {
-      if (!animated) return
-      const left = cheerUntil - time
-      const cheering = left > 0
-      // El salto se atenúa en el último tramo para no cortar en seco
-      const fade = cheering ? Math.min(1, left / SS.cheerFadeMs) : 0
-      const idleAmp = 0.4 + excitement * 1.8
-      for (const layer of layers) {
-        if (!layer.ampScale) continue
-        const amp = cheering ? idleAmp + (SS.cheerAmp - idleAmp) * fade : idleAmp
-        const freq = cheering ? SS.cheerFreq : 0.004 + excitement * 0.007
-        const dy = Math.abs(Math.sin(time * freq + layer.phase)) * amp * layer.ampScale
-        for (let i = 0; i < layer.images.length; i++) layer.images[i].y = layer.baseY[i] - dy
-      }
-    },
-    cheer(time, durationMs = 2600) {
-      cheerUntil = time + durationMs
-    },
-    setCrowdAnimated(on) {
-      animated = on
-      if (!on) for (const layer of layers) layer.images.forEach((img, i) => { img.y = layer.baseY[i] })
-    },
-  }
-}
-
-// ─── Gradas ───────────────────────────────────────────────────────────────────
-
-/**
- * Proyecta un punto de grada con la cámara única: (wx, wy) en el plano del
- * suelo fuera de la pista y wz = altura del escalón (px de mundo). `s` es la
- * escala de figura en ese punto.
- */
-function standToScreen(wx: number, wy: number, wz: number): Pt & { s: number } {
-  return project(wx, wy, wz)
-}
-
-/** Anillo de grada: contorno de la valla desplazado `offset` hacia fuera, a altura z. */
-function standRing(offset: number, z: number, segs = 10): (Pt & { t: number })[] {
-  const o = offset + BOARD_W
-  return roundedRectWorldPts(RINK.x - o, RINK.y - o, RINK.width + o * 2, RINK.height + o * 2, RINK_CORNER_R + o, segs)
-    .map(p => ({ ...standToScreen(p.x, p.y, z), t: (p.y - RINK.y) / RINK.height }))
-}
-
-/** Capa de gradas: sus tiras con contenido (recortadas) y la y de reposo de cada una. */
-type StandLayer = { images: Phaser.GameObjects.Image[], phase: number, ampScale: number, baseY: number[] }
-
-const STAND_KEYS = { structure: 'arena-stands', fansA: 'arena-fans-a', fansB: 'arena-fans-b', near: 'arena-near', flat: 'arena-stands-flat' }
-/** Esquina de la textura recortada del público cercano (px de pantalla); vale mientras exista la textura. */
-let nearOrigin = { x: ARENA_BOUNDS.x, y: ARENA_BOUNDS.y }
-
-/**
- * Gradas en anfiteatro: escalones concéntricos alrededor de la valla que
- * suben y se alejan con la perspectiva de la pista. Se pintan de fuera hacia
- * dentro (de atrás hacia delante) en canvas: estructura fija + dos capas de
- * público que se mecen. Las filas detrás del tablero cercano van en un canvas
- * aparte por delante del juego (espaldas del público), recortado a su caja.
- *
- * Coste: cada capa es un rectángulo del tamaño del pabellón que la GPU rellena
- * en todos los fotogramas. Con `flat` (calidad baja) estructura y público lejano
- * se funden en una sola capa quieta: dos pasadas de relleno menos.
- */
-function buildStands(scene: Phaser.Scene, flat: boolean): StandLayer[] {
-  const B = ARENA_BOUNDS
-  const K = STAND_KEYS
-  const tx = scene.textures
-  const ready = tx.exists(K.near) && (flat ? tx.exists(K.flat) : tx.exists(K.structure) && tx.exists(K.fansA) && tx.exists(K.fansB))
-  if (!ready) paintStands(scene, flat)
-  // Estructura (opaca) entera; el público, solo en las tiras con contenido: el centro (la pista) no se rellena
-  const layer = (key: string, depth: number, phase: number, ampScale: number, trim: boolean, x = B.x, y = B.y): StandLayer => {
-    const images = trim ? addTrimmedImages(scene, key, x, y, 1) : [scene.add.image(x, y, key).setOrigin(0, 0)]
-    images.forEach(img => img.setDepth(depth))
-    return { images, phase, ampScale, baseY: images.map(img => img.y) }
-  }
-  const near = layer(K.near, DEPTH.STANDS_NEAR, 1.1, 1.4, true, nearOrigin.x, nearOrigin.y)
-  if (flat) return [layer(K.flat, DEPTH.STANDS_FAR, 0, 0, false), near]
-  return [
-    layer(K.structure, DEPTH.STANDS_FAR, 0, 0, false),
-    layer(K.fansA, DEPTH.STANDS_FAR + 1, 0, 1, true),
-    layer(K.fansB, DEPTH.STANDS_FAR + 1, 2.2, 1, true),
-    near,
-  ]
-}
-
-/** Pinta las gradas (una vez por sesión y nivel de calidad) y deja solo las texturas que se van a usar. */
-function paintStands(scene: Phaser.Scene, flat: boolean) {
-  const B = ARENA_BOUNDS
-  const K = STAND_KEYS
-  const tx = scene.textures
-  for (const key of Object.values(K)) if (tx.exists(key)) tx.remove(key)
-  const canvas = () => {
-    const c = document.createElement('canvas')
-    c.width = B.width
-    c.height = B.height
-    const ctx = c.getContext('2d')!
-    ctx.translate(-B.x, -B.y)
-    return { c, ctx }
-  }
-  const structure = canvas()
-  const fansA = canvas()
-  const fansB = canvas()
-  const near = canvas()
-  paintStandStructure(structure.ctx)
-  const box = paintFans([fansA.ctx, fansB.ctx], near.ctx)
-
-  // Público cercano: solo su caja (las filas de abajo), no el pabellón entero
-  const x0 = Math.max(0, Math.floor(box.minX - B.x))
-  const y0 = Math.max(0, Math.floor(box.minY - B.y))
-  const x1 = Math.min(B.width, Math.ceil(box.maxX - B.x))
-  const y1 = Math.min(B.height, Math.ceil(box.maxY - B.y))
-  const nearTex = tx.createCanvas(K.near, Math.max(1, x1 - x0), Math.max(1, y1 - y0))!
-  nearTex.getContext().drawImage(near.c, x0, y0, x1 - x0, y1 - y0, 0, 0, x1 - x0, y1 - y0)
-  nearTex.refresh()
-  nearOrigin = { x: B.x + x0, y: B.y + y0 }
-
-  if (flat) {
-    const t = tx.createCanvas(K.flat, B.width, B.height)!
-    const ctx = t.getContext()
-    for (const layer of [structure, fansA, fansB]) ctx.drawImage(layer.c, 0, 0)
-    t.refresh()
-    return
-  }
-  const upload = (key: string, src: HTMLCanvasElement) => {
-    const t = tx.createCanvas(key, B.width, B.height)!
-    t.getContext().drawImage(src, 0, 0)
-    t.refresh()
-  }
-  upload(K.structure, structure.c)
-  upload(K.fansA, fansA.c)
-  upload(K.fansB, fansB.c)
-}
-
-function paintStandStructure(ctx: CanvasRenderingContext2D) {
-  const B = ARENA_BOUNDS
-  ctx.fillStyle = '#070c15'
-  ctx.fillRect(B.x, B.y, B.width, B.height)
-
-  for (let i = STAND_TIERS - 1; i >= 0; i--) {
-    const o = STAND_FIRST_OFFSET + i * STAND_TIER_DEPTH
-    const z = STAND_FIRST_HEIGHT + i * STAND_TIER_RISE
-    const zPrev = i === 0 ? 0 : z - STAND_TIER_RISE
-    const front = standRing(o, z)
-    const back = standRing(o + STAND_TIER_DEPTH, z)
-    const foot = standRing(o, zPrev)
-    const shade = 1 - i / (STAND_TIERS * 1.5)
-
-    // Huella del escalón (donde van los asientos)
-    ctx.fillStyle = css(0x1c2a42, shade)
-    ctx.beginPath()
-    front.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
-    for (let k = back.length - 1; k >= 0; k--) ctx.lineTo(back[k].x, back[k].y)
-    ctx.closePath()
-    ctx.fill('evenodd')
-
-    // Contrahuella: cara vertical que mira a la pista
-    ctx.fillStyle = css(0x0d1524, shade)
-    ctx.beginPath()
-    front.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
-    for (let k = foot.length - 1; k >= 0; k--) ctx.lineTo(foot[k].x, foot[k].y)
-    ctx.closePath()
-    ctx.fill('evenodd')
-
-    // Borde del escalón
-    ctx.strokeStyle = css(0x50709a, shade * 0.5)
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    front.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
-    ctx.closePath()
-    ctx.stroke()
-  }
-
-  // Pasillos de acceso: escaleras radiales en los laterales y el fondo
-  ctx.strokeStyle = 'rgba(150,170,200,0.10)'
-  ctx.lineWidth = 3
-  for (const [wx, wy, nx, ny] of AISLES) {
-    const a = standToScreen(wx + nx * (BOARD_W + STAND_FIRST_OFFSET), wy + ny * (BOARD_W + STAND_FIRST_OFFSET), STAND_FIRST_HEIGHT)
-    const far = BOARD_W + STAND_FIRST_OFFSET + STAND_TIERS * STAND_TIER_DEPTH
-    const b = standToScreen(wx + nx * far, wy + ny * far, STAND_FIRST_HEIGHT + STAND_TIERS * STAND_TIER_RISE)
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
-  }
-}
-
-// Pasillos: punto del borde de pista y normal hacia fuera
-const AISLES: [number, number, number, number][] = [
-  [RINK.x + RINK.width * 0.08, RINK.y, 0, -1],
-  [RINK.x + RINK.width * 0.92, RINK.y, 0, -1],
-  [RINK.x, RINK.y + RINK.height * 0.33, -1, 0],
-  [RINK.x, RINK.y + RINK.height * 0.72, -1, 0],
-  [RINK.x + RINK.width, RINK.y + RINK.height * 0.33, 1, 0],
-  [RINK.x + RINK.width, RINK.y + RINK.height * 0.72, 1, 0],
-]
-
-/** Pinta el público; devuelve la caja (px de pantalla) de lo pintado en `near`. */
-function paintFans(far: CanvasRenderingContext2D[], near: CanvasRenderingContext2D) {
-  const rand = mulberry32(7)
-  const B = ARENA_BOUNDS
-  const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
-  for (let i = STAND_TIERS - 1; i >= 0; i--) {
-    const o = STAND_FIRST_OFFSET + i * STAND_TIER_DEPTH + STAND_TIER_DEPTH * 0.45
-    const z = STAND_FIRST_HEIGHT + i * STAND_TIER_RISE
-    const ow = o + BOARD_W
-    const ring = roundedRectWorldPts(RINK.x - ow, RINK.y - ow, RINK.width + ow * 2, RINK.height + ow * 2, RINK_CORNER_R + ow, 10)
-    const shade = 0.62 - i * 0.02
-    const empty = SS.emptyRate + (SS.emptyRateTop - SS.emptyRate) * (i / (STAND_TIERS - 1))
-    // Recorre el anillo a paso constante en mundo: asientos equiespaciados
-    for (let k = 0; k < ring.length; k++) {
-      const a = ring[k]
-      const b = ring[(k + 1) % ring.length]
-      const len = Math.hypot(b.x - a.x, b.y - a.y)
-      for (let d = rand() * FAN_SPACING; d < len; d += FAN_SPACING * (0.9 + rand() * 0.2)) {
-        const wx = a.x + ((b.x - a.x) * d) / len
-        const wy = a.y + ((b.y - a.y) * d) / len
-        const p = standToScreen(wx, wy, z)
-        if (p.x < B.x - 10 || p.x > B.x + B.width + 10 || p.y < B.y - 10 || p.y > B.y + B.height + 30) continue
-        const t = (wy - RINK.y) / RINK.height
-        const s = ((STANDS.fanHeightM * PX_PER_M) / FAN_LOCAL_H) * p.s * FIGURE_EXAG
-        const isNear = t > 1
-        const ctx = isNear ? near : far[rand() < 0.5 ? 0 : 1]
-        const light = isNear ? 0.3 : shade
-        if (isNear) {
-          // Holgura de sobra para la figura de espaldas (alto ~16, ancho ~12 en unidades locales)
-          box.minX = Math.min(box.minX, p.x - 10 * s)
-          box.maxX = Math.max(box.maxX, p.x + 10 * s)
-          box.minY = Math.min(box.minY, p.y - 20 * s)
-          box.maxY = Math.max(box.maxY, p.y + 6 * s)
-        }
-        if (rand() < empty) {
-          drawSeat(ctx, p.x, p.y, s, light)
-          continue
-        }
-        if (isNear) drawFanBack(ctx, p.x, p.y, s, light, rand)
-        else drawFan(ctx, p.x, p.y, s, light, rand)
-      }
-    }
-  }
-  return box
-}
-
-function pick<T>(list: T[], rand: () => number) {
-  return list[Math.floor(rand() * list.length)]
-}
-
-/** Asiento vacío: respaldo y banco, sin espectador. */
-function drawSeat(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, light: number) {
-  const sx = s * SS.fanWidthK
-  ctx.fillStyle = css(0x24324d, light * 1.1)
-  ctx.fillRect(x - 5 * sx, y - 7 * s, 10 * sx, 7 * s)
-  ctx.fillStyle = css(0x3a4c70, light * 1.1)
-  ctx.fillRect(x - 5 * sx, y - 2 * s, 10 * sx, 2 * s)
-}
-
-/** Espectador sentado de frente; (x, y) es el asiento. `s` escala el alto, el ancho usa `fanWidthK`. */
-function drawFan(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, light: number, rand: () => number) {
-  const sx = s * SS.fanWidthK
-  const shirt = pick(SHIRTS, rand)
-  const team = rand() < 0.5 ? 0x2f6fe0 : 0xd8343a
-  if (rand() < SS.armsUpRate) {
-    // Brazos en alto
-    ctx.strokeStyle = css(team, light)
-    ctx.lineWidth = 1.6 * sx
-    ctx.beginPath()
-    ctx.moveTo(x - 4 * sx, y - 6 * s); ctx.lineTo(x - 6 * sx, y - 16 * s)
-    ctx.moveTo(x + 4 * sx, y - 6 * s); ctx.lineTo(x + 6 * sx, y - 16 * s)
-    ctx.stroke()
-  }
-  ctx.fillStyle = css(shirt, light)
-  ctx.beginPath(); ctx.ellipse(x, y - 4 * s, 5.4 * sx, 5 * s, 0, Math.PI, Math.PI * 2); ctx.fill()
-  ctx.fillRect(x - 5.4 * sx, y - 4 * s, 10.8 * sx, 4 * s)
-  const r = rand()
-  if (r < SS.stripeRate) {
-    // Camiseta a rayas
-    ctx.fillStyle = css(0xf2f2f2, light)
-    ctx.fillRect(x - 5.2 * sx, y - 6.2 * s, 10.4 * sx, 1.3 * s)
-    ctx.fillRect(x - 5.4 * sx, y - 3.4 * s, 10.8 * sx, 1.3 * s)
-  } else if (r < SS.stripeRate + SS.scarfRate) {
-    // Bufanda de equipo
-    ctx.fillStyle = css(team, light)
-    ctx.fillRect(x - 3.6 * sx, y - 8.6 * s, 7.2 * sx, 1.8 * s)
-    ctx.fillRect(x + 1 * sx, y - 8.6 * s, 1.8 * sx, 5 * s)
-  }
-  ctx.fillStyle = css(pick(SKINS, rand), light)
-  ctx.beginPath(); ctx.ellipse(x, y - 11.5 * s, 3.3 * sx, 3.3 * s, 0, 0, Math.PI * 2); ctx.fill()
-  if (r > 1 - SS.hoodRate) {
-    // Capucha: del color de la ropa
-    ctx.fillStyle = css(shirt, light * 0.9)
-    ctx.beginPath(); ctx.ellipse(x, y - 12.2 * s, 3.9 * sx, 3.9 * s, 0, Math.PI * 0.95, Math.PI * 2.05); ctx.fill()
-  } else {
-    ctx.fillStyle = css(pick(HAIR, rand), light)
-    ctx.beginPath(); ctx.ellipse(x, y - 12.6 * s, 3.3 * sx, 3.3 * s, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.fill()
-  }
-}
-
-/** Espectador de las filas cercanas, de espaldas y en penumbra. */
-function drawFanBack(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, light: number, rand: () => number) {
-  const sx = s * SS.fanWidthK
-  const shirt = pick(SHIRTS, rand)
-  ctx.fillStyle = css(shirt, light)
-  ctx.beginPath(); ctx.ellipse(x, y - 4 * s, 6 * sx, 6 * s, 0, Math.PI, Math.PI * 2); ctx.fill()
-  ctx.fillRect(x - 6 * sx, y - 4 * s, 12 * sx, 6 * s)
-  if (rand() < SS.stripeRate) {
-    ctx.fillStyle = css(0xf2f2f2, light)
-    ctx.fillRect(x - 5.6 * sx, y - 3 * s, 11.2 * sx, 1.2 * s)
-  }
-  ctx.fillStyle = css(rand() < SS.hoodRate ? shirt : pick(HAIR, rand), light * 1.1)
-  ctx.beginPath(); ctx.ellipse(x, y - 12 * s, 3.6 * sx, 4 * s, 0, 0, Math.PI * 2); ctx.fill()
 }
 
 // ─── Suelo ────────────────────────────────────────────────────────────────────
