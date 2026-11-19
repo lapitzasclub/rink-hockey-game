@@ -250,6 +250,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - [ ] Verificar el modo arcade en móvil (S+A, legibilidad del HUD con zoom)
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
 - [ ] Separar sistema de reglas en módulo propio (`systems/rules.ts` puede crecer)
+- [ ] Próximo evolutivo (pedido del usuario, 2026-11-19): mejores animaciones de los personajes, IA mejor trabajada y niveles de dificultad
 - [ ] Restos de la renovación gráfica (`docs/graphics/BACKLOG.md`): prueba en vivo del usuario del patinaje (pasada del Gate C); portero de rodillas poco distinguible de lado; banquillos y tramo central del fondo lejano sin inclinar; con calidad automática, bajar a mitad de partido mantiene el horneado completo; los controles táctiles de reglamento tapan un poco las esquinas cercanas
 - [ ] Rendimiento pendiente: ver `docs/perf/BACKLOG.md` (P-08 resolución nítida en pantallas grandes, a decidir; P-09 suelo en una textura; P-10 coste del rig; P-11 menú; P-12 pruebas en móviles reales; P-13 memoria del pabellón)
 
