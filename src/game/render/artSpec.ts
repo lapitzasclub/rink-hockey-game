@@ -171,11 +171,12 @@ export const STICK_HOLD = {
 } as const
 
 /**
- * Pala curva de rink hockey («cuchara»), en unidades de figura: largo visual (más que la
- * articulación del rig, para que se lea a 50 px), semiancho en el talón y en la punta, y
- * flecha de la curva hacia la cara de golpeo (se refleja con la mano).
+ * Pala de rink hockey, en unidades de figura: largo visual, semiancho en el talón y en la
+ * punta, y flecha de la curva hacia la cara de golpeo (se refleja con la mano). Es el final
+ * curvo del mango, de madera: arranca con su ancho, se curva en gancho y se ensancha algo
+ * hacia la punta (un cuarto del palo). La pala negra, recta y con codo es la de hielo.
  */
-export const STICK_BLADE = { len: 0.16, heelR: 0.02, toeR: 0.034, bow: 0.05 } as const
+export const STICK_BLADE = { len: 0.15, heelR: 0.016, toeR: 0.027, bow: 0.095 } as const
 
 /**
  * Duración visual de cada acción (ms). La física suelta la bola en el instante 0, así que
@@ -323,10 +324,17 @@ export const RIG_GEAR = {
   toeStop: 0xd2a86e,
   kneePad: 0x22252b,
   shaft: 0xcf9a5c,
-  blade: 0x1b1d22,
+  /** Madera algo más oscura que el mango: palo y pala son una pieza. */
+  blade: 0xc08a50,
   pad: 0xf2eee5,
   cage: 0xc3cad2,
   shoe: 0x15171b,
+  /** Casco homologado de jugador: gorro acolchado negro con costuras y pantalla transparente. */
+  softCap: 0x1d2027,
+  capSeam: 0x3a3f49,
+  visor: 0xdcefff,
+  visorAlpha: 0.2,
+  visorEdge: 0xe8f2fb,
 } as const
 
 /** Equipaciones (SPEC §4): color principal, segundo color en pantalón y medias, dorsal por contraste. */
@@ -520,7 +528,7 @@ export const BENCH = {
   colors: {
     floor: 0x07111e, wall: 0x0a1322, platform: 0x1a2434, platformTop: 0x253246, platformEdge: 0x3a4a62,
     seat: 0x2c3648, seatTop: 0x48556b, frame: 0x9aa4b2, frameDark: 0x4d5766, bag: 0x161a22, bottle: 0x58b8f0, bottleCap: 0xf4f4f4,
-    shaft: 0xd2ab73, blade: 0x24272d, sign: 0x0b111c, signText: '#ffffff',
+    shaft: 0xd2ab73, blade: 0xc39257, sign: 0x0b111c, signText: '#ffffff',
     /** Pantalón del cuerpo técnico y polo del delegado si el dorsal del equipo no sirve (igual a la camiseta). */
     trousers: 0x1b1f27, polo: 0xe9ebee,
   },

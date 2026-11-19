@@ -127,21 +127,28 @@ export function paintHead(ctx: CanvasRenderingContext2D, h: HeadSpec) {
   if (h.helmet !== null) paintHelmet(ctx, h)
 }
 
-/** Casco ligero recortado por la visera; el del portero baja hasta la barbilla y lleva rejilla integral. */
+/**
+ * Casco: el de jugador es el homologado, gorro acolchado negro (franja del color del equipo
+ * para distinguirlo desde arriba) y pantalla transparente de la frente a la barbilla; el del
+ * portero, carcasa del color del equipo que baja hasta la barbilla con rejilla integral.
+ */
 function paintHelmet(ctx: CanvasRenderingContext2D, h: HeadSpec) {
   const { r } = h
   const rx = r * h.aspect
   const helmet = h.helmet as number
   const brow = h.cage ? 0.55 * r : -0.12 * r + Math.max(0, -h.fz) * 0.45 * r
   const shell = ellipsePath(-h.fx * 0.05 * r, -0.08 * r, rx * 1.12, r * 1.1)
+  const shellColor = h.cage ? helmet : RIG_GEAR.softCap
   ctx.save()
   ctx.beginPath()
   ctx.rect(-2 * r, -2 * r, 4 * r, brow + 2 * r)
   ctx.clip()
-  paintShape(ctx, shell, helmet, r)
+  paintShape(ctx, shell, shellColor, r)
   if (!h.cage) {
-    // Franja de ventilación: da volumen y marca hacia dónde mira
-    detailLine(ctx, -h.fx * 0.05 * r, -1.1 * r, -h.fx * 0.05 * r + h.fx * 0.9 * r, brow, tone(helmet, 1.5), r * 0.12)
+    // Costuras de los paneles acolchados y franja central del equipo, que marca hacia dónde mira
+    const mx = -h.fx * 0.05 * r
+    for (const s of [-1, 1]) detailLine(ctx, mx + s * 0.45 * rx, -0.95 * r, mx + s * 0.55 * rx + h.fx * 0.5 * r, brow, RIG_GEAR.capSeam, r * 0.07)
+    detailLine(ctx, mx, -1.1 * r, mx + h.fx * 0.9 * r, brow, helmet, r * 0.16)
   }
   ctx.restore()
   ctx.strokeStyle = hex(RIG_OUTLINE.color)
@@ -151,6 +158,31 @@ function paintHelmet(ctx: CanvasRenderingContext2D, h: HeadSpec) {
   ctx.lineTo(rx * 1.05, brow)
   ctx.stroke()
   if (h.cage && h.fz > -0.2) paintCage(ctx, h)
+  else if (!h.cage && h.fz > -0.35) paintVisor(ctx, h, brow)
+}
+
+/** Pantalla transparente: deja ver la cara, con borde claro y un brillo en la esquina alta. */
+function paintVisor(ctx: CanvasRenderingContext2D, h: HeadSpec, brow: number) {
+  const { r } = h
+  const rx = r * h.aspect
+  const cx = h.fx * 0.38 * rx
+  const vw = rx * (0.7 + 0.25 * Math.max(0, h.fz))
+  const visor = ellipsePath(cx, brow + 0.62 * r, vw, 0.78 * r)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(-2 * r, brow, 4 * r, 3 * r)
+  ctx.clip()
+  ctx.fillStyle = hex(RIG_GEAR.visor, RIG_GEAR.visorAlpha)
+  ctx.fill(visor)
+  ctx.strokeStyle = hex(RIG_GEAR.visorEdge, 0.85)
+  ctx.lineWidth = Math.max(0.5, r * 0.08)
+  ctx.stroke(visor)
+  ctx.strokeStyle = hex(0xffffff, 0.75)
+  ctx.lineWidth = Math.max(0.5, r * 0.1)
+  ctx.beginPath()
+  ctx.ellipse(cx, brow + 0.62 * r, vw * 0.72, 0.6 * r, 0, Math.PI * 1.08, Math.PI * 1.4)
+  ctx.stroke()
+  ctx.restore()
 }
 
 function paintCage(ctx: CanvasRenderingContext2D, h: HeadSpec) {
