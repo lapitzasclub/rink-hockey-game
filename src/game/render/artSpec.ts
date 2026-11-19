@@ -183,7 +183,7 @@ export const STICK_BLADE = { len: 0.16, heelR: 0.02, toeR: 0.034, bow: 0.05 } as
  * el resto del clip es el follow-through, que es lo que se lee.
  */
 export const ACTION_CLIP_MS = {
-  pass: 200, shot: 360, turbo: 420, steal: 220, receive: 200, check: 340, celebrate: 1500,
+  pass: 200, shot: 360, turbo: 420, steal: 220, receive: 260, check: 340, celebrate: 1800,
 } as const
 
 /**
@@ -199,19 +199,25 @@ export const STICK_CLIPS = {
 } as const
 
 /** Ataque y relajación (fracción del clip) de robo, recepción y celebración. */
-export const ACTION_ENVELOPE = { steal: [0.4, 0.75], receive: [0.3, 0.3], celebrate: [0.12, 0.88] } as const
+export const ACTION_ENVELOPE = { steal: [0.4, 0.75], receive: [0.22, 0.35], celebrate: [0.1, 0.86] } as const
 
 /**
  * Robo, recepción, carga y celebración (unidades de figura y rad).
  * Robo: estocada a una mano hasta `getStickTip`. Recepción: la pala cede `cushion`.
  * Carga: cadera adelantada `checkLunge`, agachada `checkDip` y ladeada `checkRoll`.
- * Celebración: manos a `handsY` con `pumps` sacudidas de `pump`; el stick, pala arriba.
+ * Celebración: manos a `handsY` con `pumps` sacudidas de `pump`; el stick, pala arriba. Con
+ * `bounce` las rodillas acompañan cada sacudida y el tronco se echa atrás (`celebrateBack`).
+ * Variante «puño» (la mitad de jugadores, fija por id): stick en alto a una mano, inclinado
+ * `stickTilt` hacia fuera, y el puño libre sube de `fistLow` a `fistHigh` en cada sacudida.
+ * Recepción: además del cedido, el tronco se vence `cushionLean` sobre la bola.
  */
 export const ACTION_POSE = {
   stealLean: 0.3, stealArms: 0.45, stealOneHand: [0.2, 0.8],
-  cushion: 0.07, cushionDip: 0.025,
+  cushion: 0.1, cushionDip: 0.045, cushionLean: 0.1,
   checkDip: 0.04, checkRoll: 0.2, checkLunge: 0.06,
   handsY: 1.04, handsSide: 0.17, pump: 0.05, pumps: 3, stickUp: 0.44, celebrateLift: 0.02,
+  bounce: 0.03, celebrateBack: -0.08, fistLow: 0.74, fistHigh: 1.06, fistSide: 0.2,
+  stickHandY: 0.78, stickHandSide: 0.24, stickTilt: 0.32,
 } as const
 
 // ─── Portero (WP-33) ───
@@ -219,22 +225,29 @@ export const ACTION_POSE = {
 /**
  * Posturas del portero (SPEC §8), en unidades de figura y rad; se mezclan por `k`
  * (0 = de pie atento, 1 = de rodillas). Los x van hacia el lado de la pierna / mano:
- * `footX` separación de cada pie, `poleX/Y/Z` hacia dónde dobla la rodilla,
+ * `footX` separación de cada pie (`footY` < 0 hunde el patín bajo el pad tumbado),
+ * `poleX/Y/Z` hacia dónde dobla la rodilla (de rodillas, abajo y adentro: rodillas juntas en el suelo),
  * `mitt*` es la manopla (mano libre, lado contrario al stick), `hand*` la mano del
  * stick y `heel*` el talón de la pala (cruzada delante, tapando el hueco entre pads).
  */
 export const GOALIE_POSTURE = {
   stand: {
-    pelvisY: 0.41, pelvisZ: -0.02, pitch: 0.32, footX: 0.075, footZ: 0.02, footYaw: 0.12,
+    pelvisY: 0.41, pelvisZ: -0.02, pitch: 0.32, footX: 0.075, footY: 0, footZ: 0.02, footYaw: 0.12,
     poleX: 0.15, poleY: 0, poleZ: 1, mittX: 0.26, mittY: 0.5, mittZ: 0.2,
     handX: 0.2, handY: 0.36, handZ: 0.22, heelX: 0.1, heelZ: 0.2,
   },
   kneel: {
-    pelvisY: 0.25, pelvisZ: 0.02, pitch: 0.1, footX: 0.3, footZ: -0.12, footYaw: 1.9,
-    poleX: 0.35, poleY: -1, poleZ: 0.5, mittX: 0.32, mittY: 0.52, mittZ: 0.2,
-    handX: 0.24, handY: 0.32, handZ: 0.22, heelX: 0.16, heelZ: 0.26,
+    pelvisY: 0.21, pelvisZ: 0, pitch: 0.04, footX: 0.2, footY: -0.04, footZ: -0.26, footYaw: 1.9,
+    poleX: -0.5, poleY: -1, poleZ: 0.8, mittX: 0.32, mittY: 0.46, mittZ: 0.2,
+    handX: 0.24, handY: 0.28, handZ: 0.22, heelX: 0.16, heelZ: 0.26,
   },
 } as const
+
+/**
+ * Respiración del portero en espera (E-10): sube la cadera `pelvis` y endereza el tronco
+ * `pitch` al inspirar, con la fase de su ciclo de espera; se apaga al desplazarse.
+ */
+export const GOALIE_BREATH = { pelvis: 0.014, pitch: 0.07 } as const
 
 /**
  * Cuándo se arrodilla (unidades de figura, ms): `kneelOn`/`kneelOff` son la distancia de la
@@ -349,38 +362,54 @@ export const RIG_STANCE = {
  * extensión `extHold`), `rec` (recogida rozando el suelo) y deslizamiento el resto;
  * en crucero el empuje ocupa `cruiseDuty` y quedan fases con los dos patines paralelos.
  * `acc`, `brake`, `turn`, `lateral`, `backFwd`: umbrales [inicio, pleno] de cada paso.
+ * `backC.kneeIn`: cuánto entra la rodilla del patín que corta la «C» hacia atrás (con la punta cerrada).
+ * `skid`: derrape de frenada fuerte (E-11) si la aceleración baja de `acc` (× PLAYER_ACCEL)
+ * a más de `speed` px/s: el cuerpo entero gira `turn` rad hacia el lado del stick (patines
+ * atravesados a la marcha), pies desplazados `feetOut` hacia la marcha y cadera `hip` al
+ * contrario, rodillas hondas y ladeo `roll` contra la marcha; los hombros vuelven `twist`.
+ * `lean` (E-11): tronco adelante `acc` rad a `accMax` de aceleración; al girar, ladeo hacia
+ * dentro de `turn` rad con la aceleración lateral `turnRef` (× PLAYER_ACCEL) y la cadera
+ * `turnShift` hacia el centro (los cruces ya traen su propio ladeo).
+ * `idleK`: respiración (cadera arriba y pecho erguido al inspirar, ciclo de `hz.idle`).
  */
 export const RIG_LOCO = {
   knee: { idle: 0.85, glide: 1.05, drive: 1.15, sprint: 1.25, back: 1.2, brake: 1.3 },
-  pitch: { idle: 0.36, glide: 0.5, drive: 0.6, sprint: 0.76, back: 0.3, brake: 0.08 },
+  pitch: { idle: 0.36, glide: 0.5, drive: 0.6, sprint: 0.76, back: 0.3, brake: -0.04 },
   pelvisZ: -0.02, feetHalf: 0.085, feetIdle: 0.11, restYaw: 0.1, kneeOut: 0.15, reach: 0.985,
   push: 0.46, rec: 0.26, extHold: 0.25, cruiseDuty: 0.5,
   out: 0.17, back: 0.1, fore: 0.02, lift: 0.045, pushYaw: 0.75, recPitch: 0.12,
   cruiseAmp: 0.8, sprintAmp: 1.2, shift: 0.035, roll: 0.09, twist: 0.07, bob: 0.012,
   hand: { x: 0.16, y: 0.06, z: 0.12, swing: 0.12 },
-  hz: { idle: 0.25, cruise: 0.8, drive: 1.4, sprintCruise: 1.4, sprint: 2.2 },
+  hz: { idle: 0.3, cruise: 0.8, drive: 1.4, sprintCruise: 1.4, sprint: 2.2 },
   tau: { blend: 160, acc: 140, turn: 160, weight: 150 },
   initAccel: 0.6, idleBlend: 0.25, turnMinSpeed: 40,
   acc: [0.05, 0.6], brake: [0.35, 0.85], turn: [1.2, 2.6], turnSpeed: [0.25, 0.6],
   lateral: [0.6, 0.88], backFwd: [-0.2, -0.6],
   cross: { over: 0.3, under: 0.09, fore: 0.08, rear: 0.05, lift: 0.06, yaw: 0.35, lean: 0.4, shift: 0.08, twist: 0.15 },
-  backC: { stroke: 0.5, out: 0.16, fore: 0.14, z: -0.05, toeIn: 0.65, lift: 0.012, shift: 0.03, roll: 0.08 },
-  brakeK: { pelvisZ: -0.05, wedgeHalf: 0.15, wedgeZ: 0.05, toeIn: 0.55, kneeIn: 0.25, frontZ: 0.05, tZ: -0.14, tTwist: 0.25, tRoll: 0.08 },
-  idleK: { breath: 0.006, pitchBreath: 0.03, sway: 0.012, roll: 0.025, yaw: 0.22 },
+  backC: { stroke: 0.5, out: 0.24, fore: 0.2, z: -0.06, toeIn: 0.95, lift: 0.014, shift: 0.05, roll: 0.15, kneeIn: 0.5 },
+  brakeK: { pelvisZ: -0.08, wedgeHalf: 0.17, wedgeZ: 0.06, toeIn: 0.7, kneeIn: 0.25, frontZ: 0.06, tZ: -0.15, tTwist: 0.3, tRoll: 0.1 },
+  skid: {
+    acc: -1.9, speed: 300, turn: 1.2, knee: 1.42, pitch: 0.26, roll: 0.3, hip: 0.07,
+    feetHalf: 0.1, feetOut: 0.08, stagger: 0.05, pole: 0.35, twist: 0.3,
+  },
+  lean: { acc: 0.24, accMax: 1.6, turn: 0.3, turnRef: 1.1, turnShift: 0.05 },
+  idleK: { breath: 0.016, pitchBreath: 0.085, sway: 0.014, roll: 0.03, yaw: 0.22 },
 } as const
 
 /**
  * Caída por carga (SPEC §6): fotogramas clave por progreso `t` del aturdimiento
  * (ARCADE_CHECK_STUN_MS); los extremos son la postura de patinar. Se levanta en
  * los últimos ~600 ms. `py`/`pz` cadera, `roll` hacia el lado del golpe,
- * `fx`/`fz` pies (semiancho y adelanto), `fy` pie levantado, `kneeY` polo de rodilla hacia arriba.
+ * `fx`/`fz` pies (semiancho y adelanto), `fy` pie levantado, `kneeY` polo de rodilla hacia arriba;
+ * `hx`/`hy`/`hz` mano libre respecto a la cadera (brazos abiertos al golpe, apoyo atrás en el
+ * suelo y manos a las rodillas al levantarse). La mano del pomo sigue con el stick.
  */
 export const RIG_FALL_KEYS = [
-  { t: 0.1, py: 0.32, pz: -0.06, pitch: -0.25, roll: 0.35, fx: 0.12, fz: 0.12, fy: 0.08, kneeY: 0.3 },
-  { t: 0.2, py: 0.13, pz: -0.1, pitch: -0.75, roll: 0.25, fx: 0.12, fz: 0.26, fy: 0.06, kneeY: 1 },
-  { t: 0.48, py: 0.12, pz: -0.1, pitch: -0.55, roll: 0.1, fx: 0.13, fz: 0.24, fy: 0, kneeY: 1 },
-  { t: 0.66, py: 0.22, pz: -0.04, pitch: 0.85, roll: 0, fx: 0.1, fz: 0.06, fy: 0, kneeY: 0.4 },
-  { t: 0.84, py: 0.38, pz: -0.03, pitch: 0.7, roll: 0, fx: 0.09, fz: 0.02, fy: 0, kneeY: 0 },
+  { t: 0.1, py: 0.32, pz: -0.06, pitch: -0.25, roll: 0.35, fx: 0.12, fz: 0.12, fy: 0.08, kneeY: 0.3, hx: 0.27, hy: 0.3, hz: 0.06 },
+  { t: 0.2, py: 0.13, pz: -0.1, pitch: -0.75, roll: 0.25, fx: 0.12, fz: 0.26, fy: 0.06, kneeY: 1, hx: 0.22, hy: -0.07, hz: -0.16 },
+  { t: 0.48, py: 0.12, pz: -0.1, pitch: -0.55, roll: 0.1, fx: 0.13, fz: 0.24, fy: 0, kneeY: 1, hx: 0.21, hy: -0.07, hz: -0.14 },
+  { t: 0.66, py: 0.22, pz: -0.04, pitch: 0.85, roll: 0, fx: 0.1, fz: 0.06, fy: 0, kneeY: 0.4, hx: 0.11, hy: -0.04, hz: 0.16 },
+  { t: 0.84, py: 0.38, pz: -0.03, pitch: 0.7, roll: 0, fx: 0.09, fz: 0.02, fy: 0, kneeY: 0, hx: 0.12, hy: 0.02, hz: 0.17 },
 ] as const
 
 /** Diámetro visual de la bola en metros (exagerado: la real mide 7 cm y no se vería). */

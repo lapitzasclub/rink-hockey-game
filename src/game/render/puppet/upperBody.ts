@@ -11,6 +11,7 @@
  * alternos mueven la pala por el borde de la bola sin soltarla.
  */
 import { RIG_FLOOR_FORESHORTEN, RIG_STANCE, STICK_BLADE, STICK_HOLD } from '../artSpec'
+import { fallProgress } from './locomotion'
 import type { PoseContext, PuppetPose } from './pose'
 import { copy3, set3, v3, type V3 } from './vec'
 
@@ -159,6 +160,9 @@ export function upperBody(pose: PuppetPose, ctx: PoseContext) {
     const p = pose.pelvis
     set3(pose.hands[ctx.stickSide], p.x + s * 0.17, p.y + 0.1, p.z + 0.06 + Math.sin(ctx.phase) * 0.16)
   }
+
+  // Caído: la mano baja suelta el mango y hace lo que diga la caída (brazos abiertos, apoyo, rodillas)
+  if (fallProgress(ctx) >= 0) st.lowerGrip = null
 
   pose.headYaw = clamp(ballYaw, -1.2, 1.2) * 0.35
 }

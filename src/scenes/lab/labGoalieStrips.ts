@@ -29,7 +29,15 @@ const save = (kind: 'split' | 'glove' | 'stick' | 'body', side: 1 | -1, kneel: b
   action: 'save', actionT: 0.1 + k * 0.25, gk: { save: kind, side, kneel },
 })
 
+/** Vistas de la hoja de postura de cerca: de lado (a la derecha y a la izquierda) y 3/4 (a cámara y de espaldas). */
+const SIDE_VIEWS = [0, Math.PI, Math.PI / 4, (-3 * Math.PI) / 4]
+
 export const GOALIE_STRIPS: Record<string, () => FigureSpec[]> = {
+  /** E-10: de pie (arriba) y de rodillas (abajo) en las vistas laterales, para `zoom` ≈ 2,4. */
+  kneelside: () => [
+    ...row(0, 4, k => ({ angle: SIDE_VIEWS[k], gk: { kneel: false } }), 2),
+    ...row(1, 4, k => ({ angle: SIDE_VIEWS[k], gk: { kneel: true } }), 2),
+  ],
   goalie: () => [
     ...row(0, 8, k => ({ angle: VIEWS[k % 4], gk: { kneel: k >= 4 } })),
     ...row(1, 8, k => ({

@@ -18,7 +18,7 @@ import {
 } from '../render/artSpec'
 import { actions, resolveAction } from '../render/puppet/actions'
 import { goaliePose } from '../render/puppet/goalie'
-import { advanceStride, locomotion, seatedPose } from '../render/puppet/locomotion'
+import { advanceStride, locomotion, seatedPose, skidTurn } from '../render/puppet/locomotion'
 import { resetPose, type PoseContext } from '../render/puppet/pose'
 import { RIG_UNIT, SHADOW_FRAME_RADIUS } from '../render/puppet/rig'
 import { groundFromLocal } from '../render/puppet/skeleton'
@@ -186,10 +186,10 @@ export function updateVisuals(
     // El ángulo del stick en mundo (contactos) lo fija updateStickAngles en la simulación; aquí solo el gesto
     const swing = (player.stickSwingUntil ?? 0) > timeNow ? clamp01(1 - (player.stickSwingUntil! - timeNow) / STICK_SWING_MS) : -1
 
-    // Pose por capas en el marco del cuerpo
-    const yaw = Math.atan2(player.facing.x, player.facing.y)
-    pose.yaw = yaw
+    // Pose por capas en el marco del cuerpo (el derrape gira el cuerpo entero hacia el stick)
     advanceStride(player, timeNow, speedRatio, sprinting, stride)
+    const yaw = Math.atan2(player.facing.x, player.facing.y) - (isGoalie ? 0 : skidTurn(player))
+    pose.yaw = yaw
     const c = poseCtx
     c.player = player
     c.kind = isGoalie ? 'goalie' : 'skater'

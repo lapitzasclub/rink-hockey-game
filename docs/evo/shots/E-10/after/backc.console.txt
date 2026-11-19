@@ -1,0 +1,9 @@
+﻿[55796:54672:1119/191837.507:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5186/@vite/client (851)
+[55796:54672:1119/191837.530:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5186/@vite/client (955)
+[55796:54672:1119/191838.019:INFO:CONSOLE:12751] "%cPhaser v4.2.0 (WebGL | Web Audio)%c https://phaser.io/v402 color: #ffffff; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAOCAYAAAAmL5yKAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAARBJREFUeNpi/P//P0OHsPB/BiCoePuW [...]
+[55796:54672:1119/191838.672:INFO:CONSOLE:309] "[stands] res 2.00 ┬À asientos 3260 ┬À p├║blico 2813 ┬À bloques 132 ┬À texturas 20.32 Mpx (3920├ù1939, 3318├ù3834) ┬À pintado 0 ms", source: http://127.0.0.1:5186/src/game/render/stands/crowd.ts?t=1795112300709 (309)
+[55796:54672:1119/191838.673:INFO:CONSOLE:434] "[stands] objetos 155 ┬À montaje 0 ms", source: http://127.0.0.1:5186/src/game/render/stands/crowd.ts?t=1795112300709 (434)
+[55796:54672:1119/191838.974:INFO:CONSOLE:0] "[.WebGL-0x2e0400d68800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=backc&zoom=2 (0)
+[55796:54672:1119/191839.208:INFO:CONSOLE:0] "[.WebGL-0x2e0400d68800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=backc&zoom=2 (0)
+[55796:54672:1119/191839.208:INFO:CONSOLE:0] "[.WebGL-0x2e0400d68800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=backc&zoom=2 (0)
+[55796:54672:1119/191839.213:INFO:CONSOLE:0] "[.WebGL-0x2e0400d68800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://127.0.0.1:5186/?lab=players&strip=backc&zoom=2 (0)

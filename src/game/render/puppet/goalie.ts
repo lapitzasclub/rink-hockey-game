@@ -9,7 +9,7 @@
  */
 import * as Phaser from 'phaser'
 import type { Player } from '../../types'
-import { GOALIE_MOVE, GOALIE_POSTURE, GOALIE_VIEW } from '../artSpec'
+import { GOALIE_BREATH, GOALIE_MOVE, GOALIE_POSTURE, GOALIE_VIEW } from '../artSpec'
 import { goalieClip } from './goalieClips'
 import type { PoseContext, PuppetPose } from './pose'
 import { aimStick } from './upperBody'
@@ -64,7 +64,10 @@ export function goaliePose(pose: PuppetPose, ctx: PoseContext) {
   const dir = Math.sign(ctx.velRight)
   const w = lat * Math.max(ctx.blend, 0.5)
   set3(pose.pelvis, dir * w * mix(0.03, 0.05, k), mix(A.pelvisY, B.pelvisY, k), mix(A.pelvisZ, B.pelvisZ, k))
-  pose.trunk.pitch = mix(A.pitch, B.pitch, k)
+  // Respiración en espera: sube la cadera y endereza el pecho al inspirar; se apaga al moverse
+  const br = Math.sin(ctx.phase) * (1 - w)
+  pose.pelvis.y += br * GOALIE_BREATH.pelvis
+  pose.trunk.pitch = mix(A.pitch, B.pitch, k) - br * GOALIE_BREATH.pitch
   pose.trunk.roll = dir * w * mix(M.lean, M.slideLean, k)
   for (let i = 0; i < 2; i++) {
     const side = i === 0 ? -1 : 1
@@ -72,7 +75,7 @@ export function goaliePose(pose: PuppetPose, ctx: PoseContext) {
     const ph = ctx.phase + i * Math.PI
     const step = (1 - k) * w
     f.x = side * mix(A.footX, B.footX, k) + dir * Math.cos(ph) * M.stepAmp * step
-    f.y = Math.max(0, Math.sin(ph)) * M.stepLift * step
+    f.y = mix(A.footY, B.footY, k) + Math.max(0, Math.sin(ph)) * M.stepLift * step
     f.z = mix(A.footZ, B.footZ, k)
     f.yaw = side * mix(A.footYaw, B.footYaw, k)
     set3(pose.kneePole[i], side * mix(A.poleX, B.poleX, k), mix(A.poleY, B.poleY, k), mix(A.poleZ, B.poleZ, k))

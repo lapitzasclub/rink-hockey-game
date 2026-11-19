@@ -158,7 +158,9 @@ export function backGait(out: PuppetPose, g: GaitIn) {
     if (u < B.stroke) {
       const t = u / B.stroke
       const o = Math.sin(Math.PI * t)
+      // El patín traza la «C»: sale con la punta cerrada y la rodilla adentro y vuelve bajo la cadera
       setFoot(f, s * (L.feetHalf + B.out * o * a), 0, B.z + B.fore * (1 - Math.cos(Math.PI * t)) * 0.5 * a, s * (L.restYaw - B.toeIn * o * a), 0)
+      out.kneePole[i].x = s * (L.kneeOut - B.kneeIn * o * a)
       lean -= s * o
     } else {
       const t = (u - B.stroke) / (1 - B.stroke)
@@ -190,21 +192,49 @@ export function brakeGait(out: PuppetPose, g: GaitIn) {
   out.pelvis.x = -sd * L.feetHalf * 0.3
 }
 
+/**
+ * Derrape (frenada fuerte, E-11), en el marco ya girado del cuerpo (`skidTurn`): la marcha
+ * va hacia el lado contrario al stick (−sd). Patines paralelos y atravesados a ella, los
+ * pies por delante en la marcha y la cadera atrás, rodillas hondas, ladeo contra la marcha
+ * y los hombros volviendo a medias hacia donde iba.
+ */
+export function skidGait(out: PuppetPose, g: GaitIn) {
+  const K = L.skid
+  const sd = g.dragSide === 1 ? 1 : -1
+  base(out, K.knee, K.pitch)
+  for (let i = 0; i < 2; i++) {
+    const s = i === 0 ? -1 : 1
+    // El pie del lado de la marcha va un poco adelantado
+    setFoot(out.feet[i], s * K.feetHalf - sd * K.feetOut, 0, s === -sd ? K.stagger : -K.stagger, s * L.restYaw * 0.5, 0)
+    const kp = out.kneePole[i]
+    kp.x = s * L.kneeOut - sd * K.pole; kp.y = 0; kp.z = 1
+  }
+  out.pelvis.x = sd * K.hip
+  out.trunk.roll = sd * K.roll
+  out.trunk.twist = -sd * K.twist
+}
+
 /** Espera (ready stance): pies a la anchura de hombros, respiración y leve cambio de peso. */
 export function idleGait(out: PuppetPose, g: GaitIn) {
   const I = L.idleK
   const br = Math.sin(g.phase)
   const sw = Math.sin(g.phase * 0.5)
-  base(out, L.knee.idle, L.pitch.idle + I.pitchBreath * br, L.feetIdle)
+  // Al inspirar sube la cadera y se endereza el pecho: los hombros suben en toda vista
+  base(out, L.knee.idle, L.pitch.idle - I.pitchBreath * br, L.feetIdle)
   out.pelvis.y += I.breath * br
+  for (let i = 0; i < 2; i++) out.hands[i].y += I.breath * br
   out.pelvis.x = I.sway * sw
   out.trunk.roll = I.roll * sw
   for (let i = 0; i < 2; i++) out.feet[i].yaw = (i === 0 ? -1 : 1) * I.yaw
 }
 
-type FallKey = { t: number; py: number; pz: number; pitch: number; roll: number; fx: number; fz: number; fy: number; kneeY: number }
+type FallKey = {
+  t: number; py: number; pz: number; pitch: number; roll: number; fx: number; fz: number; fy: number; kneeY: number
+  hx: number; hy: number; hz: number
+}
 const STANCE_KEY = (t: number): FallKey => ({
   t, py: hipY(L.knee.drive), pz: L.pelvisZ, pitch: L.pitch.drive, roll: 0, fx: L.feetHalf, fz: 0, fy: 0, kneeY: 0,
+  hx: L.hand.x, hy: L.hand.y, hz: L.hand.z,
 })
 const FALL_KEYS: readonly FallKey[] = [STANCE_KEY(0), ...RIG_FALL_KEYS, STANCE_KEY(1)]
 
@@ -226,6 +256,9 @@ export function fallGait(out: PuppetPose, g: GaitIn) {
     const up = s === -g.fallDir ? lerp(A.fy, B.fy, e) : 0
     setFoot(out.feet[i], s * lerp(A.fx, B.fx, e), up, lerp(A.fz, B.fz, e), s * L.restYaw, 0)
     out.kneePole[i].y = kneeY
-    out.hands[i].y = out.pelvis.y + L.hand.y
+    const h = out.hands[i]
+    h.x = out.pelvis.x + s * lerp(A.hx, B.hx, e)
+    h.y = Math.max(0.02, out.pelvis.y + lerp(A.hy, B.hy, e))
+    h.z = out.pelvis.z + lerp(A.hz, B.hz, e)
   }
 }
