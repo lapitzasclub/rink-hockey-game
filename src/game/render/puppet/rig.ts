@@ -9,7 +9,7 @@
  * origen es el de `PUPPET_LOCAL` (pies en `feetY`).
  */
 import * as Phaser from 'phaser'
-import { PUPPET_LOCAL, RIG_GEAR, RIG_PROPORTIONS, RIG_STICK_MIN_PX, RIG_TEX_SUPERSAMPLE } from '../artSpec'
+import { PUPPET_LOCAL, RIG_GEAR, RIG_PROPORTIONS, RIG_SORT_HYSTERESIS, RIG_STICK_MIN_PX, RIG_TEX_SUPERSAMPLE } from '../artSpec'
 import { puppetAtlas, type FrameRef, type PuppetAtlas } from './atlas'
 import type { RigKit } from './kit'
 import type { FigureKind, PuppetPose, Side } from './pose'
@@ -41,7 +41,12 @@ interface Slot {
   /** Qué yaw elige el marco: cuerpo, cabeza o pie 0/1. */
   viewOf: 'body' | 'head' | 'foot0' | 'foot1'
   d: number
-  order: number
+  /**
+   * Pieza que va encima de otras de la misma pierna o brazo (rodillera, pantalón,
+   * guante): su profundidad es la mayor de ellas más `bias`. Con profundidad
+   * propia, la zancada la hacía saltar delante y detrás de su pierna cada pocos frames.
+   */
+  over?: Slot[]
 }
 
 const viewNames = Array.from({ length: VIEWS }, (_, v) => v)
@@ -73,7 +78,6 @@ export class PuppetRig {
     this.container = scene.add.container(x, y)
     this.build()
     this.atlas.flush()
-    this.slots.forEach((s, i) => { s.order = i })
     this.container.add(this.slots.map(s => s.img))
   }
 
@@ -82,7 +86,7 @@ export class PuppetRig {
     const first = views ? views[0] : frame as FrameRef
     const img = this.scene.add.image(0, 0, first.page, first.frame).setScale(TEX_SCALE)
     if (tint !== WHITE) img.setTint(tint)
-    const slot: Slot = { img, kind, a, b, nom: nomUnits * RIG_UNIT, bias, views, viewOf, d: 0, order: 0 }
+    const slot: Slot = { img, kind, a, b, nom: nomUnits * RIG_UNIT, bias, views, viewOf, d: 0 }
     this.slots.push(slot)
     return slot
   }
@@ -103,10 +107,10 @@ export class PuppetRig {
         this.add('seg', capsuleFrame(at, 'g-thigh', d.thigh, 0.06, 0.052), J.hip0 + i, J.knee0 + i, d.thigh, 0.03, kit.shorts)
         continue
       }
-      this.add('seg', capsuleFrame(at, 'shin', d.shin, 0.036 * L, 0.032 * L), J.knee0 + i, J.ankle0 + i, d.shin, 0, legC)
-      this.add('seg', capsuleFrame(at, 'thigh', d.thigh, 0.046 * L, 0.04 * L), J.hip0 + i, J.knee0 + i, d.thigh, 0, legC)
-      if (!official) this.add('pt', blobFrame(at, 'kneepad', 0.044 * L, 0.05 * L, RIG_GEAR.kneePad), J.knee0 + i, J.knee0 + i, 0, 0.004)
-      this.add('seg', capsuleFrame(at, 'shorts', d.thigh * 0.55, 0.058 * L, 0.052 * L), J.hip0 + i, J.shorts0 + i, d.thigh * 0.55, 0.002, kit.shorts)
+      const shin = this.add('seg', capsuleFrame(at, 'shin', d.shin, 0.036 * L, 0.032 * L), J.knee0 + i, J.ankle0 + i, d.shin, 0, legC)
+      const thigh = this.add('seg', capsuleFrame(at, 'thigh', d.thigh, 0.046 * L, 0.04 * L), J.hip0 + i, J.knee0 + i, d.thigh, 0, legC)
+      if (!official) this.add('pt', blobFrame(at, 'kneepad', 0.044 * L, 0.05 * L, RIG_GEAR.kneePad), J.knee0 + i, J.knee0 + i, 0, 0.004).over = [shin, thigh]
+      this.add('seg', capsuleFrame(at, 'shorts', d.thigh * 0.55, 0.058 * L, 0.052 * L), J.hip0 + i, J.shorts0 + i, d.thigh * 0.55, 0.002, kit.shorts).over = [thigh]
     }
     const pelvisR = goalie ? 0.075 : 0.058
     this.add('seg', capsuleFrame(at, `pelvis-${this.kind}`, d.hipHalf * 2, pelvisR, pelvisR), J.hip0, J.hip1, d.hipHalf * 2, goalie ? 0.031 : 0.001, kit.shorts)
@@ -130,9 +134,9 @@ export class PuppetRig {
     const armC = official ? kit.skin : kit.jersey
     for (let i = 0; i < 2; i++) {
       this.add('seg', upperF, J.sh0 + i, J.el0 + i, d.upperArm, 0, kit.jersey)
-      this.add('seg', foreF, J.el0 + i, J.hand0 + i, d.foreArm, 0.001, armC)
+      const forearm = this.add('seg', foreF, J.el0 + i, J.hand0 + i, d.foreArm, 0.001, armC)
       if (!goalie) {
-        this.add('pt', blobFrame(at, 'glove', 0.044 * L, 0.044 * L), J.hand0 + i, J.hand0 + i, 0, 0.003, official ? kit.skin : kit.gloves)
+        this.add('pt', blobFrame(at, 'glove', 0.044 * L, 0.044 * L), J.hand0 + i, J.hand0 + i, 0, 0.003, official ? kit.skin : kit.gloves).over = [forearm]
       } else if (i === this.stickSide) {
         this.add('pt', viewNames.map(v => blockerFrame(at, v, kit)), J.hand0 + i, J.hand0 + i, 0, 0.08)
       } else {
@@ -186,6 +190,13 @@ export class PuppetRig {
       }
     }
 
+    for (const s of this.slots) {
+      if (!s.over) continue
+      let d = s.d
+      for (const o of s.over) if (o.d + s.bias > d) d = o.d + s.bias
+      s.d = d
+    }
+
     for (let i = 0; i < 2; i++) {
       // El patín cabecea en pantalla según cuánto se le ve de lado
       const f = pose.feet[i]
@@ -228,13 +239,16 @@ export class PuppetRig {
     return this.footSlots[i]
   }
 
-  /** Ordenación por inserción (casi ordenado de un frame a otro) y volcado a la lista del contenedor. */
+  /**
+   * Ordenación por inserción sobre el orden del frame anterior, con histéresis,
+   * y volcado a la lista del contenedor.
+   */
   private sortByDepth() {
     const a = this.sorted
     for (let i = 1; i < a.length; i++) {
       const s = a[i]
       let j = i - 1
-      while (j >= 0 && (a[j].d > s.d || (a[j].d === s.d && a[j].order > s.order))) {
+      while (j >= 0 && a[j].d > s.d + RIG_SORT_HYSTERESIS) {
         a[j + 1] = a[j]
         j--
       }

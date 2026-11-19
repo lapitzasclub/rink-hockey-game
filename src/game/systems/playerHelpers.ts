@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GOALIE_SELECT_RANGE } from '../constants'
+import { GAME_HEIGHT, GOALIE_SELECT_RANGE, SWITCH_AIM_ANGLE_PX, SWITCH_AIM_MAX_ANGLE, SWITCH_AIM_MIN } from '../constants'
 import { getGoalLineX } from '../utils'
 import type { Player, TeamColor } from '../types'
 
@@ -35,16 +35,19 @@ export function findPlayerById(players: Player[], id: string) {
   return players.find((player) => player.id === id) ?? null
 }
 
+/** Lo que pide el botón de cambio: `aim`, el stick al pulsar (sin marcar, cambio por cercanía). */
+export type SwitchRequest = { aim: { x: number, y: number } }
+
 /**
  * Selecciona el mejor candidato para recibir el control.
  *
- * Prioridad: (1) el portador azul (también el portero con la bola); (2) el de campo más cercano
- * a la bola. El portero entra en el ciclo defendiendo: si el cambio no movería a nadie (ya se
- * lleva al más cercano) con la bola cerca de su portería, si es el segundo cambio seguido
- * (preferGoalie: el más cercano cambia mientras se pulsa) o si él está más cerca de la bola que todos
- * los de campo, pasa al portero; desde el portero se vuelve al de campo más cercano.
+ * Prioridad: (1) el portador azul (también el portero con la bola); (2) con `request` y el stick
+ * marcado, el compañero hacia donde apunta (el portero cuenta si la bola está cerca de su
+ * portería); (3) el de campo más cercano a la bola. Al pulsar cambio sin stick no se queda en el
+ * mismo: si ya era el más cercano pasa al portero (bola cerca de su portería) o al siguiente.
+ * Sin `request` (control automático) puede devolver el actual.
  */
-export function selectBestControlledPlayer(players: Player[], controlledPlayerIndex: number, ballCarrierId: string | null, ballX: number, ballY: number, now = 0, preferGoalie = false) {
+export function selectBestControlledPlayer(players: Player[], controlledPlayerIndex: number, ballCarrierId: string | null, ballX: number, ballY: number, now = 0, request?: SwitchRequest) {
   const options = getControllablePlayers(players)
   const current = options[controlledPlayerIndex % options.length]
   const ballCarrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
@@ -54,23 +57,49 @@ export function selectBestControlledPlayer(players: Player[], controlledPlayerIn
     if (index >= 0) return index
   }
 
+  const goalieIndex = options.findIndex(p => p.role === 'goalie')
+  const goalie = goalieIndex >= 0 ? options[goalieIndex] : null
+  const nearGoal = !!goalie && Phaser.Math.Distance.Between(getGoalLineX(goalie.side), GAME_HEIGHT / 2, ballX, ballY) < GOALIE_SELECT_RANGE
+  const free = (p: Player) => p.role !== 'goalie' && (p.suspendedUntil ?? 0) <= now
+
+  const aim = request?.aim
+  const aimLen = aim ? Math.hypot(aim.x, aim.y) : 0
+  if (aim && aimLen >= SWITCH_AIM_MIN) {
+    let best = -1
+    let bestScore = Infinity
+    for (let i = 0; i < options.length; i += 1) {
+      const p = options[i]
+      if (p === current || !(free(p) || (p === goalie && nearGoal))) continue
+      const dx = p.pos.x - current.pos.x
+      const dy = p.pos.y - current.pos.y
+      const dist = Math.hypot(dx, dy)
+      if (dist < 1) continue
+      const angle = Math.acos(Phaser.Math.Clamp((dx * aim.x + dy * aim.y) / (dist * aimLen), -1, 1))
+      if (angle > SWITCH_AIM_MAX_ANGLE) continue
+      const score = dist + angle * SWITCH_AIM_ANGLE_PX
+      if (score < bestScore) { bestScore = score; best = i }
+    }
+    if (best >= 0) return best
+  }
+
+  // Por cercanía a la bola: el más cercano y el siguiente (por si el más cercano ya es el actual)
   let nearest = -1
   let nearestDist = Infinity
-  let goalieIndex = -1
+  let second = -1
+  let secondDist = Infinity
   for (let i = 0; i < options.length; i += 1) {
     const p = options[i]
-    if (p.role === 'goalie') { goalieIndex = i; continue }
-    if ((p.suspendedUntil ?? 0) > now) continue
+    if (!free(p)) continue
     const d = Phaser.Math.Distance.Between(p.pos.x, p.pos.y, ballX, ballY)
-    if (d < nearestDist) { nearestDist = d; nearest = i }
+    if (d < nearestDist) { second = nearest; secondDist = nearestDist; nearestDist = d; nearest = i }
+    else if (d < secondDist) { secondDist = d; second = i }
   }
   if (nearest < 0) return controlledPlayerIndex % options.length
 
-  if (goalieIndex >= 0 && current.role !== 'goalie') {
-    const goalie = options[goalieIndex]
-    const nearGoal = Phaser.Math.Distance.Between(getGoalLineX(goalie.side), GAME_HEIGHT / 2, ballX, ballY) < GOALIE_SELECT_RANGE
+  if (goalie && current !== goalie && nearGoal) {
     const goalieDist = Phaser.Math.Distance.Between(goalie.pos.x, goalie.pos.y, ballX, ballY)
-    if (nearGoal && (preferGoalie || options[nearest] === current || goalieDist < nearestDist)) return goalieIndex
+    if (goalieDist < nearestDist || (request && options[nearest] === current)) return goalieIndex
   }
+  if (request && options[nearest] === current && second >= 0) return second
   return nearest
 }

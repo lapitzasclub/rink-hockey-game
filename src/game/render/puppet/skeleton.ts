@@ -120,7 +120,8 @@ export class Skeleton {
     offset3(j[J.neck], j[J.shoulderC], 0, d.neck, 0.02 * d.k)
     offset3(j[J.neckTop], j[J.neck], 0, 0.03, 0)
     offset3(j[J.headC], j[J.neck], 0, d.headR * 0.92, d.headR * 0.4 * Math.max(0, Math.sin(pitch)))
-    lerp3(this.t1, j[J.pelvis], j[J.shoulderC], 0.55)
+    // Dorsal entre los omóplatos, como en las camisetas reales: más abajo se leía en la lumbar
+    lerp3(this.t1, j[J.pelvis], j[J.shoulderC], 0.7)
     offset3(j[J.numBack], this.t1, 0, 0, -0.09 * d.k)
     lerp3(this.t1, j[J.pelvis], j[J.shoulderC], 0.75)
     offset3(j[J.numFront], this.t1, 0.05 * d.k, 0, 0.09 * d.k)

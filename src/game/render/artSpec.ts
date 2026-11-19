@@ -308,6 +308,13 @@ export const RIG_OUTLINE = { color: 0x08111b, min: 0.8, max: 1.6, thinMin: 0.35,
 /** Grosor mínimo del mango del stick en px a s = 1. */
 export const RIG_STICK_MIN_PX = 2
 
+/**
+ * Histéresis del orden de pintado de las piezas (unidades de altura de figura):
+ * dos piezas solo se reordenan si una pasa a la otra por más de esto. Sin ella,
+ * brazo y muslo casi empatados se turnaban delante y detrás en cada fotograma.
+ */
+export const RIG_SORT_HYSTERESIS = 0.015
+
 /** Equipamiento sin color de equipo. */
 export const RIG_GEAR = {
   boot: 0x24272e,

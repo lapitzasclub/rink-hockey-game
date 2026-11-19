@@ -691,6 +691,7 @@ export class MatchScene extends Phaser.Scene {
       ballCarrierId: this.ballCarrierId,
       ball: this.ball,
       timeNow: time,
+      aim: this.moveAim(),
     })
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)
@@ -748,6 +749,13 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /** Dirección pedida por teclado o, si se está usando, por el stick o la cruceta del mando. */
+  /** Dirección que marca el humano: joystick táctil si se usa; si no, mando o teclado. */
+  private moveAim() {
+    const j = this.joystickInput
+    if (this.isTouchDevice && Math.hypot(j.x, j.y) > 0.08) return { x: j.x, y: j.y }
+    return this.keyboardAxis()
+  }
+
   private keyboardAxis() {
     const pad = padAxis()
     if (pad.x !== 0 || pad.y !== 0) return pad

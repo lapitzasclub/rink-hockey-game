@@ -144,8 +144,15 @@ export const GOALIE_OUT_RANGE = 230
 export const GOALIE_OUT_LANE = 110
 /** El cambio de jugador puede pasar al portero propio con la bola a menos de esto de su portería (px). */
 export const GOALIE_SELECT_RANGE = 280
-/** Un segundo cambio antes de este tiempo, con la bola cerca de la portería, va al portero. */
-export const GOALIE_SWITCH_REPEAT_MS = 900
+/**
+ * Cambio con dirección (como en los juegos de fútbol): con el stick por encima de
+ * SWITCH_AIM_MIN se elige al compañero cuya dirección desde el controlado se aparta
+ * menos de SWITCH_AIM_MAX_ANGLE (rad) del stick; el ángulo pesa SWITCH_AIM_ANGLE_PX
+ * px de distancia por radián, para que gane el bien apuntado aunque esté algo más lejos.
+ */
+export const SWITCH_AIM_MIN = 0.5
+export const SWITCH_AIM_MAX_ANGLE = 1.05
+export const SWITCH_AIM_ANGLE_PX = 220
 /** Recorrido lateral del portero controlado por el humano desde el centro de la boca (px). */
 export const GOALIE_HUMAN_MAX_Y = GOAL_HALF_H + 34 * K
 export const FOUL_CHANCE_ON_STEAL = 0.28
