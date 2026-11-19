@@ -3,17 +3,18 @@
  *
  * La cámara lateral ve el plano de la boca casi de canto: postes y larguero
  * caen en la misma x de pantalla. Para abrir la boca sin mover nada del
- * suelo, todo punto con altura z se desplaza en x de pantalla hacia el fondo
- * de la portería en proporción a su altura en pantalla (`GOAL_VIS.leanX`).
- * Lo que toca el suelo (pies de los postes, arco trasero) queda en su sitio
- * exacto, así que la línea de gol pintada, la bola y los rebotes en el poste
+ * suelo, la portería usa la inclinación de perspectiva común de las vallas y
+ * las redes (`projectLeaned`, WP-70): todo punto con altura z se desplaza en x
+ * de pantalla hacia el fondo en proporción a su altura en pantalla. Lo que
+ * toca el suelo (pies de los postes, arco trasero) queda en su sitio exacto,
+ * así que la línea de gol pintada, la bola y los rebotes en el poste
  * coinciden con la física.
  */
 import * as Phaser from 'phaser'
 import { GOAL_BACK_DEPTH, GOAL_HALF_H, RINK } from '../../constants'
 import { getGoalLineX } from '../../utils'
 import { bandDepth, DEPTH, GOAL_VIS, LIGHT, PX_PER_M } from '../artSpec'
-import { project, type Projected } from '../viewTransform'
+import { project, projectLeaned, type Projected } from '../viewTransform'
 
 const V = GOAL_VIS
 const C = V.colors
@@ -50,12 +51,8 @@ const tmp: Projected = { x: 0, y: 0, s: 0 }
  * línea de gol), `v` lateral (+ hacia la cámara) y `z` altura, en px de mundo.
  */
 function gp(back: number, line: number, cy: number, u: number, v: number, z: number): Pt {
-  const wx = line + back * u
-  const wy = cy + v
-  project(wx, wy, 0, tmp)
-  const groundY = tmp.y
-  project(wx, wy, z, tmp)
-  return { x: tmp.x + back * V.leanX * (groundY - tmp.y), y: tmp.y, s: tmp.s }
+  projectLeaned(line + back * u, cy + v, z, tmp)
+  return { x: tmp.x, y: tmp.y, s: tmp.s }
 }
 
 function buildGeom(leftSide: boolean): GoalGeom {

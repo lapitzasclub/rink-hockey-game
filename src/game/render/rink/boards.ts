@@ -2,11 +2,14 @@
  * Vallas de la pista (WP-41): paredes de 1 m proyectadas con la cámara única,
  * con rodapié, canto superior, esquinas lisas, sombra en el suelo, puertas
  * frente a los banquillos y redes de protección tras las porterías.
+ *
+ * Todo lo que tiene altura se proyecta con `projectLeaned` (WP-70): la misma
+ * inclinación que abre la boca de la portería, creciente hacia los fondos.
  */
 import * as Phaser from 'phaser'
 import { RINK } from '../../constants'
 import { BENCH, BOARDS, BOARD_HEIGHT_M, NEAR_CUT, PX_PER_M, WORLD_PX_PER_M, CAMERA, LIGHT } from '../artSpec'
-import { project } from '../viewTransform'
+import { project, projectLeaned } from '../viewTransform'
 import { RINK_CORNER_R, fillQuad, roundedRectWorldPts } from './geometry'
 
 const CX = RINK.x + RINK.width / 2
@@ -58,7 +61,7 @@ function lum(fx: number, fy: number): number {
 
 /** Punto de la pared en una cara (`off` = 0 interior, BOARD_W exterior) a altura z (px). */
 function facePt(w: { x: number; y: number }, nx: number, ny: number, off: number, z: number) {
-  return project(w.x + nx * off, w.y + ny * off, z)
+  return projectLeaned(w.x + nx * off, w.y + ny * off, z)
 }
 
 /**
@@ -171,16 +174,18 @@ export function drawBoardDoors(scene: Phaser.Scene) {
   const halfW = (BOARDS.doorWidthM * MX) / 2
   const dh = BOARDS.doorHeightM * PX_PER_M
   for (const x of doorCentersX()) {
-    const q = (xx: number, z: number) => project(xx, RINK.y, z)
+    const q = (xx: number, z: number) => projectLeaned(xx, RINK.y, z)
     const a = q(x - halfW, 0), b = q(x + halfW, 0), c = q(x + halfW, dh), d = q(x - halfW, dh)
     g.fillStyle(0x16263d, 1)
     fillQuad(g, a.x - 2, a.y + 1, b.x + 2, b.y + 1, c.x + 2, c.y - 2, d.x - 2, d.y - 2)
     g.fillStyle(0x7e98b8, 1)
     fillQuad(g, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)
     // Rodapié y panel de la hoja
-    const k = q(x, BOARDS.kickM * PX_PER_M)
+    const kz = BOARDS.kickM * PX_PER_M
+    const ka = q(x - halfW, kz), kb = q(x + halfW, kz)
+    const k = q(x, kz)
     g.fillStyle(0x5a7396, 1)
-    g.fillRect(a.x, k.y, b.x - a.x, a.y - k.y)
+    fillQuad(g, a.x, a.y, b.x, b.y, kb.x, kb.y, ka.x, ka.y)
     // Rendija central, pomo y bisagra
     const t = q(x, dh)
     g.lineStyle(1, 0x16263d, 0.9)
@@ -208,21 +213,21 @@ export function drawProtectionNets(scene: Phaser.Scene) {
   for (const wx of [RINK.x, RINK.x + RINK.width]) {
     const y0 = midWorldY - halfW
     const y1 = midWorldY + halfW
-    const a = project(wx, y0, zBase), b = project(wx, y1, zBase)
-    const c = project(wx, y1, zTop), d = project(wx, y0, zTop)
+    const a = projectLeaned(wx, y0, zBase), b = projectLeaned(wx, y1, zBase)
+    const c = projectLeaned(wx, y1, zTop), d = projectLeaned(wx, y0, zTop)
     g.fillStyle(0xdbe6f2, BOARDS.netAlpha * 0.5)
     fillQuad(g, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)
     g.lineStyle(1, 0xdbe6f2, BOARDS.netAlpha * 1.6)
     const cols = Math.round((2 * BOARDS.netHalfWidthM) / BOARDS.netMeshM)
     for (let i = 0; i <= cols; i++) {
       const y = y0 + ((y1 - y0) * i) / cols
-      const p = project(wx, y, zBase), q = project(wx, y, zTop)
+      const p = projectLeaned(wx, y, zBase), q = projectLeaned(wx, y, zTop)
       g.lineBetween(p.x, p.y, q.x, q.y)
     }
     const rows = Math.round((BOARDS.netTopM - BOARD_HEIGHT_M) / BOARDS.netMeshM)
     for (let j = 1; j < rows; j++) {
       const z = zBase + ((zTop - zBase) * j) / rows
-      const p = project(wx, y0, z), q = project(wx, y1, z)
+      const p = projectLeaned(wx, y0, z), q = projectLeaned(wx, y1, z)
       g.lineBetween(p.x, p.y, q.x, q.y)
     }
     // Postes y cable superior

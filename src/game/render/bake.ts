@@ -201,8 +201,11 @@ export function bakeGraphicsSince(scene: Phaser.Scene, fromIndex: number, name: 
   }
 }
 
-/** Prefijo de las texturas horneadas del mundo (pista, redes): se podan al cambiar de resolución. */
-const WORLD_PREFIX = 'bake-w-'
+/**
+ * Prefijo de las texturas horneadas del mundo (pista, redes, rótulos): se podan al
+ * cambiar de resolución. La clave debe acabar en `-<resolución × 100>`.
+ */
+export const WORLD_PREFIX = 'bake-w-'
 
 /**
  * Borra los horneados del mundo hechos con otra resolución (otro nivel de calidad):

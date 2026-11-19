@@ -1,5 +1,5 @@
-import { RINK } from '../constants'
-import { CAMERA } from './artSpec'
+import { GOAL_LINE_OFFSET, RINK } from '../constants'
+import { CAMERA, LEAN } from './artSpec'
 
 /**
  * Cámara de perspectiva única (SPEC §2) para todo lo dibujado en el mundo.
@@ -45,6 +45,31 @@ export function project(wx: number, wy: number, wz = 0, out?: Projected): Projec
   o.x = CX + F * (wx - CX) * inv
   o.y = Y0 - F * (d * SIN - h * COS) * inv
   o.s = F * d * inv * inv
+  return o
+}
+
+/** Inclinación por px de distancia a CX: vale `LEAN.atGoalLine` en la línea de gol. */
+const LEAN_K = LEAN.atGoalLine / (RINK.width / 2 - GOAL_LINE_OFFSET)
+
+/**
+ * Factor de inclinación en `wx` (px de pantalla en x por px de altura en
+ * pantalla, con signo: hacia fuera del centro). Solo depende de `wx`, así que
+ * es continuo por todo el contorno, esquinas redondeadas incluidas.
+ */
+export function leanAt(wx: number): number {
+  return LEAN_K * (wx - CX)
+}
+
+/**
+ * `project` con la inclinación de perspectiva (WP-70) para estructuras con
+ * altura: x += leanAt(wx) · (y del suelo − y). Con wz = 0 coincide con `project`,
+ * así que pies, bases y sombras no se mueven. Sin asignaciones si se pasa `out`.
+ */
+export function projectLeaned(wx: number, wy: number, wz = 0, out?: Projected): Projected {
+  const d = CAM_Y - wy
+  const groundY = Y0 - (F * (d * SIN - H * COS)) / (d * COS + H * SIN)
+  const o = project(wx, wy, wz, out)
+  o.x += LEAN_K * (wx - CX) * (groundY - o.y)
   return o
 }
 

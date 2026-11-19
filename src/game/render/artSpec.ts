@@ -45,6 +45,18 @@ export const CAMERA = {
 } as const
 
 /**
+ * Inclinación de perspectiva de lo que tiene altura (WP-70): portería, vallas,
+ * puertas, publicidad y redes de protección. La cámara lateral ve casi de canto
+ * los planos que miran hacia los fondos; para abrirlos, un punto a altura z se
+ * desplaza en x de pantalla hacia fuera `k·(wx − CX)` px por px de altura en
+ * pantalla (ver `projectLeaned`). `atGoalLine` es ese factor en la línea de
+ * gol (la inclinación con que WP-67 abrió la boca). Lo que toca el suelo no se mueve.
+ */
+export const LEAN = {
+  atGoalLine: 0.45,
+} as const
+
+/**
  * Bandas de profundidad (SPEC §3). Cada banda empieza en su valor; las que
  * tienen recorrido (`DEPTH_SPAN`) se reparten por la y de pantalla de la base.
  */
@@ -630,12 +642,6 @@ export const TABLE = {
 export const GOAL_VIS = {
   /** Alto interior de la boca en metros (1,05 m). */
   heightM: 1.05,
-  /**
-   * Inclinación visual (WP-67): px de pantalla que se desplaza en x hacia el
-   * fondo cada px de altura en pantalla. Abre la boca, que la cámara lateral ve
-   * de canto, sin mover nada de lo que toca el suelo.
-   */
-  leanX: 0.45,
   /** Grosor del tubo en px de pantalla a s = 1 (real Ø 7,5 cm ≈ 2 px; se exagera). */
   tubePx: 3.4,
   /** Contorno oscuro del tubo a cada lado (px). */

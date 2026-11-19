@@ -3,13 +3,18 @@
  * cámara única. Lejana y laterales: cara interior; cercana: cara exterior,
  * en la franja baja para no tapar la bola (ver `NEAR_CUT`). También monta
  * puertas y redes de protección, que cuelgan de la misma capa de vallas.
+ *
+ * Paneles y textos siguen la inclinación de perspectiva de las vallas
+ * (`projectLeaned`, WP-70): los textos se rasterizan ya cizallados, con su panel.
  */
 import * as Phaser from 'phaser'
 import { RINK } from '../../constants'
 import { BOARDS, DEPTH, NEAR_CUT, PX_PER_M, WORLD_PX_PER_M } from '../artSpec'
-import { project } from '../viewTransform'
+import { leanAt, projectLeaned } from '../viewTransform'
 import { BACK_DEPTH, doorCentersX, drawBoardDoors, drawProtectionNets, shade } from './boards'
 import { RINK_CORNER_R, fillQuad } from './geometry'
+import { bakeResolution } from '../quality'
+import { WORLD_PREFIX } from '../bake'
 
 // Publicidad ficticia: [texto, fondo, color texto]
 const ADS: [string, number, string][] = [
@@ -53,14 +58,17 @@ export function drawAds(scene: Phaser.Scene) {
       const z = near ? nearZ : BOARDS.adFar
       const [, bg] = ADS[(i * 3 + (wx > RINK.x ? 2 : 5)) % ADS.length]
       const gg = near ? gNear : g
-      const a = project(wx, ya, z.z0 * PX_PER_M), b = project(wx, yb, z.z0 * PX_PER_M)
-      const c = project(wx, yb, z.z1 * PX_PER_M), d = project(wx, ya, z.z1 * PX_PER_M)
+      const a = projectLeaned(wx, ya, z.z0 * PX_PER_M), b = projectLeaned(wx, yb, z.z0 * PX_PER_M)
+      const c = projectLeaned(wx, yb, z.z1 * PX_PER_M), d = projectLeaned(wx, ya, z.z1 * PX_PER_M)
       gg.fillStyle(shade(bg, 0.85), 1)
       fillQuad(gg, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)
+      // Franja de brillo paralela al panel (a media altura, sin las puntas)
       gg.fillStyle(0xffffff, 0.14)
-      const m0 = project(wx, ya + (yb - ya) * 0.2, (z.z0 * 0.4 + z.z1 * 0.6) * PX_PER_M)
-      const m1 = project(wx, yb - (yb - ya) * 0.2, (z.z0 * 0.4 + z.z1 * 0.6) * PX_PER_M)
-      gg.fillRect(Math.min(m0.x, m1.x) - 0.5, m0.y - 2, Math.abs(m1.x - m0.x) + 1, 4)
+      const sa = ya + (yb - ya) * 0.2, sb = yb - (yb - ya) * 0.2
+      const za = (z.z0 * 0.5 + z.z1 * 0.5) * PX_PER_M, zb = (z.z0 * 0.3 + z.z1 * 0.7) * PX_PER_M
+      const m0 = projectLeaned(wx, sa, za), m1 = projectLeaned(wx, sb, za)
+      const m2 = projectLeaned(wx, sb, zb), m3 = projectLeaned(wx, sa, zb)
+      fillQuad(gg, m0.x, m0.y, m1.x, m1.y, m2.x, m2.y, m3.x, m3.y)
     }
   }
 
@@ -96,17 +104,52 @@ function endWall(
     const [text, bg, fg] = ADS[(i * 3 + phase) % ADS.length]
     const xa = panels[i][0] + 2
     const xb = panels[i][1] - 2
-    const a = project(xa, wy, z.z0 * PX_PER_M), b = project(xb, wy, z.z0 * PX_PER_M)
-    const c = project(xb, wy, z.z1 * PX_PER_M), d = project(xa, wy, z.z1 * PX_PER_M)
+    const a = projectLeaned(xa, wy, z.z0 * PX_PER_M), b = projectLeaned(xb, wy, z.z0 * PX_PER_M)
+    const c = projectLeaned(xb, wy, z.z1 * PX_PER_M), d = projectLeaned(xa, wy, z.z1 * PX_PER_M)
     g.fillStyle(bg, alpha)
     fillQuad(g, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)
+    // Brillo en el 30 % superior del panel, con su misma inclinación
+    const sheen = Math.max(1, (a.y - c.y) * 0.3) / Math.max(1, a.y - c.y)
     g.fillStyle(0xffffff, 0.12 * alpha)
-    g.fillRect(a.x, c.y, b.x - a.x, Math.max(1, (a.y - c.y) * 0.3))
-    const mid = project((xa + xb) / 2, wy, ((z.z0 + z.z1) / 2) * PX_PER_M)
-    scene.add.text(mid.x, mid.y, text, {
-      fontFamily: '"Russo One", sans-serif',
-      fontSize: `${fontPx}px`,
-      color: fg,
-    }).setOrigin(0.5).setScale(mid.s).setDepth(depth + 0.01).setAlpha(alpha)
+    fillQuad(g, d.x, d.y, c.x, c.y, c.x + (b.x - c.x) * sheen, c.y + (b.y - c.y) * sheen, d.x + (a.x - d.x) * sheen, d.y + (a.y - d.y) * sheen)
+    const mx = (xa + xb) / 2
+    const mid = projectLeaned(mx, wy, ((z.z0 + z.z1) / 2) * PX_PER_M)
+    shearedLabel(scene, mid.x, mid.y, text, fontPx, fg, mid.s, leanAt(mx)).setDepth(depth + 0.01).setAlpha(alpha)
   }
+}
+
+const LABEL_FONT = '"Russo One", sans-serif'
+let measureCtx: CanvasRenderingContext2D | null = null
+
+/**
+ * Rótulo de un panel inclinado. Phaser no cizalla textos (y descomponer la
+ * cizalla en giros dentro de un contenedor corrompe el texto al dibujarlo), así
+ * que se rasteriza una vez en un canvas con la cizalla del panel: subir 1 px
+ * desplaza `lean` px en x, como `projectLeaned`. Se pinta a la resolución de
+ * horneado para que siga nítido con el zoom de la cámara arcade.
+ */
+function shearedLabel(scene: Phaser.Scene, x: number, y: number, text: string, fontPx: number, color: string, s: number, lean: number) {
+  const res = bakeResolution(true)
+  const key = `${WORLD_PREFIX}ad:${text}:${fontPx}:${lean.toFixed(3)}-${Math.round(res * 100)}`
+  if (!scene.textures.exists(key)) {
+    const font = `${fontPx * res}px ${LABEL_FONT}`
+    measureCtx ??= document.createElement('canvas').getContext('2d')
+    measureCtx!.font = font
+    const h = Math.ceil(fontPx * res * 1.4)
+    const w = Math.ceil(measureCtx!.measureText(text).width + Math.abs(lean) * h + 4 * res)
+    const tex = scene.textures.createCanvas(key, w, h)
+    if (tex) {
+      const ctx = tex.getContext()
+      ctx.font = font
+      ctx.fillStyle = color
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'alphabetic'
+      // Centra la tinta (no la caja de la fuente) en el centro del panel
+      const m = ctx.measureText(text)
+      ctx.setTransform(1, 0, -lean, 1, w / 2, h / 2)
+      ctx.fillText(text, 0, (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2)
+      tex.refresh()
+    }
+  }
+  return scene.add.image(x, y, key).setScale(s / res)
 }
