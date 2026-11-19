@@ -79,7 +79,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
 | WP-70 | Inclinación de perspectiva coherente: portería, vallas y redes de fondo | engineer · opus | WP-67 | ✅ 2026-11-19 |
-| WP-71 | Ajustes gráficos personalizables | builder · sonnet | WP-68 | ⬜ |
+| WP-71 | Ajustes gráficos personalizables y prueba del equipo | engineer · opus | WP-68 | ⬜ |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos
@@ -676,10 +676,10 @@ El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en per
 - `?lab=goal&set=occlusion` y `set=ball`: la bola dentro de la jaula se ve dentro de la red y el portero sigue delante de la boca.
 - `movil-bajo` sin regresión > 10 %.
 
-### WP-71 — Ajustes gráficos personalizables
+### WP-71 — Ajustes gráficos personalizables y prueba del equipo
 
-- **Rol:** gfx-builder · sonnet.
-- **Propios:** `render/quality.ts`, `shell/settingsPanel.ts`, el marcado de Ajustes en `shell/template.ts` y, en `MatchScene.ts`, solo `applyQuality`.
+- **Rol:** gfx-engineer · opus: la prueba arranca un partido de verdad en producción.
+- **Propios:** `render/quality.ts`, `shell/settingsPanel.ts`, el marcado de Ajustes en `shell/template.ts`, y en `MatchScene.ts` `applyQuality` y el arranque en modo prueba.
 
 **Diagnóstico (usuario):** «tampoco tiene por qué ser un slider de configuración bajo-medio-alto... se puede dar la opción de personalizar o poner en auto y permitir tocar varias cosas». Hoy Ajustes solo ofrece AUTO, ALTA, MEDIA y BAJA, que mueven tres cosas a la vez: nitidez del horneado, densidad de partículas y público animado.
 
@@ -696,11 +696,22 @@ El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en per
 - Se guarda en `localStorage` con lecturas protegidas. `?quality=` sigue sirviendo para el banco y el laboratorio.
 - Táctil y teclado; legible en 844 × 390.
 
+**Prueba del equipo** (usuario: «dar la opción al usuario de calcular automático como hacen algunos juegos de lanzar unos tests y elegir la mejor config»). Hoy AUTO adivina por núcleos y memoria, y en táctil nunca pasa de MEDIA, así que un móvil de gama alta como el OnePlus 9 Pro se queda en MEDIA.
+
+- Botón PROBAR EQUIPO en Ajustes. Juega unos segundos de IA contra IA con el pintado real del partido (pabellón, público, partículas), detrás de un velo «Probando… ALTA».
+  - Empieza en ALTA y se para en el primer nivel que aguanta.
+  - Aguantar es lo mismo que mide `QUALITY_WATCH`, con el tiempo medio por fotograma dentro de 1000/55 ms. Una pantalla de 30 Hz o de 120 Hz no confunde la medida.
+  - Guarda el resultado como nivel de AUTO (con su fecha y de dónde sale) y lo enseña: «Tu equipo: ALTA».
+  - Funciona en producción, sin el laboratorio. Cabe en unos 15 s como mucho y se puede cancelar.
+- Primer arranque en AUTO sin resultado guardado: se sigue partiendo de `detectTier`, pero el regulador también puede subir un nivel para el siguiente partido si sobra margen claro (por ejemplo, dos ventanas con trabajo < 30 % del fotograma a los fps objetivo). Bajar sigue siendo en caliente; subir, solo entre partidos.
+- La prueba del equipo y la subida automática no tocan una preferencia fija ni PERSONALIZADA.
+
 **Aceptación:**
 
 - Cada opción cambia lo que dice, en partido o en el siguiente, según se indique.
 - Capturas de Ajustes en escritorio y en móvil apaisado.
 - Banco `movil-bajo` en ALTA y en BAJA, sin cambios frente a los mismos niveles de antes.
+- Prueba del equipo en el móvil real (OnePlus por adb): debe quedar en ALTA. En `movil-bajo` (CPU × 6) debe quedar por debajo de ALTA. El partido de humo no cambia.
 
 ### WP-69 — Banquillos, mesa, sancionados y árbitro legible (v2)
 
