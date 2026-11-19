@@ -69,7 +69,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-52 | Banquillos, entrenadores y delegados | builder · sonnet | Gate C, WP-12 | ➡️ absorbido por WP-69 |
 | WP-60 | HUD unificado | builder · sonnet | Gate A | ✅ 2026-11-16 |
 | WP-61 | Luz y sombras | builder · sonnet | Gate C, WP-40…43 | ✅ 2026-11-16 |
-| WP-62 | Rendimiento | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ⬜ |
+| WP-62 | Rendimiento | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ✅ 2026-11-19 |
 | WP-63 | Móvil | qa · haiku (medir) → builder · sonnet (arreglar) | WP-61 | ✅ 2026-11-19 |
 | WP-64 | Partido de humo (IA contra IA) | builder · sonnet | — | ✅ 2026-11-16 |
 | WP-65 | Escala de pista parametrizada (D11) | builder · sonnet | WP-64 | ✅ 2026-11-16 |
@@ -522,6 +522,18 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 - Si no se cumple SPEC §12, el builder hornea texturas y Graphics estáticos.
 
 **Aceptación:** SPEC §12 cumplido y reportado con números.
+
+**Resultado (2026-11-19, main 13faf70, `perf-bench` × 3 corridas, IA contra IA).** El banco tiene el techo en 120 fps.
+
+| Perfil | Modo | ALTA fps · p95 | MEDIA fps · p95 |
+|---|---|---|---|
+| escritorio | arcade | 119,2 · 8,4 ms | 119,2 · 8,4 ms |
+| escritorio | reglamento | 119,9 · 8,4 ms | 119,9 · 8,4 ms |
+| movil | arcade | 117,4 · 8,4 ms | 115,6 · 8,4 ms |
+| movil | reglamento | 119,8 · 8,4 ms | 119,8 · 8,4 ms |
+
+- Holgura de sobra frente a 60 fps en escritorio y 45 fps en móvil medio. En movil, la actualización es de 3,7 ms y el pintado de 5,0 ms (p95, arcade alta).
+- Objetos activos: unos 600 en ALTA y MEDIA (601 en arcade alta) y unos 430 en BAJA. Está en el límite, pero no cuesta fotogramas. Hornear las 18 imágenes de luz queda como mejora opcional.
 
 ### WP-63 — Móvil
 
