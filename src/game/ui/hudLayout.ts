@@ -53,8 +53,17 @@ export class HudLayout {
 let probe: HTMLElement | null = null
 
 /**
- * Márgenes seguros del dispositivo (env(safe-area-inset-*)) en px CSS. Se leen de
- * un elemento de prueba porque env() no es accesible desde JS.
+ * Margen mínimo (px CSS) en pantallas táctiles. Android solo declara en env() la
+ * muesca o la cámara, no las esquinas redondeadas ni los bordes curvos: sin este
+ * mínimo el marcador quedaba a 3 px del borde y se cortaba. Con él, el marcador
+ * queda a la altura del botón de pausa (14 px, style.css).
+ */
+const TOUCH_EDGE_MIN_CSS = 11
+const coarsePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+
+/**
+ * Márgenes seguros del dispositivo (env(safe-area-inset-*)) en px CSS, con el mínimo
+ * táctil. Se leen de un elemento de prueba porque env() no es accesible desde JS.
  */
 export function safeAreaInsetsCss(): Insets {
   if (!probe) {
@@ -65,6 +74,7 @@ export function safeAreaInsetsCss(): Insets {
     document.body.appendChild(probe)
   }
   const cs = getComputedStyle(probe)
-  const px = (v: string) => Number.parseFloat(v) || 0
+  const min = coarsePointer ? TOUCH_EDGE_MIN_CSS : 0
+  const px = (v: string) => Math.max(min, Number.parseFloat(v) || 0)
   return { left: px(cs.paddingLeft), top: px(cs.paddingTop), right: px(cs.paddingRight), bottom: px(cs.paddingBottom) }
 }

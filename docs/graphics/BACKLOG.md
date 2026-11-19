@@ -538,6 +538,7 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 **Hallazgos en un móvil real (2026-11-19).** OnePlus 9 Pro, Vivaldi, 2412 × 1080, flujo real (menú → pantalla completa → ARCADE). Capturas en `docs/graphics/shots/WP-63/phone/`.
 
 - La pantalla completa del menú funciona y ocupa toda la pantalla. El HUD se lee bien y el joystick cae sobre la grada.
+- ~~Marcador cortado por las esquinas redondeadas y el borde curvo~~ (arreglado el mismo día). Android solo declara la cámara en `env(safe-area-inset-*)` (37 px a un lado). En táctil, `hudLayout.ts` aplica un margen mínimo de 11 px CSS, con lo que el marcador queda a la altura del botón de pausa.
 - ~~Franjas negras arriba y abajo en pantalla completa~~ (arreglado el mismo día). El lienzo se quedaba con el alto que tenía con la barra del navegador (919 × 359 dentro de 919 × 411). En Android las barras se van después de `fullscreenchange` y de `resize`, así que ahora `main.ts` reajusta con un `ResizeObserver` sobre `#game-host`. Sin pantalla completa, las franjas laterales por encima de 2,6 : 1 (`max-width: 260vh`) son a propósito.
 - En arcade, los botones A, B y S tapan la esquina inferior derecha de la pista, con jugadores debajo. Hay que dejar sitio en el encuadre o hacerlos menos opacos; nipplejs no se toca.
 - Sin pantalla completa, la barra del navegador se come cerca del 22 % del alto. Propuesta: en táctil, al tocar un modo se pide pantalla completa (el toque ya es el gesto que la permite), y el botón se mantiene.
