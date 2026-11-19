@@ -65,12 +65,15 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Objetivo:** faltas de equipo acumuladas en todo el partido (no se reinician en el descanso), libre directo en la 10.ª y cada 5 más, libre directo por ocasión clara, penalti dentro del área real (9 × 5,40 m delante de la línea de gol), tarjeta azul por falta grave (no cuenta como falta de equipo), libre indirecto con los rivales a 3 m y a 70 cm de la valla, en libre directo y penalti todos en el área contraria y el portero en la línea. Saque neutral (el antiguo bully) cuando la bola queda trabada, antes si es contra la valla; detrás de la portería, en la esquina del área. Reloj parado en los reinicios.
 **Archivos:** `systems/rules.ts`, `systems/matchFlow.ts`, `systems/matchActions.ts`, `systems/matchClock.ts`, constantes de reinicio.
 **Aceptación:** humo de 20 por modo dentro del IC de E-02; en reglamento salen penaltis, libres directos y saques neutrales; partido visto en vivo.
+**Balance (decisión del usuario):** «hay que pensar en la gamificación y que es un juego y qué es divertido». No se busca el realismo estadístico: el libre directo y el penalti son momentos de tensión y deben salir. Probabilidades de falta al ~70 % de las de E-02 (con la mitad casi ningún equipo llegaba a la 10.ª). Objetivo: 1–2 libres directos por acumulación por partido, pocas tarjetas, sin parones continuos.
+**Pendiente:** libre directo que coincide con el final de una parte, un solo remate sin rechace (art. 23.6).
 
 ## E-12 — Transiciones sin teletransporte
 
 **Pedido del usuario:** «los jugadores se teletransportan en los goles, en los fines de tiempo… debería de continuar la animación, celebrar, volver al medio y hacer el saque. por cierto los saques de medio están mal hechos».
 **Objetivo:** tras el gol se celebra y todos patinan a su sitio de saque de centro; saca el equipo que encajó (art. 5), con el que saca y un compañero dentro del círculo y los rivales fuera; el árbitro pita cuando están colocados. En el descanso cruzan el campo patinando. Solo el inicio del partido coloca de golpe.
 **Archivos:** `systems/matchFlow.ts` (`resetKickoffState`, `updateKickoffState`, `skateToward`), `systems/sceneFlow.ts`, `scenes/MatchScene.ts`.
+**Expulsado:** «en las tarjetas que causan expulsados no hay animación del expulsado saliendo al banquillo». El sancionado patina a la puerta de su banquillo («se ve una puerta delante de cada banquillo»), va por el pasillo hasta su asiento y vuelve a la pista por la misma puerta (`penPhase` en `movement.ts`, `penaltyDoor` en `render/rink/table.ts`). La sanción solo corre con el reloj en marcha.
 
 ## E-13 — Sombra y marcador del seleccionado
 

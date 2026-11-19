@@ -18,6 +18,7 @@ import { ARCADE_FONT } from '../arcadeFx'
 import { tone } from '../puppet/paint'
 import { project } from '../viewTransform'
 import { benchX, side, slab, wall } from './benches'
+import { doorCentersX } from './boards'
 import { BOARD_W } from './geometry'
 
 const M = PX_PER_M
@@ -39,6 +40,30 @@ export function penaltySeat(team: TeamColor, n: number, out = { x: 0, y: 0 }): {
   const i = Math.min(Math.max(0, Math.floor(n)), seats.length - 1)
   out.x = benchX(team, seats[i])
   out.y = BOARD_OUT_Y - PENALTY_BOX.seatSetbackM * MY
+  return out
+}
+
+/** Puerta del banquillo del equipo, vista desde la pista: por ahí sale y vuelve el sancionado. */
+export function penaltyDoor(team: TeamColor, inset: number, out = { x: 0, y: 0 }): { x: number; y: number } {
+  out.x = doorCentersX()[team === 'blue' ? 0 : 1]
+  out.y = RINK.y + inset
+  return out
+}
+
+/** Y de mundo del pasillo entre la valla y los bancos (PENALTY_BOX.corridorM). */
+export const PENALTY_CORRIDOR_Y = BOARD_OUT_Y - PENALTY_BOX.corridorM * MY
+
+/**
+ * Camino del sancionado en cuatro puntos: pista frente a la puerta → al otro
+ * lado de la puerta → por el pasillo → su asiento. `out` se reutiliza.
+ */
+export function penaltyPath(team: TeamColor, seat: number, inset: number, out: { x: number; y: number }[]) {
+  const door = penaltyDoor(team, inset, out[0])
+  const s = penaltySeat(team, seat, out[3])
+  out[1].x = door.x
+  out[1].y = PENALTY_CORRIDOR_Y
+  out[2].x = s.x
+  out[2].y = PENALTY_CORRIDOR_Y
   return out
 }
 

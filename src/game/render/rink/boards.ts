@@ -11,6 +11,8 @@ import { RINK } from '../../constants'
 import { BENCH, BOARDS, BOARD_HEIGHT_M, NEAR_CUT, PX_PER_M, WORLD_PX_PER_M, CAMERA, LIGHT } from '../artSpec'
 import { project, projectLeaned } from '../viewTransform'
 import { RINK_CORNER_R, fillQuad, roundedRectWorldPts } from './geometry'
+import { bakeGraphics } from '../bake'
+import type { TeamColor } from '../../types'
 
 const CX = RINK.x + RINK.width / 2
 const MX = WORLD_PX_PER_M.x
@@ -195,6 +197,82 @@ export function drawBoardDoors(scene: Phaser.Scene) {
     g.fillRect(hz.x - 1, hz.y - 2, 3, 4)
     g.lineStyle(1, 0xf4f8fc, 0.9)
     g.lineBetween(d.x, d.y, c.x, c.y)
+  }
+}
+
+
+/** Hojas de cada puerta entornada y abierta, horneadas; la cerrada es la de `drawBoardDoors`. */
+type DoorLeaves = {
+  half: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics
+  open: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics
+  amount: number
+  shown: number
+}
+const doorLeaves: Partial<Record<TeamColor, DoorLeaves>> = {}
+let doorClock = -1
+
+/** Hueco de la puerta con las dos hojas giradas `theta` hacia el pasillo (se abren hacia fuera de la pista). */
+function drawOpenDoor(g: Phaser.GameObjects.Graphics, x: number, theta: number) {
+  const halfW = (BOARDS.doorWidthM * MX) / 2
+  const dh = BOARDS.doorHeightM * PX_PER_M
+  const kz = BOARDS.kickM * PX_PER_M
+  const q = (xx: number, yy: number, z: number) => projectLeaned(xx, yy, z)
+  const a = q(x - halfW, RINK.y, 0), b = q(x + halfW, RINK.y, 0), c = q(x + halfW, RINK.y, dh), d = q(x - halfW, RINK.y, dh)
+  // Lo que se ve por el hueco: el pasillo en penumbra y su suelo
+  g.fillStyle(0x0e1726, 1)
+  fillQuad(g, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)
+  const fa = q(x - halfW, RINK.y, dh * 0.22), fb = q(x + halfW, RINK.y, dh * 0.22)
+  g.fillStyle(0x223247, 1)
+  fillQuad(g, a.x, a.y, b.x, b.y, fb.x, fb.y, fa.x, fa.y)
+
+  const leafX = (BOARDS.doorWidthM / 2) * MX * Math.cos(theta)
+  const leafY = (BOARDS.doorWidthM / 2) * WORLD_PX_PER_M.y * Math.sin(theta)
+  const face = shade(0x7e98b8, 0.95 - 0.25 * Math.sin(theta))
+  for (const s of [-1, 1]) {
+    const hx = x + s * halfW
+    const ex = hx - s * leafX
+    const ey = RINK.y - leafY
+    const h0 = q(hx, RINK.y, 0), h1 = q(hx, RINK.y, dh), e0 = q(ex, ey, 0), e1 = q(ex, ey, dh)
+    g.fillStyle(face, 1)
+    fillQuad(g, h0.x, h0.y, e0.x, e0.y, e1.x, e1.y, h1.x, h1.y)
+    const hk = q(hx, RINK.y, kz), ek = q(ex, ey, kz)
+    g.fillStyle(0x5a7396, 1)
+    fillQuad(g, h0.x, h0.y, e0.x, e0.y, ek.x, ek.y, hk.x, hk.y)
+    g.lineStyle(1, 0xf4f8fc, 0.9)
+    g.lineBetween(h1.x, h1.y, e1.x, e1.y)
+    g.lineStyle(1, 0x16263d, 0.9)
+    g.lineBetween(e0.x, e0.y, e1.x, e1.y)
+  }
+}
+
+/** Crea las puertas entornada y abierta de cada banquillo, ocultas hasta que pase alguien. */
+export function createBoardDoorLeaves(scene: Phaser.Scene) {
+  const xs = doorCentersX()
+  doorClock = -1
+  for (const [i, team] of (['blue', 'red'] as const).entries()) {
+    const make = (theta: number, name: string) => {
+      const g = scene.add.graphics().setDepth(BACK_DEPTH + 0.25)
+      drawOpenDoor(g, xs[i], theta)
+      return bakeGraphics(g, `door-${team}-${name}`, true).setVisible(false)
+    }
+    doorLeaves[team] = { half: make(0.85, 'half'), open: make(1.5, 'open'), amount: 0, shown: 0 }
+  }
+}
+
+/** Abre la puerta del equipo con alguien cerca y la cierra al quedar libre; solo cambia la visibilidad. */
+export function updateBoardDoors(busy: Record<TeamColor, boolean>, timeNow: number) {
+  const dtMs = doorClock < 0 ? 0 : Math.min(100, Math.max(0, timeNow - doorClock))
+  doorClock = timeNow
+  for (const team of ['blue', 'red'] as const) {
+    const d = doorLeaves[team]
+    if (!d || !d.open.active) continue
+    const step = dtMs / BOARDS.doorSwingMs
+    d.amount = Math.min(1, Math.max(0, d.amount + (busy[team] ? step : -step)))
+    const shown = d.amount > 0.65 ? 2 : d.amount > 0.15 ? 1 : 0
+    if (shown === d.shown) continue
+    d.shown = shown
+    d.half.setVisible(shown === 1)
+    d.open.setVisible(shown === 2)
   }
 }
 

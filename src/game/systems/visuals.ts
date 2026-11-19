@@ -8,12 +8,14 @@
 import * as Phaser from 'phaser'
 import type { Ball, Player } from '../types'
 import { getRoleShort } from '../utils'
-import { GOALIE_RADIUS, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
+import { GOALIE_RADIUS, RINK, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
 import { project, type Projected } from '../render/viewTransform'
-import { penaltySeat } from '../render/rink/table'
+import { PENALTY_CORRIDOR_Y, penaltyDoor, penaltySeat } from '../render/rink/table'
+import { BOARD_W } from '../render/rink/geometry'
+import { updateBoardDoors } from '../render/rink/boards'
 import { SEAT_PELVIS_Y } from '../render/rink/benches'
 import {
-  BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
+  BALL_VISUAL_DIAMETER_M, BOARDS, DEPTH, FIGURE_EXAG, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
   WORLD_PX_PER_M, bandDepth, figureScale,
 } from '../render/artSpec'
 import { actions, resolveAction } from '../render/puppet/actions'
@@ -56,7 +58,7 @@ function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, 
   penNext.red = 0
   for (const p of players) {
     if (!(p.suspendedUntil && p.suspendedUntil > timeNow)) continue
-    const forced = p.container.getData('penSeat') as number | undefined
+    const forced = (p.container.getData('penSeat') as number | undefined) ?? p.penSeat
     let out = penSeats.get(p.id)
     if (!out) { out = { x: 0, y: 0 }; penSeats.set(p.id, out) }
     penaltySeat(p.team, forced ?? penNext[p.team]++, out)
@@ -65,6 +67,19 @@ function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, 
 }
 
 const foot: Projected = { x: 0, y: 0, s: 0 }
+const penDoor = { x: 0, y: 0 }
+/** Equipos con alguien cruzando su puerta en este fotograma. */
+const doorBusy = { blue: false, red: false }
+
+function inDoorway(player: Player) {
+  penaltyDoor(player.team, 0, penDoor)
+  return Math.abs(player.pos.x - penDoor.x) < (BOARDS.doorWidthM * WORLD_PX_PER_M.x) / 2 && player.pos.y > PENALTY_CORRIDOR_Y - PLAYER_RADIUS
+}
+
+function noteDoorTraffic(player: Player) {
+  penaltyDoor(player.team, 0, penDoor)
+  if (Math.hypot(player.pos.x - penDoor.x, player.pos.y - penDoor.y) < BOARDS.doorOpenRadiusM * WORLD_PX_PER_M.x) doorBusy[player.team] = true
+}
 const probe: Projected = { x: 0, y: 0, s: 0 }
 /** Escala del suelo en el último punto proyectado: px de pantalla por px de mundo en X (gx) e Y (gy). */
 let gx = 1
@@ -125,15 +140,26 @@ export function updateVisuals(
   const penPos = buildPenaltyPositions(players, timeNow)
   const labelsOn = areRoleLabelsEnabled()
 
+  // Puertas de los banquillos: con lo que pasó por ellas el fotograma anterior
+  updateBoardDoors(doorBusy, timeNow)
+  doorBusy.blue = false
+  doorBusy.red = false
   for (const player of players) {
-    const suspended = !!(player.suspendedUntil && player.suspendedUntil > timeNow)
+    let suspended = !!(player.suspendedUntil && player.suspendedUntil > timeNow)
+    // Camino al banquillo y de vuelta: se pinta patinando donde lo deja la simulación; sentado solo en su asiento
+    const walking = suspended && !!player.penPhase && player.penPhase !== 'seated'
+    if (walking) suspended = false
     const penWorld = suspended ? penPos.get(player.id)! : null
+    if (walking) noteDoorTraffic(player)
     projectGround(penWorld ? penWorld.x : player.pos.x, penWorld ? penWorld.y : player.pos.y)
     const sp = foot
     const k = figureScale(sp.s)
     const figH = (PUPPET_LOCAL.feetY - PUPPET_LOCAL.topY) * k
     // El portero delante de la boca va por encima del marco (WP-67)
-    const depth = player.role === 'goalie' ? depthBesideGoal(player.pos.x, player.pos.y, bandDepth('COURT', sp.y)) : bandDepth('COURT', sp.y)
+    // Ya en el pasillo, la valla le tapa las piernas; en el hueco de la puerta abierta se ve entero
+    const behindBoard = walking && player.pos.y < RINK.y - BOARD_W * 0.5 && !inDoorway(player)
+    const depth = player.role === 'goalie' ? depthBesideGoal(player.pos.x, player.pos.y, bandDepth('COURT', sp.y))
+      : bandDepth(behindBoard ? 'OFFCOURT_FAR' : 'COURT', sp.y)
     const centerY = sp.y - PUPPET_LOCAL.feetY * k   // el origen del contenedor es el torso; los pies quedan en sp.y
     const pose = player.pose
     pose.headScale = headScale

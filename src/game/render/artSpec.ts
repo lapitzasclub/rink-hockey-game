@@ -452,6 +452,9 @@ export const BOARDS = {
   /** Puerta frente al banquillo: ancho y alto (m). */
   doorWidthM: 1.3,
   doorHeightM: 0.94,
+  /** La puerta se abre con alguien a menos de este radio (m) y tarda `doorSwingMs` en abrirse o cerrarse. */
+  doorOpenRadiusM: 2.2,
+  doorSwingMs: 320,
   /** Red de protección tras la portería: altura desde el suelo (m), semianchura (m), paso de malla (m). */
   netTopM: 4,
   netHalfWidthM: 4.2,
@@ -736,7 +739,7 @@ export const CROWD = {
  * desde el centro de la pista (el 0 es el más próximo a la mesa) y ancla de los
  * sentados desde la valla exterior. El asiento sigue a `BENCH`.
  */
-export const PENALTY_BOX = { u: [1.8, 3.65], seatsU: [2.15, 2.75, 3.35], seatSetbackM: 1.75 } as const
+export const PENALTY_BOX = { u: [1.8, 3.65], seatsU: [2.15, 2.75, 3.35], seatSetbackM: 1.75, corridorM: 0.45 } as const
 
 // ─── Mesa y sancionados (WP-51) ─────────────────────────────────────────────
 

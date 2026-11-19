@@ -59,6 +59,12 @@ export type Player = {
   stickWorldAngle?: number
   /** Timestamp hasta el que el jugador está expulsado (tarjeta azul). 0 o ausente = activo. */
   suspendedUntil?: number
+  /** Camino del sancionado: patina a la puerta (`out`), la cruza hasta su asiento (`exit`), sentado (`seated`) o de vuelta a la pista (`back`). */
+  penPhase?: 'out' | 'exit' | 'seated' | 'back'
+  penPhaseAt?: number
+  /** Asiento en la zona de sancionados y recorrido hecho del camino puerta → asiento (px). */
+  penSeat?: number
+  penWalk?: number
   // ─── Estado arcade (ausente en modo reglamento) ───
   /** Aturdido por carga o congelado: sin input ni IA hasta este instante. */
   stunUntil?: number

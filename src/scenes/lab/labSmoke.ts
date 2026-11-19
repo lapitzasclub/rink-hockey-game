@@ -144,7 +144,7 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     }
     for (const p of s.players) {
       const su = p.suspendedUntil ?? 0
-      if (su > (prevSusp.get(p.id) ?? 0) && su > s.simNow) st.blueCards[p.team]++
+      if (su > s.simNow && !((prevSusp.get(p.id) ?? 0) > s.simNow)) st.blueCards[p.team]++  // la sanción se alarga en los parones: solo cuenta la nueva
       prevSusp.set(p.id, su)
       // Validez de jugadores: NaN o fuera de pista (los sancionados esperan en el banquillo)
       const bad = ![p.pos.x, p.pos.y, p.velocity.x, p.velocity.y].every(Number.isFinite) ||

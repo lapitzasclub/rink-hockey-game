@@ -107,17 +107,17 @@ export const GOALIE_DISTRIBUTION_DELAY_MS = 550
 export const FOUL_CHANCE_ON_STEAL = 0.28
 export const MANUAL_STEAL_RANGE = 52 * K
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
-export const MANUAL_STEAL_FOUL_CHANCE = 0.08
+export const MANUAL_STEAL_FOUL_CHANCE = 0.055
 export const AI_STEAL_ENGAGE_FRONT_DOT = 0.08
 export const STEAL_FRONT_SUCCESS_CHANCE = 0.03
 export const STEAL_FRONT_LOOSE_CHANCE = 0.05
-export const STEAL_FRONT_FOUL_CHANCE = 0.045
+export const STEAL_FRONT_FOUL_CHANCE = 0.03
 export const STEAL_SIDE_SUCCESS_CHANCE = 0.08
 export const STEAL_SIDE_LOOSE_CHANCE = 0.38
-export const STEAL_SIDE_FOUL_CHANCE = 0.1
+export const STEAL_SIDE_FOUL_CHANCE = 0.07
 export const STEAL_BACK_SUCCESS_CHANCE = 0.005
 export const STEAL_BACK_LOOSE_CHANCE = 0.06
-export const STEAL_BACK_FOUL_CHANCE = 0.45
+export const STEAL_BACK_FOUL_CHANCE = 0.32
 export const BALL_CARRIER_SHIELD_FRONT_DOT = 0.45
 export const BALL_CARRIER_SHIELD_BONUS = 0.08
 export const STEAL_LOOSE_BALL_POWER = 245
@@ -211,8 +211,8 @@ export const FOUL_AI_AIM_MS = 450
 export const TEAM_FOUL_DIRECT_FIRST = 10
 export const TEAM_FOUL_DIRECT_EVERY = 5
 /** Probabilidad de que una falta de robo sea grave (tarjeta azul): por detrás o de lado. */
-export const SERIOUS_FOUL_CHANCE_BACK = 0.3
-export const SERIOUS_FOUL_CHANCE_OTHER = 0.06
+export const SERIOUS_FOUL_CHANCE_BACK = 0.15
+export const SERIOUS_FOUL_CHANCE_OTHER = 0.035
 /** Ocasión clara de gol cortada con falta: portador a menos de esta distancia de la portería (px). */
 export const CLEAR_CHANCE_MAX_DIST = 9 * METER_PX
 /** Franja vertical (px) en la que un defensor cuenta como «entre el portador y la portería». */
@@ -237,6 +237,8 @@ export const BLUE_CARD_DURATION_MS = 120_000
 export const BENCH_Y_TOP = 30
 /** Posición Y del banquillo del equipo rojo (debajo de la pista) */
 export const BENCH_Y_BOTTOM = 690
+/** Sancionado: plazo para llegar patinando a la puerta de su banquillo (ms). */
+export const PEN_EXIT_MAX_MS = 6000
 
 /** Distancia máxima al gol rival para que la IA intente disparar */
 export const AI_SHOOT_DISTANCE = 370
@@ -432,3 +434,6 @@ export const ARCADE_CAMERA_LOOKAHEAD_S = 0.28
  * alto visible): el joystick y los botones A/B/S ocupan la franja de abajo.
  */
 export const ARCADE_CAMERA_TOUCH_BIAS = 0.1
+
+/** Sancionado: velocidad por el pasillo entre la puerta y su asiento (px/s, ~2,4 m/s). */
+export const PEN_WALK_SPEED = 2.4 * METER_PX

@@ -386,7 +386,7 @@ export function tryManualStealAction(options: {
     looseChance += 0.06
   }
   if (carrierSpeed > 180) {
-    foulChance += 0.04
+    foulChance += 0.03
     successChance -= 0.03
     looseChance += 0.02
   }
@@ -404,7 +404,7 @@ export function tryManualStealAction(options: {
 
   successChance = Phaser.Math.Clamp(successChance, 0.01, 0.45)
   looseChance = Phaser.Math.Clamp(looseChance, 0.1, 0.56)
-  foulChance = Phaser.Math.Clamp(foulChance, 0.02, 0.65)
+  foulChance = Phaser.Math.Clamp(foulChance, 0.01, 0.5)
   if (options.allowFouls === false) {
     looseChance = Math.min(0.75, looseChance + foulChance * 0.6)
     foulChance = 0

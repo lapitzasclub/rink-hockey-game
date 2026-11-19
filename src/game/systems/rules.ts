@@ -47,6 +47,11 @@ export function createRuleState(): RuleState {
 export function registerBlueCard(player: Player, timeNow: number) {
   // 2 minutos de juego, no reales: con el reloj acelerado duran lo mismo en proporción a la parte
   player.suspendedUntil = timeNow + gameToRealMs(BLUE_CARD_DURATION_MS)
+  // Ya en camino al banquillo: el pintado no lo sienta de golpe en el mismo paso
+  if (!player.penPhase) {
+    player.penPhase = 'out'
+    player.penPhaseAt = timeNow
+  }
 }
 
 /** Área de penalti que defiende `side`: 9 × 5,40 m delante de la línea de gol; las líneas cuentan como dentro. */

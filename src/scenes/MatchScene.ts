@@ -20,6 +20,7 @@ import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation, switchSides, teamSide } from '../game/formation'
 import { drawRink, createGoalNetFlash } from '../game/render/drawRink'
 import { bakeGraphics } from '../game/render/bake'
+import { createBoardDoorLeaves } from '../game/render/rink/boards'
 import { createArena, type Arena } from '../game/render/arena'
 import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../game/render/benchPlayers'
 import {
@@ -288,6 +289,7 @@ export class MatchScene extends Phaser.Scene {
     setVisualHeadScale(this.isArcade ? ARCADE_HEAD_SCALE : 1)
     this.arena = createArena(this)
     drawRink(this)
+    createBoardDoorLeaves(this)
     this.benchPlayers = createBenchPlayers(this)
     this.events.emit('match:clock', { seconds: this.remainingSeconds })
     const nets = createGoalNetFlash(this)
@@ -621,6 +623,10 @@ export class MatchScene extends Phaser.Scene {
       },
     })
 
+    // Los sancionados siguen su camino al banquillo también en los parones; su sanción solo corre con el reloj
+    const stopped = this.restartAt > 0 || !!(this.activeKickoff || this.activeBully || this.activeFoulRestart)
+    updateSuspendedPlayers(this.players, time, dt, stopped)
+
     if (this.restartAt > 0) {
       this.coastPlayers(dt)
       return
@@ -635,7 +641,6 @@ export class MatchScene extends Phaser.Scene {
       return
     }
 
-    updateSuspendedPlayers(this.players, time, dt)
     if (this.arcade) {
       const change = this.arcade.update({
         timeNow: time,
