@@ -100,11 +100,14 @@ docs/
                              AUDIT (diagnóstico 2026-11-15), BACKLOG (WPs, decisiones, propiedad de archivos), shots/
   perf/                      Rendimiento y pulido: WORKFLOW (presupuestos, herramientas y reglas para todo el desarrollo),
                              BACKLOG (paquetes P-XX con medidas), bench/ (resultados en bruto del banco)
+  evo/                       Evolutivo de animación, IA y dificultad: WORKFLOW (roles, ciclo, medir), BACKLOG (E-XX), smoke/ (humo en bruto)
 .claude/
   agents/gfx-*.md            Agentes del workflow gráfico: engineer (opus), builder (sonnet), qa (haiku)
   agents/perf-*.md           Agentes del workflow de rendimiento: engineer (opus), builder (sonnet), qa (haiku)
   commands/gfx.md            /gfx — coordinador del workflow gráfico
   commands/perf.md           /perf — coordinador del workflow de rendimiento
+  agents/ai-engineer.md      IA táctica, portero y dificultad (opus) del workflow evolutivo
+  commands/evo.md            /evo — coordinador del workflow evolutivo (docs/evo/)
 .openclaw/
   skills/
     comfyui-asset-generation/SKILL.md
@@ -297,6 +300,13 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-19 (sesión 28) — evolutivo de animación, IA y dificultad (/evo)
+
+- Workflow evolutivo montado: `docs/evo/` (WORKFLOW, BACKLOG con E-00…E-11 y E-99, `smoke/`), agente `ai-engineer` y `/evo`. Animación (`gfx-engineer`) e IA (`ai-engineer`) en paralelo en worktrees `evo-anim` (5186) y `evo-ai` (5187).
+- E-00: el humo cuenta por equipo pases intentados y completados, robos, posesión y paradas de su portero. Los tiros siguen el lado del equipo: el humo de 240 s cruza el descanso (partes de 3 min) y antes contaba mal los de la segunda parte. Referencia de main: solo un 34–36 % de pases completados y 26–36 robos por minuto.
+- E-01: el sesgo rojo/azul del humo venía de la ayuda de tiro humana (0,75) que recibía el azul con piloto automático. Rojo − azul en arcade: 0,50 ± 0,34 → −0,01 ± 0,34 goles/min. El juego humano no cambia.
+- Pedido del usuario añadido a E-03: portero seleccionable y revisar sus movimientos raros.
 
 ### 2026-11-19 (sesión 27) — renovación gráfica, segunda pasada (/gfx)
 

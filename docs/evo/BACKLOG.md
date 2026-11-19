@@ -6,12 +6,12 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 
 | E-XX | Título | Agente · modelo | Estado |
 |---|---|---|---|
-| E-00 | Humo ampliado y referencia | coordinador + perf-qa · haiku | 🟨 |
-| E-01 | Sesgo rojo/azul en IA contra IA | coordinador | ⬜ |
-| E-02 | IA de equipo: desmarques, presión y repliegue, pase o tiro | ai-engineer · opus | ⬜ |
+| E-00 | Humo ampliado y referencia | coordinador | ✅ 2026-11-19 |
+| E-01 | Sesgo rojo/azul en IA contra IA | coordinador | ✅ 2026-11-19 |
+| E-02 | IA de equipo: desmarques, presión y repliegue, pase o tiro | ai-engineer · opus | 🟨 |
 | E-03 | Portero: IA, movimientos raros y portero seleccionable | ai-engineer · opus | ⬜ |
 | E-04 | Niveles de dificultad | ai-engineer · opus (+ UI sonnet) | ⬜ |
-| E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ⬜ |
+| E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | 🟨 |
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ⬜ |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
 
@@ -24,12 +24,14 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Objetivo:** el informe del humo da, por equipo, pases intentados y completados, tiros, a puerta, paradas de su portero, posesión (% del tiempo) y robos. Referencia de 20 corridas por modo en main.
 **Archivos:** `src/scenes/lab/labSmoke.ts`, `tools/gfx-smoke.ps1`.
 **Aceptación:** build; 20 corridas por modo sin fallidas ni errores; salida en `docs/evo/smoke/`.
+**Hecho:** `smoke/2026-11-19-referencia-main.txt`. Los tiros ahora siguen el lado de cada equipo: con partes de 3 min, el humo de 240 s cruza el descanso y antes contaba los tiros de la 2.ª parte hacia la portería equivocada. Reglamento: 1,21 ± 0,26 goles/min, 33,8 ± 3,6 % de pases completados, 25,9 ± 1,7 robos/min, posesión azul 50,3 ± 1,2 %. Arcade: 2,10 ± 0,20 goles/min, 36,0 ± 3,0 % de pases, 35,6 ± 1,2 robos/min.
 
 ## E-01 — Sesgo rojo/azul
 
 **Objetivo:** explicar y quitar la ventaja del rojo en IA contra IA (+0,2 a +0,4 goles/min en la referencia anterior). Sospechas: el azul controlado apunta con `SHOT_ASSIST_BLEND_HUMAN` aunque lo lleve el piloto automático (`targeting.ts`); los saques del azul en el humo se hacen con un pulso hacia delante y los del rojo apuntan (`matchFlow.ts`); el orden de iteración de los equipos.
 **Archivos:** `systems/targeting.ts`, `scenes/lab/labSmoke.ts` y, si hace falta, el saque de IA en `systems/matchFlow.ts`.
 **Aceptación:** `redMinusBluePerMin` con IC 95 % que contiene el 0 en los dos modos. El juego humano contra IA no cambia.
+**Hecho:** la causa era el apuntado. Con piloto automático el azul tiraba con `SHOT_ASSIST_BLEND_HUMAN` (0,75); en arcade tiraba más que el rojo (6,3 frente a 5,3/min) y marcaba menos (0,80 frente a 1,30). Ahora `getAssistedShotDirection` usa la ayuda de la IA también con `autopilot.on`. Rojo − azul: arcade 0,50 ± 0,34 → −0,01 ± 0,34; reglamento 0,29 ± 0,26 → 0,21 ± 0,27. **Nueva referencia** para la IA: `smoke/2026-11-19-E01-apuntado.txt` (reglamento 1,34 ± 0,24 goles/min, 36,5 ± 2,6 % pases; arcade 2,44 ± 0,25, 37,9 ± 2,9 %).
 
 ## E-02 — IA de equipo
 
