@@ -1,9 +1,17 @@
 import * as Phaser from 'phaser'
+import { GAME_HEIGHT, GOALIE_SELECT_RANGE } from '../constants'
+import { getGoalLineX } from '../utils'
 import type { Player, TeamColor } from '../types'
 
-/** Devuelve los jugadores de campo azules que el humano puede controlar (excluyendo el portero). */
+/**
+ * Jugadores azules que el humano puede controlar: los de campo y, al final, el portero (E-03).
+ * El índice de control apunta a esta lista; el portero va el último para que los índices de
+ * los de campo no cambien.
+ */
 export function getControllablePlayers(players: Player[]) {
-  return players.filter((player) => player.team === 'blue' && player.role !== 'goalie')
+  const list = players.filter((player) => player.team === 'blue' && player.role !== 'goalie')
+  for (const player of players) if (player.team === 'blue' && player.role === 'goalie') list.push(player)
+  return list
 }
 
 /** Devuelve el jugador actualmente controlado; usa módulo para evitar índice fuera de rango. */
@@ -30,24 +38,39 @@ export function findPlayerById(players: Player[], id: string) {
 /**
  * Selecciona el mejor candidato para recibir el control.
  *
- * Prioridad: (1) portador azul si el equipo tiene la bola, (2) jugador azul más
- * cercano a la bola, (3) siguiente en índice como fallback de último recurso.
+ * Prioridad: (1) el portador azul (también el portero con la bola); (2) el de campo más cercano
+ * a la bola. El portero entra en el ciclo defendiendo: si el cambio no movería a nadie (ya se
+ * lleva al más cercano) con la bola cerca de su portería, si es el segundo cambio seguido
+ * (preferGoalie: el más cercano cambia mientras se pulsa) o si él está más cerca de la bola que todos
+ * los de campo, pasa al portero; desde el portero se vuelve al de campo más cercano.
  */
-export function selectBestControlledPlayer(players: Player[], controlledPlayerIndex: number, ballCarrierId: string | null, ballX: number, ballY: number) {
+export function selectBestControlledPlayer(players: Player[], controlledPlayerIndex: number, ballCarrierId: string | null, ballX: number, ballY: number, now = 0, preferGoalie = false) {
   const options = getControllablePlayers(players)
+  const current = options[controlledPlayerIndex % options.length]
   const ballCarrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
 
-  if (ballCarrier?.team === 'blue' && ballCarrier.role !== 'goalie') {
-    const index = options.findIndex((player) => player.id === ballCarrier.id)
+  if (ballCarrier?.team === 'blue') {
+    const index = options.indexOf(ballCarrier)
     if (index >= 0) return index
   }
 
-  const nearestToBall = [...options].sort((a, b) => {
-    const da = Phaser.Math.Distance.Between(a.pos.x, a.pos.y, ballX, ballY)
-    const db = Phaser.Math.Distance.Between(b.pos.x, b.pos.y, ballX, ballY)
-    return da - db
-  })[0]
+  let nearest = -1
+  let nearestDist = Infinity
+  let goalieIndex = -1
+  for (let i = 0; i < options.length; i += 1) {
+    const p = options[i]
+    if (p.role === 'goalie') { goalieIndex = i; continue }
+    if ((p.suspendedUntil ?? 0) > now) continue
+    const d = Phaser.Math.Distance.Between(p.pos.x, p.pos.y, ballX, ballY)
+    if (d < nearestDist) { nearestDist = d; nearest = i }
+  }
+  if (nearest < 0) return controlledPlayerIndex % options.length
 
-  const index = options.findIndex((player) => player.id === nearestToBall.id)
-  return index >= 0 ? index : (controlledPlayerIndex + 1) % options.length
+  if (goalieIndex >= 0 && current.role !== 'goalie') {
+    const goalie = options[goalieIndex]
+    const nearGoal = Phaser.Math.Distance.Between(getGoalLineX(goalie.side), GAME_HEIGHT / 2, ballX, ballY) < GOALIE_SELECT_RANGE
+    const goalieDist = Phaser.Math.Distance.Between(goalie.pos.x, goalie.pos.y, ballX, ballY)
+    if (nearGoal && (preferGoalie || options[nearest] === current || goalieDist < nearestDist)) return goalieIndex
+  }
+  return nearest
 }
