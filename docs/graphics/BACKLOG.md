@@ -543,6 +543,13 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 - ~~En arcade, los botones A, B y S tapan la esquina inferior derecha de la pista~~ (arreglado el mismo día). Con controles táctiles, `cameraDirector.ts` encuadra la acción un 10 % del alto visible por encima del centro (`ARCADE_CAMERA_TOUCH_BIAS`). Así la banda cercana queda por encima de los botones, que caen sobre la grada; con la bola en el fondo, la cámara enseña más pista cercana que antes. Los botones y nipplejs no se tocan.
 - ~~Sin pantalla completa, la barra del navegador se come cerca del 22 % del alto~~ (arreglado el mismo día). En táctil, al empezar un partido `main.ts` pide pantalla completa: el toque en el modo cuenta como gesto. Si el usuario sale de ella, no se vuelve a pedir; el botón se mantiene. Probado en el OnePlus: del menú con barras (882 × 303) a ARCADE en 919 × 411.
 
+**Capturas táctiles (2026-11-19).** Chrome headless con emulación táctil y dpr 3, en `docs/graphics/shots/WP-63/touch/`: menú, arcade y reglamento a 844 × 390, y vertical a 390 × 844. La consola sale limpia y `pointer: coarse` está activo.
+
+- El menú cabe entero: los dos modos y los botones de pantalla completa y Ajustes se leen bien.
+- En vertical sale el aviso «GIRA EL MÓVIL», que se lee bien.
+- En arcade la bola queda al 40 % del alto. Con la bola arriba, los botones caen sobre la pista cercana, que está lejos de la jugada; se acepta.
+- En reglamento la vista es fija y la pista entra entera. El joystick y los botones A/B pisan un poco las esquinas cercanas de la pista. Son translúcidos y la jugada rara vez pasa por ahí. Para despejarlas habría que alejar la cámara o cortar el banquillo de arriba, y las dos cosas empeoran más de lo que arreglan. Se acepta.
+
 ### WP-64 — Partido de humo
 
 - **Rol:** gfx-builder · sonnet. Añadido el 2026-11-16 a raíz de una revisión: los WPs que tocan juego se validaban solo con capturas fijas.
