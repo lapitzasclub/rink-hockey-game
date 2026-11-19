@@ -182,7 +182,7 @@ El coordinador **no** salta un gate. Lo que depende de él espera.
 - [ ] Constantes visuales en `artSpec.ts`; las de gameplay, en `constants.ts`; nada mágico inline repetido.
 - [ ] Comentarios en español según la convención de AGENTS.md, sin comentar lo obvio.
 - [ ] Sin dependencias nuevas. nipplejs intacto.
-- [ ] Reglas de rendimiento de `docs/perf/WORKFLOW.md` §5 (Graphics estáticos horneados, nada por fotograma en textos y formas, el pintado no cambia el juego) y, si el WP añade algo que se pinta en el partido, `node tools/perf-bench.mjs --profile movil-bajo` sin regresión > 10 %.
+- [ ] Reglas de rendimiento de `docs/perf/WORKFLOW.md` §5 (Graphics estáticos horneados, nada por fotograma en textos y formas, el pintado no cambia el juego) y, si el WP añade algo que se pinta en el partido, `node tools/perf-bench.mjs --profile movil-bajo --query quality=baja` sin regresión > 10 % (la calidad de un dispositivo modesto; el regulador de auto baja a ella si no llega a 45 fps). En `media` y `alta` (Ajustes → Calidad) basta con los presupuestos absolutos de `docs/perf/WORKFLOW.md` §2: lo vistoso cabe ahí sin recortarlo.
 - [ ] Archivo nuevo o modificado > 500 líneas → se señala en riesgos para dividirlo.
 - [ ] BACKLOG actualizado (estado y fecha) y una línea en el work log de AGENTS.md: `- WP-XX: <qué>` dentro de la entrada de sesión del día.
 

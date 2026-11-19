@@ -643,6 +643,7 @@ El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en per
 **Devolución (2026-11-19):**
 
 - Render en `movil-bajo` reglamento: 6,03 ms frente a 4,40 ms de main medidos seguidos (+37 %; la DoD admite +10 %). En el OnePlus 9 Pro, 4,8 frente a 3,9 ms (+23 %). Con `--soft` no empeora: el coste es de CPU, no de relleno.
+- Criterio corregido el mismo día (usuario: «si tienes un dispositivo de gama alta puedes jugar con todo en alto»): el +10 % se exige en calidad `baja`; en `media` y `alta` se conserva toda la animación dentro de los presupuestos absolutos.
 - El público lateral son pastillas: con la cámara de arcade cerca de las porterías se ve a menudo y no pasa el listón.
 - Los vomitorios se leen como rectángulos negros duros.
 - La franja oscura entre los banquillos y la grada lejana: comprobar si alguna cámara de partido la enseña.
