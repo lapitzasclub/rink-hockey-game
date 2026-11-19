@@ -24,7 +24,7 @@ Juego de rink hockey 2D top-down para navegador. Formato 5v5 simplificado. El ju
 ```
 src/
   main.ts                    Bootstrap Phaser (espera a la fuente Russo One) y coordinación del shell: Esc, pausa, paneles, mando en menús, orientación
-  shell/                     Shell DOM: template (marcado e iconos SVG), pauseMenu, settingsPanel (pestañas, volumen, reasignación de teclas), menuNav (navegación tipo consola), fullscreen
+  shell/                     Shell DOM: template (marcado e iconos SVG), pauseMenu, settingsPanel (pestañas, volumen, reasignación de teclas), graphicsSettings (pestaña Gráficos: calidad, opciones sueltas, FPS) y qualityProbe (prueba del equipo), menuNav (navegación tipo consola), fullscreen
   style.css                  Shell DOM con estética de juego; visibilidad por `data-scene` (menu/match) y `data-input` (keyboard/gamepad/touch)
   scenes/MenuScene.ts        Menú: pabellón real de fondo con cámara a la deriva, logo, tarjetas ARCADE / REGLAMENTO (localStorage `rh-mode`), resultado final
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido: simulación a paso fijo (stepSimulation) y pintado interpolado (renderFrame)
@@ -49,7 +49,7 @@ src/
       stands/                Gradas (WP-68): layout (anillo de 8 tramos y `standPoint`), structure (escalones, peto con LED, cristal), vomitory, fans y sideFan (bustos de cara, de espaldas y de tres cuartos), crowd (horneado del público y peñas), pack (empaquetado en pocas texturas)
       lighting.ts            Pozos de luz y viñeta horneados (WP-61)
       officials.ts           Figura y pose de los árbitros (rig `official`, `footGait`); el movimiento va en `systems/officials.ts`
-      benchPlayers.ts        Suplentes, delegados, entrenadores y mesa (WP-69), con poses de `benchPoses.ts` horneadas por `figureBaker.ts` en una sola Image por figura
+      benchPlayers.ts        Suplentes, delegados, entrenadores y mesa (WP-69), con poses de `benchPoses.ts` horneadas por `figureBaker.ts` en una sola Image por figura; reaccionan a los eventos `match:*` de MatchScene
       viewTransform.ts       Cámara de perspectiva única: project(wx,wy,wz,out) → x, y, s; `leanAt`/`projectLeaned` para la inclinación de lo que tiene altura en los fondos (WP-70)
       artSpec.ts             Escala visual (PX_PER_M, FIGURE_EXAG), parámetros de cámara y capas DEPTH
       createProceduralPuppetTextures.ts  Texturas procedural/pixel para puppet
@@ -241,6 +241,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Menús con aspecto de videojuego: menú principal sobre el pabellón, acceso directo a pantalla completa, ajustes renovados y aviso de orientación en móvil
 - Menú de pausa (Esc / Start / botón táctil), ajustes por pestañas con volúmenes, reasignación de teclas, soporte de mando y UI adaptada a teclado, mando o táctil
 - Rendimiento y formato: simulación a paso fijo (velocidad igual con cualquier pantalla), pista horneada, calidad gráfica con modo automático, formato apaisado responsivo y workflow de rendimiento (`docs/perf/`, `/perf`)
+- Renovación gráfica (`/gfx`, Gate F 2026-11-19): cámara única con inclinación de fondos, rig quad con IK, stick a dos manos y portero, porterías y vallas reglamentarias, gradas en anillo, banquillos, mesa y árbitros, luz horneada, calidad por niveles con ajustes personalizables y prueba del equipo. 115–120 fps en el banco de escritorio y móvil
 
 ### Pendiente
 
@@ -249,7 +250,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - [ ] Verificar el modo arcade en móvil (S+A, legibilidad del HUD con zoom)
 - [ ] Ajuste de físicas de patinaje (sensación más deslizante)
 - [ ] Separar sistema de reglas en módulo propio (`systems/rules.ts` puede crecer)
-- [ ] UI definitiva, sprites finales → sustituido por la renovación gráfica: ver `docs/graphics/BACKLOG.md` (cámara única, rig con patines quad y stick a dos manos, porterías y vallas reglamentarias, árbitros, mesa, entrenadores, HUD unificado)
+- [ ] Restos de la renovación gráfica (`docs/graphics/BACKLOG.md`): prueba en vivo del usuario del patinaje (pasada del Gate C); portero de rodillas poco distinguible de lado; banquillos y tramo central del fondo lejano sin inclinar; con calidad automática, bajar a mitad de partido mantiene el horneado completo; los controles táctiles de reglamento tapan un poco las esquinas cercanas
 - [ ] Rendimiento pendiente: ver `docs/perf/BACKLOG.md` (P-08 resolución nítida en pantallas grandes, a decidir; P-09 suelo en una textura; P-10 coste del rig; P-11 menú; P-12 pruebas en móviles reales; P-13 memoria del pabellón)
 
 ### Backlog
@@ -298,6 +299,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-19 (sesión 27) — renovación gráfica, segunda pasada (/gfx)
 
+- Gate F (revisión final) aprobado por el coordinador, por delegación. Juego `standard` completo en `docs/graphics/shots/GATE-F/` más partido en vivo a los 20 s en los dos modos (`arcade-vivo`, `reglamento-vivo`), todo con 0 errores de consola. Arquitectura y Roadmap al día. La prueba en vivo del patinaje sigue pendiente para el usuario.
 - WP-62 cerrado. Banco de main en escritorio y movil, en los dos modos, con ALTA y MEDIA: 115–120 fps y p95 de 8,4 ms, con el techo del banco en 120. Objetos activos unos 600 (601 en arcade alta). Tabla en BACKLOG WP-62.
 - WP-71 (ajustes gráficos personalizables y prueba del equipo) integrado. Ajustes gana la pestaña Gráficos: calidad con PERSONALIZADA, opciones sueltas con su coste medido en movil-bajo arcade (solo peñas −14 %, partículas apagadas −9 %; la nitidez solo ahorra memoria y horneado), «Probar equipo» y «Mostrar FPS». El regulador de auto pasa a `render/qualityGovernor.ts` y además sube entre partidos. MEDIA usa nitidez 2, que da lo mismo que 1,5 con el zoom del arcade. Prueba: OnePlus 9 Pro ALTA (6,2 ms, unos 5 s); movil-bajo BAJA (ALTA 15,9 ms, MEDIA 13,9 ms). Banco movil-bajo reglamento main → rama sin regresión: en baja 90,7 → 96,3 fps. Al integrarlo: no se pide pantalla completa en los partidos de la prueba, se ocultan los controles mientras mide y al acabar se baja hasta el resultado. Humo de 20 corridas por modo, dentro del IC 95 % de la referencia del 2026-11-18: reglamento 1,28 ± 0,25 goles/min y arcade 2,03 ± 0,21, con 0 atascos y 0 errores.
 - Botones táctiles rehechos: van en triángulo (A en la esquina, B a la izquierda, S arriba en diagonal) y dejan libre la franja de abajo. Desde S se desliza hasta A o B sin soltar el turbo: antes, S+A pedía dos botones con el mismo pulgar. Comprobado con toques simulados (S→A da turbo y tiro, S→B turbo y pase, A→S no activa el turbo) y en el OnePlus.

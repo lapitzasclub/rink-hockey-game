@@ -80,7 +80,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
 | WP-70 | Inclinación de perspectiva coherente: portería, vallas y redes de fondo | engineer · opus | WP-67 | ✅ 2026-11-19 |
 | WP-71 | Ajustes gráficos personalizables y prueba del equipo | engineer · opus | WP-68 | ✅ 2026-11-19 |
-| Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
+| Gate F | Revisión final | coordinador + usuario | todo | ✅ 2026-11-19 (coordinador por delegación; la prueba en vivo del patinaje queda para el usuario) |
 
 ## Propiedad de archivos
 
