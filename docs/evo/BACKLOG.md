@@ -11,8 +11,8 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-02 | IA de equipo: desmarques, presión y repliegue, pase o tiro | ai-engineer · opus | 🟨 |
 | E-03 | Portero: IA, movimientos raros y portero seleccionable | ai-engineer · opus | ⬜ |
 | E-04 | Niveles de dificultad | ai-engineer · opus (+ UI sonnet) | ⬜ |
-| E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | 🟨 |
-| E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ⬜ |
+| E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ✅ 2026-11-19 |
+| E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
 
 IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos.
@@ -57,12 +57,14 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Objetivo:** portero de rodillas distinguible de lado; respiración en parado visible pero sobria; la C de espaldas legible.
 **Archivos:** `render/puppet/` (goalie, goalieClips, locomotion, pose), `render/artSpec.ts`.
 **Aceptación:** capturas de las tiras de laboratorio antes/después; banco movil-bajo sin regresión > 10 %.
+**Hecho:** rodilla del portero más baja y con las espinilleras hacia atrás (tira `kneelside`); respiración en parado con fase por jugador (`breath`); la C de espaldas leída como los cruces de patinar hacia atrás, con polo de rodilla propio (`backc`). Capturas en `shots/E-10/`.
 
 ## E-11 — Animación: nuevas
 
 **Objetivo:** frenada y giro cerrado, inclinación al acelerar, celebración de gol, caída tras un choque, gesto al recibir. Revisar lo que ya existe (`setLocoState`, `fallProgress`, `celebrateGoal`) y llevarlo al listón de un indie publicado.
 **Archivos:** `render/puppet/`, `systems/visuals.ts`, `render/artSpec.ts`; en `MatchScene.ts` solo un gancho en el pintado si no hay otra forma.
 **Aceptación:** capturas de cada acción; partido en vivo; banco movil-bajo sin regresión > 10 %; calidad baja también se ve bien.
+**Hecho:** derrape en cuña o en T con histéresis solo en frenadas fuertes (el cuerpo gira de lado con `skidTurn`), inclinación hacia delante al acelerar y de lado en las curvas, caída con la mano soltando el stick, recepción que amortigua con el tronco y dos celebraciones por id. Todo sale del estado existente al pintar. El giro del contenedor del choque arcade (`arcade.ts`, hasta 1,25 rad) se sumaba a la caída del rig: queda solo el tambaleo. Banco movil-bajo sin regresión (la base se midió con el equipo cargado). Capturas en `shots/E-11/`.
 
 ## E-99 — Cierre
 

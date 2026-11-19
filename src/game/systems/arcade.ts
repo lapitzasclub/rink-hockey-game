@@ -503,8 +503,8 @@ export class ArcadeController {
       if (stunned && player.stunKind === 'check' && !suspended) {
         const left = (player.stunUntil! - timeNow) / ARCADE_CHECK_STUN_MS
         const dir = (c.getData('tumbleDir') as number | undefined) ?? 1
-        // Gira hacia el lado del golpe y se recupera con un tambaleo
-        c.setRotation(dir * (Math.sin(left * Math.PI) * 1.25 + Math.sin(timeNow * 0.03) * 0.12 * left))
+        // La caída la anima el rig (fallGait); aquí solo un tambaleo leve hacia el lado del golpe
+        c.setRotation(dir * Math.sin(timeNow * 0.03) * 0.12 * left)
       }
       this.fx.setFrozen(player.id, stunned && player.stunKind === 'freeze' && !suspended, c.x, c.y)
 
