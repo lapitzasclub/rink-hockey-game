@@ -59,8 +59,14 @@ type G = Phaser.GameObjects.Graphics
 export function quad(g: G, color: number, alpha: number, a: P3, b: P3, c: P3, d: P3) {
   const pa = project(...a), pb = project(...b), pc = project(...c), pd = project(...d)
   g.fillStyle(color, alpha)
-  g.fillTriangle(pa.x, pa.y, pb.x, pb.y, pc.x, pc.y)
-  g.fillTriangle(pa.x, pa.y, pc.x, pc.y, pd.x, pd.y)
+  // Un solo polígono: dos triángulos horneados en lienzo dejan una costura en la diagonal
+  g.beginPath()
+  g.moveTo(pa.x, pa.y)
+  g.lineTo(pb.x, pb.y)
+  g.lineTo(pc.x, pc.y)
+  g.lineTo(pd.x, pd.y)
+  g.closePath()
+  g.fillPath()
 }
 
 /** Plano vertical a y fijo, entre x0..x1 y alturas z0..z1 (m). */
