@@ -111,7 +111,7 @@ function steal(pose: PuppetPose, ctx: PoseContext, t: number, s: number) {
   }
 }
 
-/** Recepción: la pala cede hacia el cuerpo y las rodillas amortiguan. */
+/** Recepción: la pala cede hacia el cuerpo, las rodillas amortiguan y el tronco se vence sobre la bola. */
 function receive(pose: PuppetPose, t: number, s: number) {
   const A = ACTION_POSE
   const w = envelope(t, ACTION_ENVELOPE.receive[0], ACTION_ENVELOPE.receive[1])
@@ -129,6 +129,7 @@ function receive(pose: PuppetPose, t: number, s: number) {
   placeBlade(pose, base, st.bladeYaw - s * 0.25 * w)
   gripStick(pose, grip)
   p.y -= A.cushionDip * w
+  pose.trunk.pitch += A.cushionLean * w
 }
 
 /** Carga: stick bajo y cruzado, hombro contrario adelante, cuerpo agachado. */
@@ -139,26 +140,48 @@ function check(pose: PuppetPose, t: number, s: number) {
   pose.trunk.roll -= s * ACTION_POSE.checkRoll * K.w
 }
 
-/** Celebración: tronco erguido, brazos arriba con sacudidas y el stick en alto (se permite: no hay juego). */
+/** Variante de celebración fija por jugador (0 = brazos arriba, 1 = puño). */
+function celebrateStyle(id: string) {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 33 + id.charCodeAt(i)) | 0
+  return (h >>> 2) & 1
+}
+
+/**
+ * Celebración (se permite el stick alto: no hay juego). Tronco atrás y rodillas que
+ * rebotan con cada sacudida; brazos arriba con el stick en alto o, en la variante «puño»,
+ * stick a una mano inclinado hacia fuera y el puño libre subiendo y bajando.
+ */
 function celebrate(pose: PuppetPose, ctx: PoseContext, t: number, s: number) {
   const A = ACTION_POSE
   const w = envelope(t, ACTION_ENVELOPE.celebrate[0], ACTION_ENVELOPE.celebrate[1])
   const st = pose.stick
   const p = pose.pelvis
-  const pump = Math.sin(t * Math.PI * 2 * A.pumps) * A.pump * w
+  const wave = Math.sin(t * Math.PI * 2 * A.pumps)
+  const pump = wave * A.pump * w
   // La mano libre sale de su agarre en el mango
   if (st.lowerGrip !== null) lerp3(free, st.top, st.heel, st.lowerGrip)
   else copy3(free, pose.hands[ctx.stickSide])
-  set3(target, p.x + s * A.handsSide, A.handsY - pump, p.z + 0.05)
-  lerp3(pose.hands[ctx.stickSide], free, target, w)
   st.lowerGrip = null
-  set3(target, p.x - s * A.handsSide, A.handsY + pump, p.z + 0.05)
-  lerp3(st.top, st.top, target, w)
-  set3(target, st.top.x - s * 0.1, st.top.y + A.stickUp, st.top.z + 0.04)
+  if (celebrateStyle(ctx.player.id) === 0) {
+    set3(target, p.x + s * A.handsSide, A.handsY - pump, p.z + 0.05)
+    lerp3(pose.hands[ctx.stickSide], free, target, w)
+    set3(target, p.x - s * A.handsSide, A.handsY + pump, p.z + 0.05)
+    lerp3(st.top, st.top, target, w)
+    set3(target, st.top.x - s * 0.1, st.top.y + A.stickUp, st.top.z + 0.04)
+  } else {
+    const fist = A.fistLow + (A.fistHigh - A.fistLow) * (0.5 + 0.5 * wave)
+    set3(target, p.x + s * A.fistSide, fist, p.z + 0.08)
+    lerp3(pose.hands[ctx.stickSide], free, target, w)
+    set3(target, p.x - s * A.stickHandSide, A.stickHandY - pump * 0.5, p.z + 0.04)
+    lerp3(st.top, st.top, target, w)
+    set3(target, st.top.x - s * A.stickUp * A.stickTilt * 2, st.top.y + A.stickUp, st.top.z + 0.02)
+  }
   lerp3(st.heel, st.heel, target, w)
-  pose.trunk.pitch *= 1 - 0.8 * w
+  pose.trunk.pitch += (A.celebrateBack - pose.trunk.pitch) * w
   pose.headYaw *= 1 - w
-  p.y += A.celebrateLift * w
+  // Cada sacudida flexiona un poco las rodillas
+  p.y += (A.celebrateLift - A.bounce * Math.abs(wave)) * w
 }
 
 /** Aplica el clip de `action` con progreso `t`. */
