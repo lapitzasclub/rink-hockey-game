@@ -6,6 +6,7 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   GOAL_HALF_H,
+  GOALIE_HUMAN_HOLD_MS,
   GOALIE_ZONE_RADIUS,
   FINAL_SHOT_DEAD_SPEED,
   FINAL_SHOT_MAX_MS,
@@ -35,6 +36,7 @@ import {
   findPlayerById,
   getControllablePlayers,
   getControlledPlayer,
+  selectBestControlledPlayer,
 } from '../game/systems/playerHelpers'
 import { setVisualHeadScale, updateStickAngles, updateVisuals } from '../game/systems/visuals'
 import type { ActiveBully, ActiveFoulRestart, ActiveKickoff, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
@@ -646,6 +648,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Saque de centro, de falta o neutral: solo avanza su ritual (colocación, pitido, ejecución)
     if (this.activeKickoff || this.activeBully || this.activeFoulRestart) {
+      this.releaseControlledGoalie()
       if (this.activeKickoff) this.updateKickoff(time, dt)
       else if (this.activeBully) this.updateBullyState(time, dt)
       else this.updateFoulRestartState(time, dt)
@@ -671,10 +674,9 @@ export class MatchScene extends Phaser.Scene {
     // Si el jugador controlado está suspendido, ceder control al siguiente disponible
     const currentControlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
     if (currentControlled.suspendedUntil && currentControlled.suspendedUntil > time) {
-      const bluePlayers = this.players.filter(p => p.team === 'blue' && p.role !== 'goalie' && !(p.suspendedUntil && p.suspendedUntil > time))
-      if (bluePlayers.length > 0) {
-        this.controlledPlayerIndex = this.players.indexOf(bluePlayers[0])
-      }
+      const options = getControllablePlayers(this.players)
+      const free = options.findIndex(p => p.role !== 'goalie' && !(p.suspendedUntil && p.suspendedUntil > time))
+      if (free >= 0) this.controlledPlayerIndex = free
     }
 
     const controlIntent = this.updateControlledPlayer(dt)
@@ -688,6 +690,7 @@ export class MatchScene extends Phaser.Scene {
       controlledPlayerIndex: this.controlledPlayerIndex,
       ballCarrierId: this.ballCarrierId,
       ball: this.ball,
+      timeNow: time,
     })
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)
@@ -777,6 +780,7 @@ export class MatchScene extends Phaser.Scene {
       isTouchDevice: this.isTouchDevice,
       dt,
       timeNow: this.simNow,
+      ball: this.ball,
     })
 
     const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
@@ -787,9 +791,10 @@ export class MatchScene extends Phaser.Scene {
     let switchPressed = false
 
     const turboHeld = this.isDown('sprint') || !!this.joystickInput.sprint
+    // El portero controlado no roba ni carga: para solo, por posición
     if (actionPressed) {
       if (this.ballCarrierId === player.id) this.tryShot(player, turboHeld)
-      else if (!(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
+      else if (player.role !== 'goalie' && !(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
     }
     if (passPressed) {
       if (this.ballCarrierId === player.id) this.tryPass(player)
@@ -819,6 +824,7 @@ export class MatchScene extends Phaser.Scene {
       ballCarrierId: this.ballCarrierId,
       dt,
       timeNow: this.simNow,
+      arcade: this.isArcade,
       updateGoalieAI,
       updateFieldPlayerAI,
     })
@@ -844,8 +850,10 @@ export class MatchScene extends Phaser.Scene {
             if (!checked) this.tryManualSteal(player)
           }
         }
-      } else if (player.role === 'goalie' && hasBall && shouldGoaliePass(player, this.simNow)) {
-        this.tryPass(player)
+      } else if (player.role === 'goalie' && hasBall) {
+        // En manos del humano saca él; si se lo guarda demasiado, saca solo
+        const human = !autopilot.on && getControlledPlayer(this.players, this.controlledPlayerIndex) === player
+        if (shouldGoaliePass(player, this.simNow, human ? GOALIE_HUMAN_HOLD_MS : undefined)) this.tryPass(player)
       }
     }
   }
@@ -937,6 +945,18 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
     this.ballIgnoreContactsUntil = result.ballIgnoreContactsUntil
+    if (player.role === 'goalie') this.releaseControlledGoalie(player)
+  }
+
+  /**
+   * Si el humano lleva al portero (o a `only`, si se indica), el control pasa al de campo más
+   * cercano a la bola y el portero vuelve a la IA.
+   */
+  private releaseControlledGoalie(only?: Player) {
+    if (autopilot.on || !this.players.length) return
+    const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    if (controlled.role !== 'goalie' || (only && only !== controlled)) return
+    this.controlledPlayerIndex = selectBestControlledPlayer(this.players, this.controlledPlayerIndex, null, this.ball.x, this.ball.y, this.simNow)
   }
 
   /** Ejecuta un tiro hacia una zona de portería con pequeña variación vertical. */
@@ -958,6 +978,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
+    if (player.role === 'goalie') this.releaseControlledGoalie(player)
     if (this.arcade) {
       this.arcade.onShotReleased(player, this.players, this.ball, this.ballVelocity, shot, this.simNow)
       this.cameraDirector.punchZoom(shot.kind === 'fire' ? 0.16 : shot.kind === 'turbo' ? 0.09 : 0.04)

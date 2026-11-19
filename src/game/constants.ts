@@ -57,11 +57,18 @@ export const BALL_WALL_MARGIN = 9 * K
 export const BALL_CARRY_GAP = 8 * K
 /** Holgura extra entre cuerpos en la separación de jugadores. */
 export const PLAYER_SEPARATION_GAP = 8 * K
-/** Límites X del portero respecto a la valla de fondo: mínimo (junto al fondo) y máximo (hacia el campo). */
+/** Límites X del portero respecto a la valla de fondo: mínimo (junto al fondo) y su sitio habitual (tope de colocación). */
 export const GOALIE_X_MIN = 28 * K
 export const GOALIE_X_MAX = 90 * K
-/** Posición base del portero (x desde la valla de fondo). */
-export const GOALIE_BASE_X = 110 * K
+/** Salida máxima ante un mano a mano sobre su sitio habitual: el tope físico es GOALIE_X_MAX + esto. */
+export const GOALIE_OUT_DEPTH = 22 * K
+/** Bola suelta más lenta que esto (px/s) a su alcance: el portero va a por ella y la cubre. */
+export const GOALIE_SMOTHER_SPEED = 40
+/**
+ * Posición base del portero (x desde la valla de fondo): su sitio habitual. Antes valía 110 y el
+ * tope lo dejaba siempre empujando contra GOALIE_X_MAX con velocidad que no movía (deslizaba).
+ */
+export const GOALIE_BASE_X = GOALIE_X_MAX
 /** Contacto cuerpo-bola y punta del stick que desvía la bola (px sobre el radio / absolutos). */
 export const BALL_BODY_KICK_GAP = 12 * K
 export const BALL_STICK_KICK_DISTANCE = 14 * K
@@ -99,11 +106,48 @@ export const STEAL_RELEASE_POWER = 190
 export const GOALIE_SAVE_RADIUS = 7 * K
 /** Recorrido lateral máximo del portero desde el centro de la boca (poste + margen). */
 export const GOALIE_AI_MAX_Y = GOAL_HALF_H + 6 * K
-/** Fracción del ángulo bola-portería que sigue el portero IA (menos = más batible). */
-export const GOALIE_AI_TRACK = 0.25
+/** Fracción de la bisectriz bola–postes que sigue el portero IA (1 = sobre ella). */
+export const GOALIE_AI_TRACK = 1
 export const GOALIE_CLAIM_RADIUS = 7 * K
 export const BALL_MAGNET_MAX_SPEED = 220
 export const GOALIE_DISTRIBUTION_DELAY_MS = 550
+/** Portero en manos del humano: plazo antes de sacar solo si no pasa (ms). */
+export const GOALIE_HUMAN_HOLD_MS = 3000
+
+// ── Movimiento del portero de IA (E-03): objetivo suavizado y patinaje con límites ──
+/** Velocidad punta de colocación (px/s) y aceleración neta (px/s²): desplazamiento lateral en guardia. */
+export const GOALIE_MOVE_SPEED = 150
+export const GOALIE_MOVE_ACCEL = 900
+/** Reacción a un tiro: estirada lateral más rápida (px/s, px/s²). */
+export const GOALIE_DIVE_SPEED = 200
+export const GOALIE_DIVE_ACCEL = 1400
+/** Ganancia de llegada (1/s): velocidad deseada por px de error, antes del tope de frenada. */
+export const GOALIE_ARRIVE_GAIN = 9
+/** Zona muerta del objetivo (px): variaciones menores no mueven al portero. */
+export const GOALIE_TARGET_DEADZONE = 1.5
+/** Constante de tiempo del filtro del objetivo (s): quita el temblor de seguir la bola paso a paso. */
+export const GOALIE_TARGET_TAU = 0.07
+/** Giro máximo de la mirada (rad/s) y ángulo máximo respecto al frente (no se gira hacia su portería). */
+export const GOALIE_TURN_RATE = 7
+export const GOALIE_FACE_MAX_RAD = 1.25
+/** Bola tras la línea de gol: fracción de su y que sigue y tope (cubre el poste del lado de la bola). */
+export const GOALIE_BEHIND_TRACK = 0.4
+export const GOALIE_BEHIND_MAX_Y = GOAL_HALF_H * 0.6
+/** Bola libre hacia su portería a más de esto (px/s) y a menos de GOALIE_SHOT_READ_RANGE: la lee como tiro. */
+export const GOALIE_SHOT_MIN_SPEED = 300
+export const GOALIE_SHOT_READ_RANGE = 520
+/** Margen sobre la boca (px) en el que un tiro leído merece estirarse. */
+export const GOALIE_SHOT_MOUTH_MARGIN = 14 * K
+/** Mano a mano: portador rival a menos de esto de la portería y por delante de todos los defensores. */
+export const GOALIE_OUT_RANGE = 230
+/** Franja (|y| desde el centro, px) en la que el mano a mano justifica salir. */
+export const GOALIE_OUT_LANE = 110
+/** El cambio de jugador puede pasar al portero propio con la bola a menos de esto de su portería (px). */
+export const GOALIE_SELECT_RANGE = 280
+/** Un segundo cambio antes de este tiempo, con la bola cerca de la portería, va al portero. */
+export const GOALIE_SWITCH_REPEAT_MS = 900
+/** Recorrido lateral del portero controlado por el humano desde el centro de la boca (px). */
+export const GOALIE_HUMAN_MAX_Y = GOAL_HALF_H + 34 * K
 export const FOUL_CHANCE_ON_STEAL = 0.28
 export const MANUAL_STEAL_RANGE = 52 * K
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
@@ -289,6 +333,8 @@ export type AiProfile = {
   reactionMs: number
   /** Tiempo mínimo con la bola antes de tirar (ms): sin él, cada pase acaba en remate a la primera. */
   shotReactionMs: number
+  /** Tiempo que tarda el portero en leer un tiro y empezar a estirarse (ms). */
+  goalieReactionMs: number
   /** Cada cuánto revalúa pase/tiro/conducir mientras conduce (ms, ±25 % de jitter). */
   decisionIntervalMs: number
   /** Cada cuánto recalcula los compañeros su hueco de desmarque (ms). */
@@ -330,6 +376,8 @@ export type AiProfile = {
   checkChance: number
   /** Arcade: multiplica stealAttemptChance (allí la carga ya roba mucho y sin faltas). */
   arcadeStealScale: number
+  /** Escala de goalieReactionMs en arcade: los tiros turbo y de fuego llegan antes. */
+  arcadeGoalieReactionScale: number
 }
 
 /** Distancia a la que el defensor más cercano se planta delante del portador rival. */
@@ -338,6 +386,7 @@ export const AI_PRESS_DISTANCE = 26 * K
 export const AI_PROFILE_NORMAL: AiProfile = {
   reactionMs: 170,
   shotReactionMs: 450,
+  goalieReactionMs: 275,
   decisionIntervalMs: 150,
   supportRefreshMs: 260,
   interceptReactionS: 0.12,
@@ -359,6 +408,7 @@ export const AI_PROFILE_NORMAL: AiProfile = {
   markTightness: 0.8,
   checkChance: 0.35,
   arcadeStealScale: 0.3,
+  arcadeGoalieReactionScale: 0.78,
 }
 
 /** Perfil de IA de un equipo. E-04 lo conectará a los niveles de dificultad. */

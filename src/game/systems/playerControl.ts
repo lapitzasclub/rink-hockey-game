@@ -1,5 +1,6 @@
-import { PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND } from '../constants'
+import { GAME_HEIGHT, GOALIE_HUMAN_MAX_Y, PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND } from '../constants'
 import { prepareTeamAI } from './aiTeam'
+import { steerGoalieFacing, type GoalieContext } from './goalieAI'
 import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
 import type { Ball, Player, Vector } from '../types'
@@ -23,6 +24,8 @@ export function updateControlledPlayerMotion(options: {
   isTouchDevice: boolean
   dt: number
   timeNow: number
+  /** Bola: el portero controlado no la pierde de vista mientras se mueve. */
+  ball: { x: number, y: number }
 }) {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
   if (autopilot.on) return player // lo mueve updateTeamAIPlayers
@@ -42,6 +45,11 @@ export function updateControlledPlayerMotion(options: {
   const inputY = usingJoystick ? options.joystickInput.y : keyboardInputY
   const len = Math.hypot(inputX, inputY)
 
+  if (player.role === 'goalie') {
+    moveHumanGoalie(player, inputX, inputY, len, options.ball, options.dt)
+    return player
+  }
+
   const wantsSprint = (options.sprintHeld || !!options.joystickInput.sprint) && lenientCanSprint(player)
   player.sprinting = wantsSprint && len > 0
 
@@ -59,10 +67,33 @@ export function updateControlledPlayerMotion(options: {
   return player
 }
 
+/**
+ * Portero en manos del humano: patina con el mando sin sprint, dentro de su zona (el tope en x lo
+ * pone applySkating; aquí el recorrido lateral) y mirando a la bola como el de la IA. Las paradas
+ * siguen siendo automáticas por posición (tryGoalieSave).
+ */
+function moveHumanGoalie(player: Player, inputX: number, inputY: number, len: number, ball: { x: number, y: number }, dt: number) {
+  player.sprinting = false
+  player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * dt)
+  if (len > 0) {
+    const k = Math.min(1, len)
+    player.velocity.x += (inputX / len) * k * PLAYER_ACCEL * dt
+    player.velocity.y += (inputY / len) * k * PLAYER_ACCEL * dt
+  }
+  steerGoalieFacing(player, ball.x - player.pos.x, ball.y - player.pos.y, dt)
+  applySkating(player, dt)
+  const cy = GAME_HEIGHT / 2
+  if (player.pos.y < cy - GOALIE_HUMAN_MAX_Y) { player.pos.y = cy - GOALIE_HUMAN_MAX_Y; if (player.velocity.y < 0) player.velocity.y = 0 }
+  else if (player.pos.y > cy + GOALIE_HUMAN_MAX_Y) { player.pos.y = cy + GOALIE_HUMAN_MAX_Y; if (player.velocity.y > 0) player.velocity.y = 0 }
+}
+
 /** Permite sprint mientras la stamina supere el umbral bajo, sin cortar en seco al agotarla. */
 function lenientCanSprint(player: Player) {
   return (player.stamina ?? STAMINA_MAX) > STAMINA_LOW_THRESHOLD
 }
+
+/** Contexto de la IA del portero, reutilizado en cada paso. */
+const goalieCtx: GoalieContext = { players: [], ball: { x: 0, y: 0 } as Ball, ballVelocity: { x: 0, y: 0 }, ballCarrierId: null, dt: 0, now: 0, arcade: false }
 
 /**
  * Actualiza IA y movimiento de todos los jugadores no controlados por el humano.
@@ -79,10 +110,18 @@ export function updateTeamAIPlayers(options: {
   ballCarrierId: string | null
   dt: number
   timeNow: number
-  updateGoalieAI: (player: Player, ballX: number, ballY: number, dt: number, timeNow: number) => void
+  arcade: boolean
+  updateGoalieAI: (player: Player, ctx: GoalieContext) => void
   updateFieldPlayerAI: (players: Player[], player: Player, ballX: number, ballY: number, ballCarrierId: string | null, dt: number) => void
 }) {
   const controlled = getControlledPlayer(options.players, options.controlledPlayerIndex)
+  goalieCtx.players = options.players
+  goalieCtx.ball = options.ball
+  goalieCtx.ballVelocity = options.ballVelocity
+  goalieCtx.ballCarrierId = options.ballCarrierId
+  goalieCtx.dt = options.dt
+  goalieCtx.now = options.timeNow
+  goalieCtx.arcade = options.arcade
   prepareTeamAI(options.players, options.ball, options.ballVelocity, options.ballCarrierId, autopilot.on ? null : controlled.id, options.timeNow)
 
   for (const player of options.players) {
@@ -97,7 +136,7 @@ export function updateTeamAIPlayers(options: {
     player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * options.dt * 0.8)
     if (player.role === 'goalie') {
       player.sprinting = false
-      options.updateGoalieAI(player, options.ball.x, options.ball.y, options.dt, options.timeNow)
+      options.updateGoalieAI(player, goalieCtx)
     } else {
       options.updateFieldPlayerAI(options.players, player, options.ball.x, options.ball.y, options.ballCarrierId, options.dt)
     }

@@ -8,6 +8,8 @@ import { setVisualHeadScale } from '../game/systems/visuals'
 import { poseFigure, type LabFigure } from './lab/labFigures'
 import { readLabParams, seedMathRandom, type LabParams } from './lab/labParams'
 import { driveBlueRestarts, startSmoke } from './lab/labSmoke'
+import { startGoalieKeyTest } from './lab/labGoalieKeys'
+import { startGoalieTrace } from './lab/labGoalieTrace'
 import { autopilot } from '../game/systems/playerControl'
 import { atHooks, freezeMatch, lockMatchCamera, wantsCameraLock } from './lab/labAt'
 import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
@@ -123,6 +125,10 @@ export class LabScene extends Phaser.Scene {
         match.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { stop(); autopilot.on = false })
       })
     }
+    // Herramientas del portero (E-03): traza de rareza y prueba de control con teclado
+    const q = new URLSearchParams(window.location.search)
+    if (q.get('goalieTrace') === '1') startGoalieTrace(match)
+    if (q.get('goalieKeys') === '1') startGoalieKeyTest(match)
     if (freeze !== null && !(this.params.auto && this.params.at)) window.setTimeout(() => freezeMatch(match, this.params), freeze)
   }
 

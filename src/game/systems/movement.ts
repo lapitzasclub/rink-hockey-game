@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { FIELD_PLAYER_BOTTOM_BOARD_MARGIN, PEN_EXIT_MAX_MS, PEN_WALK_SPEED, GOALIE_RADIUS, GOALIE_X_MAX, GOALIE_X_MIN, PLAYER_SEPARATION_GAP, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK, STAMINA_EXHAUSTED_SPEED_FACTOR, STAMINA_LOW_THRESHOLD } from '../constants'
+import { FIELD_PLAYER_BOTTOM_BOARD_MARGIN, GOALIE_OUT_DEPTH, PEN_EXIT_MAX_MS, PEN_WALK_SPEED, GOALIE_RADIUS, GOALIE_X_MAX, GOALIE_X_MIN, PLAYER_SEPARATION_GAP, PLAYER_ACCEL, PLAYER_FRICTION, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, RINK, STAMINA_EXHAUSTED_SPEED_FACTOR, STAMINA_LOW_THRESHOLD } from '../constants'
 import type { Player, Vector } from '../types'
 import { penaltyPath } from '../render/rink/table'
 import { skateToward } from './matchFlow'
@@ -47,9 +47,12 @@ export function applySkating(player: Player, dt: number) {
   player.pos.y = Phaser.Math.Clamp(player.pos.y, RINK.y + radius, RINK.y + RINK.height - radius - bottomMargin)
 
   if (player.role === 'goalie') {
-    const minX = player.side === 'left' ? RINK.x + GOALIE_X_MIN : RINK.x + RINK.width - GOALIE_X_MAX
-    const maxX = player.side === 'left' ? RINK.x + GOALIE_X_MAX : RINK.x + RINK.width - GOALIE_X_MIN
-    player.pos.x = Phaser.Math.Clamp(player.pos.x, minX, maxX)
+    // Tope de su zona; la velocidad contra el tope se anula para que no «patine» sin moverse
+    const out = GOALIE_X_MAX + GOALIE_OUT_DEPTH
+    const minX = player.side === 'left' ? RINK.x + GOALIE_X_MIN : RINK.x + RINK.width - out
+    const maxX = player.side === 'left' ? RINK.x + out : RINK.x + RINK.width - GOALIE_X_MIN
+    if (player.pos.x < minX) { player.pos.x = minX; if (player.velocity.x < 0) player.velocity.x = 0 }
+    else if (player.pos.x > maxX) { player.pos.x = maxX; if (player.velocity.x > 0) player.velocity.x = 0 }
   }
 }
 

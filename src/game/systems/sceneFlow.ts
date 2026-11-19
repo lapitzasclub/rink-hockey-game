@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser'
+import { GOALIE_SWITCH_REPEAT_MS } from '../constants'
 import type { Ball, Player } from '../types'
 import { selectBestControlledPlayer } from './playerHelpers'
 import { checkGoal } from './ball'
@@ -29,7 +30,9 @@ export function handlePendingRestart(options: {
  * Transfiere el control al mejor candidato azul cuando el jugador pulsa switch.
  *
  * Si el equipo azul tiene la bola, se cambia al portador. Si no, al más cercano
- * a la bola. No hace nada si justDown es false.
+ * a la bola o, defendiendo cerca de la portería, al portero (selectBestControlledPlayer); un
+ * segundo cambio seguido cerca de la portería va siempre al portero.
+ * No hace nada si justDown es false.
  */
 export function maybeSwitchControlledPlayer(options: {
   justDown: boolean
@@ -37,10 +40,17 @@ export function maybeSwitchControlledPlayer(options: {
   controlledPlayerIndex: number
   ballCarrierId: string | null
   ball: Ball
+  timeNow: number
 }) {
   if (!options.justDown) return options.controlledPlayerIndex
-  return selectBestControlledPlayer(options.players, options.controlledPlayerIndex, options.ballCarrierId, options.ball.x, options.ball.y)
+  const t = options.timeNow
+  const repeat = t >= lastSwitchAt && t - lastSwitchAt < GOALIE_SWITCH_REPEAT_MS
+  lastSwitchAt = t
+  return selectBestControlledPlayer(options.players, options.controlledPlayerIndex, options.ballCarrierId, options.ball.x, options.ball.y, t, repeat)
 }
+
+/** Último cambio pedido (simNow); si el reloj vuelve atrás (partido nuevo) no cuenta como repetición. */
+let lastSwitchAt = -1e9
 
 /**
  * Valida si la bola cruzó la portería por el frente, actualiza el marcador,

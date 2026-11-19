@@ -1,11 +1,7 @@
 import * as Phaser from 'phaser'
 import {
   AI_STEAL_ENGAGE_FRONT_DOT,
-  GAME_HEIGHT,
-  GOALIE_AI_MAX_Y,
-  GOALIE_AI_TRACK,
   GOALIE_DISTRIBUTION_DELAY_MS,
-  GOALIE_SAVE_RADIUS,
   MANUAL_STEAL_RANGE,
   PLAYER_SPRINT_ACCEL_MULTIPLIER,
   STAMINA_LOW_THRESHOLD,
@@ -14,47 +10,9 @@ import {
 import { aiStateOf } from './aiDecision'
 import { seek } from './movement'
 import type { Player } from '../types'
-import { getGoalLineX, normalizedVector } from '../utils'
+import { normalizedVector } from '../utils'
 
-/**
- * IA del portero.
- *
- * Posicionamiento basado en ángulo: se coloca sobre la línea entre el centro
- * de la portería y la bola, cerrando el ángulo de tiro. Si la bola está detrás
- * de la línea de portería vuelve al centro en vez de seguirla hacia atrás.
- */
-export function updateGoalieAI(player: Player, ballX: number, ballY: number, dt: number, now = 0) {
-  if ((player.goalieRecoverUntil ?? 0) > now) {
-    seek(player, player.home, 0.55, dt)
-    player.facing = normalizedVector(player.side === 'left' ? 1 : -1, 0, player.facing)
-    return
-  }
-
-  const goalLineX = getGoalLineX(player.side)
-  const goalCenterY = GAME_HEIGHT / 2
-
-  // Si la bola está detrás de la portería no tiene sentido seguirla
-  const ballBehind = player.side === 'left' ? ballX < goalLineX : ballX > goalLineX
-  if (ballBehind) {
-    seek(player, { x: player.home.x, y: goalCenterY }, 0.7, dt)
-    player.facing = normalizedVector(player.side === 'left' ? 1 : -1, 0, player.facing)
-    return
-  }
-
-  // Cobertura de ángulo: Y proporcional al ángulo bola-portería, pero reducida
-  // cuando la bola está muy lateral (donde el peligro directo es menor)
-  const dxBall = ballX - goalLineX
-  const dyBall = ballY - goalCenterY
-  const angleWeight = Phaser.Math.Clamp(Math.abs(dxBall) / 300, 0.35, 1)
-  const targetY = Phaser.Math.Clamp(goalCenterY + dyBall * angleWeight * GOALIE_AI_TRACK, goalCenterY - GOALIE_AI_MAX_Y, goalCenterY + GOALIE_AI_MAX_Y)
-
-  const ballDistance = Phaser.Math.Distance.Between(player.pos.x, player.pos.y, ballX, ballY)
-  const stepOut = ballDistance < GOALIE_SAVE_RADIUS + 20 ? 30 : 16
-  const targetX = player.home.x + (player.side === 'left' ? stepOut : -stepOut)
-
-  seek(player, { x: targetX, y: targetY }, 0.8, dt)
-  player.facing = normalizedVector(ballX - player.pos.x, ballY - player.pos.y, player.facing)
-}
+export { updateGoalieAI } from './goalieAI'
 
 const seekTarget = { x: 0, y: 0 }
 
@@ -96,11 +54,17 @@ export function getAimingDirection(player: Player) {
 /**
  * El portero debe distribuir tras asegurar la bola.
  *
- * Se le da una ventana corta de control y después se fuerza la distribución.
+ * Se le da una ventana corta de control y después se fuerza la distribución. Solo se llama con
+ * la bola en su poder.
  */
-export function shouldGoaliePass(player: Player, now: number) {
+export function shouldGoaliePass(player: Player, now: number, delayMs = GOALIE_DISTRIBUTION_DELAY_MS) {
   const catchTime = player.goalieCatchTime ?? 0
-  return catchTime > 0 && now - catchTime >= GOALIE_DISTRIBUTION_DELAY_MS
+  // Con la bola y sin reloj (le llegó por un camino que no lo arranca): se arranca ahora, nunca se la queda
+  if (catchTime <= 0) {
+    player.goalieCatchTime = now
+    return false
+  }
+  return now - catchTime >= delayMs
 }
 
 /**
