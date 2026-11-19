@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN } from '../constants'
 import type { Player, Vector } from '../types'
+import { autopilot } from './playerControl'
 import { getGoalLineX } from '../utils'
 
 /**
@@ -119,8 +120,8 @@ export function getAssistedShotDirection(player: Player, fallbackDirection: Vect
   const rawLength = Math.hypot(raw.x, raw.y) || 1
   const goalDirection = { x: raw.x / rawLength, y: raw.y / rawLength }
 
-  // La IA (rojo y porteros) apunta exacto; el humano conserva influencia sobre la dirección
-  const blend = player.team === 'red' || player.role === 'goalie' ? SHOT_ASSIST_BLEND : SHOT_ASSIST_BLEND_HUMAN
+  // La IA (rojo, porteros y el azul con piloto automático) apunta exacto; el humano conserva influencia sobre la dirección
+  const blend = player.team === 'red' || player.role === 'goalie' || autopilot.on ? SHOT_ASSIST_BLEND : SHOT_ASSIST_BLEND_HUMAN
   const blended = {
     x: fallbackDirection.x * (1 - blend) + goalDirection.x * blend,
     y: fallbackDirection.y * (1 - blend) + goalDirection.y * blend,
