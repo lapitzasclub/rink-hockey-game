@@ -22,6 +22,7 @@ import { resetPose, type PoseContext } from '../render/puppet/pose'
 import { RIG_UNIT, SHADOW_FRAME_RADIUS } from '../render/puppet/rig'
 import { groundFromLocal } from '../render/puppet/skeleton'
 import { upperBody } from '../render/puppet/upperBody'
+import { depthBesideGoal } from '../render/rink/goal'
 import { areRoleLabelsEnabled } from '../ui/prefs'
 import { v3 } from '../render/puppet/vec'
 
@@ -119,7 +120,8 @@ export function updateVisuals(
     const sp = foot
     const k = figureScale(sp.s)
     const figH = (PUPPET_LOCAL.feetY - PUPPET_LOCAL.topY) * k
-    const depth = bandDepth('COURT', sp.y)
+    // El portero delante de la boca va por encima del marco (WP-67)
+    const depth = player.role === 'goalie' ? depthBesideGoal(player.pos.x, player.pos.y, bandDepth('COURT', sp.y)) : bandDepth('COURT', sp.y)
     const centerY = sp.y - PUPPET_LOCAL.feetY * k   // el origen del contenedor es el torso; los pies quedan en sp.y
     const pose = player.pose
     pose.headScale = headScale

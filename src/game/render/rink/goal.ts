@@ -1,226 +1,269 @@
-/** Portería de rink hockey a escala real (1,70 × 1,05 m), con cámara única y partida por profundidad. */
+/**
+ * Portería de rink hockey a escala real (1,70 × 1,05 m) con la cámara única.
+ *
+ * La cámara lateral ve el plano de la boca casi de canto: postes y larguero
+ * caen en la misma x de pantalla. Para abrir la boca sin mover nada del
+ * suelo, todo punto con altura z se desplaza en x de pantalla hacia el fondo
+ * de la portería en proporción a su altura en pantalla (`GOAL_VIS.leanX`).
+ * Lo que toca el suelo (pies de los postes, arco trasero) queda en su sitio
+ * exacto, así que la línea de gol pintada, la bola y los rebotes en el poste
+ * coinciden con la física.
+ */
 import * as Phaser from 'phaser'
 import { GOAL_BACK_DEPTH, GOAL_HALF_H, RINK } from '../../constants'
 import { getGoalLineX } from '../../utils'
 import { bandDepth, DEPTH, GOAL_VIS, LIGHT, PX_PER_M } from '../artSpec'
-import { project } from '../viewTransform'
+import { project, type Projected } from '../viewTransform'
 
-const C = GOAL_VIS.colors
-const A = GOAL_VIS.alpha
-const H = GOAL_VIS.heightM * PX_PER_M
+const V = GOAL_VIS
+const C = V.colors
+const A = V.alpha
+const H = V.heightM * PX_PER_M
+const BEVEL = V.bevelM * PX_PER_M
 
-interface Pt { x: number; y: number }
+interface Pt { x: number; y: number; s: number }
 
-/** Geometría proyectada de una portería: arcos trasero (suelo y techo) de poste lejano a cercano. */
+/** Geometría proyectada de una portería (se construye una vez, al crear la escena). */
 interface GoalGeom {
-  dir: number
+  /** +1: el fondo de la portería queda hacia +x de mundo (portería derecha). */
+  back: number
   line: number
   cy: number
-  farFoot: Pt & { s: number }
-  nearFoot: Pt & { s: number }
+  farFoot: Pt
+  nearFoot: Pt
+  /** Marco naranja: pie lejano → chaflán → larguero → chaflán → pie cercano. */
+  frame: Pt[]
+  /** Arco trasero del suelo, estructura superior y larguero, muestreados con el mismo parámetro. */
   floorArc: Pt[]
   topArc: Pt[]
+  crossbar: Pt[]
+  /** Red de fondo: anillos de abajo arriba (floorArc … topArc) con caída hacia fuera. */
+  backRings: Pt[][]
+  /** Red de techo: anillos del larguero a la estructura superior, con caída hacia abajo. */
+  topRings: Pt[][]
 }
 
-/** Punto proyectado en un objeto nuevo (se construye una sola vez, no por frame). */
-function pp(wx: number, wy: number, wz = 0): Pt & { s: number } {
-  const p = project(wx, wy, wz)
-  return { x: p.x, y: p.y, s: p.s }
-}
+const tmp: Projected = { x: 0, y: 0, s: 0 }
 
-/** Arco semielíptico trasero (fondo GOAL_BACK_DEPTH) de poste lejano a poste cercano, a altura `wz`. */
-function rearArc(line: number, cy: number, dir: number, wz: number, n: number): Pt[] {
-  const out: Pt[] = []
-  for (let i = 0; i <= n; i++) {
-    const a = -Math.PI / 2 + (Math.PI * i) / n
-    out.push(pp(line + dir * GOAL_BACK_DEPTH * Math.cos(a), cy + GOAL_HALF_H * Math.sin(a), wz))
-  }
-  return out
+/**
+ * Punto de la portería en coordenadas propias: `u` hacia el fondo (0 en la
+ * línea de gol), `v` lateral (+ hacia la cámara) y `z` altura, en px de mundo.
+ */
+function gp(back: number, line: number, cy: number, u: number, v: number, z: number): Pt {
+  const wx = line + back * u
+  const wy = cy + v
+  project(wx, wy, 0, tmp)
+  const groundY = tmp.y
+  project(wx, wy, z, tmp)
+  return { x: tmp.x + back * V.leanX * (groundY - tmp.y), y: tmp.y, s: tmp.s }
 }
 
 function buildGeom(leftSide: boolean): GoalGeom {
   const line = getGoalLineX(leftSide ? 'left' : 'right')
   const cy = RINK.y + RINK.height / 2
-  const dir = leftSide ? -1 : 1
-  const n = GOAL_VIS.arcSegments
+  const back = leftSide ? -1 : 1
+  const P = (u: number, v: number, z: number) => gp(back, line, cy, u, v, z)
+  const hh = GOAL_HALF_H
+  const n = V.arcSegments
+  const topSide = V.topSideM * PX_PER_M
+  const topCenter = V.topCenterM * PX_PER_M
+  const sagBack = V.backSagM * PX_PER_M
+  const sagTop = V.topSagM * PX_PER_M
+
+  // Parámetro común a = −π/2 (poste lejano) … π/2 (poste cercano)
+  const floor: [number, number][] = []
+  const top: [number, number][] = []
+  for (let i = 0; i <= n; i++) {
+    const a = -Math.PI / 2 + (Math.PI * i) / n
+    floor.push([GOAL_BACK_DEPTH * Math.cos(a), hh * Math.sin(a)])
+    top.push([topSide + (topCenter - topSide) * Math.cos(a), (hh - BEVEL * 0.5) * Math.sin(a)])
+  }
+  const bar = top.map(([, v]) => Math.max(-(hh - BEVEL), Math.min(hh - BEVEL, v)))
+
+  const backRings: Pt[][] = []
+  for (let r = 0; r <= V.backRings; r++) {
+    const t = r / V.backRings
+    const bulge = 4 * t * (1 - t) * sagBack
+    backRings.push(floor.map(([fu, fv], i) => {
+      const [tu, tv] = top[i]
+      const a = -Math.PI / 2 + (Math.PI * i) / n
+      return P(fu + (tu - fu) * t + bulge * Math.cos(a), fv + (tv - fv) * t + bulge * Math.sin(a) * 0.5, H * t)
+    }))
+  }
+  const topRings: Pt[][] = []
+  for (let r = 0; r <= V.topRings; r++) {
+    const t = r / V.topRings
+    const droop = 4 * t * (1 - t) * sagTop
+    topRings.push(top.map(([tu, tv], i) => P(tu * t, bar[i] + (tv - bar[i]) * t, H - droop)))
+  }
+
   return {
-    dir, line, cy,
-    farFoot: pp(line, cy - GOAL_HALF_H),
-    nearFoot: pp(line, cy + GOAL_HALF_H),
-    floorArc: rearArc(line, cy, dir, 0, n),
-    topArc: rearArc(line, cy, dir, H * GOAL_VIS.rearTopFrac, n),
+    back, line, cy,
+    farFoot: P(0, -hh, 0),
+    nearFoot: P(0, hh, 0),
+    frame: [P(0, -hh, 0), P(0, -hh, H - BEVEL), P(0, -hh + BEVEL, H), P(0, hh - BEVEL, H), P(0, hh, H - BEVEL), P(0, hh, 0)],
+    floorArc: backRings[0],
+    topArc: topRings[topRings.length - 1],
+    crossbar: topRings[0],
+    backRings,
+    topRings,
   }
 }
 
-/** Tubo con sombreado: borde oscuro, cuerpo y brillo especular desplazado a la luz. */
-function tube(g: Phaser.GameObjects.Graphics, a: Pt, b: Pt, w: number, body: number, edge: number, shine: number) {
-  g.lineStyle(w + LIGHT.goalGlowPx, LIGHT.goalGlowColor, LIGHT.goalGlowAlpha)
-  g.lineBetween(a.x, a.y, b.x, b.y)
-  g.lineStyle(w + 1.2, edge, 1)
-  g.lineBetween(a.x, a.y, b.x, b.y)
-  g.lineStyle(w, body, 1)
-  g.lineBetween(a.x, a.y, b.x, b.y)
-  g.lineStyle(Math.max(0.8, w * 0.3), shine, 0.9)
-  g.lineBetween(a.x - w * 0.18, a.y, b.x - w * 0.18, b.y)
-}
+// ─── Primitivas ───────────────────────────────────────────────────────────────
 
-function polyline(g: Phaser.GameObjects.Graphics, pts: Pt[]) {
+function path(g: Phaser.GameObjects.Graphics, pts: Pt[], close = false) {
   g.beginPath()
   g.moveTo(pts[0].x, pts[0].y)
   for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y)
+  if (close) g.closePath()
+}
+
+function stroke(g: Phaser.GameObjects.Graphics, pts: Pt[], w: number, color: number, alpha: number) {
+  g.lineStyle(w, color, alpha)
+  path(g, pts)
   g.strokePath()
+  // Juntas redondas: Graphics no une los segmentos
+  g.fillStyle(color, alpha)
+  for (let i = 1; i < pts.length - 1; i++) g.fillCircle(pts[i].x, pts[i].y, w / 2)
 }
 
-function fillPoly(g: Phaser.GameObjects.Graphics, pts: Pt[]) {
-  g.beginPath()
-  g.moveTo(pts[0].x, pts[0].y)
-  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y)
-  g.closePath()
+function fill(g: Phaser.GameObjects.Graphics, pts: Pt[], color: number, alpha: number) {
+  g.fillStyle(color, alpha)
+  path(g, pts, true)
   g.fillPath()
 }
 
-/** Casco convexo (cadena monótona). */
-function convexHull(pts: Pt[]): Pt[] {
-  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y)
-  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
-  const lower: Pt[] = []
-  for (const q of p) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop()
-    lower.push(q)
+/** Desplaza una polilínea en pantalla (para brillos y sombras del tubo). */
+function offset(pts: Pt[], dx: number, dy: number): Pt[] {
+  return pts.map(p => ({ x: p.x + dx, y: p.y + dy, s: p.s }))
+}
+
+/**
+ * Tubo redondo en estilo A: halo claro, contorno oscuro, cuerpo, sombra
+ * propia del lado contrario a la luz y brillo especular hacia la luz.
+ */
+function tube(g: Phaser.GameObjects.Graphics, pts: Pt[], w: number, body: number, edge: number, dark: number, shine: number, glow = true) {
+  if (glow) stroke(g, pts, w + LIGHT.goalGlowPx, LIGHT.goalGlowColor, LIGHT.goalGlowAlpha)
+  stroke(g, pts, w + V.outlinePx * 2, edge, 1)
+  stroke(g, pts, w, body, 1)
+  stroke(g, offset(pts, w * 0.22, w * 0.1), w * 0.4, dark, 0.55)
+  stroke(g, offset(pts, -w * 0.2, -w * 0.08), Math.max(0.7, w * 0.28), shine, 0.95)
+}
+
+/** Malla entre anillos: líneas a lo largo de cada anillo y entre anillos por cada muestra. */
+function mesh(g: Phaser.GameObjects.Graphics, rings: Pt[][], w: number, alpha: number, every = 1) {
+  g.lineStyle(w, C.net, alpha)
+  for (let r = 1; r < rings.length - 1; r++) { path(g, rings[r]); g.strokePath() }
+  const first = rings[0]
+  for (let i = 0; i < first.length; i += every) {
+    g.beginPath()
+    g.moveTo(rings[0][i].x, rings[0][i].y)
+    for (let r = 1; r < rings.length; r++) g.lineTo(rings[r][i].x, rings[r][i].y)
+    g.strokePath()
   }
-  const upper: Pt[] = []
-  for (let i = p.length - 1; i >= 0; i--) {
-    const q = p[i]
-    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop()
-    upper.push(q)
-  }
-  return [...lower.slice(0, -1), ...upper.slice(0, -1)]
 }
 
-/** Contorno cerrado de un polígono. */
-function fillPolyStroke(g: Phaser.GameObjects.Graphics, pts: Pt[]) {
-  polyline(g, [...pts, pts[0]])
+/** Banda entre dos anillos consecutivos como un polígono cerrado. */
+function band(a: Pt[], b: Pt[]): Pt[] {
+  return [...a, ...[...b].reverse()]
 }
 
-/** Interpola dos listas de puntos de igual longitud (para los anillos de malla). */
-function lerpPts(a: Pt[], b: Pt[], t: number): Pt[] {
-  return a.map((p, i) => ({ x: p.x + (b[i].x - p.x) * t, y: p.y + (b[i].y - p.y) * t }))
-}
+// ─── Partes ───────────────────────────────────────────────────────────────────
 
-/** Parte trasera: sombra, suelo, red de fondo y techo, red colgante, arco blanco y poste lejano. */
+/** Trasera: sombra, suelo, redes (fondo, techo y colgante), estructura blanca y poste lejano. */
 function drawBack(g: Phaser.GameObjects.Graphics, geo: GoalGeom) {
-  const { floorArc, topArc, farFoot, nearFoot, line, cy, dir } = geo
-  const rings = GOAL_VIS.meshRings
-  const farTop = pp(line, cy - GOAL_HALF_H, H)
-  const nearTop = pp(line, cy + GOAL_HALF_H, H)
+  const { floorArc, topArc, backRings, topRings, farFoot, nearFoot, frame } = geo
+  const sMid = (farFoot.s + nearFoot.s) / 2
 
-  // Sombra de la base y el arco trasero sobre el suelo: capas más anchas y suaves hacia fuera
-  const cxs = floorArc.reduce((a, p) => a + p.x, 0) / floorArc.length
-  const cys = floorArc.reduce((a, p) => a + p.y, 0) / floorArc.length
+  // Sombra en el suelo hacia la cámara y hacia el fondo (luz cenital algo adelantada)
+  const shadowPoly = [...floorArc, ...offset([...floorArc].reverse(), geo.back * V.shadowBackPx * sMid, V.shadowDownPx * sMid)]
   for (const L of LIGHT.goalShadow) {
-    g.fillStyle(0x000000, L.alpha)
-    fillPoly(g, floorArc.map(p => ({ x: cxs + (p.x - cxs) * (1 + L.grow), y: cys + (p.y - cys) * (1 + L.grow) + L.dy })))
+    const cx = floorArc.reduce((acc, p) => acc + p.x, 0) / floorArc.length
+    const cyy = floorArc.reduce((acc, p) => acc + p.y, 0) / floorArc.length
+    fill(g, shadowPoly.map(p => ({ x: cx + (p.x - cx) * (1 + L.grow), y: cyy + (p.y - cyy) * (1 + L.grow) + L.dy, s: p.s })), C.shadow, L.alpha)
   }
-  g.fillStyle(C.floor, A.floor)
-  fillPoly(g, floorArc)
+  fill(g, [...floorArc], C.floor, A.floor)
 
-  // Red de fondo (panel curvo entre arco del suelo y arco superior)
-  g.fillStyle(C.net, A.netFill)
-  fillPoly(g, [...floorArc, ...[...topArc].reverse()])
-  g.lineStyle(0.8, C.net, A.mesh)
-  for (let i = 1; i < floorArc.length - 1; i++) g.lineBetween(floorArc[i].x, floorArc[i].y, topArc[i].x, topArc[i].y)
-  for (let r = 1; r <= rings; r++) polyline(g, lerpPts(floorArc, topArc, r / (rings + 1)))
-
-  // Red del techo: del larguero al arco superior trasero
-  const crossbar = topArc.map((_, i) => {
-    const t = i / (topArc.length - 1)
-    return { x: farTop.x + (nearTop.x - farTop.x) * t, y: farTop.y + (nearTop.y - farTop.y) * t }
-  })
-  g.fillStyle(C.net, A.topFill)
-  fillPoly(g, [...crossbar, ...[...topArc].reverse()])
-  g.lineStyle(0.8, C.net, A.mesh)
-  for (let i = 1; i < topArc.length - 1; i++) g.lineBetween(crossbar[i].x, crossbar[i].y, topArc[i].x, topArc[i].y)
-  for (let r = 1; r <= rings; r++) polyline(g, lerpPts(crossbar, topArc, r / (rings + 1)))
-
-  // Segunda red: colgante a 0,40 m de la línea, de poste a poste
-  const ix = line + dir * GOAL_VIS.innerNetSetbackPx
-  const ih = H * GOAL_VIS.innerNetHeightFrac
-  const inner = [pp(ix, cy - GOAL_HALF_H, 0), pp(ix, cy + GOAL_HALF_H, 0), pp(ix, cy + GOAL_HALF_H, ih), pp(ix, cy - GOAL_HALF_H, ih)]
-  g.fillStyle(C.net, A.innerFill)
-  fillPoly(g, inner)
-  g.lineStyle(1, C.net, A.meshInner)
-  const cols = 7
-  for (let k = 1; k < cols; k++) {
-    const t = k / cols
-    g.lineBetween(inner[0].x + (inner[1].x - inner[0].x) * t, inner[0].y + (inner[1].y - inner[0].y) * t,
-      inner[3].x + (inner[2].x - inner[3].x) * t, inner[3].y + (inner[2].y - inner[3].y) * t)
+  // Red de fondo: relleno por bandas (más opaco abajo: interior en sombra) y malla
+  for (let r = 0; r < backRings.length - 1; r++) {
+    const t = r / (backRings.length - 1)
+    fill(g, band(backRings[r], backRings[r + 1]), C.netShade, A.backFillLow + (A.backFillHigh - A.backFillLow) * t)
   }
-  for (let r = 1; r <= rings; r++) {
-    const t = r / (rings + 1)
-    g.lineBetween(inner[0].x + (inner[3].x - inner[0].x) * t, inner[0].y + (inner[3].y - inner[0].y) * t,
-      inner[1].x + (inner[2].x - inner[1].x) * t, inner[1].y + (inner[2].y - inner[1].y) * t)
-  }
+  // Paneles laterales: del poste al primer tramo de red (triángulos poste–larguero–estructura)
+  fill(g, [frame[0], frame[1], topArc[0], ...backRings.map(r => r[0]).reverse()], C.netShade, A.sideFill)
+  const last = floorArc.length - 1
+  fill(g, [frame[5], frame[4], topArc[last], ...backRings.map(r => r[last]).reverse()], C.netShade, A.sideFill)
+  mesh(g, backRings, V.meshPx * sMid, A.mesh)
 
-  // Arcos blancos interiores, finos: no compiten con la silueta
-  const rw = GOAL_VIS.tubePx * GOAL_VIS.rearTubeScale * ((farFoot.s + nearFoot.s) / 2)
-  g.lineStyle(rw * 0.5, C.rear, 0.55)
-  polyline(g, floorArc)
-  polyline(g, topArc)
+  // Red de techo
+  for (let r = 0; r < topRings.length - 1; r++) fill(g, band(topRings[r], topRings[r + 1]), C.netFill, A.topFill)
+  mesh(g, topRings, V.meshPx * sMid, A.meshTop)
 
-  // Silueta exterior de la jaula (casco convexo de ambos arcos y los postes): una sola forma
-  const hull = convexHull([...floorArc, ...topArc, farFoot, nearFoot, farTop, nearTop])
-  g.lineStyle(rw + LIGHT.goalGlowPx * 1.6, LIGHT.goalGlowColor, LIGHT.goalGlowAlpha * 0.6)
-  polyline(g, [...hull, hull[0]])
-  g.lineStyle(rw + 1.2, C.rearEdge, 0.9)
-  fillPolyStroke(g, hull)
-  g.lineStyle(rw, C.rear, 1)
-  fillPolyStroke(g, hull)
+  // Estructura trasera blanca: arco del suelo (Ø 5 cm) y barras superiores (Ø 1,5 cm)
+  const rw = V.tubePx * V.rearTubeScale * sMid
+  tube(g, floorArc, rw, C.rear, C.rearEdge, C.rearDark, C.rearShine, false)
+  stroke(g, [frame[2], topArc[0]], rw * V.rearBarScale + V.outlinePx * 2, C.rearEdge, 0.9)
+  stroke(g, [frame[3], topArc[last]], rw * V.rearBarScale + V.outlinePx * 2, C.rearEdge, 0.9)
+  stroke(g, topArc, rw * V.rearBarScale + V.outlinePx * 2, C.rearEdge, 0.9)
+  stroke(g, [frame[2], topArc[0]], rw * V.rearBarScale, C.rear, 1)
+  stroke(g, [frame[3], topArc[last]], rw * V.rearBarScale, C.rear, 1)
+  stroke(g, topArc, rw * V.rearBarScale, C.rear, 1)
 
-  // Poste lejano (queda detrás de jugadores dentro de la portería)
-  tube(g, farFoot, pp(line, cy - GOAL_HALF_H, H - GOAL_VIS.bevelPx), GOAL_VIS.tubePx * farFoot.s, C.tube, C.tubeEdge, C.tubeShine)
-  g.fillStyle(C.tubeEdge, 0.8)
-  g.fillEllipse(farFoot.x, farFoot.y, GOAL_VIS.tubePx * farFoot.s * 1.5, GOAL_VIS.tubePx * farFoot.s * 0.7)
+  // Poste lejano (detrás de quien esté dentro de la portería)
+  const w = V.tubePx * farFoot.s
+  g.fillStyle(C.shadow, V.footShadowAlpha)
+  g.fillEllipse(farFoot.x, farFoot.y + 0.5, w * V.footShadowW, w * V.footShadowH)
+  tube(g, frame.slice(0, 2), w, C.tube, C.tubeEdge, C.tubeDark, C.tubeShine)
 }
 
-/** Parte delantera: poste cercano, larguero con esquinas a 45° y base; tapa lo que queda detrás. */
+/** Delantera: larguero con chaflanes a 45° y poste cercano; tapa lo que hay dentro o detrás. */
 function drawFront(g: Phaser.GameObjects.Graphics, geo: GoalGeom) {
-  const { line, cy, nearFoot, farFoot } = geo
-  const b = GOAL_VIS.bevelPx
-  const w = GOAL_VIS.tubePx
-  const wFar = w * farFoot.s
-  const wNear = w * nearFoot.s
-  const fy = cy - GOAL_HALF_H
-  const ny = cy + GOAL_HALF_H
+  const { frame, nearFoot } = geo
+  const w = V.tubePx * nearFoot.s
+  g.fillStyle(C.shadow, V.footShadowAlpha)
+  g.fillEllipse(nearFoot.x, nearFoot.y + 0.5, w * V.footShadowW, w * V.footShadowH)
+  tube(g, frame.slice(1), w, C.tube, C.tubeEdge, C.tubeDark, C.tubeShine)
+}
 
-  // Base del marco en el suelo, de poste a poste
-  tube(g, farFoot, nearFoot, wNear * 0.8, C.tube, C.tubeEdge, C.tubeShine)
+// ─── Profundidad ──────────────────────────────────────────────────────────────
 
-  // Larguero y chaflanes superiores
-  const farBevel = pp(line, fy, H - b)
-  const farCut = pp(line, fy + b, H)
-  const nearCut = pp(line, ny - b, H)
-  const nearBevel = pp(line, ny, H - b)
-  tube(g, farBevel, farCut, wFar, C.tube, C.tubeEdge, C.tubeShine)
-  tube(g, farCut, nearCut, (wFar + wNear) / 2, C.tube, C.tubeEdge, C.tubeShine)
-  tube(g, nearCut, nearBevel, wNear, C.tube, C.tubeEdge, C.tubeShine)
+let frontDepthCache: number | null = null
 
-  // Poste cercano
-  tube(g, nearFoot, nearBevel, wNear, C.tube, C.tubeEdge, C.tubeShine)
-  g.fillStyle(C.tubeEdge, 0.8)
-  g.fillEllipse(nearFoot.x, nearFoot.y, wNear * 1.5, wNear * 0.7)
+/** Depth de la parte delantera (larguero y poste cercano). */
+function goalFrontDepth(): number {
+  if (frontDepthCache === null) {
+    project(getGoalLineX('left'), RINK.y + RINK.height / 2 + GOAL_HALF_H, 0, tmp)
+    frontDepthCache = bandDepth('COURT', tmp.y) + V.depthEps
+  }
+  return frontDepthCache
+}
+
+/**
+ * Depth para una figura con los pies en (wx, wy): si está delante de la boca
+ * de una portería (lado campo, a la altura de la boca), queda por encima del
+ * marco; si no, la de su y de pantalla (`baseDepth`).
+ */
+export function depthBesideGoal(wx: number, wy: number, baseDepth: number): number {
+  const cy = RINK.y + RINK.height / 2
+  if (Math.abs(wy - cy) > GOAL_HALF_H + V.frontBandPx) return baseDepth
+  const dl = wx - getGoalLineX('left')
+  const dr = getGoalLineX('right') - wx
+  const ahead = (dl >= 0 && dl < V.frontReachPx) || (dr >= 0 && dr < V.frontReachPx)
+  return ahead ? Math.max(baseDepth, goalFrontDepth() + V.depthEps) : baseDepth
 }
 
 /**
  * Crea los dos Graphics de una portería, partida por profundidad (SPEC §3):
- * trasera (red, arcos, poste lejano) tras los jugadores de dentro y delantera
- * (poste cercano, larguero, base) por delante de ellos. Mantiene la firma
- * que usa drawRink: `g` solo aporta la escena.
+ * trasera (redes, estructura blanca, poste lejano) tras los jugadores de
+ * dentro y delantera (larguero y poste cercano) por delante de ellos. Mantiene
+ * la firma que usa drawRink: `g` solo aporta la escena.
  */
 export function drawGoal3D(g: Phaser.GameObjects.Graphics, _goalLineX: number, _centerY: number, leftSide: boolean) {
   const geo = buildGeom(leftSide)
   const scene = g.scene
-  const back = scene.add.graphics().setDepth(bandDepth('COURT', geo.farFoot.y) - 0.002)
-  const front = scene.add.graphics().setDepth(bandDepth('COURT', geo.nearFoot.y) + 0.002)
+  const back = scene.add.graphics().setDepth(bandDepth('COURT', geo.farFoot.y) - V.depthEps)
+  const front = scene.add.graphics().setDepth(goalFrontDepth())
   drawBack(back, geo)
   drawFront(front, geo)
 }
@@ -228,19 +271,18 @@ export function drawGoal3D(g: Phaser.GameObjects.Graphics, _goalLineX: number, _
 // ─── Flash de red (overlay animado al marcar gol) ─────────────────────────────
 
 /**
- * Crea dos Graphics de flash (izq/der) a alpha=0 que repiten la red nueva
- * (suelo y panel de fondo). Al marcar gol se les aplica un tween alpha 0.9→0.
+ * Crea dos Graphics de flash (izq/der) a alpha=0 que repiten la red (fondo y
+ * techo, con malla). Al marcar gol se les aplica un tween alpha 0.9→0.
  */
 export function createGoalNetFlash(scene: Phaser.Scene) {
   function buildFlash(leftSide: boolean) {
     const geo = buildGeom(leftSide)
     const gfx = scene.add.graphics().setDepth(DEPTH.FX).setAlpha(0)
-    gfx.fillStyle(C.flash, 0.45)
-    fillPoly(gfx, geo.floorArc)
-    gfx.fillStyle(C.flash, 0.4)
-    fillPoly(gfx, [...geo.floorArc, ...[...geo.topArc].reverse()])
-    gfx.lineStyle(1.2, C.flash, 0.9)
-    for (let i = 1; i < geo.floorArc.length - 1; i++) gfx.lineBetween(geo.floorArc[i].x, geo.floorArc[i].y, geo.topArc[i].x, geo.topArc[i].y)
+    const s = (geo.farFoot.s + geo.nearFoot.s) / 2
+    for (let r = 0; r < geo.backRings.length - 1; r++) fill(gfx, band(geo.backRings[r], geo.backRings[r + 1]), C.flash, 0.32)
+    for (let r = 0; r < geo.topRings.length - 1; r++) fill(gfx, band(geo.topRings[r], geo.topRings[r + 1]), C.flash, 0.4)
+    mesh(gfx, geo.backRings, V.meshPx * s * 1.6, 0.9)
+    mesh(gfx, geo.topRings, V.meshPx * s * 1.6, 0.9)
     return gfx
   }
   return { left: buildFlash(true), right: buildFlash(false) }

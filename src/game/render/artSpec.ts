@@ -565,34 +565,64 @@ export const TABLE = {
 export const GOAL_VIS = {
   /** Alto interior de la boca en metros (1,05 m). */
   heightM: 1.05,
+  /**
+   * Inclinación visual (WP-67): px de pantalla que se desplaza en x hacia el
+   * fondo cada px de altura en pantalla. Abre la boca, que la cámara lateral ve
+   * de canto, sin mover nada de lo que toca el suelo.
+   */
+  leanX: 0.45,
   /** Grosor del tubo en px de pantalla a s = 1 (real Ø 7,5 cm ≈ 2 px; se exagera). */
   tubePx: 3.4,
+  /** Contorno oscuro del tubo a cada lado (px). */
+  outlinePx: 0.8,
   /** Tubo del arco trasero, relativo al delantero. */
   rearTubeScale: 0.62,
-  /** Chaflán de las esquinas superiores a 45° (px de mundo). */
-  bevelPx: 5,
-  /** Altura del arco superior trasero respecto a la boca (la red cae hacia atrás). */
-  rearTopFrac: 0.78,
-  /** Distancia de la red colgante interior a la línea de gol (0,40 m en px). */
-  innerNetSetbackPx: 0.4 * PX_PER_M,
-  /** Altura de la red colgante interior respecto a la boca. */
-  innerNetHeightFrac: 0.82,
-  /** Segmentos del arco trasero. */
-  arcSegments: 14,
-  /** Líneas de malla verticales/horizontales dibujadas por panel. */
-  meshRings: 3,
+  /** Barras laterales y arco superior traseros, relativos al tubo trasero. */
+  rearBarScale: 0.55,
+  /** Chaflán de las esquinas superiores a 45° (m). */
+  bevelM: 0.16,
+  /** Estructura superior trasera: fondo junto a los postes y en el centro (0,40 y 0,65 m). */
+  topSideM: 0.4,
+  topCenterM: 0.65,
+  /** Caída de la red: barriga del fondo hacia fuera y del techo hacia abajo (m). */
+  backSagM: 0.07,
+  topSagM: 0.06,
+  /** Segmentos del arco trasero (= columnas de malla). */
+  arcSegments: 16,
+  /** Bandas de malla de la red de fondo y del techo. */
+  backRings: 6,
+  topRings: 3,
+  /** Grosor de la malla a s = 1 (px). */
+  meshPx: 0.75,
+  /** Sombra en el suelo: arrastre hacia el fondo y hacia la cámara (px a s = 1). */
+  shadowBackPx: 7,
+  shadowDownPx: 5,
+  /** Sombra de contacto al pie de cada poste: ancho y alto relativos al tubo, alpha. */
+  footShadowW: 2,
+  footShadowH: 0.8,
+  footShadowAlpha: 0.35,
+  /** Separación de depth entre capas de la portería y lo que va delante. */
+  depthEps: 0.002,
+  /** Zona «delante de la boca» (px de mundo): margen lateral sobre la boca y alcance hacia el campo. */
+  frontBandPx: 12,
+  frontReachPx: 60,
   colors: {
     tube: 0xff6a00,
-    tubeEdge: 0xa83a00,
-    tubeShine: 0xffc79a,
+    tubeEdge: 0x6e2400,
+    tubeDark: 0xc44300,
+    tubeShine: 0xffd2a8,
     rear: 0xf4f6fa,
-    rearEdge: 0x9aa6b8,
+    rearEdge: 0x55657c,
+    rearDark: 0xb9c4d4,
+    rearShine: 0xffffff,
     net: 0xffffff,
     netFill: 0xdfe8f4,
+    netShade: 0xc8d6e8,
     floor: 0x0a1828,
+    shadow: 0x000000,
     flash: 0xffffff,
   },
-  alpha: { netFill: 0.2, topFill: 0.36, innerFill: 0.16, mesh: 0.32, meshInner: 0.26, shadow: 0.3, floor: 0.22 },
+  alpha: { backFillLow: 0.3, backFillHigh: 0.16, sideFill: 0.14, topFill: 0.3, mesh: 0.42, meshTop: 0.5, floor: 0.32 },
 } as const
 
 // UI sobre jugadores (WP-34)

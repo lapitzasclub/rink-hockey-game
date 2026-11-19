@@ -1,10 +1,12 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GAME_WIDTH, RINK } from '../../game/constants'
+import { BALL_RADIUS, GAME_HEIGHT, GAME_WIDTH, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_X_MAX, RINK } from '../../game/constants'
+import { createBall } from '../../game/entities/createBall'
 import { getFormation } from '../../game/formation'
 import { DEPTH, PX_PER_M, WORLD_PX_PER_M } from '../../game/render/artSpec'
 import { project, worldToScreen, type Projected } from '../../game/render/viewTransform'
+import { updateVisuals } from '../../game/systems/visuals'
 import { getGoalLineX } from '../../game/utils'
-import type { Ball, Role, TeamColor } from '../../game/types'
+import type { Ball, Player, Role, TeamColor } from '../../game/types'
 import { officialsScene } from './labOfficials'
 import { ACTION_STRIPS } from './labActionStrips'
 import { GOALIE_STRIPS } from './labGoalieStrips'
@@ -148,26 +150,49 @@ function scaleScene(ctx: LabBuildCtx): LabBuild {
   return { figures: build(ctx, specs), frame: DEFAULT_FRAME }
 }
 
-/** Zoom a la portería izquierda con portero, jugador en el área y otro tras la portería. */
+/**
+ * Zoom a la portería izquierda: portero en su sitio real (tope `GOALIE_X_MAX`),
+ * un atacante delante y otro tras la portería. `set=occlusion`: jugadores
+ * dentro y detrás de la red; `set=ball`: bolas en los límites de la jaula física
+ * (esquinas interiores, fondo, caras de los postes y cruzando la línea);
+ * `set=empty`: solo la portería, muy de cerca.
+ */
 function goalScene(ctx: LabBuildCtx): LabBuild {
   const gx = getGoalLineX('left')
-  const specs: FigureSpec[] = [
-    { team: 'blue', role: 'goalie', x: gx + 22, y: MID_Y, aimAhead: true },
-    { team: 'red', role: 'pivot', x: gx + 95, y: MID_Y - 55, angle: Math.PI, aimAhead: true },
-    { team: 'red', role: 'wing', x: gx - 58, y: MID_Y + 45, angle: Math.PI * 0.75, aimAhead: true },
-  ]
-  // set=occlusion: un jugador dentro de la portería y otro justo detrás de la red, solapándola
   if (ctx.params.set === 'occlusion') {
     const c = worldToScreen(gx - 4, MID_Y)
     return {
       figures: build(ctx, [
         { team: 'red', role: 'wing', x: gx - 8, y: MID_Y + 2, angle: Math.PI, aimAhead: true },
         { team: 'blue', role: 'defender', x: gx - 22, y: MID_Y - 34, angle: 0, aimAhead: true },
+        { team: 'blue', role: 'goalie', x: RINK.x + GOALIE_X_MAX, y: MID_Y + 14, aimAhead: true },
       ]),
-      frame: { sx: c.x, sy: c.y, zoom: 5 },
+      frame: { sx: c.x, sy: c.y, zoom: 4 },
     }
   }
+  if (ctx.params.set === 'ball') {
+    const r = BALL_RADIUS
+    const hh = GOAL_HALF_H
+    const spots = [
+      [gx - r, MID_Y - hh + r], [gx - r, MID_Y + hh - r], [gx - GOAL_BACK_DEPTH + r, MID_Y],
+      [gx + r, MID_Y - hh - r], [gx + r, MID_Y + hh + r], [gx, MID_Y + 4],
+    ]
+    for (const [x, y] of spots) {
+      const b = createBall(ctx.scene)
+      b.x = x
+      b.y = y
+      updateVisuals([], { id: '__none__' } as Player, b, null, 0)
+    }
+    const c = worldToScreen(gx - 4, MID_Y)
+    return { figures: [], frame: { sx: c.x, sy: c.y, zoom: 4 } }
+  }
   const c = worldToScreen(gx + 10, MID_Y)
+  if (ctx.params.set === 'empty') return { figures: [], frame: { sx: c.x, sy: c.y, zoom: 6 } }
+  const specs: FigureSpec[] = [
+    { team: 'blue', role: 'goalie', x: RINK.x + GOALIE_X_MAX, y: MID_Y, aimAhead: true },
+    { team: 'red', role: 'pivot', x: gx + 95, y: MID_Y - 55, angle: Math.PI, aimAhead: true },
+    { team: 'red', role: 'wing', x: gx - 58, y: MID_Y + 45, angle: Math.PI * 0.75, aimAhead: true },
+  ]
   return { figures: build(ctx, specs), frame: { sx: c.x, sy: c.y, zoom: 2.4 } }
 }
 

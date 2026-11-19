@@ -291,6 +291,9 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-19 (sesión 27) — renovación gráfica, segunda pasada (/gfx)
+
+- WP-67: portería rehecha (`render/rink/goal.ts`, `GOAL_VIS` en artSpec). Tubos redondos con brillo, arco trasero y techo con malla, red de fondo y de techo con caída, y sombra en el suelo. Una inclinación visual (`leanX`) separa postes y larguero desde la cámara lateral, y lo que toca el suelo queda exacto: postes en la línea, jaula física y bola dentro de la red. Fuera la base delantera que parecía un cuarto poste. El portero se ordena con `depthBesideGoal()`, que vale para las dos porterías tras el cambio de campo. Sin cambios de juego (`GOAL_*`/`GOALIE_*` intactos). Banco movil-bajo: render 5,62 ms en reglamento (base 5,42) y 6,73 ms en arcade (base 7,05). Pendiente: `at=save` del lab no se dispara (`labAt.ts`).
 ### 2026-11-18 (sesión 26) — rendimiento, velocidad constante y formato apaisado
 
 - **Velocidad variable con la resolución o el refresco (corregido).** El rozamiento de jugadores y bola (`PLAYER_FRICTION`, `BALL_FRICTION`), los empujes de separación, el imán de la bola y las probabilidades de la IA se aplicaban por fotograma, y `dt` se recortaba a 33 ms: a 50 Hz los jugadores iban un ~20 % más rápido que a 60 Hz, a 144 Hz bastante más lentos, y por debajo de 30 fps todo se ralentizaba. Ahora `MatchScene.update` acumula el tiempo real (marca de rAF; el `delta` de Phaser se recorta a 16,7 ms con la ventana sin foco) y ejecuta `stepSimulation` en pasos fijos de 1/60 s (`SIM_*` en constants.ts); `renderFrame` pinta una vez interpolando jugadores y bola. Tiempos del partido con `simNow`; el reloj del marcador lo avanza la simulación (fuera el `time.addEvent`); el ángulo del stick pasa a `updateStickAngles` (simulación). Comprobado: con CPU ×3 a 36 fps, 5,1 s simulados en 5,04 s reales.
