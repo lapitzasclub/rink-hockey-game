@@ -69,6 +69,8 @@ const isPortraitBlocked = () => isTouchDevice && portraitQuery.matches
 
 type ActiveScene = 'menu' | 'match' | ''
 let activeScene: ActiveScene = ''
+/** El usuario salió de pantalla completa: ya no se pide sola. */
+let fullscreenDeclined = false
 
 const matchScene = () => game?.scene.getScene('match') as MatchScene | undefined
 const matchSummary = (): PauseSummary | null => {
@@ -86,6 +88,7 @@ function onStep() {
   if (scene !== activeScene) {
     activeScene = scene
     shell.dataset.scene = scene
+    if (scene === 'match') autoFullscreen()
   }
   // Un partido que arranca con el móvil en vertical nace con el menú de pausa abierto
   if (scene === 'match' && isPortraitBlocked() && !pause.isOpen()) pause.open()
@@ -193,8 +196,18 @@ const updateFullscreenUi = () => {
   }
 }
 
+/**
+ * En táctil, al empezar un partido se pide pantalla completa: sin ella la barra del
+ * navegador se come una quinta parte del alto. El toque en el modo sigue contando como
+ * gesto del usuario durante unos segundos; si el navegador lo rechaza, no pasa nada.
+ */
+function autoFullscreen() {
+  if (isTouchDevice && fullscreenSupported && !fullscreenDeclined && !isFullscreen()) void toggleFullscreen(shell, true)
+}
+
 // Reajustar escala tras entrar/salir de fullscreen (evita imagen estirada)
 onFullscreenChange(() => {
+  if (!isFullscreen()) fullscreenDeclined = true
   updateFullscreenUi()
   requestAnimationFrame(() => game?.scale.refresh())
 })

@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import {
   ARCADE_CAMERA_LOOKAHEAD_S,
+  ARCADE_CAMERA_TOUCH_BIAS,
   ARCADE_CAMERA_ZOOM,
   ARCADE_CAMERA_ZOOM_ATTACK,
   ARCADE_CAMERA_ZOOM_FAST,
@@ -31,6 +32,7 @@ export class CameraDirector {
   private zoom = ARCADE_CAMERA_ZOOM
   private punch = 0
   private goalFocus: { x: number, y: number, until: number } | null = null
+  private biasShare = 0
 
   private readonly camera: Phaser.Cameras.Scene2D.Camera
   private readonly enabled: boolean
@@ -48,6 +50,11 @@ export class CameraDirector {
     this.fitBounds()
     if (this.enabled) this.apply()
     else this.camera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2)
+  }
+
+  /** Con controles táctiles en pantalla, la acción sube para no quedar debajo de ellos. */
+  setTouchControls(on: boolean) {
+    this.biasShare = on ? ARCADE_CAMERA_TOUCH_BIAS : 0
   }
 
   /** Empuje momentáneo de zoom (tiros, cargas). Se acumula hasta un tope. */
@@ -122,7 +129,8 @@ export class CameraDirector {
   }
 
   private apply() {
-    this.camera.setZoom(this.zoom + this.punch)
-    this.camera.centerOn(this.focus.x, this.focus.y)
+    const zoom = this.zoom + this.punch
+    this.camera.setZoom(zoom)
+    this.camera.centerOn(this.focus.x, this.focus.y + this.biasShare * this.camera.height / zoom)
   }
 }

@@ -267,3 +267,8 @@ export const ARCADE_CAMERA_ZOOM_FAST = 1.2
 export const ARCADE_CAMERA_ZOOM_GOAL = 1.85
 /** Anticipación de cámara en segundos de velocidad de la bola. */
 export const ARCADE_CAMERA_LOOKAHEAD_S = 0.28
+/**
+ * Con controles táctiles, la acción se encuadra por encima del centro (fracción del
+ * alto visible): el joystick y los botones A/B/S ocupan la franja de abajo.
+ */
+export const ARCADE_CAMERA_TOUCH_BIAS = 0.1

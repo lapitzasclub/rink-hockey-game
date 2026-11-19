@@ -540,8 +540,8 @@ El coordinador enseña `style.jpg` y pide al usuario D1 y D4. También puede abr
 - La pantalla completa del menú funciona y ocupa toda la pantalla. El HUD se lee bien y el joystick cae sobre la grada.
 - ~~Marcador cortado por las esquinas redondeadas y el borde curvo~~ (arreglado el mismo día). Android solo declara la cámara en `env(safe-area-inset-*)` (37 px a un lado). En táctil, `hudLayout.ts` aplica un margen mínimo de 11 px CSS, con lo que el marcador queda a la altura del botón de pausa.
 - ~~Franjas negras arriba y abajo en pantalla completa~~ (arreglado el mismo día). El lienzo se quedaba con el alto que tenía con la barra del navegador (919 × 359 dentro de 919 × 411). En Android las barras se van después de `fullscreenchange` y de `resize`, así que ahora `main.ts` reajusta con un `ResizeObserver` sobre `#game-host`. Sin pantalla completa, las franjas laterales por encima de 2,6 : 1 (`max-width: 260vh`) son a propósito.
-- En arcade, los botones A, B y S tapan la esquina inferior derecha de la pista, con jugadores debajo. Hay que dejar sitio en el encuadre o hacerlos menos opacos; nipplejs no se toca.
-- Sin pantalla completa, la barra del navegador se come cerca del 22 % del alto. Propuesta: en táctil, al tocar un modo se pide pantalla completa (el toque ya es el gesto que la permite), y el botón se mantiene.
+- ~~En arcade, los botones A, B y S tapan la esquina inferior derecha de la pista~~ (arreglado el mismo día). Con controles táctiles, `cameraDirector.ts` encuadra la acción un 10 % del alto visible por encima del centro (`ARCADE_CAMERA_TOUCH_BIAS`). Así la banda cercana queda por encima de los botones, que caen sobre la grada; con la bola en el fondo, la cámara enseña más pista cercana que antes. Los botones y nipplejs no se tocan.
+- ~~Sin pantalla completa, la barra del navegador se come cerca del 22 % del alto~~ (arreglado el mismo día). En táctil, al empezar un partido `main.ts` pide pantalla completa: el toque en el modo cuenta como gesto. Si el usuario sale de ella, no se vuelve a pedir; el botón se mantiene. Probado en el OnePlus: del menú con barras (882 × 303) a ARCADE en 919 × 411.
 
 ### WP-64 — Partido de humo
 

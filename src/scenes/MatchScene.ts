@@ -249,6 +249,7 @@ export class MatchScene extends Phaser.Scene {
     this.cameras.main.setSize(width, height)
     this.uiCamera.setSize(width, height)
     this.uiCamera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2)
+    this.cameraDirector?.setTouchControls(getInputMode() === 'touch')
     if (!this.labCameraLock) this.cameraDirector?.refit()
     const css = safeAreaInsetsCss()
     const k = width / Math.max(1, this.scale.displaySize.width)   // px de juego por px CSS
