@@ -268,6 +268,7 @@ export class MatchScene extends Phaser.Scene {
     this.arena = createArena(this)
     drawRink(this)
     this.benchPlayers = createBenchPlayers(this)
+    this.events.emit('match:clock', { seconds: this.remainingSeconds })
     const nets = createGoalNetFlash(this)
     this.leftGoalNet  = bakeGraphics(nets.left, 'net-left', true)
     this.rightGoalNet = bakeGraphics(nets.right, 'net-right', true)
@@ -471,6 +472,8 @@ export class MatchScene extends Phaser.Scene {
       matchDuration: this.periodDuration,
       finishMatch: () => this.finishMatch(),
     })
+    // Marcador LED de la mesa (WP-69): solo lo pinta el render, no afecta al juego
+    if (Math.ceil(next.remainingSeconds) !== Math.ceil(this.remainingSeconds)) this.events.emit('match:clock', { seconds: next.remainingSeconds })
     this.remainingSeconds = next.remainingSeconds
     const newHalf = next.currentPeriod !== this.currentPeriod
     if (newHalf) this.startSecondHalf()
@@ -547,7 +550,7 @@ export class MatchScene extends Phaser.Scene {
     const controlled = this.players.length ? getControlledPlayer(this.players, this.controlledPlayerIndex) : null
     this.applyInterpolation(alpha)
     try {
-      updateBenchPlayers(this.benchPlayers, vt)
+      updateBenchPlayers(this.benchPlayers, vt, this.ball)
       this.officials.update(vt, visualDt, this.ball, this.players)
       this.arena.update(vt, this.matchEnded ? 0.9 : this.getCrowdIntensity())
       if (!this.labCameraLock) this.cameraDirector.update({
@@ -987,6 +990,12 @@ export class MatchScene extends Phaser.Scene {
     }
     if (this.ruleState.pendingFoul) {
       const foul = this.ruleState.pendingFoul
+      // Hechos para el lado lejano (WP-69): banquillo y mesa reaccionan en el render
+      this.events.emit('match:foul', { against: foul.againstTeam, x: foul.restartX, y: foul.restartY, sanction: foul.sanction, time: this.simNow })
+      const offender = this.players.find(p => p.id === foul.byPlayerId)
+      if (offender?.suspendedUntil && offender.suspendedUntil > this.simNow) {
+        this.events.emit('match:card', { team: offender.team, playerId: offender.id, time: this.simNow })
+      }
       playFoul()
       this.officials.foul(foul, this.players)
       this.centerText.setText(foul.message).setVisible(true)
@@ -1048,6 +1057,7 @@ export class MatchScene extends Phaser.Scene {
       enteredFromFront: this.ballEnteredGoalFromFront,
     })
     if (!next) return
+    this.events.emit('match:goal', { team: next.redScore > this.redScore ? 'red' : 'blue', blue: next.blueScore, red: next.redScore, time })
     playGoal()
     this.officials.goal()
     celebrateGoal(this.players, next.redScore > this.redScore ? 'red' : 'blue', time)
@@ -1121,6 +1131,7 @@ export class MatchScene extends Phaser.Scene {
     this.ruleState = nextState.ruleState
     updateStickAngles(this.players, this.ball, this.ballCarrierId, this.simNow)
     this.officials.whistle()
+    this.events.emit('match:kickoff', { team, period: this.currentPeriod, time: this.simNow })
     playWhistle()
   }
 

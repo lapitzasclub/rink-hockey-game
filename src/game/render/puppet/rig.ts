@@ -110,7 +110,9 @@ export class PuppetRig {
     }
     const pelvisR = goalie ? 0.075 : 0.058
     this.add('seg', capsuleFrame(at, `pelvis-${this.kind}`, d.hipHalf * 2, pelvisR, pelvisR), J.hip0, J.hip1, d.hipHalf * 2, goalie ? 0.031 : 0.001, kit.shorts)
-    this.torso = this.add('seg', viewNames.map(v => torsoFrame(at, d, v, goalie ? kit : null)), J.torsoTop, J.torsoBase, torsoLen(d), goalie ? 0.05 : 0, goalie ? WHITE : kit.jersey)
+    // Portero y árbitro llevan el tronco pintado con sus colores; el resto es blanco teñido
+    const painted = goalie || kit.vest !== undefined
+    this.torso = this.add('seg', viewNames.map(v => torsoFrame(at, d, v, painted ? kit : null)), J.torsoTop, J.torsoBase, torsoLen(d), goalie ? 0.05 : 0, painted ? WHITE : kit.jersey)
     if (kit.number) {
       this.numBack = numberFrame(at, kit.number, 0.12, kit.numColor)
       this.numFront = numberFrame(at, kit.number, 0.055, kit.numColor)

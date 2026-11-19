@@ -11,6 +11,7 @@ import { getRoleShort } from '../utils'
 import { GOALIE_RADIUS, PLAYER_MAX_SPEED, PLAYER_RADIUS, PLAYER_SPRINT_MAX_SPEED, STICK_SWING_MS } from '../constants'
 import { project, type Projected } from '../render/viewTransform'
 import { penaltySeat } from '../render/rink/table'
+import { SEAT_PELVIS_Y } from '../render/rink/benches'
 import {
   BALL_VISUAL_DIAMETER_M, DEPTH, FIGURE_EXAG, PLAYER_UI, PUPPET_LOCAL, PX_PER_M, RIG_TEX_SUPERSAMPLE,
   WORLD_PX_PER_M, bandDepth, figureScale,
@@ -38,18 +39,27 @@ function clamp01(value: number) {
   return Phaser.Math.Clamp(value, 0, 1)
 }
 
-// Zona de sancionados: asientos de la mesa de oficiales (rink/table.ts), azul a la izquierda y rojo a la derecha.
+// Zona de sancionados: bancos a los lados de la mesa (rink/table.ts), azul a la izquierda y rojo a la derecha.
 
-/** Posición de mundo del asiento de cada jugador suspendido (el lab puede forzarlo con el dato `penSeat`). */
+const penSeats = new Map<string, { x: number; y: number }>()
+const penNext = { blue: 0, red: 0 }
+/** Sancionados ya sentados: la pose sentada se aplica una vez al llegar al banco (perf P-10). */
+const seated = new WeakSet<Player>()
+/** Último segundo de sanción escrito en la etiqueta (setText solo al cambiar). */
+const penSecs = new WeakMap<Player, number>()
+
+/** Posición de mundo del asiento de cada jugador suspendido (el lab puede forzarlo con el dato `penSeat`). Sin asignar por fotograma. */
 function buildPenaltyPositions(players: Player[], timeNow: number): Map<string, { x: number; y: number }> {
-  const next = { blue: 0, red: 0 }
-  const map = new Map<string, { x: number; y: number }>()
+  penNext.blue = 0
+  penNext.red = 0
   for (const p of players) {
     if (!(p.suspendedUntil && p.suspendedUntil > timeNow)) continue
     const forced = p.container.getData('penSeat') as number | undefined
-    map.set(p.id, penaltySeat(p.team, forced ?? next[p.team]++))
+    let out = penSeats.get(p.id)
+    if (!out) { out = { x: 0, y: 0 }; penSeats.set(p.id, out) }
+    penaltySeat(p.team, forced ?? penNext[p.team]++, out)
   }
-  return map
+  return penSeats
 }
 
 const foot: Projected = { x: 0, y: 0, s: 0 }
@@ -140,13 +150,18 @@ export function updateVisuals(
       player.staminaBar?.setVisible(false)
       ;(player.staminaBar?.getData('bg') as Phaser.GameObjects.Rectangle | undefined)?.setVisible(false)
       player.nameTag?.setVisible(false)
-      pose.yaw = 0
-      seatedPose(pose)
-      player.rig.apply(pose)
+      if (!seated.has(player)) {
+        seated.add(player)
+        pose.yaw = 0
+        seatedPose(pose, SEAT_PELVIS_Y)
+        player.rig.apply(pose)
+      }
       const secsLeft = Math.ceil((player.suspendedUntil! - timeNow) / 1000)
-      player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setText(`${secsLeft}s`).setAlpha(1).setDepth(DEPTH.FX)  // el contador de sanción se ve siempre
+      if (penSecs.get(player) !== secsLeft) { penSecs.set(player, secsLeft); player.label.setText(`${secsLeft}s`) }
+      player.label.setPosition(sp.x, sp.y - figH - LABEL_GAP).setAlpha(1).setDepth(DEPTH.FX)  // el contador de sanción se ve siempre
       continue
     }
+    if (seated.delete(player)) penSecs.delete(player)
 
     const isGoalie = player.role === 'goalie'
     const speed = Math.hypot(player.velocity.x, player.velocity.y)

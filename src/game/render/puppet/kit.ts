@@ -3,7 +3,7 @@
  * piel, pelo y casco. Los jugadores lo sacan de su equipo y de su variedad
  * (`hand`, `skin`, `hair`); árbitros y suplentes podrán pasar el suyo.
  */
-import { HAIR_COLORS, REFEREES, SKIN_TONES, TABLE, TEAM_KITS, TEAM_NUMBERS } from '../artSpec'
+import { BENCH, HAIR_COLORS, REFEREES, SKIN_TONES, TABLE, TEAM_KITS, TEAM_NUMBERS } from '../artSpec'
 import { equipoDeHueco } from '../../externalMatch'
 import type { Role, TeamColor } from '../../types'
 import type { FigureKind } from './pose'
@@ -20,6 +20,8 @@ export interface RigKit {
   number: string
   numColor: number
   footwear: 'skate' | 'shoe'
+  /** Canesú y paneles laterales del tronco en este color (árbitro): el tronco se pinta con sus colores, sin tinte. */
+  vest?: number
 }
 
 /** Aspecto variable de un jugador (SPEC §5 «Variedad»). */
@@ -93,12 +95,28 @@ export function officialKit(skin = 0, hair = 0): RigKit {
   }
 }
 
-/** Kit de árbitro (WP-50): gris oscuro y dorsal-franja amarillo flúor visible por delante y por detrás; sin casco, a pie. */
+/**
+ * Kit de árbitro (WP-50, WP-69): camiseta gris con canesú y paneles laterales
+ * amarillo flúor (se leen de frente, de espaldas y de perfil a escala de partido)
+ * y pantalón casi negro; sin dorsal ni casco, a pie.
+ */
 export function refereeKit(skin = 0, hair = 0): RigKit {
   return {
-    ...officialKit(skin, hair), jersey: 0x22262d, shorts: 0x111317, socks: 0x111317, gloves: 0x111317,
-    trim: REFEREES.fluor, number: 'II', numColor: REFEREES.fluor,
+    ...officialKit(skin, hair), id: 'referee', jersey: REFEREES.shirt, shorts: REFEREES.shorts, socks: REFEREES.shorts,
+    gloves: REFEREES.shorts, trim: REFEREES.fluor, number: '', numColor: REFEREES.fluor, vest: REFEREES.fluor,
   }
+}
+
+/**
+ * Kit de banquillo (WP-69): entrenador con chándal del color del equipo y
+ * delegado con polo claro, los dos con pantalón oscuro y calzado de calle.
+ * Respeta la equipación del partido externo (`teamKit`).
+ */
+export function staffKit(team: TeamColor, role: 'coach' | 'delegate', skin: number, hair: number): RigKit {
+  const t = teamKit(team)
+  const c = BENCH.colors
+  const jersey = role === 'coach' ? t.jersey : t.numColor === t.jersey ? c.polo : t.numColor
+  return { ...officialKit(skin, hair), id: `${team}-${role}`, jersey, shorts: c.trousers, socks: c.trousers, gloves: c.trousers, trim: t.trim }
 }
 
 /** Kit de jugador o portero de un equipo con su aspecto. */

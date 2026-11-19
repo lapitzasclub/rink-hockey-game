@@ -425,25 +425,73 @@ export const BOARDS = {
 export const STANDS = { firstHeightM: 0.42, tierRiseM: 0.53, fanHeightM: 1.9 } as const
 
 /**
- * Banquillos del lado lejano, en metros desde la cara exterior de la valla
- * lejana (hacia fuera) y desde el borde de la pista en X. El eje X del banco
- * azul se espeja para el rojo.
+ * Banquillos del lado lejano (WP-69, SPEC §9), en metros: los `…U` se miden
+ * desde la línea central de la pista (el banco azul a la izquierda, el rojo
+ * espejado) y los `…SetbackM` desde la cara exterior de la valla lejana hacia fuera.
  */
 export const BENCH = {
-  /** Del extremo exterior del banco a la esquina de la pista (m). */
-  cornerGapM: 4,
-  /** Del extremo interior del banco al centro de la pista (m). */
-  centerGapM: 2.5,
-  /** Distancia valla exterior → pies de los sentados (m). */
-  seatSetbackM: 1.7,
-  seatHeightM: 0.5,
-  seatDepthM: 0.55,
-  backrestTopM: 1.15,
-  /** Distancia valla exterior → pared del fondo (m) y su altura (m). */
+  /** Del extremo exterior e interior del banco a la esquina y al centro de la pista (m): su punto medio fija la puerta de la valla (rink/boards.ts). */
+  cornerGapM: 5.25,
+  centerGapM: 3.75,
+  /** Fin de la zona de banquillo (suelo, tarima y pared) desde la esquina (m). */
+  areaCornerM: 4,
+  /** Tarima: alto (m) y distancia de su borde delantero a la valla (m). */
+  platformM: 0.12,
+  platformSetbackM: 0.3,
+  /** Valla → ancla de los sentados (la pelvis proyectada al suelo) (m). */
+  seatSetbackM: 1.75,
+  /** Asiento sobre la tarima: alto, fondo y vuelo por delante del ancla (m). */
+  seatHeightM: 0.47,
+  seatDepthM: 0.42,
+  seatAheadM: 0.14,
+  /** Respaldo: alto de la tabla baja y de la alta sobre la tarima (m). */
+  backrestM: [0.62, 0.98],
+  /** Distancia valla → pared del fondo (m) y su altura (m). */
   wallSetbackM: 2.7,
   wallHeightM: 1.7,
-  /** Altura equivalente de un jugador sentado con los patines hacia delante (m). */
-  seatedHeightM: 1.4,
+  /** Tramos del banco a cada lado de la puerta (m desde el centro). */
+  innerU: [3.95, 6.6],
+  outerU: [9.0, 12.6],
+  /** Delegado (sentado junto a la mesa), suplentes y entrenador de pie junto a la puerta (m). */
+  delegateU: 4.4,
+  subsU: [5.2, 5.95, 9.5, 10.25, 11.0],
+  coachU: 7.05,
+  coachSetbackM: 0.85,
+  /** Rótulo del equipo en la pared: centro (m desde el centro), ancho y alturas (m). */
+  signU: 8.25,
+  signW: 2.4,
+  signZ: [1.02, 1.5],
+  /** Pelvis del sentado sobre el asiento (m): media pelvis. */
+  pelvisOverSeatM: 0.1,
+  /** Utilería (m desde el centro): bolsa en la tarima, botellas y sticks apoyados en la pared. */
+  bagU: 13.0,
+  bottlesU: [6.32, 11.55],
+  sticksU: [13.25, 13.42, 13.59, 13.76],
+  /** Dorsales de los suplentes sin partido externo (los que no llevan los de pista). */
+  subNumbers: { blue: ['4', '8', '11', '6', '12'], red: ['3', '6', '9', '10', '12'] },
+  colors: {
+    floor: 0x07111e, wall: 0x0a1322, platform: 0x1a2434, platformTop: 0x253246, platformEdge: 0x3a4a62,
+    seat: 0x2c3648, seatTop: 0x48556b, frame: 0x9aa4b2, frameDark: 0x4d5766, bag: 0x161a22, bottle: 0x58b8f0, bottleCap: 0xf4f4f4,
+    shaft: 0xd2ab73, blade: 0x24272d, sign: 0x0b111c, signText: '#ffffff',
+    /** Pantalón del cuerpo técnico y polo del delegado si el dorsal del equipo no sirve (igual a la camiseta). */
+    trousers: 0x1b1f27, polo: 0xe9ebee,
+  },
+  /** Mirada: pausa entre cambios de objetivo (ms) y probabilidad de seguir a la bola. */
+  lookMs: [700, 2600],
+  lookBall: 0.8,
+  /** Reacciones (ms): celebrar y lamentar un gol, protestar una falta y señalar del entrenador. */
+  cheerMs: 4200,
+  sadMs: 3400,
+  protestMs: 2400,
+  pointMs: 1400,
+  /** Cada cuánto da instrucciones el entrenador en juego (ms, mín. y máx.). */
+  coachEveryMs: [6500, 12500],
+  /** Saltos al celebrar: altura (unidades de figura), ciclo (ms) y alternancia de los gestos (ms). */
+  hopUnits: 0.035,
+  hopMs: 430,
+  flipMs: 380,
+  /** Retraso máximo entre figuras al reaccionar (ms): no se levantan todos a la vez. */
+  staggerMs: 260,
 } as const
 
 // ─── Árbitros (WP-50) ───────────────────────────────────────────────────────
@@ -455,6 +503,9 @@ export const BENCH = {
 export const REFEREES = {
   /** Amarillo flúor del detalle del uniforme y colores de las tarjetas. */
   fluor: 0xd9ff1f,
+  /** Camiseta gris (más clara que el pantalón, para separarlos) y pantalón casi negro (WP-69). */
+  shirt: 0x4a515d,
+  shorts: 0x15171b,
   cardBlue: 0x2f7bff,
   cardRed: 0xe02424,
   /** Velocidad al andar y al correr, y aceleración (m/s y m/s²). */
@@ -522,8 +573,12 @@ export const STANDS_STYLE = {
   cheerFadeMs: 700,
 } as const
 
-/** Zona de sancionados junto a la mesa: distancia a la valla exterior, al centro y entre figuras (m). */
-export const PENALTY_BOX = { setbackM: 0.7, centerGapM: 2.05, stepM: 0.9, maxRows: 3 } as const
+/**
+ * Banco de sancionados a cada lado de la mesa (WP-69): tramo y asientos en m
+ * desde el centro de la pista (el 0 es el más próximo a la mesa) y ancla de los
+ * sentados desde la valla exterior. El asiento sigue a `BENCH`.
+ */
+export const PENALTY_BOX = { u: [1.8, 3.65], seatsU: [2.15, 2.75, 3.35], seatSetbackM: 1.75 } as const
 
 // ─── Mesa y sancionados (WP-51) ─────────────────────────────────────────────
 
@@ -540,19 +595,29 @@ export const TABLE = {
   setbackM: 1.0,
   figSetbackM: 1.85,
   figX: [-1.1, -0.35, 0.4],
-  board: { x: 1.1, widthM: 0.8, heightM: 0.34, standM: 0.04 },
-  /** Semiancho de la zona trasera (suelo y pared) que cubre mesa y asientos de sancionados. */
-  zoneHalfM: 2.5,
+  /** Marcador LED sobre la mesa: centro en X, ancho, alto y patas (m). */
+  board: { x: 1.12, widthM: 0.66, heightM: 0.32, standM: 0.04 },
+  /** Portátil del cronometrador (tapa vista por detrás) y papeles del anotador: centro en X y medidas (m). */
+  laptop: { x: -0.35, widthM: 0.4, heightM: 0.26 },
+  papers: { x: 0.42, widthM: 0.44, depthM: 0.3 },
+  /** Logotipo del faldón: texto sin partido externo y ancho máximo (m). */
+  logo: { text: 'LIGA RINK', widthM: 1.6 },
+  /** Semiancho de la zona trasera (suelo y pared) que cubre mesa y bancos de sancionados. */
+  zoneHalfM: 3.75,
   wallSetbackM: 2.7,
   wallHeightM: 1.7,
-  /** Taburete de sancionado: ancho, fondo y alto (m). */
-  stoolM: { w: 0.5, d: 0.4, h: 0.45 },
   colors: {
     floor: 0x07111e, wall: 0x030810, top: 0xcdb58a, topEdge: 0x8f7a55, skirt: 0x1d2c4a, skirtBand: 0xf2c230,
-    side: 0x142038, board: 0x0b0f14, boardLit: 0xffb347, stool: 0x1a2438,
+    side: 0x142038, board: 0x0b0f14, boardLit: 0xffb347, stool: 0x1a2438, stoolEdge: 0x33415a,
+    laptop: 0xb7bec7, laptopEdge: 0x6f7883, laptopLogo: 0xe9edf2, paper: 0xf3efe4, paperLine: 0x8d96a1,
+    logoText: '#f2c230', clockText: '#ffb347', scoreText: '#ffffff',
   },
-  /** Kit de los oficiales de mesa (reutilizable por árbitros, WP-50): prenda oscura y calzado de calle. */
+  /** Kit de los oficiales de mesa: prenda oscura y calzado de calle. */
   official: { jersey: 0x2b313b, shorts: 0x1c2027, trim: 0xf2c230 },
+  /** Reacciones de mesa (ms): señalar la falta, apuntar en el acta y tocar el crono. */
+  pointMs: 1700,
+  writeMs: 3000,
+  clockMs: 1200,
 } as const
 
 // ─── Portería (WP-40) ───────────────────────────────────────────────────────

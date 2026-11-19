@@ -77,7 +77,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-66 | Capturas de detalle y por evento en el partido | builder · sonnet | — | ✅ 2026-11-16 |
 | WP-67 | Portería y portero legibles (v2) | engineer · opus | — | ✅ 2026-11-19 |
 | WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
-| WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ⬜ |
+| WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos

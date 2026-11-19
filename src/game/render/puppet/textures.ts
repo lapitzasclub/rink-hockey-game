@@ -108,7 +108,8 @@ export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKi
   const ht = (t.sh * s + t.depth * c) * F * FIGURE_PX
   const hb = (t.hip * s + t.depth * c) * F * FIGURE_PX
   const goalie = d.kind === 'goalie' && kit
-  const name = goalie ? `torso-goalie-${kit.id}-${v}` : `torso-${d.kind}-${v}`
+  const vest = !goalie && kit?.vest !== undefined ? kit : null
+  const name = goalie ? `torso-goalie-${kit.id}-${v}` : vest ? `torso-vest-${vest.id}-${v}` : `torso-${d.kind}-${v}`
   const w = Math.max(wt, wb)
   return atlas.ensure(name, { left: -w - M, right: w + M, top: -ht - M, bottom: len + hb + M }, ctx => {
     const p = new Path2D()
@@ -116,8 +117,13 @@ export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKi
     p.lineTo(wb, len)
     p.ellipse(0, len, wb, Math.max(0.5, hb), 0, 0, Math.PI)
     p.closePath()
-    const col = goalie ? kit.jersey : WHITE
+    const col = goalie ? kit.jersey : vest ? vest.jersey : WHITE
     paintShape(ctx, p, col, Math.min(wt, wb))
+    if (vest) {
+      paintVest(ctx, p, vest.vest!, t, yaw, len, w, ht, hb)
+      strokeOutline(ctx, p, Math.min(wt, wb))
+      return
+    }
     if (!goalie) return
     // Peto bajo la camiseta: placas horizontales y cintura en el segundo color
     ctx.save()
@@ -129,6 +135,40 @@ export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKi
     ctx.restore()
     strokeOutline(ctx, p, Math.min(wt, wb))
   })
+}
+
+/**
+ * Canesú y paneles laterales del árbitro sobre el tronco ya pintado. Cada
+ * lateral cae en pantalla en −lado·semiancho·cos(yaw) y se ensancha con el
+ * fondo del tronco al verse de perfil; el que queda detrás del cuerpo no se pinta.
+ */
+function paintVest(
+  ctx: CanvasRenderingContext2D, p: Path2D, c: number, t: ReturnType<typeof torsoSize>,
+  yaw: number, len: number, w: number, ht: number, hb: number,
+) {
+  const sy = Math.sin(yaw)
+  const cy = Math.cos(yaw)
+  ctx.save()
+  ctx.clip(p)
+  ctx.fillStyle = hex(c)
+  ctx.fillRect(-w - 2, -ht - 2, 2 * w + 4, ht + 2 + len * 0.26)
+  for (const side of [-1, 1]) {
+    if (side * sy < -0.2) continue
+    // Paneles anchos y algo hacia dentro: a zoom 1 tienen que leerse como bandas, no como un filo
+    const top = -side * t.sh * cy * 0.88 * FIGURE_PX
+    const bot = -side * t.hip * cy * 0.88 * FIGURE_PX
+    const half = Math.max(t.depth * Math.abs(sy), 0.3 * t.sh) * FIGURE_PX
+    ctx.beginPath()
+    ctx.moveTo(top - half, 0)
+    ctx.lineTo(top + half, 0)
+    ctx.lineTo(bot + half, len + hb)
+    ctx.lineTo(bot - half, len + hb)
+    ctx.closePath()
+    ctx.fill()
+  }
+  // Sombra suave bajo el canesú: separa el amarillo del gris
+  detailLine(ctx, -w, len * 0.26 + 0.6, w, len * 0.26 + 0.6, tone(c, 0.55), 0.8)
+  ctx.restore()
 }
 
 /** Cabeza con casco (o sin él) para una vista; ancla en el centro de la cabeza. */
