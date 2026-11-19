@@ -78,6 +78,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-67 | Portería y portero legibles (v2) | engineer · opus | — | ✅ 2026-11-19 |
 | WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
+| WP-70 | Inclinación de perspectiva coherente: portería, vallas y redes de fondo | engineer · opus | WP-67 | ⬜ |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos
@@ -638,6 +639,33 @@ El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en per
 - Dentro del presupuesto de SPEC §12.
 
 **Aceptación:** capturas de detalle de las gradas cercana, lejana y lateral que cumplan el listón; la pista sigue siendo lo que más destaca; FPS sin pérdida apreciable.
+
+**Devolución (2026-11-19):**
+
+- Render en `movil-bajo` reglamento: 6,03 ms frente a 4,40 ms de main medidos seguidos (+37 %; la DoD admite +10 %). En el OnePlus 9 Pro, 4,8 frente a 3,9 ms (+23 %). Con `--soft` no empeora: el coste es de CPU, no de relleno.
+- El público lateral son pastillas: con la cámara de arcade cerca de las porterías se ve a menudo y no pasa el listón.
+- Los vomitorios se leen como rectángulos negros duros.
+- La franja oscura entre los banquillos y la grada lejana: comprobar si alguna cámara de partido la enseña.
+
+### WP-70 — Inclinación de perspectiva coherente (portería, vallas y redes de fondo)
+
+- **Rol:** gfx-engineer · opus.
+- **Propios:** `render/viewTransform.ts` (solo se añade; `project` no cambia), `render/rink/goal.ts`, `render/rink/boards.ts`, `render/rink/ads.ts`, sus bloques en `artSpec.ts` y las escenas `goal` y `rink` del lab.
+
+**Diagnóstico (usuario):** WP-67 inclina la portería hacia fuera (`GOAL_VIS.leanX`) para que la boca se lea, pero la valla de fondo, su remate y la red de protección de fondo siguen verticales. El conjunto queda incongruente.
+
+**Encargo:**
+
+- Una sola ley de inclinación para estructuras con altura, en `viewTransform`: proporcional a `wx − CX` y calibrada para que en la línea de gol dé la inclinación actual de la portería.
+- Aplicarla a la portería (sustituye a `leanX`), a las vallas (caras, remate, puertas y publicidad, progresiva a lo largo de los laterales y las esquinas) y a las redes de protección de fondo (malla, postes y cable).
+- Jugadores, bola, sombras y todo lo que está a z = 0 no cambian. Gradas, banquillos y mesa tampoco (gradas: WP-68 en paralelo); si algo de ellos queda incoherente, se apunta en el informe.
+- Todo sigue horneado: coste por fotograma nulo.
+
+**Aceptación:**
+
+- A zoom 1 en reglamento y en arcade, portería, valla de fondo y red de protección se leen con la misma perspectiva; sin quiebros en esquinas ni en la valla cercana.
+- `?lab=goal&set=occlusion` y `set=ball`: la bola dentro de la jaula se ve dentro de la red y el portero sigue delante de la boca.
+- `movil-bajo` sin regresión > 10 %.
 
 ### WP-69 — Banquillos, mesa, sancionados y árbitro legible (v2)
 
