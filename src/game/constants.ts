@@ -108,10 +108,7 @@ export const FOUL_CHANCE_ON_STEAL = 0.28
 export const MANUAL_STEAL_RANGE = 52 * K
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
 export const MANUAL_STEAL_FOUL_CHANCE = 0.08
-export const AI_STEAL_ATTEMPT_CHANCE = 0.08
 export const AI_STEAL_ENGAGE_FRONT_DOT = 0.08
-/** Distancia a la que el defensor más cercano se planta delante del portador rival. */
-export const AI_PRESS_DISTANCE = 26 * K
 export const STEAL_FRONT_SUCCESS_CHANCE = 0.03
 export const STEAL_FRONT_LOOSE_CHANCE = 0.05
 export const STEAL_FRONT_FOUL_CHANCE = 0.045
@@ -127,6 +124,11 @@ export const STEAL_LOOSE_BALL_POWER = 245
 export const STEAL_LOOSE_BALL_IGNORE_MS = 220
 export const PASS_ASSIST_CONE_DOT = 0.45
 export const PASS_ASSIST_BLEND = 0.55
+/** Pase asistido del humano: anticipa el movimiento del receptor este tiempo (s). */
+export const PASS_HUMAN_LEAD_S = 0.25
+/** Un rival a menos de esto de la línea de pase penaliza al receptor en el asistido. */
+export const PASS_LANE_CLEAR_DIST = 55
+export const PASS_LANE_BLOCK_PENALTY = 70
 /** Mezcla del tiro asistido de la IA hacia el punto de apuntado (1 = puntería exacta). */
 export const SHOT_ASSIST_BLEND = 1
 /** Idem para el jugador humano: conserva el 25 % de su propia dirección. */
@@ -238,10 +240,129 @@ export const BENCH_Y_BOTTOM = 690
 
 /** Distancia máxima al gol rival para que la IA intente disparar */
 export const AI_SHOOT_DISTANCE = 370
-/** Radio de marcaje: distancia rival→compañero que lo considera cubierto */
-export const AI_MARK_RADIUS = 72
-/** Ventaja mínima de distancia al gol para preferir pase a compañero libre */
-export const AI_OPEN_MATE_GAP = 80
+
+// ─── IA de equipo (E-02): geometría del dibujo ─────────────────────────────
+// Lo que es forma del equipo (huecos, alturas) vive aquí; lo que ajusta la
+// dificultad (reacción, lectura, precisión, agresividad) va en AiProfile.
+
+/** Apoyo corto: distancia por detrás del portador y separación lateral. */
+export const AI_SUPPORT_BACK = 105
+export const AI_SUPPORT_SIDE = 95
+/** Ala abierta: adelanto sobre el portador y carril (distancia al eje largo). */
+export const AI_WIDE_AHEAD = 120
+export const AI_WIDE_LANE = 205
+/** Pivot entre líneas: adelanto sobre el portador y distancia mínima a la línea de gol rival. */
+export const AI_PIVOT_AHEAD = 210
+export const AI_PIVOT_GOAL_GAP = 115
+/** Ningún atacante sin bola pisa más allá de esto respecto a la línea de gol rival. */
+export const AI_ATTACK_GOAL_GAP = 80
+/** Desplazamiento de los huecos candidatos que se prueban alrededor de cada puesto. */
+export const AI_SPOT_PROBE = 48
+/** Distancia por debajo de la cual dos atacantes se consideran amontonados. */
+export const AI_CROWD_RADIUS = 105
+/** Margen a las vallas para cualquier destino de la IA. */
+export const AI_BOARD_MARGIN = 34
+/** Un compañero lejos de su puesto sprinta si le falta más que esto. */
+export const AI_SUPPORT_SPRINT_DIST = 240
+/** Pases útiles: más cortos no compensan, más largos llegan muertos. */
+export const AI_PASS_MIN_DIST = 70
+export const AI_PASS_MAX_DIST = 470
+/** Velocidad con la que la IA estima que un rival corre a cortar una bola (px/s). */
+export const AI_RIVAL_RUN_SPEED = 300
+/** Radio con que un jugador se queda una bola libre, a efectos de lectura de líneas. */
+export const AI_CLAIM_REACH = 48
+/** Marcaje en zona: distancia por el lado de portería al atacante marcado. */
+export const AI_MARK_GAP = 36
+/** Muestras de la trayectoria de la bola libre (cada AI_BALL_PATH_STEP pasos de 60 Hz). */
+export const AI_BALL_PATH_SAMPLES = 28
+export const AI_BALL_PATH_STEP = 3
+
+/**
+ * Perfil de IA por equipo: todo lo que E-04 ajustará por nivel de dificultad.
+ * Nunca toca la física (velocidad, aceleración, potencias): solo reacción,
+ * lectura, precisión y agresividad.
+ */
+export type AiProfile = {
+  /** Tiempo desde que recibe hasta su primera decisión con la bola (ms). */
+  reactionMs: number
+  /** Tiempo mínimo con la bola antes de tirar (ms): sin él, cada pase acaba en remate a la primera. */
+  shotReactionMs: number
+  /** Cada cuánto revalúa pase/tiro/conducir mientras conduce (ms, ±25 % de jitter). */
+  decisionIntervalMs: number
+  /** Cada cuánto recalcula los compañeros su hueco de desmarque (ms). */
+  supportRefreshMs: number
+  /** Retraso con que un jugador arranca hacia una bola libre (s), en la estimación de corte. */
+  interceptReactionS: number
+  /** Margen mínimo (px) que exige entre la línea de pase y el rival que puede cortarla. */
+  passLaneMargin: number
+  /** Cuánto anticipa el movimiento de los rivales al leer una línea (0 = los ve quietos, 1 = carrera completa). */
+  laneRead: number
+  /** Fracción del movimiento del receptor que anticipa el pase (0 = a sus pies). */
+  passLead: number
+  /** Error angular máximo del pase (rad, uniforme ±). */
+  passErrorRad: number
+  /** Error angular máximo del tiro (rad, uniforme ±). */
+  shotErrorRad: number
+  /** Puntuación mínima de tiro (0..1) para disparar. */
+  shootThreshold: number
+  /** Puntuación mínima de la mejor opción de pase (0..1) para pasar. */
+  passThreshold: number
+  /** Cuánto pierde por segundo el valor de seguir conduciendo (empuja a soltarla). */
+  holdDecayPerS: number
+  /** Probabilidad por paso de intentar robo cuando el portador está a tiro. */
+  stealAttemptChance: number
+  /** Distancia a la que el presionador se planta delante del portador. */
+  pressDistance: number
+  /** Cuánto se coloca el presionador del lado de su portería (0 = delante de la mirada del portador, 1 = en la línea a portería). */
+  pressGoalSide: number
+  /** Intensidad de carrera del presionador (fracción de la aceleración). */
+  pressIntensity: number
+  /** Dónde corta el segundo defensor la línea portador→receptor peligroso (0 = en el portador, 1 = en el receptor). */
+  cutDepth: number
+  /** Altura del bloque desde la línea de gol propia con la bola en campo propio / rival (px). */
+  blockLowDepth: number
+  blockHighDepth: number
+  /** Peso del marcaje al hombre frente a la posición de zona (0 = zona pura, 1 = al hombre). */
+  markTightness: number
+  /** Probabilidad de que un intento de robo sea una carga (solo arcade). */
+  checkChance: number
+  /** Arcade: multiplica stealAttemptChance (allí la carga ya roba mucho y sin faltas). */
+  arcadeStealScale: number
+}
+
+/** Distancia a la que el defensor más cercano se planta delante del portador rival. */
+export const AI_PRESS_DISTANCE = 26 * K
+
+export const AI_PROFILE_NORMAL: AiProfile = {
+  reactionMs: 170,
+  shotReactionMs: 450,
+  decisionIntervalMs: 150,
+  supportRefreshMs: 260,
+  interceptReactionS: 0.12,
+  passLaneMargin: 6,
+  laneRead: 0.75,
+  passLead: 0.8,
+  passErrorRad: 0.03,
+  shotErrorRad: 0,
+  shootThreshold: 0.36,
+  passThreshold: 0.42,
+  holdDecayPerS: 0.18,
+  stealAttemptChance: 0.3,
+  pressDistance: AI_PRESS_DISTANCE,
+  pressGoalSide: 0,
+  pressIntensity: 1,
+  cutDepth: 0.72,
+  blockLowDepth: 150,
+  blockHighDepth: 420,
+  markTightness: 0.8,
+  checkChance: 0.35,
+  arcadeStealScale: 0.3,
+}
+
+/** Perfil de IA de un equipo. E-04 lo conectará a los niveles de dificultad. */
+export function aiProfileFor(_team: 'blue' | 'red'): AiProfile {
+  return AI_PROFILE_NORMAL
+}
 
 // ─── Modo arcade ────────────────────────────────────────────────────────────
 // Tuning del modo arcade (estilo NBA Jam): turbo, cargas, racha, powerups y cámara.
@@ -273,8 +394,6 @@ export const ARCADE_CHECK_STUN_MS = 1150
 export const ARCADE_CHECK_KNOCKBACK = 420
 export const ARCADE_CHECK_LUNGE = 260
 export const ARCADE_CHECK_BALL_POWER = 300
-/** Probabilidad por frame de que la IA convierta un intento de robo en carga. */
-export const ARCADE_AI_CHECK_CHANCE = 0.35
 
 /** Goles seguidos de un mismo jugador (sin respuesta rival) para entrar en racha. */
 export const ARCADE_ON_FIRE_GOALS = 2

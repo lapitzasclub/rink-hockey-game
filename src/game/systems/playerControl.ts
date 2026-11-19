@@ -1,7 +1,8 @@
 import { PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND } from '../constants'
+import { prepareTeamAI } from './aiTeam'
 import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
-import type { Ball, Player } from '../types'
+import type { Ball, Player, Vector } from '../types'
 
 /** Autopiloto (partido de humo, WP-64): la IA también mueve al jugador "humano". */
 export const autopilot = { on: false }
@@ -65,6 +66,7 @@ function lenientCanSprint(player: Player) {
 
 /**
  * Actualiza IA y movimiento de todos los jugadores no controlados por el humano.
+ * Antes de mover a nadie, prepareTeamAI fija el plan táctico de ambos equipos.
  *
  * Los jugadores suspendidos solo recuperan stamina; su movimiento lo gestiona
  * updateSuspendedPlayers en movement.ts.
@@ -73,6 +75,7 @@ export function updateTeamAIPlayers(options: {
   players: Player[]
   controlledPlayerIndex: number
   ball: Ball
+  ballVelocity: Vector
   ballCarrierId: string | null
   dt: number
   timeNow: number
@@ -80,6 +83,7 @@ export function updateTeamAIPlayers(options: {
   updateFieldPlayerAI: (players: Player[], player: Player, ballX: number, ballY: number, ballCarrierId: string | null, dt: number) => void
 }) {
   const controlled = getControlledPlayer(options.players, options.controlledPlayerIndex)
+  prepareTeamAI(options.players, options.ball, options.ballVelocity, options.ballCarrierId, autopilot.on ? null : controlled.id, options.timeNow)
 
   for (const player of options.players) {
     if (player.id === controlled.id && !autopilot.on) continue
