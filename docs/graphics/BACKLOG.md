@@ -79,6 +79,7 @@ Fase 5  WP-62 rendimiento · WP-63 móvil ──► [Gate final]
 | WP-68 | Gradas y recinto (v2) | engineer · opus | — | ⬜ |
 | WP-69 | Banquillos, mesa, sancionados y árbitro legible (v2) | engineer · opus | WP-66 | ✅ 2026-11-19 |
 | WP-70 | Inclinación de perspectiva coherente: portería, vallas y redes de fondo | engineer · opus | WP-67 | ⬜ |
+| WP-71 | Ajustes gráficos personalizables | builder · sonnet | WP-68 | ⬜ |
 | Gate F | Revisión final | coordinador + usuario | todo | ⬜ |
 
 ## Propiedad de archivos
@@ -667,6 +668,32 @@ El usuario rechazó el entorno: «los banquillos, las gradas han mejorado en per
 - A zoom 1 en reglamento y en arcade, portería, valla de fondo y red de protección se leen con la misma perspectiva; sin quiebros en esquinas ni en la valla cercana.
 - `?lab=goal&set=occlusion` y `set=ball`: la bola dentro de la jaula se ve dentro de la red y el portero sigue delante de la boca.
 - `movil-bajo` sin regresión > 10 %.
+
+### WP-71 — Ajustes gráficos personalizables
+
+- **Rol:** gfx-builder · sonnet.
+- **Propios:** `render/quality.ts`, `shell/settingsPanel.ts`, el marcado de Ajustes en `shell/template.ts` y, en `MatchScene.ts`, solo `applyQuality`.
+
+**Diagnóstico (usuario):** «tampoco tiene por qué ser un slider de configuración bajo-medio-alto... se puede dar la opción de personalizar o poner en auto y permitir tocar varias cosas». Hoy Ajustes solo ofrece AUTO, ALTA, MEDIA y BAJA, que mueven tres cosas a la vez: nitidez del horneado, densidad de partículas y público animado.
+
+**Encargo:**
+
+- Calidad: AUTO, ALTA, MEDIA, BAJA o PERSONALIZADA. Un nivel rellena todas las opciones; tocar cualquier opción pasa a PERSONALIZADA y la conserva.
+- Opciones sueltas, cada una con una nota corta de qué cuesta:
+  - nitidez de la pista (se aplica en el próximo partido);
+  - público (las variantes que deje WP-68);
+  - efectos y partículas, incluido apagarlos;
+  - mostrar FPS (el panel de `?perf=1`).
+- Solo se ofrecen opciones con coste real y medible. Si una resolución de pintado menor se ve bien y ahorra en `--soft`, se añade; si no, no.
+- En AUTO, el regulador baja primero lo que más ahorra y menos se nota, y Ajustes enseña lo que está en uso. En PERSONALIZADA no hay regulador.
+- Se guarda en `localStorage` con lecturas protegidas. `?quality=` sigue sirviendo para el banco y el laboratorio.
+- Táctil y teclado; legible en 844 × 390.
+
+**Aceptación:**
+
+- Cada opción cambia lo que dice, en partido o en el siguiente, según se indique.
+- Capturas de Ajustes en escritorio y en móvil apaisado.
+- Banco `movil-bajo` en ALTA y en BAJA, sin cambios frente a los mismos niveles de antes.
 
 ### WP-69 — Banquillos, mesa, sancionados y árbitro legible (v2)
 
