@@ -7,6 +7,8 @@ import {
   GAME_WIDTH,
   GOAL_HALF_H,
   GOALIE_ZONE_RADIUS,
+  FINAL_SHOT_DEAD_SPEED,
+  FINAL_SHOT_MAX_MS,
   HALF_GAME_SECONDS,
   RINK,
   SIM_MAX_FRAME_MS,
@@ -106,6 +108,8 @@ export class MatchScene extends Phaser.Scene {
   private blueScore = 0
   private redScore = 0
   private remainingSeconds = HALF_GAME_SECONDS
+  /** Libre directo o penalti lanzado y aún sin resolver; `held` si el reloj ya llegó a cero esperándolo (art. 23.6). */
+  private finalShot: { at: number; held: boolean } | null = null
   private currentPeriod = 1
   private matchEnded = false
   private restartAt = 0
@@ -199,6 +203,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballIgnoreContactsUntil = 0
     this.activeBully = null
     this.activeFoulRestart = null
+    this.finalShot = null
     this.activeKickoff = null
     this.nextKickoffTeam = 'blue'
     this.pendingSideSwitch = false
@@ -470,11 +475,18 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private tickClock() {
+  private tickClock(force = false) {
+    // Último lanzamiento: con el tiro de un directo en el aire, la parte no acaba hasta resolverlo
+    if (!force && this.finalShot && this.remainingSeconds <= 1) {
+      if (!this.finalShot.held) this.events.emit('match:clock', { seconds: 0 })
+      this.finalShot.held = true
+      this.remainingSeconds = 0
+      return
+    }
     const next = tickMatchClock({
       matchEnded: this.matchEnded,
-      restartAt: this.restartAt,
-      paused: !!(this.activeKickoff || this.activeFoulRestart || this.activeBully),
+      restartAt: force ? 0 : this.restartAt,
+      paused: !force && !!(this.activeKickoff || this.activeFoulRestart || this.activeBully),
       remainingSeconds: this.remainingSeconds,
       currentPeriod: this.currentPeriod,
       ruleState: this.ruleState,
@@ -691,6 +703,20 @@ export class MatchScene extends Phaser.Scene {
     // La punta del stick (contactos con la bola) sale de su ángulo, que se fija aquí y no al pintar
     updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
     this.checkGoalState(time)
+    this.resolveFinalShot(time)
+  }
+
+  /** Cierra el último lanzamiento (art. 23.6): resuelto el tiro, si el reloj ya estaba a cero acaba la parte sin rechace. */
+  private resolveFinalShot(time: number) {
+    const shot = this.finalShot
+    if (!shot) return
+    const scored = this.restartAt > 0
+    const dead = Math.hypot(this.ballVelocity.x, this.ballVelocity.y) < FINAL_SHOT_DEAD_SPEED
+    const stopped = !!(this.activeKickoff || this.activeBully || this.activeFoulRestart)
+    if (!scored && !dead && !stopped && !this.ballCarrierId && time - shot.at < FINAL_SHOT_MAX_MS) return
+    this.finalShot = null
+    if (!shot.held) return
+    this.tickClock(true)
   }
 
   /** Registra las teclas del jugador humano y las recrea si se reasignan (desde la pausa). */
@@ -1268,6 +1294,7 @@ export class MatchScene extends Phaser.Scene {
     this.aimIndicator.clear()
     this.centerText.setVisible(false)
     this.ballIgnoreContactsUntil = 0
+    if (this.activeFoulRestart?.sanction !== 'free-hit' && state.shouldShot) this.finalShot = { at: time, held: false }
     this.activeFoulRestart = null
     this.prevTouchButtons = {
       pass: !!this.joystickInput.pass,
@@ -1368,6 +1395,7 @@ export class MatchScene extends Phaser.Scene {
    * y saca el rojo (el azul sacó en la 1.ª parte).
    */
   private startSecondHalf() {
+    this.finalShot = null
     this.pendingSideSwitch = true
     this.nextKickoffTeam = 'red'
     this.activeFoulRestart = null

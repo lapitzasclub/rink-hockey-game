@@ -66,7 +66,7 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Archivos:** `systems/rules.ts`, `systems/matchFlow.ts`, `systems/matchActions.ts`, `systems/matchClock.ts`, constantes de reinicio.
 **Aceptación:** humo de 20 por modo dentro del IC de E-02; en reglamento salen penaltis, libres directos y saques neutrales; partido visto en vivo.
 **Balance (decisión del usuario):** «hay que pensar en la gamificación y que es un juego y qué es divertido». No se busca el realismo estadístico: el libre directo y el penalti son momentos de tensión y deben salir. Probabilidades de falta al ~70 % de las de E-02 (con la mitad casi ningún equipo llegaba a la 10.ª). Objetivo: 1–2 libres directos por acumulación por partido, pocas tarjetas, sin parones continuos.
-**Pendiente:** libre directo que coincide con el final de una parte, un solo remate sin rechace (art. 23.6).
+**Hecho (art. 23.6):** si la parte acaba con el tiro de un libre directo o un penalti en juego, el reloj se queda en 0:00 hasta que se resuelve (alguien controla la bola, entra, se para o pasan `FINAL_SHOT_MAX_MS`) y la parte acaba ahí, sin rechace (`MatchScene.finalShot`, `resolveFinalShot`). Humo: `smoke/2026-11-19-E05-ultimo-lanzamiento.txt`.
 
 ## E-12 — Transiciones sin teletransporte
 

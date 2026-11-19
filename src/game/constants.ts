@@ -437,3 +437,12 @@ export const ARCADE_CAMERA_TOUCH_BIAS = 0.1
 
 /** Sancionado: velocidad por el pasillo entre la puerta y su asiento (px/s, ~2,4 m/s). */
 export const PEN_WALK_SPEED = 2.4 * METER_PX
+
+/**
+ * Último lanzamiento (art. 23.6): si la parte acaba con un libre directo o un
+ * penalti en juego, el reloj espera a que se resuelva ese tiro y no hay rechace.
+ * Se da por resuelto al controlar alguien la bola, al entrar, al quedarse casi
+ * parada (px/s) o al pasar el plazo (ms).
+ */
+export const FINAL_SHOT_DEAD_SPEED = 1.2 * METER_PX
+export const FINAL_SHOT_MAX_MS = 3000
