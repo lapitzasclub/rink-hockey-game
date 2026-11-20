@@ -307,6 +307,14 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — lanz L-05b
+
+- **Efecto wow del plano cercano** (petición del usuario):
+  - suelo con las marcas de patinaje y el barniz del 2D, con reflejo de la valla y la portería (`render/setpiece/floor.ts`, `setpiece/batch.ts`);
+  - público por filas con relieve, ola y banderas (`render/setpiece/crowd.ts`);
+  - haces, halos, flashes y viñeta en media/alta (`render/setpiece/fx.ts`);
+  - barrido lateral de la cámara en la transición.
+- El decorado se monta por fases en la cola de horneado. Constantes en `SETPIECE_STAGE`. Pendientes en el BACKLOG de lanzamientos.
 ### 2026-11-20 — lanz L-05
 
 - **Pabellón en la cámara cercana:** `render/setpiece/backdrop.ts` proyecta con la cámara del lanzamiento la publicidad del partido (atlas horneado), el anillo de gradas con esquinas y el público de `stands/fans.ts` (peña del equipo que defiende al fondo) y el cierre oscuro del pabellón; `setpiece/stage.ts` añade la valla del partido y la red de retención. Criterio del usuario: igual que el 2D, visto en 2.5D.

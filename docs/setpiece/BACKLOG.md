@@ -96,6 +96,23 @@ Pendiente:
 
 **Resultado (✅ 2026-11-20, 2 rondas):** `render/setpiece/backdrop.ts` (mallas UV proyectadas con la cámara cercana): publicidad `ADS` en atlas horneado, anillo de gradas con esquinas y peña del equipo que defiende, horneado por calidad en tandas de ≤ 8 ms; cierre del pabellón oscuro con tira LED. `stage.ts`: valla como la del partido y red de retención (`BOARDS.net*`; el partido ya la pintaba). Constantes en `SETPIECE_STAGE`. Horneado en `movil-bajo` (CPU ×6): tramo máximo 13,6 ms y cierre de textura 19,7 ms (< 50). Pendiente para **L-09**: el suelo queda sin degradado de luz (los pozos se recortaban con el plano cercano; solo queda el de la portería), el público de cerca aún se lee algo más «cabeza sobre asiento» que la masa del 2D, y el balanceo de la peña no se ha visto en movimiento. Sigue pendiente la doble imagen de la red en la transición (L-02).
 
+## L-05b — Efecto wow del plano cercano
+
+**Origen:** el usuario, tras L-05: «el público parece una pegatina, el suelo no tiene marcas de patinaje como el de 2d... Le falta efecto wow».
+**Resultado (✅ 2026-11-20, sin rondas; integrado a petición del usuario):**
+- `render/setpiece/floor.ts`: suelo horneado con la receta de `arena.ts` (grano, marcas de ruedas, barniz, sombra junto a la valla).
+- `stage.ts` / `batch.ts`: reflejo espejado de la valla y la portería.
+- `render/setpiece/crowd.ts`: público en tarjetas por fila con paralaje, de pie, brazos arriba, bufandas; ola y banderas en media/alta.
+- `fx.ts` (media/alta): haces, halo de la tira LED y los focos, flashes y viñeta.
+- Arco de cámara en la transición, nulo en los extremos (D-09).
+- Decorado montado por fases. Tanda más larga en `movil-bajo` (CPU ×6): 31 ms en baja y 38 en media; fotograma p95 ≈ 27 ms.
+
+**Pendiente (L-09):**
+- escala del público de las primeras filas, algo grande frente al portero;
+- banderas cortadas por arriba;
+- el decorado aparece por partes durante 1–2 s con `sp=force` en `movil-bajo`;
+- posible aliasing del suelo lejano (sin mipmaps);
+- doble imagen de la red en la transición.
 ## L-06 — IA del lanzamiento y portero humano
 
 **Objetivo:** `setpiece/ai.ts`: el lanzador de la IA elige entre tiro desde lejos o conducir y regatear, y luego zona, fuerza y efecto según el nivel; el portero de la IA lee la dirección con error y retraso por nivel (`DIFFICULTY`). Cuando tira la IA, la persona coloca a su portero (salir a achicar o esperar, según D-07) y controla la estirada (D-02), con las ayudas táctiles de `TOUCH_ASSIST`.
