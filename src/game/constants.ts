@@ -591,3 +591,35 @@ export const HUMAN_SIM = {
     lineUpMs: [250, 650],
   },
 }
+
+/**
+ * Contexto del tiro para el portero (B-03; solo medida, no cambia el juego): «tras pase» si el
+ * tirador recibió de un compañero hace ≤ passWindowMs (o tira de primeras una bola pasada);
+ * contragolpe si su equipo robó hace ≤ counterMs; defensor en la línea si un rival de campo
+ * queda entre la bola y el centro de la boca a menos de laneHalfPx de esa recta. Defendiendo, un
+ * atacante sin bola está libre si ningún defensor de campo tiene a menos de markPx, y el
+ * portador está doblado si tiene dos o más a menos de markPx.
+ */
+export const SHOT_CONTEXT = {
+  passWindowMs: 1000,
+  counterMs: 3000,
+  laneHalfPx: 2 * PLAYER_RADIUS,
+  markPx: 70,
+}
+
+/**
+ * Cambio con dirección en táctil (B-03): nipplejs da el vector con módulo ≤ 0,5 (a fondo = 0,5),
+ * así que el stick táctil se escala por esto antes de compararlo con SWITCH_AIM_MIN; sin escalar,
+ * el cambio con dirección no saltaba nunca en móvil y caía siempre en el más cercano a la bola.
+ */
+export const SWITCH_AIM_TOUCH_SCALE = 2
+
+/**
+ * Defensa con un compañero en manos de la persona (B-03; con piloto automático no aplica): la IA
+ * no le da plan. Solo cuenta como presionador (y la IA no manda a otro) si es el más cercano al
+ * portador, está a menos de DEF_HUMAN_PRESS_PX y por el lado de nuestra portería (como mucho
+ * DEF_HUMAN_GOALSIDE_TOL px por detrás de él). Persiguiéndolo por detrás o de lejos no tapa ni la
+ * conducción ni el tiro: medido en el humo, así el rival tiraba más tras pase y sin presión.
+ */
+export const DEF_HUMAN_PRESS_PX = 60
+export const DEF_HUMAN_GOALSIDE_TOL = 10

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GOALIE_SELECT_RANGE, SWITCH_AIM_ANGLE_PX, SWITCH_AIM_MAX_ANGLE, SWITCH_AIM_MIN } from '../constants'
+import { GAME_HEIGHT, GOALIE_SELECT_RANGE, SWITCH_AIM_ANGLE_PX, SWITCH_AIM_MAX_ANGLE, SWITCH_AIM_MIN, SWITCH_AIM_TOUCH_SCALE } from '../constants'
 import { getGoalLineX } from '../utils'
 import type { Player, TeamColor } from '../types'
 
@@ -37,6 +37,22 @@ export function findPlayerById(players: Player[], id: string) {
 
 /** Lo que pide el botón de cambio: `aim`, el stick al pulsar (sin marcar, cambio por cercanía). */
 export type SwitchRequest = { aim: { x: number, y: number } }
+
+const touchAim = { x: 0, y: 0 }
+/**
+ * Stick para el cambio con dirección en la escala de mando/teclado (B-03): con el joystick táctil
+ * (nipplejs llega a fondo con módulo 0,5) se escala por SWITCH_AIM_TOUCH_SCALE, sin pasar de 1;
+ * `touch` solo si la dirección sale del joystick (con mando en el móvil cuenta el mando).
+ * Devuelve un vector reutilizado: el llamante no debe guardarlo.
+ */
+export function switchAim(aim: { x: number, y: number }, touch: boolean) {
+  if (!touch) return aim
+  const len = Math.hypot(aim.x, aim.y)
+  const k = len > 0 ? Math.min(SWITCH_AIM_TOUCH_SCALE, 1 / len) : 0
+  touchAim.x = aim.x * k
+  touchAim.y = aim.y * k
+  return touchAim
+}
 
 /**
  * Selecciona el mejor candidato para recibir el control.

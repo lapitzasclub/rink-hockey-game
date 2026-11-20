@@ -13,7 +13,9 @@ param(
   [string]$BaseUrl = 'http://127.0.0.1:5173/',
   [int]$WaitMs = 0,
   [string]$Extra = '',
-  [int]$Runs = 1
+  [int]$Runs = 1,
+  # B-03: archivo al que se añade la línea [smoke] de cada partido (con shotLog) para analizarla aparte
+  [string]$RawOut = ''
 )
 $ErrorActionPreference = 'Stop'
 if ($WaitMs -le 0) { $WaitMs = $SmokeMs + 20000 }
@@ -51,12 +53,16 @@ if ($Runs -le 1) {
 $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin', 'redMinusBluePerMin',
   'goalsBluePerMin', 'goalsRedPerMin', 'shotsBluePerMin', 'shotsRedPerMin', 'savePctBlue', 'savePctRed',
   'passesPerMin', 'passPct', 'passesDoneBluePerMin', 'passesDoneRedPerMin', 'possessionBluePct', 'stealsPerMin',
-  'shotQualityBlue', 'shotQualityRed', 'savePctBlueHi', 'savePctBlueLo', 'savePctRedHi', 'savePctRedLo'
+  'shotQualityBlue', 'shotQualityRed', 'savePctBlueHi', 'savePctBlueLo', 'savePctRedHi', 'savePctRedLo',
+  'afterPassPctBlue', 'afterPassPctRed', 'gkOffBlue', 'gkOffRed', 'placeBlue', 'placeRed',
+  'savePctPassBlue', 'savePctPassRed', 'savePctNoPassBlue', 'savePctNoPassRed',
+  'unmarkedBlue', 'unmarkedRed', 'doublePctBlue', 'doublePctRed', 'humanOnCarrierPctBlue'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 $tot = @{ jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
   if (-not $line) { $tot.failed++; Write-Output ("run {0}/{1}: SIN [smoke]" -f $i, $Runs); continue }
+  if ($RawOut) { Add-Content -Encoding utf8 -Path $RawOut -Value $line }
   $j = ($line -replace '^\[smoke\] ', '') | ConvertFrom-Json
   $min = [math]::Max(0.001, $j.sec / 60)
   $g = $j.goals.blue + $j.goals.red
@@ -92,6 +98,17 @@ foreach ($i in 1..$Runs) {
     if ($j.savesHiBy.red + $j.goalsHiAgainst.red -gt 0) { $samples.savePctRedHi += 100 * $j.savesHiBy.red / ($j.savesHiBy.red + $j.goalsHiAgainst.red) }
     if ($j.savesLoBy.red + $j.goalsLoAgainst.red -gt 0) { $samples.savePctRedLo += 100 * $j.savesLoBy.red / ($j.savesLoBy.red + $j.goalsLoAgainst.red) }
   }
+  # B-03: contexto de los tiros a puerta que recibe cada portero (azul = el de la portería azul)
+  if ($null -ne $j.afterPassPct) {
+    foreach ($t in 'Blue', 'Red') {
+      $c = $t.ToLower()
+      if ($null -ne $j.afterPassPct.$c) { $samples["afterPassPct$t"] += $j.afterPassPct.$c; $samples["gkOff$t"] += $j.gkOff.$c; $samples["place$t"] += $j.place.$c }
+      if ($null -ne $j.savePctPass.$c) { $samples["savePctPass$t"] += $j.savePctPass.$c }
+      if ($null -ne $j.savePctNoPass.$c) { $samples["savePctNoPass$t"] += $j.savePctNoPass.$c }
+      if ($null -ne $j.unmarked.$c) { $samples["unmarked$t"] += $j.unmarked.$c; $samples["doublePct$t"] += $j.doublePct.$c }
+    }
+  }
+  if ($null -ne $j.humanOnCarrierPct -and $j.human) { $samples.humanOnCarrierPctBlue += $j.humanOnCarrierPct.blue }
   # Reinicios del reglamento (E-05): sumados en el lote
   $tot.freeHits += [int]$j.freeHits; $tot.directFreeHits += [int]$j.directFreeHits; $tot.penalties += [int]$j.penalties
   $tot.neutralRestarts += [int]$j.neutralRestarts; $tot.blueCards += [int]($j.blueCards.blue + $j.blueCards.red)

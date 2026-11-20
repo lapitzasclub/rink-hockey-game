@@ -36,6 +36,7 @@ import {
   getControllablePlayers,
   getControlledPlayer,
   selectBestControlledPlayer,
+  switchAim,
 } from '../game/systems/playerHelpers'
 import { setVisualHeadScale, updateStickAngles, updateVisuals } from '../game/systems/visuals'
 import type { ActiveBully, ActiveFoulRestart, ActiveKickoff, Ball, GameMode, Player, TeamColor, Vector } from '../game/types'
@@ -709,7 +710,7 @@ export class MatchScene extends Phaser.Scene {
       ballCarrierId: this.ballCarrierId,
       ball: this.ball,
       timeNow: time,
-      aim: this.moveAim(),
+      aim: switchAim(this.moveAim(), this.isTouchDevice && Math.hypot(this.joystickInput.x, this.joystickInput.y) > 0.08),
     })
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)

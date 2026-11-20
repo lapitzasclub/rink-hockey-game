@@ -1,4 +1,4 @@
-import { AI_BOARD_MARGIN, AI_MARK_GAP, AI_SUPPORT_SPRINT_DIST, GAME_HEIGHT, PASS_POWER, RINK, aiProfileFor } from '../constants'
+import { AI_BOARD_MARGIN, AI_MARK_GAP, AI_SUPPORT_SPRINT_DIST, DEF_HUMAN_GOALSIDE_TOL, DEF_HUMAN_PRESS_PX, GAME_HEIGHT, PASS_POWER, RINK, aiProfileFor } from '../constants'
 import type { Player, TeamColor } from '../types'
 import { getGoalLineX } from '../utils'
 import { aiStateOf, laneMargin, type AiPlayerState } from './aiDecision'
@@ -80,7 +80,10 @@ export function defenseShape(list: Player[], rc: Player | null, cx: number, cy: 
     let nd = Infinity
     let current: Player | null = null
     let currentD = Infinity
+    let human: Player | null = null
     for (const p of list) {
+      // B-03: la persona se valora aparte (abajo); la IA elige entre los suyos
+      if (p.id === controlledId) { human = p; continue }
       const d = dist(p, rc.pos.x, rc.pos.y)
       if (d < nd) {
         nd = d
@@ -92,10 +95,17 @@ export function defenseShape(list: Player[], rc: Player | null, cx: number, cy: 
       }
     }
     // Histéresis: no se cambia de presionador por unos píxeles
-    const presser = current && currentD <= nd + PRESSER_SWITCH_GAP ? current : nearest
+    let presser = current && currentD <= nd + PRESSER_SWITCH_GAP ? current : nearest
+    if (human) {
+      // La persona solo releva al presionador si ya está encima y por el lado de nuestra portería
+      const hd = dist(human, rc.pos.x, rc.pos.y)
+      const goalSide = (rc.pos.x - human.pos.x) * adv >= -DEF_HUMAN_GOALSIDE_TOL
+      const slack = ts.presserId === human.id ? PRESSER_SWITCH_GAP : 0
+      if ((!presser || hd < nd + slack) && hd <= DEF_HUMAN_PRESS_PX && goalSide) presser = human
+    }
     presserId = presser?.id ?? ''
     ts.presserId = presserId
-    if (presser) {
+    if (presser && presser !== human) {
       // Por delante del portador, entre él y nuestra portería: tapa conducción y tiro
       const fl = Math.hypot(rc.facing.x, rc.facing.y)
       const fx = fl > 0.001 ? rc.facing.x / fl : (rc.side === 'left' ? 1 : -1)

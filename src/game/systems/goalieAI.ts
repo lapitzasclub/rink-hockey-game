@@ -84,7 +84,7 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
  * a `along` px por delante de la línea de gol. La bisectriz corta la línea en el punto que la
  * reparte en proporción a la distancia de la bola a cada poste (teorema de la bisectriz).
  */
-function bisectorY(dxBall: number, dyBall: number, along: number) {
+export function bisectorY(dxBall: number, dyBall: number, along: number) {
   const d1 = Math.hypot(dxBall, dyBall + GOAL_HALF_H)
   const d2 = Math.hypot(dxBall, dyBall - GOAL_HALF_H)
   const onLine = -GOAL_HALF_H + (2 * GOAL_HALF_H * d1) / (d1 + d2)

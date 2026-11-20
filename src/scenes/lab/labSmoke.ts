@@ -41,7 +41,7 @@ export function driveBlueRestarts(match: Phaser.Scene) {
 export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, hooks?: SmokeHooks, human: HumanKind | null = null) {
   const s = match as MatchView
   autopilot.on = !human
-  const stats = createMatchStats(match, mode)
+  const stats = createMatchStats(match, mode, { keepShots: true })
   let nextPartial = 30000
   let done = false
   let errors = 0
