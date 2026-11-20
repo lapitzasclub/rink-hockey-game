@@ -61,6 +61,8 @@ export type Player = {
   nameTag?: Phaser.GameObjects.Text | null
   stickSwingUntil?: number
   anim?: { type: 'pass' | 'shot' | 'turbo' | 'steal' | 'receive' | 'check' | 'celebrate' | 'save'; at: number; save?: 'split' | 'glove' | 'stick' | 'body'; side?: 1 | -1 }
+  /** Último choque con otro jugador o con la valla (E-15): impulso recibido en px/s y su `simNow`. Lo lee la animación (E-17). */
+  bump?: { x: number, y: number, at: number }
   /** Angulo del stick en coordenadas mundo; el render puede usar otro por perspectiva. */
   stickWorldAngle?: number
   /** Timestamp hasta el que el jugador está expulsado (tarjeta azul). 0 o ausente = activo. */

@@ -17,9 +17,13 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-13 | Sombra de los jugadores y marcador del seleccionado | coordinador | ✅ 2026-11-20 |
 | E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
+| E-15 | Física de patinaje: inercia, giro limitado por velocidad, choques con masa, rebote en la valla | ai-engineer · opus | ⬜ |
+| E-16 | Partículas de pista en los dos modos: ruedas, frenadas, marcas, impactos | gfx-engineer · opus | ⬜ |
+| E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ⬜ |
+| E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ⬜ |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
 
-IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos.
+IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos. E-15 (física), E-16 (partículas) y E-17 (animación) van en paralelo; E-18 tras E-17 (mismos archivos del rig).
 
 ---
 
@@ -106,6 +110,32 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 Petición del usuario: el botón de correr se pulsaba casi siempre, robar costaba y el tiro en la esquina obligaba a encoger el dedo. Se resuelve con lo que ya hacen los juegos de deportes en el móvil.
 
 **Hecho:** sprint llevando el joystick al borde (sin botón S); mantener tiro sin la bola presiona al portador y entra a robar sola en distancia (también con teclado y mando); TIRO y PASE en arco al alcance del pulgar, con etiquetas ROBAR / CAMBIO cuando defiendes. Constantes `PRESS_*` y `TOUCH_SPRINT_STICK`. Falta probarlo en un móvil real. El ajuste de dificultad para el táctil va en E-04.
+
+## E-15 — Física de patinaje
+
+**Pedido del usuario (2026-11-21):** «que los jugadores tengan momentum, inercia, físicas».
+**Diagnóstico:** `applySkating` es un rozamiento isótropo (0,925 por paso) con aceleración libre en cualquier dirección: el jugador cambia de sentido casi en el sitio, no hay deriva en las curvas y los choques son un empujón fijo de 25 px/s (`resolvePlayerSpacing`). Contra la valla la posición se recorta y la velocidad sigue empujando.
+**Objetivo:** el patín agarra en la dirección de las ruedas y la componente lateral se disipa con un agarre finito (deriva en curvas rápidas); el radio de giro crece con la velocidad (a sprint las curvas son abiertas; dar la vuelta es frenar y volver a arrancar); arranque fuerte y aceleración más dura cerca de la punta; con la bola, algo menos de agarre; choques entre jugadores por impulso con masas (el portero pesa más) y restitución baja; rebote amortiguado en la valla. Cada choque o rebote deja `player.bump` (impulso y `simNow`) para la animación de E-17. La IA anticipa la frenada (no se pasa de largo ni tiembla en su objetivo). Igual para humano e IA; la dificultad no la cambia. El portero conserva su manejo para no perder paradas.
+**Archivos:** `systems/movement.ts`, `systems/playerControl.ts`, el `seek` y la llegada de la IA (`systems/aiTeam.ts`, `systems/matchFlow.ts` `skateToward`), `systems/goalieAI.ts` solo si hace falta, constantes `SKATE_*` en `constants.ts`.
+**Aceptación:** humo 20 × modo frente a la referencia fresca de main: goles/min dentro de ±30 %, % de pases completados dentro del IC o mejor, % de paradas dentro del IC, 0 atascos, 0 errores, 0 fuera de pista; el evento «pista de hielo» sigue funcionando; partido en vivo con teclado: se nota la inercia sin que el control sea pesado.
+
+## E-16 — Partículas de pista
+
+**Objetivo:** hoy solo el arcade tiene partículas. En los dos modos: polvo y virutas de rueda en frenadas fuertes, derrapes y arranques a sprint; marcas de goma tenues en el suelo que se desvanecen (alta y media); impacto de la bola contra valla y poste; golpe de dos jugadores que chocan; polvo al caer. Sobrio en reglamento, más vivo en arcade. Todo en el pintado, a partir del estado (velocidad entre fotogramas, bola que rebota), sin tocar la simulación.
+**Archivos:** nuevo `render/rinkFx.ts`, el gancho mínimo en `MatchScene.ts` (`create` y `renderFrame`), bloque `RINK_FX` al final de `render/artSpec.ts`, la densidad de `render/quality.ts`.
+**Aceptación:** capturas de cerca de cada efecto en los dos modos y en calidad baja (debe verse bien); emisores compartidos, sin crear objetos por fotograma; partido en vivo; banco movil-bajo en E-99.
+
+## E-17 — Animación secundaria
+
+**Objetivo:** que el cuerpo tenga peso: tronco y cadera sobre muelles amortiguados que siguen la aceleración (se echa atrás al frenar, se carga al arrancar, se inclina hacia dentro con la aceleración centrípeta v²/r), brazos y stick con acción superpuesta y retardo, cabeza estabilizada mirando al juego, impulsos de zancada proporcionales a la aceleración, y reacción a `player.bump` (sacudida en la dirección del impulso y paso de recuperación). Patines de canto cuando la velocidad y el rumbo no coinciden (deriva de E-15).
+**Archivos:** `render/puppet/` (locomotion, upperBody, pose, rig), `systems/visuals.ts`, `render/artSpec.ts`.
+**Aceptación:** tiras del laboratorio antes y después (arranque, frenada, curva, choque); partido en vivo sin temblores; calidad baja también se ve bien; banco movil-bajo en E-99.
+
+## E-18 — Modelo de cerca
+
+**Objetivo:** patín quad con cuatro ruedas visibles que giran con la velocidad y freno delantero; rodilleras, espinilleras y guantes; pliegue de la camiseta con el movimiento; dorsal legible de espaldas. Que pase el listón de un indie publicado en el plano normal y en el cercano.
+**Archivos:** `render/puppet/` (paint, textures, kit, skeleton), `render/artSpec.ts`.
+**Aceptación:** capturas de cerca antes y después en los dos equipos; calidad baja bien; banco movil-bajo en E-99.
 
 ## E-99 — Cierre
 
