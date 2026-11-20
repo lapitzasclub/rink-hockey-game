@@ -305,6 +305,18 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — lanz L-01
+
+- **Simulación pura del lanzamiento** (`src/game/setpiece/sim.ts`):
+  - en metros y a 60 Hz;
+  - bola 3D con efecto que se ajusta en vuelo dentro de una ventana;
+  - palos y larguero como cápsulas, y red que frena;
+  - portero de 4 cápsulas con estirada en 8 direcciones;
+  - carrerilla y conducción del lanzador.
+- **IA provisional** en `setpiece/ai.ts` (la rehace L-06); tablas `SETPIECE_*` en `constants.ts`.
+- **Lote sin pantalla** `?lab=setpiece&batch=N`, que se pasa con `tools/sp-batch.ps1` y se compara con `bal-compare`.
+- **Base** en `docs/setpiece/batch/2026-11-20-l01-base.txt`: penalti 53,6 % de gol y directo 46,5 %; 0 bolas que atraviesan la portería y resultados deterministas con la misma semilla.
+
 ### 2026-11-20 — lanz L-00 y reglas del lanzamiento
 
 - **L-00 ✅**: `?lab=setpiece` (`kind`, `ballx/bally/ballz`, `takerm`) con una cámara estenopeica móvil detrás del lanzador (`src/game/setpiece/view.ts`, `SETPIECE_CAMERA` en artSpec) y escena en `scenes/lab/labSetPiece.ts`. El escorzo del rig pasa a ser un parámetro de `Skeleton.project`/`groundFromLocal` (0,3 por defecto, el partido no cambia). D-01 (2.5D) confirmada; los pendientes para L-04a y L-02 están en BACKLOG.

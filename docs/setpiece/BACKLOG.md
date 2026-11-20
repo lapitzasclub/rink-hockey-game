@@ -21,7 +21,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | L-XX | Título | Agente · modelo | Estado |
 |---|---|---|---|
 | L-00 | Prototipo de cámara 2.5D (valida D-01) | lanz-engineer · opus | ✅ 2026-11-20 |
-| L-01 | Simulación del lanzamiento y lote headless | lanz-engineer · opus | ⬜ |
+| L-01 | Simulación del lanzamiento y lote headless | lanz-engineer · opus | ✅ 2026-11-20 |
 | L-02 | Cámara en tercera persona, transición y enganche con el partido | lanz-engineer · opus | ⬜ |
 | L-03 | Controles y HUD: retícula, fuerza, efecto | lanz-artist · sonnet | ⬜ |
 | L-04a | Nivel de detalle cercano del rig | lanz-engineer · opus | ⬜ |
@@ -51,6 +51,20 @@ Orden: L-00 → L-01 → L-02 → (L-03, L-04a → L-04b, L-05 en paralelo) → 
 **Objetivo:** `setpiece/types.ts` y `setpiece/sim.ts`: fase de conducción (el lanzador patina con la bola con la física del partido, el portero puede salir según D-07) y bola 3D a 60 Hz desde el golpeo (gravedad, rozamiento, rebote en el suelo), efecto como aceleración lateral que decae y que la entrada en vuelo añade dentro de una ventana, colisión con palos, larguero, red y el volumen del portero (estirada con tiempo de reacción y alcance). Lanzador de la IA y portero de la IA provisionales (aleatorios sencillos; L-06 los hace buenos). `?lab=setpiece&batch=N` resuelve N tiros sin pintar e imprime `[sp-agg] {json}` con media ± IC compatible con `bal-compare.mjs`; `-Lab` en `gfx-smoke.ps1`.
 **Archivos propios:** `src/game/setpiece/{types,sim}.ts`, `src/scenes/lab/` (escena de lote), `tools/gfx-smoke.ps1`, tabla `SETPIECE_*` en `constants.ts`.
 **Aceptación:** lote de 1000 sin errores; 0 tiros que atraviesen palos o red; el efecto máximo desvía menos que media portería; build ok.
+**Resultado (✅ 2026-11-20):** `setpiece/{types,sim,ai}.ts`, `scenes/lab/labSetPieceBatch.ts` y `tools/sp-batch.ps1` (imprime `[smoke-agg]`, que lee `bal-compare`). Base en `batch/2026-11-20-l01-base.txt`, con 1000 duelos, NORMAL, lanzador humano simulado y seed=7:
+
+| Tipo | Gol | Parada | Palo | Fuera | Imparables |
+|---|---|---|---|---|---|
+| Penalti | 53,6 ± 3,1 % | 25,3 % | 9,3 % | 8,6 % | 14,1 % |
+| Directo | 46,5 ± 3,1 % | 32,8 % | 7,9 % | 8,1 % | 9,7 % |
+
+0 bolas que atraviesan la portería, 0 errores, efecto máximo de 0,60 m y resultados deterministas con la misma semilla.
+
+Pendiente:
+- La IA es provisional (`ai.ts`, la rehace L-06).
+- Imparables del 10–14 %: L-06 y L-08 deben bajarlos.
+- El penalti humano queda algo bajo frente a D-05 (L-08).
+- `constants.ts` pasa de 1000 líneas: partirlo en un paquete aparte.
 
 ## L-02 — Cámara en tercera persona, transición y enganche con el partido
 
