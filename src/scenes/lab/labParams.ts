@@ -40,6 +40,12 @@ export interface LabParams {
   ballz: number | null
   /** Distancia del lanzador (y de la bola en reposo) a la línea de gol (m); null = el punto. */
   takerm: number | null
+  /** L-01: nº de duelos del lote headless (sin pintar); null = escena normal. */
+  batch: number | null
+  /** L-01: quién lleva la persona simulada en el lote (`human=none|shooter|goalie`). */
+  spHuman: 'none' | 'shooter' | 'goalie'
+  /** L-01: final de periodo (solo tiro directo). */
+  finalShot: boolean
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -80,6 +86,9 @@ export function readLabParams(search: string): LabParams {
     bally: num(q, 'bally'),
     ballz: num(q, 'ballz'),
     takerm: num(q, 'takerm'),
+    batch: num(q, 'batch'),
+    spHuman: q.get('human') === 'shooter' ? 'shooter' : q.get('human') === 'goalie' ? 'goalie' : 'none',
+    finalShot: q.get('final') === '1',
   }
 }
 
