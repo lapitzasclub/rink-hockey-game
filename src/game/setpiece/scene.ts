@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import { RINK } from '../constants'
-import { CAMERA, PX_PER_M, SETPIECE_CAMERA, SETPIECE_FOLLOW as FW } from '../render/artSpec'
+import { CAMERA, PX_PER_M, SETPIECE_CAMERA, SETPIECE_FOLLOW as FW, SETPIECE_STAGE } from '../render/artSpec'
 import { createPlayer } from '../entities/createPlayer'
 import { project as projectMatch } from '../render/viewTransform'
 import type { Ball, Player } from '../types'
@@ -246,7 +246,9 @@ export class SetPieceScene extends Phaser.Scene {
   /**
    * Órbita entre la pose del partido y la de seguimiento alrededor del punto:
    * distancia en logaritmo, ángulos y lente; luego se corrige el punto principal
-   * para que el pivote recorra en pantalla la recta entre sus dos sitios.
+   * para que el pivote recorra en pantalla la recta entre sus dos sitios. A mitad de camino la
+   * cámara gira un poco más alrededor del punto y se aleja (`SETPIECE_STAGE.arc`): un barrido en
+   * arco que vale 0 en los dos extremos (la lente de la entrada no cambia, D-09).
    */
   private blendPose(b: number) {
     const A = this.pM, B = this.pF, v = this.view
@@ -254,8 +256,11 @@ export class SetPieceScene extends Phaser.Scene {
     const ax = A.ex - this.pvX, ay = A.ey - this.pvY, az = A.ez - pz
     const bx = B.ex - this.pvX, by = B.ey - this.pvY, bz = B.ez - pz
     const ra = Math.hypot(ax, ay, az), rb = Math.hypot(bx, by, bz)
-    const r = Math.exp(lerp(Math.log(ra), Math.log(rb), b))
-    const phi = lerpAngle(Math.atan2(ax, ay), Math.atan2(bx, by), b)
+    const arc = Math.sin(Math.PI * b)
+    const r = Math.exp(lerp(Math.log(ra), Math.log(rb), b)) * (1 + SETPIECE_STAGE.arc.pullK * arc)
+    const phA = Math.atan2(ax, ay), phB = Math.atan2(bx, by)
+    const yaw = Math.sign(wrapPi(phB - phA)) * ((SETPIECE_STAGE.arc.yawDeg * Math.PI) / 180) * arc
+    const phi = lerpAngle(phA, phB, b) + yaw
     const el = lerp(Math.asin(az / ra), Math.asin(bz / rb), b)
     // Dónde cae el pivote con cada pose
     A.apply(v); v.project(this.pvX, this.pvY, pz, this.pt)
@@ -264,7 +269,7 @@ export class SetPieceScene extends Phaser.Scene {
     const tx = lerp(sax, this.pt.x, b), ty = lerp(say, this.pt.y, b)
     v.setPose(
       this.pvX + r * Math.cos(el) * Math.sin(phi), this.pvY + r * Math.cos(el) * Math.cos(phi), pz + r * Math.sin(el),
-      lerpAngle(A.heading, B.heading, b), lerp(A.tilt, B.tilt, b),
+      lerpAngle(A.heading, B.heading, b) + yaw, lerp(A.tilt, B.tilt, b),
     ).setLens(Math.exp(lerp(Math.log(A.f), Math.log(B.f), b)), lerp(A.cx, B.cx, b), lerp(A.y0, B.y0, b))
     v.project(this.pvX, this.pvY, pz, this.pt)
     v.setLens(v.f, v.cx + tx - this.pt.x, v.y0 + ty - this.pt.y)
@@ -273,7 +278,7 @@ export class SetPieceScene extends Phaser.Scene {
   /** Decorado, figuras en el encuadre y bola con la pose ya puesta. */
   private paint(vt: number, duel: MatchDuel, players: readonly Player[], ball: Ball, ballZ: number, carrierId: string | null, blend: number, w: number, h: number) {
     const v = this.view
-    this.stage.draw(v, vt)
+    this.stage.draw(v, vt, blend, w, h)
     duel.toScene(ball.x, ball.y, this.v2)
     const bx = this.v2.x, by = this.v2.y
     const n = ++this.frameNo
