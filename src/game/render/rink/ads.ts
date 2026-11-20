@@ -17,7 +17,7 @@ import { bakeResolution } from '../quality'
 import { WORLD_PREFIX } from '../bake'
 
 // Publicidad ficticia: [texto, fondo, color texto]
-const ADS: [string, number, string][] = [
+export const ADS: [string, number, string][] = [
   ['RINK TV', 0x0d1b2e, '#3ee8ff'],
   ['PATÍN PRO', 0xf0c43a, '#14213a'],
   ['BOLA 23', 0xd8343a, '#ffffff'],

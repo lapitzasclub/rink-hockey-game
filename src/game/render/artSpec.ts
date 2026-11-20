@@ -972,8 +972,41 @@ export const SETPIECE_CAMERA = {
   ballDiameterM: 0.073,
   /** Paso de la malla dibujada (m); la real es de 2,5 cm y daría muaré. */
   netMeshM: 0.1,
-  /** Suelo, fondo sobre la valla y valla (prototipo, sin hornear). */
-  colors: { floor: 0x1f5fae, floorFar: 0x1a4f92, backdrop: 0x0a1322, board: 0x14243c, boardTop: 0xdfe8f4, kick: 0x0b0f14 },
+  /** Suelo (el del partido, `FLOOR_STYLE`) y fondo del pabellón sobre la grada (muro trasero de las gradas). */
+  colors: { floor: 0x1f5fae, floorFar: 0x1d5aa5, backdrop: 0x0a0d13 },
+} as const
+
+/**
+ * L-05: escenario cercano. Mismo pabellón que el partido (colores de `BOARDS`, `STANDS_COLORS`,
+ * `CROWD`, `LIGHT`) visto con la cámara baja.
+ * Valla: luminosidad de la cara según la pared (el fondo equivale a un lateral del partido, 0,72 ± 0,16;
+ * los laterales y el fondo contrario a la lejana, 1,06), grosor del canto (m) y hueco de cada panel (m).
+ * Grada: plano inclinado detrás de la valla (el peto vertical hasta 1 m y `tiers` escalones de
+ * `STANDS`); el público se hornea una vez con las figuras de `render/stands/fans.ts` a `pxPerM`
+ * px por metro de figura (por calidad; sin desenfoque propio: la textura a esa resolución y el filtro lineal
+ * bastan para que lo lejano quede suave). `swayM`/`swayHz`: balanceo de la peña en calidad media y alta.
+ * Luz: pozos cenitales en el suelo como los del partido (`LIGHT.pools*`), en m.
+ */
+export const SETPIECE_STAGE = {
+  boardLumBack: 0.8,
+  boardLumSide: 1.06,
+  capThickM: 0.2,
+  adGapM: 0.06,
+  adCols: 4,
+  stands: {
+    tiers: 16,
+    setbackM: 0.6,
+    firstM: 0.9,
+    colM: 1.5,
+    pxPerM: { alta: 44, media: 44, baja: 30 },
+    swayM: 0.035,
+    swayHz: 0.8,
+    seatWidthM: 0.46,
+    seatHeightM: 0.34,
+    /** Horneado: tiempo máximo por trozo (ms) antes de ceder el hilo. */
+    sliceMs: 8,
+  },
+  poolLayers: [1, 0.66, 0.33],
 } as const
 
 /**
