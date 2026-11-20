@@ -941,3 +941,37 @@ export const LIGHT = {
   goalGlowColor: 0xdff0ff,
   goalGlowAlpha: 0.32,
 } as const
+
+// ─── Lanzamientos en tercera persona (docs/setpiece, L-00) ──────────────────
+
+/**
+ * Cámara estenopeica detrás del lanzador (`setpiece/view.ts`), en metros y px de
+ * pantalla. La cámara es móvil (`setCamera`/`follow`); estos son los valores de
+ * seguimiento: `back` m detrás de la bola, a `height` m, mirando al objetivo
+ * (centro de la boca), que queda en `aimY` (fracción del alto de pantalla).
+ */
+export const SETPIECE_CAMERA = {
+  /** Detrás de la bola y altura del ojo (m). */
+  back: 2.0,
+  height: 1.4,
+  /** Objetivo por defecto (m): centro de la boca interior de 1,70 × 1,05 m. */
+  targetX: 0,
+  targetY: 0,
+  targetZ: 0.525,
+  /** Focal (px de pantalla) y altura en pantalla del punto de mira. */
+  focal: 560,
+  aimY: 0.36,
+  /** Exageración de figura de cerca: 1 = altura real, para que case con la portería de 1,05 m. */
+  figureExag: 1,
+  /** Lanzador respecto a la bola (m): hacia el lado contrario a su stick y hacia atrás. */
+  shooterSide: 0.38,
+  shooterBack: 0.45,
+  /** Pies del portero delante de la línea de gol (m). */
+  goalieFront: 0.22,
+  /** Bola real (Ø ≈ 7,3 cm); el partido la exagera (BALL_VISUAL_DIAMETER_M). */
+  ballDiameterM: 0.073,
+  /** Paso de la malla dibujada (m); la real es de 2,5 cm y daría muaré. */
+  netMeshM: 0.1,
+  /** Suelo, fondo sobre la valla y valla (prototipo, sin hornear). */
+  colors: { floor: 0x1f5fae, floorFar: 0x1a4f92, backdrop: 0x0a1322, board: 0x14243c, boardTop: 0xdfe8f4, kick: 0x0b0f14 },
+} as const

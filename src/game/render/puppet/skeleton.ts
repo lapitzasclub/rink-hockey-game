@@ -172,10 +172,14 @@ export class Skeleton {
     joint.z = a.z + dir.z * along + (perp.z / pl) * h
   }
 
-  /** Proyecta todas las articulaciones a coordenadas locales del contenedor. */
-  project(yaw: number, unit: number, feetY: number) {
+  /**
+   * Proyecta todas las articulaciones a coordenadas locales del contenedor.
+   * `floorF`: escorzo del suelo (≈ tangente del ángulo con que la cámara ve los pies);
+   * el partido usa el de siempre y la escena de lanzamientos el de su cámara.
+   */
+  project(yaw: number, unit: number, feetY: number, floorF = RIG_FLOOR_FORESHORTEN) {
     const v = setView(this.view, yaw)
-    const F = RIG_FLOOR_FORESHORTEN
+    const F = floorF
     for (let i = 0; i < JOINT_COUNT; i++) {
       const p = this.j[i]
       const X = p.x * v.rx + p.z * v.fx
@@ -192,9 +196,9 @@ export class Skeleton {
  * respecto a los pies (`lx`, `ly` en unidades locales) a un punto del marco
  * del cuerpo con y = 0. Sirve para clavar la pala o un patín en un punto de mundo.
  */
-export function groundFromLocal(yaw: number, lx: number, ly: number, unit: number, out: V3): V3 {
+export function groundFromLocal(yaw: number, lx: number, ly: number, unit: number, out: V3, floorF = RIG_FLOOR_FORESHORTEN): V3 {
   const X = lx / unit
-  const Z = ly / (unit * RIG_FLOOR_FORESHORTEN)
+  const Z = ly / (unit * floorF)
   const fx = Math.sin(yaw)
   const fz = Math.cos(yaw)
   // La rotación de vista es su propia inversa: [[rx, fx], [rz, fz]] con rx = -fz, rz = fx

@@ -14,11 +14,13 @@ import { autopilot } from '../game/systems/playerControl'
 import { setDifficultyOverride } from '../game/systems/difficulty'
 import { atHooks, freezeMatch, lockMatchCamera, wantsCameraLock } from './lab/labAt'
 import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
+import { buildSetPieceLab } from './lab/labSetPiece'
 
 /**
  * Laboratorio gráfico (solo DEV, `?lab=<escena>`): escenas estáticas y deterministas
  * que reutilizan los constructores reales del juego, para capturas headless.
- * Escenas: rink, scale, goal, players (&strip=), officials, style, match (&mode=, &freeze=).
+ * Escenas: rink, scale, goal, players (&strip=), officials, style, match (&mode=, &freeze=),
+ * setpiece (&kind=penalty|direct, &takerm=, &ballx=&bally=&ballz= en m: cámara de lanzamientos, L-00).
  * Parámetros comunes: zoom, cx, cy (centro en mundo), t (ms), anim=1, hud=0.
  * En match, zoom/cx/cy bloquean la cámara; follow= y at=<evento>&auto=1&after= (ver WORKFLOW §8).
  * `ai=1`: IA contra IA en tiempo real y con render (banco de rendimiento, docs/perf/WORKFLOW.md).
@@ -50,6 +52,10 @@ export class LabScene extends Phaser.Scene {
     this.installHook()
     if (this.params.scene === 'match') {
       this.startMatch()
+      return
+    }
+    if (this.params.scene === 'setpiece') {
+      buildSetPieceLab(this, this.params)
       return
     }
 

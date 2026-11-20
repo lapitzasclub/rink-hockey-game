@@ -33,6 +33,13 @@ export interface LabParams {
   /** B-04: nivel de dificultad fijo por equipo (`facil|normal|dificil|experto` o índice 0..3); null = el del partido. */
   diffBlue: number | null
   diffRed: number | null
+  /** L-00 (`lab=setpiece`): tipo de lanzamiento y bola en vuelo (m: lateral, desde la línea de gol, altura). */
+  kind: 'penalty' | 'direct'
+  ballx: number | null
+  bally: number | null
+  ballz: number | null
+  /** Distancia del lanzador (y de la bola en reposo) a la línea de gol (m); null = el punto. */
+  takerm: number | null
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -68,6 +75,11 @@ export function readLabParams(search: string): LabParams {
     human: q.get('human') === 'touch' ? 'touch' : q.get('human') === 'pad' ? 'pad' : null,
     diffBlue: parseDifficulty(q.get('diffBlue')),
     diffRed: parseDifficulty(q.get('diffRed')),
+    kind: q.get('kind') === 'direct' ? 'direct' : 'penalty',
+    ballx: num(q, 'ballx'),
+    bally: num(q, 'bally'),
+    ballz: num(q, 'ballz'),
+    takerm: num(q, 'takerm'),
   }
 }
 
