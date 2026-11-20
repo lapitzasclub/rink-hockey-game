@@ -66,7 +66,7 @@ import {
 } from '../game/systems/matchActions'
 import { matchTime, tickMatchClock } from '../game/systems/matchClock'
 import { getDifficulty, getHalfRealMinutes } from '../game/ui/prefs'
-import { configureMatchDifficulty } from '../game/systems/difficulty'
+import { checkChanceScale, configureMatchDifficulty, mateStealRoll } from '../game/systems/difficulty'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { createLiveStats, type LiveStats } from '../shell/statsPanel'
 import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
@@ -957,9 +957,14 @@ export class MatchScene extends Phaser.Scene {
       updateFieldPlayerAI,
     })
 
+    const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
     for (const player of this.players) {
       if (player.suspendedUntil && player.suspendedUntil > this.simNow) continue
-      if (player.team === 'blue' && player.role !== 'goalie' && !autopilot.on) continue
+      if (player.team === 'blue' && player.role !== 'goalie' && !autopilot.on) {
+        // B-06: en táctil los compañeros de la persona también entran a robar (TOUCH_ASSIST_EXTRA.mateSteal)
+        if (player !== controlled && mateStealRoll(player.team)) this.tryAiSteal(player)
+        continue
+      }
       const hasBall = this.ballCarrierId === player.id
       if (player.aiCharge && !hasBall) { player.aiCharge = undefined; player.charge = undefined }
 
@@ -991,19 +996,21 @@ export class MatchScene extends Phaser.Scene {
               }
             }
           }
-        } else if (this.ballCarrierId && findPlayerById(this.players, this.ballCarrierId)?.team !== player.team) {
-          const carrier = findPlayerById(this.players, this.ballCarrierId)
-          if (carrier && shouldAIAttemptSteal(player, carrier, this.isArcade)) {
-            const checked = this.isArcade && Math.random() < aiProfileFor(player.team).checkChance && this.tryCheck(player)
-            if (!checked) this.tryManualSteal(player)
-          }
-        }
+        } else this.tryAiSteal(player)
       } else if (player.role === 'goalie' && hasBall) {
         // En manos del humano saca él; si se lo guarda demasiado, saca solo
         const human = !autopilot.on && getControlledPlayer(this.players, this.controlledPlayerIndex) === player
         if (shouldGoaliePass(player, this.simNow, human ? GOALIE_HUMAN_HOLD_MS : undefined)) this.tryPass(player)
       }
     }
+  }
+
+  /** Entrada de la IA a robar (o cargar, en arcade) al portador rival si lo tiene a tiro. */
+  private tryAiSteal(player: Player) {
+    const carrier = this.ballCarrierId ? findPlayerById(this.players, this.ballCarrierId) : null
+    if (!carrier || carrier.team === player.team || !shouldAIAttemptSteal(player, carrier, this.isArcade)) return
+    const checked = this.isArcade && Math.random() < aiProfileFor(player.team).checkChance * checkChanceScale(carrier.team) && this.tryCheck(player)
+    if (!checked) this.tryManualSteal(player)
   }
 
   /**

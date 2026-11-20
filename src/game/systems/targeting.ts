@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, TOUCH_ASSIST, aiProfileFor } from '../constants'
+import { BALL_RADIUS, GAME_HEIGHT, GOAL_HALF_H, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, TOUCH_ASSIST, TOUCH_ASSIST_EXTRA, aiProfileFor } from '../constants'
 import { touchAssist } from './difficulty'
 import type { Player, Vector } from '../types'
 import { autopilot } from './playerControl'
@@ -160,28 +160,55 @@ export function getGoalieDistributionDirection(players: Player[], player: Player
 }
 
 /**
- * Combina la mirada del portador con la dirección al centro de la portería
- * rival (SHOT_ASSIST_BLEND) para reducir tiros absurdos en ángulo cerrado.
+ * Combina la mirada del portador con la dirección a la portería rival (SHOT_ASSIST_BLEND) para
+ * reducir tiros absurdos en ángulo cerrado. Se apunta al centro corrido hacia el tirador como
+ * mucho ±SHOT_AIM_MAX_OFFSET px, para no forzar tiros al palo en jugadores muy adelantados.
  *
- * La corrección vertical se limita a ±SHOT_AIM_MAX_OFFSET px desde el centro para no forzar
- * tiros al palo en jugadores muy adelantados.
+ * La persona en táctil (B-06), con `players`, corre ese punto hacia el palo que el portero rival
+ * deja más abierto visto desde el tirador (TOUCH_ASSIST_EXTRA.shotAimPost).
  */
-export function getAssistedShotDirection(player: Player, fallbackDirection: Vector): Vector {
+export function getAssistedShotDirection(player: Player, fallbackDirection: Vector, players?: Player[]): Vector {
   // Se apunta a la línea de gol (no al fondo de pista): con la boca real, el error angular importa
   const targetX = getGoalLineX(player.side === 'left' ? 'right' : 'left')
-  const targetY = GAME_HEIGHT / 2 + Phaser.Math.Clamp(player.pos.y - GAME_HEIGHT / 2, -SHOT_AIM_MAX_OFFSET, SHOT_AIM_MAX_OFFSET)
+  let targetY = GAME_HEIGHT / 2 + Phaser.Math.Clamp(player.pos.y - GAME_HEIGHT / 2, -SHOT_AIM_MAX_OFFSET, SHOT_AIM_MAX_OFFSET)
+
+  // La IA (rojo, porteros y el azul con piloto automático) apunta exacto; el humano conserva influencia sobre la dirección
+  const isAi = player.team === 'red' || player.role === 'goalie' || autopilot.on
+  const touch = !isAi && touchAssist.team === player.team
+  if (touch && players && TOUCH_ASSIST_EXTRA.shotAimPost > 0) {
+    const postY = openPostY(player, players, targetX)
+    targetY += (postY - targetY) * TOUCH_ASSIST_EXTRA.shotAimPost
+  }
 
   const raw = { x: targetX - player.pos.x, y: targetY - player.pos.y }
   const rawLength = Math.hypot(raw.x, raw.y) || 1
   const goalDirection = { x: raw.x / rawLength, y: raw.y / rawLength }
 
-  // La IA (rojo, porteros y el azul con piloto automático) apunta exacto; el humano conserva influencia sobre la dirección
-  const isAi = player.team === 'red' || player.role === 'goalie' || autopilot.on
-  const blend = isAi ? SHOT_ASSIST_BLEND : touchAssist.team === player.team ? TOUCH_ASSIST.shotBlend : SHOT_ASSIST_BLEND_HUMAN
+  const blend = isAi ? SHOT_ASSIST_BLEND : touch ? TOUCH_ASSIST.shotBlend : SHOT_ASSIST_BLEND_HUMAN
   const bx = fallbackDirection.x * (1 - blend) + goalDirection.x * blend
   const by = fallbackDirection.y * (1 - blend) + goalDirection.y * blend
   // Precisión del perfil de IA (E-04): error angular uniforme
   const error = isAi ? aiProfileFor(player.team).shotErrorRad : 0
   const angle = Math.atan2(by, bx) + (error > 0 ? (Math.random() * 2 - 1) * error : 0)
   return { x: Math.cos(angle), y: Math.sin(angle) }
+}
+
+/**
+ * y del palo (menos el radio de la bola) del lado que el portero rival deja más abierto: se
+ * proyecta el portero sobre la línea de gol desde el tirador y gana el hueco más grande.
+ */
+function openPostY(shooter: Player, players: Player[], lineX: number) {
+  const cy = GAME_HEIGHT / 2
+  let gy = cy
+  for (const p of players) {
+    if (p.role !== 'goalie' || p.team === shooter.team) continue
+    const dx = p.pos.x - shooter.pos.x
+    const lx = lineX - shooter.pos.x
+    // Portero entre tirador y línea: proyección; si no (fuera de sitio), su altura tal cual
+    gy = dx * lx > 0 && Math.abs(dx) > 1 ? shooter.pos.y + (p.pos.y - shooter.pos.y) * (lx / dx) : p.pos.y
+    break
+  }
+  const half = GOAL_HALF_H - BALL_RADIUS
+  // Hueco por arriba (gy − palo superior) frente a hueco por abajo (palo inferior − gy)
+  return gy - (cy - half) >= (cy + half) - gy ? cy - half : cy + half
 }

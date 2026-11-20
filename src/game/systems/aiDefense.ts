@@ -1,4 +1,5 @@
-import { AI_BOARD_MARGIN, AI_MARK_GAP, AI_SUPPORT_SPRINT_DIST, DEF_HUMAN_GOALSIDE_TOL, DEF_HUMAN_PRESS_PX, GAME_HEIGHT, PASS_POWER, RINK, aiProfileFor } from '../constants'
+import { touchAssist } from './difficulty'
+import { AI_BOARD_MARGIN, AI_MARK_GAP, AI_SUPPORT_SPRINT_DIST, DEF_HUMAN_GOALSIDE_TOL, DEF_HUMAN_PRESS_PX, GAME_HEIGHT, PASS_POWER, RINK, TOUCH_ASSIST_EXTRA, aiProfileFor } from '../constants'
 import type { Player, TeamColor } from '../types'
 import { getGoalLineX } from '../utils'
 import { aiStateOf, laneMargin, type AiPlayerState } from './aiDecision'
@@ -81,6 +82,7 @@ export function defenseShape(list: Player[], rc: Player | null, cx: number, cy: 
     let current: Player | null = null
     let currentD = Infinity
     let human: Player | null = null
+    let humanNear = false
     for (const p of list) {
       // B-03: la persona se valora aparte (abajo); la IA elige entre los suyos
       if (p.id === controlledId) { human = p; continue }
@@ -102,6 +104,7 @@ export function defenseShape(list: Player[], rc: Player | null, cx: number, cy: 
       const goalSide = (rc.pos.x - human.pos.x) * adv >= -DEF_HUMAN_GOALSIDE_TOL
       const slack = ts.presserId === human.id ? PRESSER_SWITCH_GAP : 0
       if ((!presser || hd < nd + slack) && hd <= DEF_HUMAN_PRESS_PX && goalSide) presser = human
+      humanNear = hd <= DEF_HUMAN_PRESS_PX && touchAssist.team === team
     }
     presserId = presser?.id ?? ''
     ts.presserId = presserId
@@ -117,8 +120,10 @@ export function defenseShape(list: Player[], rc: Player | null, cx: number, cy: 
       const dx = fx * (1 - w) + (gx / gl) * w
       const dy = fy * (1 - w) + (gy / gl) * w
       const dl = Math.hypot(dx, dy) || 1
-      const px = rc.pos.x + (dx / dl) * profile.pressDistance
-      const py = rc.pos.y + (dy / dl) * profile.pressDistance
+      // B-06: con la persona ya encima en táctil, tapar sin doblar (TOUCH_ASSIST_EXTRA.humanNearCoverPx)
+      const pd = humanNear ? Math.max(profile.pressDistance, TOUCH_ASSIST_EXTRA.humanNearCoverPx) : profile.pressDistance
+      const px = rc.pos.x + (dx / dl) * pd
+      const py = rc.pos.y + (dy / dl) * pd
       setPlan(aiStateOf(presser), px, py, profile.pressIntensity, dist(presser, px, py) > 70, true)
     }
   } else if (!rc) {

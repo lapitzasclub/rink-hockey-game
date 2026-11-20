@@ -711,3 +711,38 @@ export const SWITCH_AIM_TOUCH_SCALE = 2
  */
 export const DEF_HUMAN_PRESS_PX = 60
 export const DEF_HUMAN_GOALSIDE_TOL = 10
+
+/**
+ * Ayudas táctiles de juego (B-06), además de TOUCH_ASSIST: solo con la persona en táctil
+ * (touchAssist.team); con mando, teclado o IA contra IA no cambian nada. Valor neutro = como antes.
+ * - goalieStickScale: el portero en manos de la persona acelera con min(1, |stick| · esto); nipplejs
+ *   llega a fondo con 0,5, así que con 1 iba a media aceleración (neutro 1).
+ * - goalieAutoSelect: false = en táctil el cambio sin dirección y la cesión tras sacar el portero no
+ *   pasan nunca a él por GOALIE_SELECT_RANGE; solo el CAMBIO que le apunta (neutro true).
+ * - goalieAiShotSpeed: con el portero en manos de la persona y un tiro rival en camino (bola suelta
+ *   hacia su portería a ≥ esto px/s), lo mueve la IA hasta que la bola se pare o la coja alguien
+ *   (neutro Infinity = nunca).
+ * - goalieAiWithoutBall: true = el portero en manos de la persona lo coloca siempre la IA mientras
+ *   no tenga la bola (rechaces y barullos en el área incluidos); ella solo saca. En el partido real
+ *   en móvil, 3 goles y 0 paradas en 9,6 s con el portero en la mano (neutro false).
+ * - shotAimPost: el tiro asistido apunta hacia el palo del lado que el portero deja más abierto,
+ *   esta fracción del camino entre el punto de siempre y el palo (0 = como antes, 1 = al palo).
+ * - checkOnCarrier: multiplica la probabilidad de que la IA rival cargue (arcade) al portador en
+ *   manos de la persona; las cargas eran la mitad de sus pérdidas de bola (neutro 1).
+ * - mateSteal: los compañeros de campo de la persona no entraban nunca a robar (solo ella); con
+ *   esto > 0 lo prueban como la IA rival, con esta probabilidad extra por paso (neutro 0).
+ * - humanNearCoverPx: si la persona está a menos de DEF_HUMAN_PRESS_PX del portador pero no cuenta
+ *   como presionador (por detrás), el presionador IA le tapa la portería a esta distancia en vez de
+ *   a pressDistance, fuera de SHOT_CONTEXT.markPx: sin doblar y sin dejar un hombre libre. En el
+ *   partido real el azul doblaba el 24,8 % del tiempo frente al 6,5 % del rojo (neutro 0).
+ */
+export const TOUCH_ASSIST_EXTRA = {
+  goalieStickScale: 2,
+  goalieAutoSelect: false,
+  goalieAiShotSpeed: 260,
+  goalieAiWithoutBall: true,
+  shotAimPost: 0.9,
+  checkOnCarrier: 0.5,
+  mateSteal: 0.5,
+  humanNearCoverPx: 95,
+}

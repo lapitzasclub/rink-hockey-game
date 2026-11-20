@@ -35,7 +35,7 @@ export type MatchView = Phaser.Scene & {
   ball: { x: number, y: number }
   ballVelocity: { x: number, y: number }
   ballCarrierId: string | null
-  players: Array<{ id: string, team: Team, side: 'left' | 'right', role: string, pos: { x: number, y: number }, velocity: { x: number, y: number }, suspendedUntil?: number, facing: { x: number, y: number } }>
+  players: Array<{ id: string, team: Team, side: 'left' | 'right', role: string, pos: { x: number, y: number }, velocity: { x: number, y: number }, suspendedUntil?: number, facing: { x: number, y: number }, anim?: { type: string, at: number }, stunUntil?: number, stunKind?: string }>
   controlledPlayerIndex: number
   blueScore: number
   redScore: number
@@ -118,6 +118,9 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     // B-03, por equipo que defiende con el rival en posesión: s defendiendo, atacantes libres·s
     // (SHOT_CONTEXT.markPx), s con el portador doblado y s con la persona encima del portador
     defSec: pair(), unmarkedSec: pair(), doubleSec: pair(), humanOnCarrierSec: pair(),
+    // B-06: pérdidas en conducción del portador de campo (robo directo o bola suelta por toque rival),
+    // de ellas, por carga arcade; intentos de robo (animación de robo) y, de la persona, intentos y robos directos
+    losses: pair(), lossesCheck: pair(), stealTries: pair(), stealTriesHuman: pair(), stealsHuman: pair(),
   }
   const shotLog: ShotRecord[] = []
   let ms = 0
@@ -144,6 +147,16 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
   const stealAt: Pair = { blue: -Infinity, red: -Infinity }
   /** Jugador en manos de la persona en este paso (null con piloto automático). */
   let humanId: string | null = null
+  /** B-06: marca de la última animación de robo vista por jugador (un intento por animación nueva). */
+  const stealAnimAt = new Map<string, number>()
+  /** B-06: el portador de campo `from` pierde la bola; `thiefId` si el rival se la queda directamente. */
+  const noteLoss = (from: MatchView['players'][number], thiefId: string | null) => {
+    if (from.role !== 'goalie') {
+      st.losses[from.team]++
+      if (from.stunKind === 'check' && (from.stunUntil ?? 0) > s.simNow) st.lossesCheck[from.team]++
+    }
+    if (thiefId && thiefId === humanId) st.stealsHuman[other(from.team)]++
+  }
   /** Dirección de ataque del equipo según su lado actual (cambia en el descanso). */
   const attackDir = (team: Team) => (s.players.find(p => p.team === team)?.side === 'right' ? -1 : 1)
   const humanGoalie = (team: Team) => s.simNow - humanGoalieAt[team] <= HUMAN_GOALIE_WINDOW_MS
@@ -210,6 +223,12 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       const bad = !(Number.isFinite(p.pos.x) && Number.isFinite(p.pos.y) && Number.isFinite(p.velocity.x) && Number.isFinite(p.velocity.y)) ||
         (!(su > s.simNow) && (p.pos.x < RINK.x - 12 || p.pos.x > RINK.x + RINK.width + 12 || p.pos.y < RINK.y - 12 || p.pos.y > RINK.y + RINK.height + 40))
       if (bad) { st.badPlayerFrames++; st.badSample ||= `${p.id}@${Math.round(p.pos.x)},${Math.round(p.pos.y)}` }
+      const a = p.anim
+      if (a && a.type === 'steal' && stealAnimAt.get(p.id) !== a.at) {
+        stealAnimAt.set(p.id, a.at)
+        st.stealTries[p.team]++
+        if (p.id === humanId) st.stealTriesHuman[p.team]++
+      }
     }
 
     // Posesión
@@ -220,7 +239,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       lastCarrierTeam = carrier.team
       st.possessionSec[carrier.team] += dt
       // Robo: la bola pasa directamente de un portador al rival
-      if (prev && prev.team !== carrier.team) { st.steals[carrier.team]++; stealAt[carrier.team] = s.simNow }
+      if (prev && prev.team !== carrier.team) { st.steals[carrier.team]++; stealAt[carrier.team] = s.simNow; noteLoss(prev, carrier.id) }
       if (!prevCarrier && release && !release.shot && carrier.id !== release.id) {
         st.passes[release.team]++
         if (carrier.team === release.team) {
@@ -235,7 +254,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       if (prev && s.lastTouch === prev.team && inPlay) release = { team: prev.team, id: prev.id, age: 0, shot: false, y: s.ball.y }
       else {
         release = null
-        if (prev && inPlay) { st.steals[other(prev.team)]++; stealAt[other(prev.team)] = s.simNow }
+        if (prev && inPlay) { st.steals[other(prev.team)]++; stealAt[other(prev.team)] = s.simNow; noteLoss(prev, null) }
       }
     }
     if (release && (release.age += dt * 1000) > 4000) release = null
