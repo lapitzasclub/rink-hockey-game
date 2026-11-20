@@ -9,7 +9,7 @@ import { playUiMove } from './game/audio/sounds'
 import { consumePad, pollGamepad } from './game/input/gamepad'
 import { getInputMode, onInputModeChange, type InputMode } from './game/input/inputMode'
 import { ICON, shellHtml } from './shell/template'
-import { backToHost, fullscreenSupported, hostedByLoyola, installHintSupported, isFullscreen, lockLandscapeInHostApp, onFullscreenChange, toggleFullscreen } from './shell/fullscreen'
+import { backToHost, fullscreenOffered, hideBarsInHostApp, hostedByLoyola, installHintSupported, isFullscreen, lockLandscapeInHostApp, onFullscreenChange, onHostBackButton, toggleFullscreen } from './shell/fullscreen'
 import { attachMenuNav } from './shell/menuNav'
 import { createSettingsPanel } from './shell/settingsPanel'
 import { createPauseMenu, type PauseSummary } from './shell/pauseMenu'
@@ -18,7 +18,7 @@ import { createQualityProbe } from './shell/qualityProbe'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenSupported, installHint: installHintSupported, hostBack: hostedByLoyola })
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenOffered, installHint: installHintSupported, hostBack: hostedByLoyola })
 document.querySelector('#btn-host-back')?.addEventListener('click', backToHost)
 lockLandscapeInHostApp()
 
@@ -215,9 +215,18 @@ document.addEventListener('keydown', (e) => {
     return
   }
   const typing = (e.target as HTMLElement | null)?.tagName === 'INPUT'
-  if ((e.key === 'f' || e.key === 'F') && fullscreenSupported && !typing && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  if ((e.key === 'f' || e.key === 'F') && fullscreenOffered && !typing && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
     void toggleFullscreen(shell, isTouchDevice)
   }
+})
+
+// Atrás de Android en el APK del Loyola, como en un juego nativo: hace lo de Esc (pausa, cerrar
+// panel, volver al título) y solo en el título sin nada abierto regresa al Loyola
+onHostBackButton(() => {
+  const idle = activeScene === 'menu' && !game?.registry.get('menuSetup') && !settings.isOpen() && !probe.isRunning()
+    && (!installHintEl || installHintEl.hidden)
+  if (idle) backToHost()
+  else sendKey('Escape', document)
 })
 
 // Al cambiar de pestaña o minimizar, el partido se queda en pausa con el menú abierto
@@ -264,7 +273,7 @@ const updateFullscreenUi = () => {
  * gesto del usuario durante unos segundos; si el navegador lo rechaza, no pasa nada.
  */
 function autoFullscreen() {
-  if (isTouchDevice && fullscreenSupported && !fullscreenDeclined && !isFullscreen()) void toggleFullscreen(shell, true)
+  if (isTouchDevice && fullscreenOffered && !fullscreenDeclined && !isFullscreen()) void toggleFullscreen(shell, true)
 }
 
 // Reajustar escala tras entrar/salir de fullscreen (evita imagen estirada)
@@ -274,6 +283,7 @@ onFullscreenChange(() => {
   requestAnimationFrame(() => game?.scale.refresh())
 })
 updateFullscreenUi()
+hideBarsInHostApp(shell)
 
 window.addEventListener('resize', () => game?.scale.refresh())
 

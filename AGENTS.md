@@ -318,6 +318,13 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-21 — dentro del Loyola, como un juego nativo
+
+- `inHostApp` (`shell/fullscreen.ts`): bajo `/jugar/` en la PWA instalada o en el APK (se detecta por el puente `window.Capacitor` que inyecta). Allí no se ofrece pantalla completa (`fullscreenOffered`: ni botón, ni ajuste, ni tecla F, ni la automática al empezar).
+- APK: la actividad del Loyola gira a apaisado y oculta las barras mientras la URL está bajo `/jugar/`. El atrás de Android llega por `App.backButton` del puente (`onHostBackButton`) y hace de Esc (pausa, cierra paneles, vuelve al título); solo desde el título en reposo regresa al Loyola.
+- PWA de Android: `hideBarsInHostApp` pide pantalla completa en el primer toque (y en los siguientes si el sistema la quitó), para quitar las barras del sistema.
+- Arranque: fondo oscuro inline en `index.html` (sin destello blanco) y Russo One servida desde `public/fonts/` con `preload`, en vez de Google Fonts.
+
 ### 2026-11-21 — el juego dentro del Loyola también en Android
 
 - La PWA del Loyola fija el vertical en su manifest y Chrome lo aplica también a `/jugar/`: `lockLandscapeInHostApp()` (`shell/fullscreen.ts`) pide el apaisado al arrancar si va bajo `/jugar/` instalada, y «Volver» lo suelta.

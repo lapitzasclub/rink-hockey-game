@@ -27,12 +27,40 @@ export const hostedByLoyola = location.pathname.startsWith('/jugar/')
 
 export const installHintSupported = !fullscreenSupported && isIos && !isStandalone && !hostedByLoyola
 
+type CapacitorBridge = { addListener?: (plugin: string, event: string, fn: () => void) => unknown }
+/** El APK del Loyola abre /jugar/ en su WebView e inyecta su puente: allí ya va sin barras y en apaisado. */
+const capacitor = hostedByLoyola ? (window as Window & { Capacitor?: CapacitorBridge }).Capacitor : undefined
+
+/**
+ * Abierto como app (la PWA instalada o el APK del Loyola), el juego se presenta como un juego
+ * nativo: sin botón de pantalla completa, que ya no aportaría nada.
+ */
+export const inHostApp = hostedByLoyola && (isStandalone || !!capacitor)
+
+/** Pantalla completa como opción del jugador: solo en el navegador. */
+export const fullscreenOffered = fullscreenSupported && !inHostApp
+
+/**
+ * En la PWA instalada de Android sí quedan la barra de estado y la de navegación: se quitan en el
+ * primer toque (la API pide un gesto) y en cualquier toque posterior si el sistema las devolvió.
+ */
+export function hideBarsInHostApp(target: HTMLElement) {
+  if (!inHostApp || capacitor || !fullscreenSupported) return
+  document.addEventListener('pointerup', () => { if (!isFullscreen()) void toggleFullscreen(target, true) })
+}
+
+/** Atrás de Android en el APK del Loyola; sin listener, el WebView volvería directo al partido. */
+export function onHostBackButton(fn: () => void) {
+  capacitor?.addListener?.('App', 'backButton', fn)
+}
+
 /**
  * La PWA del Loyola instalada en Android fija el vertical de su manifest también en /jugar/.
  * Instalada, Chrome deja girar sin pantalla completa ni gesto; iOS no tiene `lock` y ya gira.
+ * En el APK gira la actividad.
  */
 export function lockLandscapeInHostApp() {
-  if (hostedByLoyola && isStandalone) void (screen.orientation as LockableOrientation | undefined)?.lock?.('landscape').catch(() => {})
+  if (inHostApp && !capacitor) void (screen.orientation as LockableOrientation | undefined)?.lock?.('landscape').catch(() => {})
 }
 
 /** El juego no toca el historial: atrás es la página del Loyola desde la que se abrió. */
