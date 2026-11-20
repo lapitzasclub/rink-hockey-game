@@ -14,6 +14,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ✅ 2026-11-20 (resto → B-05) |
 | B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus | ✅ 2026-11-20 (pases → B-05) |
 | B-05 | Ajuste táctil y por nivel (barrido) | bal-tuner · sonnet | ⬜ |
+| B-06 | Jugabilidad táctil: portero, tiro al hueco, pérdidas | ai-engineer · opus | 🟨 |
 | B-99 | Cierre: batería final y partido real en el móvil | bal-qa · haiku + usuario | ⬜ |
 
 Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `constants.ts`) → B-05 → B-99.
@@ -70,6 +71,12 @@ Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `
 **Mandos (sin tocar código fuera de tablas):** `TOUCH_ASSIST` (en táctil: apuntado del humano más cerca del de la IA, más anticipación en el pase, radio de robo con presión) y un ajuste de la IA rival cuando el humano juega en táctil (`DIFFICULTY_TOUCH_SHIFT`: p. ej. NORMAL táctil = entre FÁCIL y NORMAL).
 **Método:** `bal-tuner` criba cada candidato con 5 corridas `human=touch` en arcade; el mejor pasa a 20 × 2 modos con `bal-qa`. Máximo 6 candidatos por ronda.
 **Aceptación:** tabla de objetivos con `bal-compare`; con `human=pad` y teclado no cambia nada (las ayudas son solo táctiles).
+
+## B-06 — Jugabilidad táctil
+
+**Pedido del usuario (2026-11-20):** «hay que mejorar bien la jugabilidad en controles táctiles porque se siente difícil e injusto al jugar». No basta con barrer números (B-05).
+**Objetivo (solo táctil):** (1) el portero en manos de la persona acelera a la mitad porque el stick táctil llega a 0,5 (`moveHumanGoalie`); no se autoselecciona el portero en táctil. (2) El tiro táctil apunta al lado que deja abierto el portero (`TOUCH_SHOT_AIM`), no al centro. (3) Medir pérdidas en conducción e intentos de robo por lado y ayudar donde falle. Tablas nuevas con valor neutro para que B-05 las barra después.
+**Aceptación:** humano táctil contra NORMAL ↓ rojo − azul o ↑ tiros y pases del azul frente a la base; mando e IA contra IA sin cambios.
 
 ## B-99 — Cierre
 
