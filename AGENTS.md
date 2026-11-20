@@ -27,6 +27,8 @@ src/
   shell/                     Shell DOM: template (marcado e iconos SVG), pauseMenu, settingsPanel (pestañas, volumen, reasignación de teclas), graphicsSettings (pestaña Gráficos: calidad, opciones sueltas, FPS) y qualityProbe (prueba del equipo), menuNav (navegación tipo consola), fullscreen
   style.css                  Shell DOM con estética de juego; visibilidad por `data-scene` (menu/match) y `data-input` (keyboard/gamepad/touch)
   scenes/MenuScene.ts        Menú: pabellón real de fondo con cámara a la deriva, logo, tarjetas ARCADE / REGLAMENTO (localStorage `rh-mode`), resultado final
+  scenes/menuSetup.ts        Segunda pantalla del menú «prepara el partido»: equipos (elegir lado con partido externo), dificultad y JUGAR / VOLVER / PARTIDO LIBRE; foco por filas
+  scenes/menuStyle.ts        Paleta y paralelogramo comunes a las dos pantallas del menú
   scenes/MatchScene.ts       Escena principal — orquestador del ciclo del partido: simulación a paso fijo (stepSimulation) y pintado interpolado (renderFrame)
   scenes/LabScene.ts         Escena de laboratorio para capturas (solo DEV, `?lab=`)
   scenes/lab/                labParams, labFigures, labScenes: escenas de laboratorio (solo DEV); labActionStrips y labGoalieStrips: tiras de acciones y portero; labSmoke: partido de humo
@@ -305,6 +307,19 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — menú en dos pantallas
+
+- **Problema:** con partido externo, el selector de equipo, la dificultad y las ayudas no cabían en la pantalla de título; la línea de competición pisaba la tarjeta ARCADE.
+- **Pantalla de título** (`MenuScene`): logo, cinta («LOY VS PEJ» con partido) o marcador FINAL, tarjetas de modo y «PULSA ESPACIO PARA SEGUIR». Al confirmar o tocar una tarjeta se abre la segunda pantalla.
+- **«Prepara el partido»** (`menuSetup.ts`):
+  - fichas de los dos equipos con «VS»; con partido externo se elige el lado (TÚ / IA);
+  - línea de competición o explicación de colores;
+  - dificultad con pips;
+  - JUGAR, VOLVER y PARTIDO LIBRE.
+  - Navegación: foco con ↑↓ (o la cruceta) y ←→ para cambiar; ESPACIO o A juega; Esc, Retroceso o B vuelve; Q/E siguen cambiando la dificultad; el hover solo mueve el foco tras mover el ratón.
+- **Esc en `main.ts`:** con `registry.menuSetup` activo no se hace `preventDefault` ni se abren Ajustes, porque Phaser ignora eventos ya prevenidos.
+- **Verificado en Chrome:** con y sin partido, con resultado, ida y vuelta y Ajustes desde el título; `npm run build` pasa.
+
 ### 2026-11-20 — lanz L-01
 
 - **Simulación pura del lanzamiento** (`src/game/setpiece/sim.ts`):
@@ -395,7 +410,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-17 — partido desde loyola-hockey-matches (paso 2: selección y cierre)
 
-- Menú con partido (`MenuScene`): sin cinta de subtítulo; fila local | visitante con escudo, nombre y «TU EQUIPO», línea con competición, fecha y hora, y botón «PARTIDO LIBRE (L)». Las tarjetas de modo bajan 28 px. `descartarPartido()` (externalMatch.ts) limpia el estado sin tocar el hash.
+- (Sustituido el 2026-11-20 por el menú en dos pantallas.) Menú con partido (`MenuScene`): sin cinta de subtítulo; fila local | visitante con escudo, nombre y «TU EQUIPO», línea con competición, fecha y hora, y botón «PARTIDO LIBRE (L)». Las tarjetas de modo bajan 28 px. `descartarPartido()` (externalMatch.ts) limpia el estado sin tocar el hash.
 - Roadmap: partido por enlace completado (carga, equipaciones, selector y salida al modo normal).
 - Verificado con `tools/gfx-shot.ps1` (con `--force-prefers-reduced-motion` en una copia temporal para saltar la animación de entrada): menú con partido y sin él.
 - Pendiente: el atajo ↑/↓ y L no figuran en la barra de ayudas; el menú con resultado final y partido no se ha visto en captura.
