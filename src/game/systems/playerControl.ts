@@ -1,4 +1,4 @@
-import { GAME_HEIGHT, GOALIE_HUMAN_MAX_Y, PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND } from '../constants'
+import { GAME_HEIGHT, GOALIE_HUMAN_MAX_Y, PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND, PRESS_STICK_BLEND } from '../constants'
 import { prepareTeamAI } from './aiTeam'
 import { steerGoalieFacing, type GoalieContext } from './goalieAI'
 import { applySkating } from './movement'
@@ -26,6 +26,8 @@ export function updateControlledPlayerMotion(options: {
   timeNow: number
   /** Bola: el portero controlado no la pierde de vista mientras se mueve. */
   ball: { x: number, y: number }
+  /** Punto al que lleva el botón de presionar (null si no se presiona). */
+  pressTarget?: { x: number, y: number } | null
 }) {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
   if (autopilot.on) return player // lo mueve updateTeamAIPlayers
@@ -41,9 +43,24 @@ export function updateControlledPlayerMotion(options: {
   const keyboardInputY = options.keyboardAxis.y
 
   const usingJoystick = options.isTouchDevice && Math.hypot(options.joystickInput.x, options.joystickInput.y) > 0.08
-  const inputX = usingJoystick ? options.joystickInput.x : keyboardInputX
-  const inputY = usingJoystick ? options.joystickInput.y : keyboardInputY
-  const len = Math.hypot(inputX, inputY)
+  let inputX = usingJoystick ? options.joystickInput.x : keyboardInputX
+  let inputY = usingJoystick ? options.joystickInput.y : keyboardInputY
+  let len = Math.hypot(inputX, inputY)
+
+  const press = player.role !== 'goalie' ? options.pressTarget : null
+  if (press) {
+    const tx = press.x - player.pos.x
+    const ty = press.y - player.pos.y
+    const tl = Math.hypot(tx, ty)
+    if (tl > 1) {
+      const w = len > 0.08 ? PRESS_STICK_BLEND : 1
+      const sx = len > 0.08 ? inputX / len : 0
+      const sy = len > 0.08 ? inputY / len : 0
+      inputX = sx * (1 - w) + (tx / tl) * w
+      inputY = sy * (1 - w) + (ty / tl) * w
+      len = Math.hypot(inputX, inputY)
+    }
+  }
 
   if (player.role === 'goalie') {
     moveHumanGoalie(player, inputX, inputY, len, options.ball, options.dt)

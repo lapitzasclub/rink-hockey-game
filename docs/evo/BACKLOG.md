@@ -11,6 +11,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-02 | IA de equipo: desmarques, presión y repliegue, pase o tiro | ai-engineer · opus | ✅ 2026-11-19 |
 | E-03 | Portero: IA, movimientos raros y portero seleccionable | ai-engineer · opus | ✅ 2026-11-20 (mando y táctil sin probar en aparato real) |
 | E-04 | Niveles de dificultad | ai-engineer · opus (+ UI sonnet) | ⬜ |
+| E-14 | Controles táctiles: sprint en el stick, presionar para robar, botones al alcance del pulgar | coordinador | ✅ 2026-11-20 |
 | E-05 | Reglas: faltas de equipo, libre directo, penalti, saque neutral | coordinador | 🟨 |
 | E-12 | Transiciones sin teletransporte: gol, saque de centro, descanso | coordinador | 🟨 |
 | E-13 | Sombra de los jugadores y marcador del seleccionado | coordinador | ✅ 2026-11-20 |
@@ -97,6 +98,12 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Archivos:** `render/puppet/`, `systems/visuals.ts`, `render/artSpec.ts`; en `MatchScene.ts` solo un gancho en el pintado si no hay otra forma.
 **Aceptación:** capturas de cada acción; partido en vivo; banco movil-bajo sin regresión > 10 %; calidad baja también se ve bien.
 **Hecho:** derrape en cuña o en T con histéresis solo en frenadas fuertes (el cuerpo gira de lado con `skidTurn`), inclinación hacia delante al acelerar y de lado en las curvas, caída con la mano soltando el stick, recepción que amortigua con el tronco y dos celebraciones por id. Todo sale del estado existente al pintar. El giro del contenedor del choque arcade (`arcade.ts`, hasta 1,25 rad) se sumaba a la caída del rig: queda solo el tambaleo. Banco movil-bajo sin regresión (la base se midió con el equipo cargado). Capturas en `shots/E-11/`.
+
+## E-14 — Controles táctiles
+
+Petición del usuario: el botón de correr se pulsaba casi siempre, robar costaba y el tiro en la esquina obligaba a encoger el dedo. Se resuelve con lo que ya hacen los juegos de deportes en el móvil.
+
+**Hecho:** sprint llevando el joystick al borde (sin botón S); mantener tiro sin la bola presiona al portador y entra a robar sola en distancia (también con teclado y mando); TIRO y PASE en arco al alcance del pulgar, con etiquetas ROBAR / CAMBIO cuando defiendes. Constantes `PRESS_*` y `TOUCH_SPRINT_STICK`. Falta probarlo en un móvil real. El ajuste de dificultad para el táctil va en E-04.
 
 ## E-99 — Cierre
 

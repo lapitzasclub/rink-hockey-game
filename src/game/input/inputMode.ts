@@ -45,6 +45,6 @@ export const PAD_GLYPH = {
 /** Texto de la tecla o botón de una acción de juego según el dispositivo actual. */
 export function actionPrompt(action: 'shoot' | 'pass' | 'sprint', m: InputMode = mode): string {
   if (m === 'gamepad') return action === 'shoot' ? 'X' : action === 'pass' ? 'A' : 'RT'
-  if (m === 'touch') return action === 'shoot' ? 'A' : action === 'pass' ? 'B' : 'S'
+  if (m === 'touch') return action === 'shoot' ? 'TIRO' : action === 'pass' ? 'PASE' : 'el joystick a fondo'
   return primaryLabel(action)
 }

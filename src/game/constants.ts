@@ -185,6 +185,16 @@ export const FOUL_CHANCE_ON_STEAL = 0.28
 export const MANUAL_STEAL_RANGE = 52 * K
 export const MANUAL_STEAL_SUCCESS_CHANCE = 0.34
 export const MANUAL_STEAL_FOUL_CHANCE = 0.055
+/**
+ * Presionar (como en los juegos de fútbol): mantener tiro sin la bola lleva al controlado hacia
+ * el portador rival, apuntando a donde estará en LEAD_S, y entra a robar cada INTERVAL_MS cuando
+ * llega. Con el stick marcado se mezcla con él a STICK_BLEND (0 = solo el stick).
+ */
+export const PRESS_LEAD_S = 0.18
+export const PRESS_STEAL_INTERVAL_MS = 330
+export const PRESS_STICK_BLEND = 0.55
+/** Táctil: el sprint sale empujando el joystick hasta este tanto de su radio, sin botón. */
+export const TOUCH_SPRINT_STICK = 0.88
 export const AI_STEAL_ENGAGE_FRONT_DOT = 0.08
 export const STEAL_FRONT_SUCCESS_CHANCE = 0.03
 export const STEAL_FRONT_LOOSE_CHANCE = 0.05

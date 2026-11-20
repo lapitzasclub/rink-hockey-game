@@ -236,9 +236,8 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
     <div id="mobile-controls" aria-hidden="true">
       <div id="left-zone"></div>
       <div id="right-buttons">
-        <button id="btn-shoot" class="touch-btn">A</button>
-        <button id="btn-pass" class="touch-btn">B</button>
-        <button id="btn-sprint" class="touch-btn">S</button>
+        <button id="btn-shoot" class="touch-btn">TIRO</button>
+        <button id="btn-pass" class="touch-btn">PASE</button>
       </div>
     </div>
   </div>

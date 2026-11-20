@@ -1,4 +1,5 @@
 import nipplejs from 'nipplejs'
+import { TOUCH_SPRINT_STICK } from '../constants'
 
 export type MobileJoystickState = {
   x: number
@@ -8,6 +9,8 @@ export type MobileJoystickState = {
   switch?: boolean
   sprint?: boolean
 }
+
+const JOYSTICK_SIZE = 120
 
 export function createMobileJoystick(options: {
   isTouchDevice: boolean
@@ -26,9 +29,15 @@ export function createMobileJoystick(options: {
   state.switch = false
   state.sprint = false
 
+  const setStickSprint = (on: boolean) => {
+    if (state.sprint === on) return
+    state.sprint = on
+    zone?.classList.toggle('sprinting', on)
+  }
   const resetStick = () => {
     state.x = 0
     state.y = 0
+    if (!sprintButton) setStickSprint(false)
   }
 
   type Btn = 'pass' | 'shoot' | 'sprint'
@@ -110,7 +119,7 @@ export function createMobileJoystick(options: {
     mode: 'static',
     position: { left: '50%', top: '50%' },
     color: 'white',
-    size: 120,
+    size: JOYSTICK_SIZE,
     restOpacity: 0.35,
     fadeTime: 0,
     multitouch: false,
@@ -122,6 +131,8 @@ export function createMobileJoystick(options: {
     if (!vector) return
     state.x = Number(vector.x ?? 0)
     state.y = -Number(vector.y ?? 0)
+    // Sin botón de sprint se corre llevando el stick al borde
+    if (!sprintButton) setStickSprint(Number(payload?.distance ?? 0) >= TOUCH_SPRINT_STICK * JOYSTICK_SIZE / 2)
   })
 
   ;(manager as any).on('end removed hidden', () => {

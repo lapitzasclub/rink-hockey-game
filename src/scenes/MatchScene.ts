@@ -16,7 +16,7 @@ import {
   SIM_MAX_STEPS,
   SIM_SNAP_DIST,
   SIM_STEP_MS,
-  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX } from '../game/constants'
+  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX, MANUAL_STEAL_RANGE, PRESS_LEAD_S, PRESS_STEAL_INTERVAL_MS } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation, switchSides, teamSide } from '../game/formation'
@@ -103,6 +103,9 @@ export class MatchScene extends Phaser.Scene {
   private charging: { action: 'pass' | 'shoot', start: number, player: Player, turbo: boolean } | null = null
   /** Lo mismo en el lanzamiento de una falta o penalti, y la carga con que se soltó. */
   private foulCharge: { action: 'pass' | 'shoot', start: number } | null = null
+  private lastStealAt = -Infinity
+  /** Etiquetas de los botones táctiles ya puestas (con bola / sin bola), para no tocar el DOM cada paso. */
+  private touchLabelsAttack: boolean | null = null
   private foulChargeLevel = 0
   private mobileJoystick: { destroy(): void } | null = null
   private ball!: Ball
@@ -785,6 +788,34 @@ export class MatchScene extends Phaser.Scene {
     return Phaser.Math.Clamp(Math.random() * AI_CHARGE_PASS_MAX + jitter * 0.5, 0.1, AI_CHARGE_PASS_MAX)
   }
 
+  /**
+   * Presionar: con tiro mantenido, sin la bola y con un rival llevándola, el punto hacia el que
+   * va el controlado (donde estará el portador en PRESS_LEAD_S). Null si no se presiona.
+   */
+  private pressTarget() {
+    if (autopilot.on || this.charging || !this.actionHeld('shoot')) return null
+    const player = getControlledPlayer(this.players, this.controlledPlayerIndex)
+    if (player.role === 'goalie') return null
+    const carrier = this.ballCarrierId ? findPlayerById(this.players, this.ballCarrierId) : null
+    if (!carrier || carrier.team === player.team) return null
+    return { x: carrier.pos.x + carrier.velocity.x * PRESS_LEAD_S, y: carrier.pos.y + carrier.velocity.y * PRESS_LEAD_S }
+  }
+
+  /** Táctil: TIRO / PASE con la bola en el equipo; ROBAR / CAMBIO cuando la lleva el rival. */
+  private updateTouchLabels(player: Player) {
+    if (!this.isTouchDevice) return
+    const carrier = this.ballCarrierId ? findPlayerById(this.players, this.ballCarrierId) : null
+    // Con la bola suelta se queda la última, para que no parpadee en cada rebote
+    if (!carrier) return
+    const attack = carrier.team === player.team
+    if (attack === this.touchLabelsAttack) return
+    this.touchLabelsAttack = attack
+    const shoot = document.getElementById('btn-shoot')
+    const pass = document.getElementById('btn-pass')
+    if (shoot) shoot.textContent = attack ? 'TIRO' : 'ROBAR'
+    if (pass) pass.textContent = attack ? 'PASE' : 'CAMBIO'
+  }
+
   /** Botón de pase o tiro mantenido en teclado, mando o táctil. */
   private actionHeld(action: 'pass' | 'shoot') {
     return this.keys[action].some(key => key.isDown) || padHeld(action) || !!this.joystickInput[action]
@@ -834,6 +865,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Gestiona el jugador humano actualmente seleccionado. */
   private updateControlledPlayer(dt: number) {
+    const pressTarget = this.pressTarget()
     const player = updateControlledPlayerMotion({
       players: this.players,
       controlledPlayerIndex: this.controlledPlayerIndex,
@@ -844,7 +876,9 @@ export class MatchScene extends Phaser.Scene {
       dt,
       timeNow: this.simNow,
       ball: this.ball,
+      pressTarget,
     })
+    this.updateTouchLabels(player)
 
     const touchPassPressed = this.joystickInput.pass && !this.prevTouchButtons.pass
     const touchShootPressed = this.joystickInput.shoot && !this.prevTouchButtons.shoot
@@ -860,6 +894,10 @@ export class MatchScene extends Phaser.Scene {
     if (actionPressed) {
       if (this.ballCarrierId === player.id) { if (!this.charging) this.charging = { action: 'shoot', start: this.simNow, player, turbo: false } }
       else if (player.role !== 'goalie' && !(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
+    } else if (pressTarget && this.simNow - this.lastStealAt >= PRESS_STEAL_INTERVAL_MS) {
+      // Presionando: entra solo al llegar a distancia de robo
+      const carrier = this.ballCarrierId ? findPlayerById(this.players, this.ballCarrierId) : null
+      if (carrier && Math.hypot(carrier.pos.x - player.pos.x, carrier.pos.y - player.pos.y) <= MANUAL_STEAL_RANGE) this.tryManualSteal(player)
     }
     if (passPressed) {
       if (this.ballCarrierId === player.id) { if (!this.charging) this.charging = { action: 'pass', start: this.simNow, player, turbo: false } }
@@ -1114,6 +1152,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** Delega el intento de robo y actualiza el estado de posesión si tuvo éxito. */
   private tryManualSteal(player: Player) {
+    this.lastStealAt = this.simNow
     const result = tryManualStealAction({
       player,
       players: this.players,
