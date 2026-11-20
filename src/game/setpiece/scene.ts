@@ -174,6 +174,7 @@ export class SetPieceScene extends Phaser.Scene {
     this.spring.copyWithin(0, 6, 12)
     this.vel.fill(0)
     this.sys.setVisible(true)
+    this.stage.setPena(duel.goalie?.team ?? null)
     this.stage.setVisible(true)
   }
 
@@ -272,7 +273,7 @@ export class SetPieceScene extends Phaser.Scene {
   /** Decorado, figuras en el encuadre y bola con la pose ya puesta. */
   private paint(vt: number, duel: MatchDuel, players: readonly Player[], ball: Ball, ballZ: number, carrierId: string | null, blend: number, w: number, h: number) {
     const v = this.view
-    this.stage.draw(v)
+    this.stage.draw(v, vt)
     duel.toScene(ball.x, ball.y, this.v2)
     const bx = this.v2.x, by = this.v2.y
     const n = ++this.frameNo

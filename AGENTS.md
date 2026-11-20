@@ -307,6 +307,11 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — lanz L-05
+
+- **Pabellón en la cámara cercana:** `render/setpiece/backdrop.ts` proyecta con la cámara del lanzamiento la publicidad del partido (atlas horneado), el anillo de gradas con esquinas y el público de `stands/fans.ts` (peña del equipo que defiende al fondo) y el cierre oscuro del pabellón; `setpiece/stage.ts` añade la valla del partido y la red de retención. Criterio del usuario: igual que el 2D, visto en 2.5D.
+- Horneado por calidad en tandas de ≤ 8 ms; en `movil-bajo` ningún tramo pasa de 20 ms. Constantes en `SETPIECE_STAGE` (artSpec).
+
 ### 2026-11-20 — lanz L-02
 
 - **Cámara cercana del penalti y el directo:** al pitido la cámara del partido se acerca hasta quedar detrás del lanzador (misma lente, D-09) y vuelve al acabar el duelo (gol, rechace, parada, bola suelta o conducida) sin parar el juego. Código en `setpiece/duel.ts`, `scene.ts`, `stage.ts` y `figure.ts`; enganche en `MatchScene.startDuel/stepDuel/endDuel`.

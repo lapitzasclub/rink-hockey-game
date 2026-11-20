@@ -26,7 +26,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | L-03 | Controles y HUD: retícula, fuerza, efecto | lanz-artist · sonnet | ⬜ |
 | L-04a | Nivel de detalle cercano del rig | lanz-engineer · opus | ⬜ |
 | L-04b | Piezas cercanas pintadas: lanzador y portero | lanz-artist · sonnet | ⬜ |
-| L-05 | Escenario cercano: portería, red, valla, grada y luz | lanz-artist · sonnet | ⬜ |
+| L-05 | Escenario cercano: portería, red, valla, grada y luz | lanz-artist · sonnet | ✅ 2026-11-20 |
 | L-06 | IA del lanzamiento y portero humano | ai-engineer · opus | ⬜ |
 | L-07 | Animación: armado, golpeo, estirada, reacción | lanz-engineer · opus | ⬜ |
 | L-08 | Ajuste de acierto por nivel y control | bal-tuner · sonnet | ⬜ |
@@ -93,6 +93,8 @@ Pendiente:
 **Objetivo:** `render/setpiece/backdrop.ts`: portería con tubos y red con profundidad, valla y publicidad detrás, grada de fondo (desenfocada y horneada, con peña que se mueve en media y alta), pozos de luz. Por lado y calidad, horneado.
 **Debe verse como el partido, de cerca**: la misma valla con su publicidad (`render/rink/boards.ts`, `ads.ts`), la misma grada y la misma afición (`render/stands/`), la misma luz (`render/lighting.ts`, `arena.ts`) y la misma portería (`rink/goal.ts`), con el mismo color y estilo, pero vistas desde la cámara baja y con más detalle. Además, **la red de retención** detrás de la portería, sobre la valla del fondo. El partido aún no la pinta; se añade también allí por `/gfx`. El prototipo L-00 solo lleva el suelo y una portería esquemática.
 **Aceptación:** capturas de los dos lados en las tres calidades, junto a una captura del partido para comparar que es «el mismo pabellón»; nada de público ni valla «flotando».
+
+**Resultado (✅ 2026-11-20, 2 rondas):** `render/setpiece/backdrop.ts` (mallas UV proyectadas con la cámara cercana): publicidad `ADS` en atlas horneado, anillo de gradas con esquinas y peña del equipo que defiende, horneado por calidad en tandas de ≤ 8 ms; cierre del pabellón oscuro con tira LED. `stage.ts`: valla como la del partido y red de retención (`BOARDS.net*`; el partido ya la pintaba). Constantes en `SETPIECE_STAGE`. Horneado en `movil-bajo` (CPU ×6): tramo máximo 13,6 ms y cierre de textura 19,7 ms (< 50). Pendiente para **L-09**: el suelo queda sin degradado de luz (los pozos se recortaban con el plano cercano; solo queda el de la portería), el público de cerca aún se lee algo más «cabeza sobre asiento» que la masa del 2D, y el balanceo de la peña no se ha visto en movimiento. Sigue pendiente la doble imagen de la red en la transición (L-02).
 
 ## L-06 — IA del lanzamiento y portero humano
 

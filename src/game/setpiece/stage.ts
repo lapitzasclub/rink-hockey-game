@@ -1,6 +1,9 @@
 import * as Phaser from 'phaser'
 import { DIRECT_FREE_HIT_SPOT_OFFSET, GOAL_LINE_OFFSET, PENALTY_SPOT_OFFSET, RINK, RINK_WIDTH_M } from '../constants'
-import { GOAL_VIS, MARKINGS, PX_PER_M, SETPIECE_CAMERA } from '../render/artSpec'
+import { BOARDS, GOAL_VIS, MARKINGS, PX_PER_M, SETPIECE_CAMERA, SETPIECE_STAGE, STANDS_COLORS } from '../render/artSpec'
+import { shade as shadeColor } from '../render/rink/boards'
+import { StageBackdrop } from '../render/setpiece/backdrop'
+import type { TeamColor } from '../types'
 import type { SetPieceView } from './view'
 
 /**
@@ -34,9 +37,19 @@ const PALETTE: Array<[number, number]> = []
 const pal = (color: number, alpha: number) => PALETTE.push([color, alpha]) - 1
 const FLOOR = pal(P.colors.floor, 1)
 const FLOOR_FAR = pal(P.colors.floorFar, 0.6)
-const BOARD = pal(P.colors.board, 1)
-const KICK = pal(P.colors.kick, 1)
-const BOARD_TOP = pal(P.colors.boardTop, 0.8)
+/** Valla del partido (`rink/boards.ts`): cara, rodapié a 0,7 y canto con la luminosidad de la pared. */
+const wallPals = (lum: number) => ({
+  face: pal(shadeColor(BOARDS.wallColor, lum), 1),
+  kick: pal(shadeColor(shadeColor(BOARDS.wallColor, lum), 0.7), 1),
+  top: pal(shadeColor(BOARDS.topColor, 0.8 + 0.2 * lum), 1),
+})
+const WALL_BACK = wallPals(SETPIECE_STAGE.boardLumBack)
+const WALL_SIDE = wallPals(SETPIECE_STAGE.boardLumSide)
+const BOARD_EDGE = pal(0xf4f8fc, 0.9)
+const FLOOR_OUT = pal(shadeColor(STANDS_COLORS.floor, 0.8), 1)
+const NET_CLOTH = pal(0xdbe6f2, BOARDS.netAlpha * 0.5)
+const NET_LINE = pal(0xdbe6f2, BOARDS.netAlpha * 1.6)
+const NET_POST = pal(0x9fb2c9, 0.85)
 const LINE = pal(MARKINGS.lineColor, MARKINGS.lineAlpha)
 const GOAL_FLOOR = pal(C.floor, A.floor)
 const NET_SIDE = pal(C.netFill, A.backFillLow * 0.6)
@@ -261,16 +274,34 @@ function court(ops: Ops) {
   const midY = (farY + backY) / 2
   groundLine(ops, -halfW, midY, halfW, midY, lw)
 
-  // Valla: fondo, laterales y el fondo contrario, con rodapié de 20 cm
-  const wall = (x0: number, y0: number, x1: number, y1: number) => {
-    ops.poly(BOARD, [[x0, y0, 0], [x1, y1, 0], [x1, y1, 1], [x0, y0, 1]])
-    ops.poly(KICK, [[x0, y0, 0], [x1, y1, 0], [x1, y1, 0.2], [x0, y0, 0.2]])
-    ops.poly(BOARD_TOP, [[x0, y0, 0.97], [x1, y1, 0.97], [x1, y1, 1], [x0, y0, 1]])
+  // Valla: cara, rodapié de 20 cm, canto de espesor visual y filo claro (misma construcción que `boards.ts`)
+  const out = BOARDS.kickM + SETPIECE_STAGE.stands.setbackM
+  const wall = (x0: number, y0: number, x1: number, y1: number, ox: number, oy: number, w: typeof WALL_BACK) => {
+    const t = SETPIECE_STAGE.capThickM
+    ops.poly(FLOOR_OUT, [[x0, y0, 0], [x1, y1, 0], [x1 + ox * out, y1 + oy * out, 0], [x0 + ox * out, y0 + oy * out, 0]])
+    ops.poly(w.face, [[x0, y0, 0], [x1, y1, 0], [x1, y1, 1], [x0, y0, 1]])
+    ops.poly(w.kick, [[x0, y0, 0], [x1, y1, 0], [x1, y1, BOARDS.kickM], [x0, y0, BOARDS.kickM]])
+    ops.poly(w.top, [[x0, y0, 1], [x1, y1, 1], [x1 + ox * t, y1 + oy * t, 1], [x0 + ox * t, y0 + oy * t, 1]])
+    ops.line(BOARD_EDGE, 2, v3(x0, y0, 1), v3(x1, y1, 1))
   }
-  wall(-halfW, backY, halfW, backY)
-  wall(-halfW, backY, -halfW, farY)
-  wall(halfW, backY, halfW, farY)
-  wall(-halfW, farY, halfW, farY)
+  wall(-halfW, backY, halfW, backY, 0, -1, WALL_BACK)
+  wall(-halfW, backY, -halfW, farY, -1, 0, WALL_SIDE)
+  wall(halfW, backY, halfW, farY, 1, 0, WALL_SIDE)
+  wall(-halfW, farY, halfW, farY, 0, 1, WALL_SIDE)
+}
+
+/** Red de retención sobre la valla del fondo, centrada en la portería (medidas de `BOARDS.net*`). */
+function protectionNet(ops: Ops) {
+  const y = -GOAL_LINE_OFFSET / PX_PER_M + 0.02
+  const hw = BOARDS.netHalfWidthM, z0 = 1, z1 = BOARDS.netTopM
+  ops.poly(NET_CLOTH, [[-hw, y, z0], [hw, y, z0], [hw, y, z1], [-hw, y, z1]])
+  const cols = Math.round((2 * hw) / BOARDS.netMeshM)
+  for (let i = 0; i <= cols; i++) ops.line(NET_LINE, 1, v3(-hw + (2 * hw * i) / cols, y, z0), v3(-hw + (2 * hw * i) / cols, y, z1))
+  const rows = Math.round((z1 - z0) / BOARDS.netMeshM)
+  for (let j = 1; j < rows; j++) ops.line(NET_LINE, 1, v3(-hw, y, z0 + ((z1 - z0) * j) / rows), v3(hw, y, z0 + ((z1 - z0) * j) / rows))
+  ops.line(NET_POST, 2, v3(-hw, y, z0), v3(-hw, y, z1))
+  ops.line(NET_POST, 2, v3(hw, y, z0), v3(hw, y, z1))
+  ops.line(NET_POST, 2, v3(-hw, y, z1), v3(hw, y, z1))
 }
 
 // ─── Portería ────────────────────────────────────────────────────────────────
@@ -334,31 +365,54 @@ function goalFront(ops: Ops) {
   ops.tube(d, TUBE, TUBE_EDGE, TUBE_SHINE, tl, tr)
 }
 
-/** Decorado completo: `back` (pista y fondo de la portería, debajo de todo) y `front` (marco). */
+/** Decorado completo: `back` (pista y valla, debajo de todo), publicidad y gradas (`backdrop`), `mid` (red y fondo de la portería) y `front` (marco). */
 export class SetPieceStage {
   readonly back: StageBatch
+  readonly mid: StageBatch
   readonly front: StageBatch
+  private readonly backdrop: StageBackdrop
+  private lastView: SetPieceView | null = null
+  private lastMs = 0
 
   constructor(scene: Phaser.Scene) {
     const back = new Ops()
     court(back)
-    goalBack(back)
+    const mid = new Ops()
+    protectionNet(mid)
+    goalBack(mid)
     const front = new Ops()
     goalFront(front)
     this.back = new StageBatch(scene, back)
+    this.mid = new StageBatch(scene, mid)
     this.front = new StageBatch(scene, front)
     this.back.mesh.setDepth(-1e6)
+    this.mid.mesh.setDepth(-1e6 + 2);
+    const backY = -GOAL_LINE_OFFSET / PX_PER_M
+    this.backdrop = new StageBackdrop(scene, RINK_WIDTH_M / 2, backY, RINK.width / PX_PER_M + backY)
+    // El horneado de las gradas es progresivo: al acabar cada una se repinta con la última cámara
+    this.backdrop.onReady = () => { if (this.lastView) this.backdrop.draw(this.lastView, this.lastMs) }
   }
 
-  /** Reproyecta el decorado; el marco va a la profundidad de la línea de gol. */
-  draw(view: SetPieceView) {
+  /** Reproyecta el decorado; el marco va a la profundidad de la línea de gol. `ms` mueve la peña. */
+  draw(view: SetPieceView, ms = 0) {
+    this.lastView = view
+    this.lastMs = ms
     this.back.draw(view)
+    this.mid.draw(view)
     this.front.draw(view)
+    this.backdrop.draw(view, ms)
     this.front.mesh.setDepth(view.depthAt(0, 0))
+  }
+
+  /** Peña de la grada del fondo: la del equipo que defiende esa portería. */
+  setPena(team: TeamColor | null) {
+    this.backdrop.setPena(team)
   }
 
   setVisible(on: boolean) {
     this.back.mesh.setVisible(on)
+    this.mid.mesh.setVisible(on)
     this.front.mesh.setVisible(on)
+    this.backdrop.setVisible(on)
   }
 }
