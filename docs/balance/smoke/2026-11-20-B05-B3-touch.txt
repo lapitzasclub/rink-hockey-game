@@ -1,0 +1,47 @@
+run 1/5: goles 3-7 ú tiros 9-22 ú paradas 15-6 ú pases 16/26-39/42 ú atascos 0 ú errores 0
+run 2/5: goles 7-7 ú tiros 10-21 ú paradas 15-6 ú pases 18/24-42/44 ú atascos 0 ú errores 0
+run 3/5: goles 3-8 ú tiros 6-17 ú paradas 8-3 ú pases 14/18-42/47 ú atascos 0 ú errores 0
+run 4/5: goles 1-6 ú tiros 6-25 ú paradas 19-5 ú pases 20/28-29/33 ú atascos 0 ú errores 0
+run 5/5: goles 8-7 ú tiros 9-20 ú paradas 12-5 ú pases 17/20-34/35 ú atascos 0 ú errores 0
+goalsPerMin             2.85 ñ 0.92  (sd 0.80, n 5)
+shotsPerMin             7.25 ñ 0.99  (sd 0.87, n 5)
+onTargetPerMin          7.15 ñ 1.08  (sd 0.95, n 5)
+savePct                61.66 ñ 12.76  (sd 11.15, n 5)
+foulsPerMin             0.00 ñ 0.00  (sd 0.00, n 5)
+redMinusBluePerMin      0.65 ñ 0.82  (sd 0.72, n 5)
+goalsBluePerMin         1.10 ñ 0.85  (sd 0.74, n 5)
+goalsRedPerMin          1.75 ñ 0.20  (sd 0.18, n 5)
+shotsBluePerMin         2.00 ñ 0.54  (sd 0.47, n 5)
+shotsRedPerMin          5.25 ñ 0.83  (sd 0.73, n 5)
+savePctBlue            65.10 ñ 11.00  (sd 9.61, n 5)
+savePctRed             56.92 ñ 20.62  (sd 18.01, n 5)
+passesPerMin           15.85 ñ 1.58  (sd 1.38, n 5)
+passPct                85.67 ñ 5.95  (sd 5.20, n 5)
+passesDoneBluePerMin    4.25 ñ 0.64  (sd 0.56, n 5)
+passesDoneRedPerMin     9.30 ñ 1.61  (sd 1.41, n 5)
+possessionBluePct      52.17 ñ 1.88  (sd 1.64, n 5)
+stealsPerMin           10.55 ñ 1.59  (sd 1.39, n 5)
+shotQualityBlue         0.63 ñ 0.03  (sd 0.02, n 5)
+shotQualityRed          0.56 ñ 0.01  (sd 0.01, n 5)
+savePctBlueHi          57.23 ñ 15.43  (sd 13.48, n 5)
+savePctBlueLo          87.79 ñ 14.33  (sd 12.52, n 5)
+savePctRedHi           67.50 ñ 14.47  (sd 12.64, n 5)
+savePctRedLo            0.00 ñ 0.00  (sd 0.00, n 1)
+afterPassPctBlue       29.58 ñ 8.91  (sd 7.78, n 5)
+afterPassPctRed        13.12 ñ 3.78  (sd 3.30, n 5)
+gkOffBlue               4.76 ñ 1.26  (sd 1.10, n 5)
+gkOffRed               10.20 ñ 6.22  (sd 5.43, n 5)
+placeBlue              13.48 ñ 1.75  (sd 1.53, n 5)
+placeRed               12.28 ñ 1.66  (sd 1.45, n 5)
+savePctPassBlue        54.16 ñ 32.34  (sd 28.25, n 5)
+savePctPassRed         60.00 ñ 62.71  (sd 54.77, n 5)
+savePctNoPassBlue      73.34 ñ 4.24  (sd 3.71, n 5)
+savePctNoPassRed       67.28 ñ 26.79  (sd 23.40, n 5)
+unmarkedBlue            1.82 ñ 0.10  (sd 0.09, n 5)
+unmarkedRed             1.96 ñ 0.07  (sd 0.06, n 5)
+doublePctBlue          24.44 ñ 3.18  (sd 2.78, n 5)
+doublePctRed           18.08 ñ 4.80  (sd 4.19, n 5)
+humanOnCarrierPctBlue   29.20 ñ 3.24  (sd 2.83, n 5)
+reinicios: libres 0 ú directos 0 ú penaltis 0 ú neutrales 0 ú azules 0
+totales: atascos 0 (0,0 s) ú fuera de pista 0 ú errores de consola 0 ú fallidas 0
+[smoke-agg] {"mode":"arcade","extra":"human=touch\u0026diffRed=normal","smokeMs":240000,"runs":5,"goalsPerMin":{"mean":2.85,"ci95":0.919,"sd":0.802,"n":5},"shotsPerMin":{"mean":7.25,"ci95":0.991,"sd":0.866,"n":5},"onTargetPerMin":{"mean":7.15,"ci95":1.082,"sd":0.945,"n":5},"savePct":{"mean":61.657,"ci95":12.76,"sd":11.146,"n":5},"foulsPerMin":{"mean":0,"ci95":0,"sd":0,"n":5},"redMinusBluePerMin":{"mean":0.65,"ci95":0.825,"sd":0.72,"n":5},"goalsBluePerMin":{"mean":1.1,"ci95":0.849,"sd":0.742,"n":5},"goalsRedPerMin":{"mean":1.75,"ci95":0.202,"sd":0.177,"n":5},"shotsBluePerMin":{"mean":2,"ci95":0.535,"sd":0.468,"n":5},"shotsRedPerMin":{"mean":5.25,"ci95":0.834,"sd":0.729,"n":5},"savePctBlue":{"mean":65.104,"ci95":11.005,"sd":9.612,"n":5},"savePctRed":{"mean":56.923,"ci95":20.617,"sd":18.008,"n":5},"passesPerMin":{"mean":15.85,"ci95":1.575,"sd":1.376,"n":5},"passPct":{"mean":85.665,"ci95":5.951,"sd":5.198,"n":5},"passesDoneBluePerMin":{"mean":4.25,"ci95":0.64,"sd":0.559,"n":5},"passesDoneRedPerMin":{"mean":9.3,"ci95":1.611,"sd":1.408,"n":5},"possessionBluePct":{"mean":52.17,"ci95":1.883,"sd":1.644,"n":5},"stealsPerMin":{"mean":10.55,"ci95":1.586,"sd":1.385,"n":5},"shotQualityBlue":{"mean":0.629,"ci95":0.028,"sd":0.024,"n":5},"shotQualityRed":{"mean":0.561,"ci95":0.011,"sd":0.009,"n":5},"savePctBlueHi":{"mean":57.234,"ci95":15.433,"sd":13.48,"n":5},"savePctBlueLo":{"mean":87.786,"ci95":14.33,"sd":12.516,"n":5},"savePctRedHi":{"mean":67.5,"ci95":14.469,"sd":12.638,"n":5},"savePctRedLo":{"mean":0,"ci95":0,"sd":0,"n":1},"afterPassPctBlue":{"mean":29.58,"ci95":8.911,"sd":7.783,"n":5},"afterPassPctRed":{"mean":13.12,"ci95":3.777,"sd":3.299,"n":5},"gkOffBlue":{"mean":4.76,"ci95":1.256,"sd":1.097,"n":5},"gkOffRed":{"mean":10.2,"ci95":6.217,"sd":5.43,"n":5},"placeBlue":{"mean":13.48,"ci95":1.75,"sd":1.529,"n":5},"placeRed":{"mean":12.28,"ci95":1.658,"sd":1.448,"n":5},"savePctPassBlue":{"mean":54.16,"ci95":32.338,"sd":28.246,"n":5},"savePctPassRed":{"mean":60,"ci95":62.707,"sd":54.772,"n":5},"savePctNoPassBlue":{"mean":73.34,"ci95":4.245,"sd":3.708,"n":5},"savePctNoPassRed":{"mean":67.28,"ci95":26.788,"sd":23.399,"n":5},"unmarkedBlue":{"mean":1.82,"ci95":0.101,"sd":0.088,"n":5},"unmarkedRed":{"mean":1.956,"ci95":0.069,"sd":0.06,"n":5},"doublePctBlue":{"mean":24.44,"ci95":3.179,"sd":2.776,"n":5},"doublePctRed":{"mean":18.08,"ci95":4.797,"sd":4.19,"n":5},"humanOnCarrierPctBlue":{"mean":29.2,"ci95":3.236,"sd":2.827,"n":5},"freeHits":0,"badPlayerFrames":0,"jamSec":0,"neutralRestarts":0,"failed":0,"directFreeHits":0,"blueCards":0,"consoleErrors":0,"penalties":0,"jams":0}

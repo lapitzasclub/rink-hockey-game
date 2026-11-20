@@ -488,7 +488,7 @@ export const DIFFICULTY: Record<DifficultyLevel, { label: string, rubberBand: bo
     rubberBand: true,
     profile: {
       reactionMs: 200, shotReactionMs: 490, goalieReactionMs: 290, decisionIntervalMs: 170, supportRefreshMs: 300,
-      interceptReactionS: 0.18, passLaneMargin: 4, laneRead: 0.58, passLead: 0.68, passErrorRad: 0.065, shotErrorRad: 0.025,
+      interceptReactionS: 0.18, passLaneMargin: 4, laneRead: 0.52, passLead: 0.68, passErrorRad: 0.08, shotErrorRad: 0.035,
       stealAttemptChance: 0.25, pressIntensity: 0.93, cutDepth: 0.68, markTightness: 0.75, checkChance: 0.3,
     },
   },
@@ -527,10 +527,10 @@ export const DIFFICULTY_TOUCH_SHIFT = 0
  *   y PASS_ASSIST_CONE_DOT (cono más ancho = encuentra receptor mirando peor).
  */
 export const TOUCH_ASSIST = {
-  shotBlend: SHOT_ASSIST_BLEND_HUMAN,
-  passBlend: PASS_ASSIST_BLEND,
-  passLeadS: PASS_HUMAN_LEAD_S,
-  passConeDot: PASS_ASSIST_CONE_DOT,
+  shotBlend: 0.95,
+  passBlend: 0.55,
+  passLeadS: 0.25,
+  passConeDot: 0.45,
 }
 
 /** Los cuatro perfiles completos, precalculados en el orden de DIFFICULTY_LEVELS. */
