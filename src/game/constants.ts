@@ -860,3 +860,153 @@ export const GOALIE_PASS = {
   mateLetMaxMs: 1800,
   rivalNearMouthPx: 150,
 }
+
+// ─── Lanzamientos en tercera persona (L-01, docs/setpiece) ──────────────────
+// Simulación pura en metros y segundos (setpiece/sim.ts): x lateral, y desde la
+// línea de gol hacia el campo, z altura. La dificultad solo toca las tablas de IA.
+
+/**
+ * Bola del lanzamiento (Ø 7,3 cm, ≈ 155 g). airDragPerM es k en a = −k·v·|v|
+ * (½·ρ·Cd·A/m). Efecto: aceleración lateral curveAccel·giro (m/s² con giro 1)
+ * que decae con spinDecayPerS; el giro del golpeo es curve·spinShotMax y la
+ * entrada en vuelo suma spinInputRate·entrada por segundo durante
+ * spinInputWindowS, con tope spinCap. Velocidad de salida de shotSpeedMin a
+ * shotSpeedMax según la fuerza. maxSubstepM: recorrido máximo por subpaso.
+ */
+export const SETPIECE_BALL = {
+  radiusM: 0.0365,
+  gravity: 9.81,
+  airDragPerM: 0.0076,
+  floorRestitution: 0.5,
+  floorTangentKeep: 0.9,
+  rollDampPerS: 0.6,
+  shotSpeedMin: 15,
+  shotSpeedMax: 30,
+  curveAccel: 4.5,
+  spinDecayPerS: 1.5,
+  spinShotMax: 1,
+  spinCap: 1.3,
+  spinInputWindowS: 0.3,
+  spinInputRate: 2,
+  maxSubstepM: 0.03,
+}
+
+/**
+ * Portería (REGLAMENTO-MEDIDAS): boca interior 1,70 × 1,05 m, tubo Ø 7,5 cm;
+ * red colgante a 0,40 m de la línea y fondo de 0,64 m a ras de suelo. La red
+ * frena (netDragPerS) y apenas devuelve (netRestitution).
+ */
+export const SETPIECE_GOAL = {
+  mouthHalfW: 0.85,
+  mouthH: 1.05,
+  tubeR: 0.0375,
+  postRestitution: GOAL_POST_REBOUND,
+  postTangentKeep: 0.85,
+  netHangM: 0.4,
+  netFloorM: 0.64,
+  netRestitution: 0.12,
+  netDragPerS: 4,
+}
+
+/**
+ * Duelo: puntos (5,40 y 7,40 m), carrerilla máxima del directo, patinaje del
+ * lanzador con la bola pegada a ballLeadM, armado del golpeo (windupS), tope de
+ * conducción y del duelo, y distancia a la que un rechace deja de ser del duelo.
+ */
+export const SETPIECE_DUEL = {
+  penaltySpotM: 5.4,
+  directSpotM: 7.4,
+  runUpMaxM: 3,
+  skateSpeed: 5.5,
+  skateAccel: 7,
+  ballLeadM: 0.4,
+  windupS: 0.14,
+  maxDriveS: 3,
+  maxDuelS: 8,
+  finalShotMaxS: 5,
+  reboundAwayM: 3,
+  minDriveYM: 1.2,
+}
+
+/**
+ * Cuerpo del portero (igual en todos los niveles): cápsulas de torso, patines y
+ * espinilleras a ras de suelo, brazo con guante y stick. Estirada: arranca
+ * diveLagS tras la orden, alcanza reachM en diveTimeS (más bodyShiftM de
+ * desplazamiento del cuerpo) y cae al suelo en fallTimeS. Patina a latSpeed
+ * (lateral) y outSpeed (salida), sin pasar de maxOutM. Bola más lenta que
+ * holdSpeed: blocaje; si no, rechace con restitution y tangentKeep.
+ */
+export const SETPIECE_GOALIE = {
+  lineY: 0.15,
+  maxOutM: 2.5,
+  latSpeed: 3,
+  outSpeed: 2.2,
+  accel: 14,
+  torsoR: 0.2,
+  torsoBotZ: 0.4,
+  torsoTopZ: 0.95,
+  padR: 0.13,
+  padHalfW: 0.3,
+  padZ: 0.13,
+  gloveR: 0.11,
+  gloveOutM: 0.38,
+  gloveZ: 0.62,
+  stickR: 0.05,
+  stickLenM: 0.75,
+  reachM: 0.85,
+  bodyShiftM: 0.4,
+  diveLagS: 0.07,
+  diveTimeS: 0.28,
+  fallTimeS: 0.4,
+  holdSpeed: 7,
+  restitution: 0.3,
+  tangentKeep: 0.5,
+}
+
+/**
+ * Portero de la IA por nivel (PROVISIONAL, L-06): retraso de lectura del tiro,
+ * error de la lectura (m, lateral y en altura), probabilidad de salir a achicar
+ * y hasta dónde, y cuánto cierra el ángulo mientras el lanzador conduce (0..1).
+ */
+export const SETPIECE_GOALIE_AI: Record<DifficultyLevel, {
+  readDelayS: number, readErrM: number, heightErrM: number, outChance: number, outMinM: number, outMaxM: number, trackGain: number,
+}> = {
+  facil: { readDelayS: 0.24, readErrM: 0.4, heightErrM: 0.35, outChance: 0.2, outMinM: 0.3, outMaxM: 0.8, trackGain: 0.6 },
+  normal: { readDelayS: 0.17, readErrM: 0.28, heightErrM: 0.25, outChance: 0.35, outMinM: 0.3, outMaxM: 1, trackGain: 0.8 },
+  dificil: { readDelayS: 0.12, readErrM: 0.18, heightErrM: 0.15, outChance: 0.5, outMinM: 0.3, outMaxM: 1.2, trackGain: 0.9 },
+  experto: { readDelayS: 0.08, readErrM: 0.1, heightErrM: 0.1, outChance: 0.6, outMinM: 0.3, outMaxM: 1.3, trackGain: 1 },
+}
+
+/**
+ * Lanzador de la IA por nivel (PROVISIONAL, L-06): probabilidad de conducir
+ * (2–4 m), ruido del apuntado (en unidades de media boca), probabilidad de leer
+ * al portero y tirar al lado libre, rango de fuerza y efecto.
+ */
+export const SETPIECE_SHOOTER_AI: Record<DifficultyLevel, {
+  driveChance: number, aimNoise: number, readGoalieChance: number, powerMin: number, powerMax: number, curveChance: number, curveMax: number,
+}> = {
+  facil: { driveChance: 0.3, aimNoise: 0.35, readGoalieChance: 0.5, powerMin: 0.45, powerMax: 0.9, curveChance: 0.15, curveMax: 0.6 },
+  normal: { driveChance: 0.35, aimNoise: 0.25, readGoalieChance: 0.65, powerMin: 0.55, powerMax: 0.95, curveChance: 0.25, curveMax: 0.8 },
+  dificil: { driveChance: 0.4, aimNoise: 0.17, readGoalieChance: 0.8, powerMin: 0.6, powerMax: 1, curveChance: 0.35, curveMax: 1 },
+  experto: { driveChance: 0.45, aimNoise: 0.12, readGoalieChance: 0.9, powerMin: 0.65, powerMax: 1, curveChance: 0.45, curveMax: 1 },
+}
+
+/**
+ * Persona simulada del lote headless: portero con reacción sorteada en
+ * [goalieReactMinS, goalieReactMaxS], acierto de lado y de altura, a veces se
+ * tira antes del golpeo; lanzador con apuntado ruidoso.
+ */
+export const SETPIECE_HUMAN_SIM = {
+  goalieReactMinS: 0.16,
+  goalieReactMaxS: 0.42,
+  goalieSideOk: 0.72,
+  goalieHeightOk: 0.6,
+  goalieEarlyChance: 0.12,
+  goalieOutChance: 0.3,
+  goalieOutMaxM: 1,
+  shooterAimNoise: 0.3,
+  shooterDriveChance: 0.3,
+  shooterCurveChance: 0.3,
+  shooterPowerMin: 0.5,
+  shooterPowerMax: 1,
+}
