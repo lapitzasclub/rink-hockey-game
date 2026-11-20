@@ -518,6 +518,21 @@ export const DIFFICULTY: Record<DifficultyLevel, { label: string, rubberBand: bo
  */
 export const DIFFICULTY_TOUCH_SHIFT = 0
 
+/**
+ * Ayudas a la persona cuando juega en táctil (pointer: coarse, sin piloto
+ * automático); con mando o teclado valen las constantes generales. Los valores
+ * por defecto son esos mismos: B-05 los ajusta.
+ * - shotBlend: como SHOT_ASSIST_BLEND_HUMAN (1 = puntería exacta de la IA).
+ * - passBlend / passLeadS / passConeDot: como PASS_ASSIST_BLEND, PASS_HUMAN_LEAD_S
+ *   y PASS_ASSIST_CONE_DOT (cono más ancho = encuentra receptor mirando peor).
+ */
+export const TOUCH_ASSIST = {
+  shotBlend: SHOT_ASSIST_BLEND_HUMAN,
+  passBlend: PASS_ASSIST_BLEND,
+  passLeadS: PASS_HUMAN_LEAD_S,
+  passConeDot: PASS_ASSIST_CONE_DOT,
+}
+
 /** Los cuatro perfiles completos, precalculados en el orden de DIFFICULTY_LEVELS. */
 export const AI_PROFILES_BY_LEVEL: readonly AiProfile[] = DIFFICULTY_LEVELS.map(l => ({ ...AI_PROFILE_NORMAL, ...DIFFICULTY[l].profile }))
 

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, aiProfileFor } from '../constants'
+import { GAME_HEIGHT, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, TOUCH_ASSIST, aiProfileFor } from '../constants'
+import { touchAssist } from './difficulty'
 import type { Player, Vector } from '../types'
 import { autopilot } from './playerControl'
 import { getGoalLineX } from '../utils'
@@ -46,7 +47,7 @@ export function getBestPassTarget(players: Player[], player: Player): Player | n
     const dy = candidate.pos.y - player.pos.y
     const distance = Math.hypot(dx, dy) || 1
     const facingDot = fx * (dx / distance) + fy * (dy / distance)
-    if (facingDot < PASS_ASSIST_CONE_DOT) continue
+    if (facingDot < (touchAssist.team === player.team ? TOUCH_ASSIST.passConeDot : PASS_ASSIST_CONE_DOT)) continue
     // Penalizar por distancia para evitar pases innecesariamente largos
     const score = facingDot * 180 - distance * 0.3 - laneBlockPenalty(players, player, candidate)
     if (score > bestScore) {
@@ -91,14 +92,15 @@ export function getAssistedPassDirection(players: Player[], player: Player, fall
   notePassIntent(player, target)
   if (!target) return fallbackDirection
 
-  const lead = PASS_HUMAN_LEAD_S
+  const lead = touchAssist.team === player.team ? TOUCH_ASSIST.passLeadS : PASS_HUMAN_LEAD_S
+  const passBlend = touchAssist.team === player.team ? TOUCH_ASSIST.passBlend : PASS_ASSIST_BLEND
   const raw = { x: target.pos.x + target.velocity.x * lead - player.pos.x, y: target.pos.y + target.velocity.y * lead - player.pos.y }
   const rawLength = Math.hypot(raw.x, raw.y) || 1
   const dirToMate = { x: raw.x / rawLength, y: raw.y / rawLength }
 
   const blended = {
-    x: fallbackDirection.x * (1 - PASS_ASSIST_BLEND) + dirToMate.x * PASS_ASSIST_BLEND,
-    y: fallbackDirection.y * (1 - PASS_ASSIST_BLEND) + dirToMate.y * PASS_ASSIST_BLEND,
+    x: fallbackDirection.x * (1 - passBlend) + dirToMate.x * passBlend,
+    y: fallbackDirection.y * (1 - passBlend) + dirToMate.y * passBlend,
   }
   const length = Math.hypot(blended.x, blended.y) || 1
   return { x: blended.x / length, y: blended.y / length }
@@ -175,7 +177,7 @@ export function getAssistedShotDirection(player: Player, fallbackDirection: Vect
 
   // La IA (rojo, porteros y el azul con piloto automático) apunta exacto; el humano conserva influencia sobre la dirección
   const isAi = player.team === 'red' || player.role === 'goalie' || autopilot.on
-  const blend = isAi ? SHOT_ASSIST_BLEND : SHOT_ASSIST_BLEND_HUMAN
+  const blend = isAi ? SHOT_ASSIST_BLEND : touchAssist.team === player.team ? TOUCH_ASSIST.shotBlend : SHOT_ASSIST_BLEND_HUMAN
   const bx = fallbackDirection.x * (1 - blend) + goalDirection.x * blend
   const by = fallbackDirection.y * (1 - blend) + goalDirection.y * blend
   // Precisión del perfil de IA (E-04): error angular uniforme

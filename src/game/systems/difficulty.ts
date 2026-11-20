@@ -75,6 +75,7 @@ export function setDifficultyOverride(blue: number | null, red: number | null) {
  * IA contra IA); en táctil el rival baja DIFFICULTY_TOUCH_SHIFT niveles.
  */
 export function configureMatchDifficulty(chosen: DifficultyLevel, touch: boolean, humanTeam: TeamColor | null) {
+  touchAssist.team = touch ? humanTeam : null
   const shift = humanTeam && touch ? DIFFICULTY_TOUCH_SHIFT : 0
   for (const team of ['blue', 'red'] as const) {
     const rival = humanTeam !== null && team !== humanTeam
@@ -86,6 +87,9 @@ export function configureMatchDifficulty(chosen: DifficultyLevel, touch: boolean
 }
 
 /** ¿El equipo recibe la ayuda arcade (rubber-banding) cuando va perdiendo? */
+/** Equipo de la persona si juega en táctil (si no, null): recibe TOUCH_ASSIST en el apuntado (targeting.ts). */
+export const touchAssist = { team: null as TeamColor | null }
+
 export function rubberBandFor(team: TeamColor): boolean {
   return teamRubber[team]
 }
