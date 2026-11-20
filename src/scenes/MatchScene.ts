@@ -66,6 +66,7 @@ import {
 import { matchTime, tickMatchClock } from '../game/systems/matchClock'
 import { getHalfRealMinutes } from '../game/ui/prefs'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
+import { createLiveStats, type LiveStats } from '../shell/statsPanel'
 import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
 import { consumePad, padAxis, padHeld } from '../game/input/gamepad'
 import { actionPrompt, getInputMode, onInputModeChange } from '../game/input/inputMode'
@@ -113,6 +114,8 @@ export class MatchScene extends Phaser.Scene {
   private ballCarrierId: string | null = null
   private players: Player[] = []
   private controlledPlayerIndex = 0
+  /** Estadísticas con `?stats=1` (B-01); null sin el parámetro. */
+  private liveStats: LiveStats | null = null
   private scoreboard!: Scoreboard
   private centerText!: Phaser.GameObjects.Text
   private blueScore = 0
@@ -302,6 +305,8 @@ export class MatchScene extends Phaser.Scene {
     this.simNow = this.time.now
     this.visualNow = this.simNow
     this.setupCameras()
+    this.liveStats = createLiveStats(this, this.mode)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.liveStats?.destroy(); this.liveStats = null })
     setVisualHeadScale(this.isArcade ? ARCADE_HEAD_SCALE : 1)
     this.arena = createArena(this)
     drawRink(this)
@@ -434,6 +439,7 @@ export class MatchScene extends Phaser.Scene {
       this.savePrevPositions()
       this.simNow += SIM_STEP_MS
       this.stepSimulation(this.simNow, SIM_STEP_MS / 1000)
+      this.liveStats?.step(SIM_STEP_MS)
       this.simAcc -= SIM_STEP_MS
       steps++
     }
@@ -1538,6 +1544,7 @@ export class MatchScene extends Phaser.Scene {
   /** Congela el partido y muestra el resultado final con la pista de volver al menú. */
   private finishMatch() {
     this.matchEnded = true
+    this.liveStats?.finish()
     const result = this.blueScore === this.redScore ? 'Empate'
       : this.blueScore > this.redScore ? `¡Gana ${nombreDeHueco('blue', 'el azul')}!`
       : `¡Gana ${nombreDeHueco('red', 'el rojo')}!`

@@ -50,7 +50,8 @@ if ($Runs -le 1) {
 # Lote: una muestra por partido; el ruido entre partidos es grande, así que se compara por IC 95 %.
 $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin', 'redMinusBluePerMin',
   'goalsBluePerMin', 'goalsRedPerMin', 'shotsBluePerMin', 'shotsRedPerMin', 'savePctBlue', 'savePctRed',
-  'passesPerMin', 'passPct', 'passesDoneBluePerMin', 'passesDoneRedPerMin', 'possessionBluePct', 'stealsPerMin'
+  'passesPerMin', 'passPct', 'passesDoneBluePerMin', 'passesDoneRedPerMin', 'possessionBluePct', 'stealsPerMin',
+  'shotQualityBlue', 'shotQualityRed', 'savePctBlueHi', 'savePctBlueLo', 'savePctRedHi', 'savePctRedLo'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 $tot = @{ jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0 }
 foreach ($i in 1..$Runs) {
@@ -80,6 +81,16 @@ foreach ($i in 1..$Runs) {
     $ps = $j.possessionSec.blue + $j.possessionSec.red
     if ($ps -gt 0) { $samples.possessionBluePct += 100 * $j.possessionSec.blue / $ps }
     $samples.stealsPerMin += ($j.steals.blue + $j.steals.red) / $min
+  }
+  # B-01: calidad media de los tiros de cada equipo y % de paradas de cada portero (azul = el que defiende
+  # la portería azul) en tiros buenos (Hi) y malos (Lo); sin tiros de un tipo, el partido no aporta muestra
+  if ($null -ne $j.savesHiBy) {
+    if ($j.shots.blue -gt 0) { $samples.shotQualityBlue += $j.shotQualitySum.blue / $j.shots.blue }
+    if ($j.shots.red -gt 0) { $samples.shotQualityRed += $j.shotQualitySum.red / $j.shots.red }
+    if ($j.savesHiBy.blue + $j.goalsHiAgainst.blue -gt 0) { $samples.savePctBlueHi += 100 * $j.savesHiBy.blue / ($j.savesHiBy.blue + $j.goalsHiAgainst.blue) }
+    if ($j.savesLoBy.blue + $j.goalsLoAgainst.blue -gt 0) { $samples.savePctBlueLo += 100 * $j.savesLoBy.blue / ($j.savesLoBy.blue + $j.goalsLoAgainst.blue) }
+    if ($j.savesHiBy.red + $j.goalsHiAgainst.red -gt 0) { $samples.savePctRedHi += 100 * $j.savesHiBy.red / ($j.savesHiBy.red + $j.goalsHiAgainst.red) }
+    if ($j.savesLoBy.red + $j.goalsLoAgainst.red -gt 0) { $samples.savePctRedLo += 100 * $j.savesLoBy.red / ($j.savesLoBy.red + $j.goalsLoAgainst.red) }
   }
   # Reinicios del reglamento (E-05): sumados en el lote
   $tot.freeHits += [int]$j.freeHits; $tot.directFreeHits += [int]$j.directFreeHits; $tot.penalties += [int]$j.penalties

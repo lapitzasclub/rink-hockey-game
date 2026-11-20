@@ -9,7 +9,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | B-XX | Título | Agente · modelo | Estado |
 |---|---|---|---|
 | B-00 | Referencia: simetría IA contra IA y partido real de partida | coordinador + usuario | 🟨 (IA contra IA hecho) |
-| B-01 | Instrumentar: calidad de tiro, portero controlado y `?stats=1` | ai-engineer · opus | ⬜ |
+| B-01 | Instrumentar: calidad de tiro, portero controlado y `?stats=1` | ai-engineer · opus | ✅ 2026-11-20 |
 | B-02 | Humano simulado en el humo (`human=touch\|pad`) | ai-engineer · opus | ⬜ |
 | B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ⬜ |
 | B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus + UI sonnet | ⬜ |
@@ -33,6 +33,7 @@ Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `
 - `?stats=1` en partido normal (también en producción): al terminar, un botón «Copiar estadísticas» con el mismo JSON que `[smoke]` más el control usado (táctil, mando, teclado).
 **Archivos:** `src/scenes/lab/labSmoke.ts` (extraer la contabilidad a `src/game/systems/matchStats.ts` para compartirla), `tools/gfx-smoke.ps1` (claves nuevas en el agregado), el gancho mínimo en `MatchScene.ts` y la pantalla final.
 **Aceptación:** build; humo de 5 por modo sin errores y con las claves nuevas; `bal-compare --sides` las muestra; el botón copia un JSON válido en móvil (captura headless con `pointer: coarse` emulado).
+**Hecho:** contabilidad compartida en `systems/matchStats.ts` (labSmoke la usa sin cambiar sus claves); `shell/statsPanel.ts` con `?stats=1` registra cada tiro (`shotLog`), el control usado y deja el botón «Copiar estadísticas» al final. `SHOT_QUALITY` calibrada con 298 tiros IA contra IA: la mitad queda ≥ 0,5 y esos acaban en gol el 47 % frente al 19 %. La presión se mide de borde a borde de los cuerpos. Humo de 5 por modo (`smoke/2026-11-20-B01-*5.txt`): IA contra IA simétrica en calidad de tiro (0,51/0,51) y paradas; 0 errores. Las métricas de portero humano están sin probar con una persona: las prueba el partido real de B-00.
 
 ## B-02 — Humano simulado
 

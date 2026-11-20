@@ -539,3 +539,19 @@ export const PEN_WALK_SPEED = 2.4 * METER_PX
  */
 export const FINAL_SHOT_DEAD_SPEED = 1.2 * METER_PX
 export const FINAL_SHOT_MAX_MS = 3000
+
+/**
+ * Calidad de tiro 0–1 de las estadísticas (B-01; solo medida, no cambia el juego): suma
+ * ponderada de cercanía a la línea de gol (1 a ≤ distNear px, 0 desde distFar), ángulo respecto
+ * al eje de la portería (1 de frente, 0 desde angleMaxDeg), velocidad (0 hasta speedMin px/s,
+ * 1 desde speedFast: el tiro normal sale a ~690 y el cargado a ~900) y tiro sin presión (ningún
+ * rival de campo con el borde a menos de pressGap px del borde del tirador). `hi` separa tiros
+ * buenos y malos. Calibrada con 300 tiros IA contra IA: mitad por encima de `hi`, que acaban
+ * en gol ~47 % frente a ~19 % por debajo.
+ */
+export const SHOT_QUALITY = {
+  wDist: 0.45, wAngle: 0.15, wSpeed: 0.25, wFree: 0.15,
+  distNear: 120, distFar: 320, angleMaxDeg: 60, speedMin: 600, speedFast: 950,
+  pressGap: AI_PRESS_DISTANCE,
+  hi: 0.5,
+}
