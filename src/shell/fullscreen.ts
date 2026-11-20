@@ -18,7 +18,20 @@ const isStandalone = (navigator as Navigator & { standalone?: boolean }).standal
  * En iPhone la única pantalla completa es abrir el juego desde la pantalla de inicio:
  * donde iría el botón se ofrece cómo hacerlo (solo en Safari de iOS y fuera de la app).
  */
-export const installHintSupported = !fullscreenSupported && isIos && !isStandalone
+/**
+ * La web del Loyola sirve el juego bajo /jugar/ (su worker hace de proxy). Así queda dentro de su
+ * PWA y el iPhone lo abre en la misma ventana sin barras, por lo que el aviso de instalar ya no
+ * hace falta, pero hay que poder volver a ella.
+ */
+export const hostedByLoyola = location.pathname.startsWith('/jugar/')
+
+export const installHintSupported = !fullscreenSupported && isIos && !isStandalone && !hostedByLoyola
+
+/** El juego no toca el historial: atrás es la página del Loyola desde la que se abrió. */
+export function backToHost() {
+  if (history.length > 1) history.back()
+  else location.assign('/')
+}
 
 export function isFullscreen() {
   return !!(document.fullscreenElement ?? (document as WebkitDoc).webkitFullscreenElement)

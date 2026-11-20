@@ -9,7 +9,7 @@ import { playUiMove } from './game/audio/sounds'
 import { consumePad, pollGamepad } from './game/input/gamepad'
 import { getInputMode, onInputModeChange, type InputMode } from './game/input/inputMode'
 import { ICON, shellHtml } from './shell/template'
-import { fullscreenSupported, installHintSupported, isFullscreen, onFullscreenChange, toggleFullscreen } from './shell/fullscreen'
+import { backToHost, fullscreenSupported, hostedByLoyola, installHintSupported, isFullscreen, onFullscreenChange, toggleFullscreen } from './shell/fullscreen'
 import { attachMenuNav } from './shell/menuNav'
 import { createSettingsPanel } from './shell/settingsPanel'
 import { createPauseMenu, type PauseSummary } from './shell/pauseMenu'
@@ -18,7 +18,8 @@ import { createQualityProbe } from './shell/qualityProbe'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenSupported, installHint: installHintSupported })
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenSupported, installHint: installHintSupported, hostBack: hostedByLoyola })
+document.querySelector('#btn-host-back')?.addEventListener('click', backToHost)
 
 let game: Phaser.Game | null = null
 

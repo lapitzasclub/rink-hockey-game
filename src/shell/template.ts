@@ -7,6 +7,7 @@ export const ICON = {
   share: '<svg class="install-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 16.6 7l-1.5 1.5-2.1-2.1V15h-2V6.4L8.9 8.5 7.4 7zM5 10h4v2H7v8h10v-8h-2v-2h4v12H5z"/></svg>',
   addBox: '<svg class="install-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zm2 2v12h12V6zm5 2h2v3h3v2h-3v3h-2v-3H8v-2h3z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4.5v16H6zm7.5 0H18v16h-4.5z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 4.5 12.7 6.6 8.8 10.5H20v3H8.8l3.9 3.9-2.1 2.1L3.1 12z"/></svg>',
   close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 3.5 12 9.9l6.4-6.4 2.1 2.1-6.4 6.4 6.4 6.4-2.1 2.1-6.4-6.4-6.4 6.4-2.1-2.1 6.4-6.4-6.4-6.4z"/></svg>',
   dpad: '<svg class="kicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z"/></svg>',
   arrowUp: '<svg class="kicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 13.5 9H10v4.5H6V9H2.5z" transform="rotate(0 8 8)"/></svg>',
@@ -78,13 +79,14 @@ const installHint = `
       </div>
     </div>`
 
-export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean, installHint: boolean }) {
+export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean, installHint: boolean, hostBack: boolean }) {
   const { isTouch, fullscreen } = opts
   return `
   <div id="game-shell" class="${isTouch ? 'is-touch' : 'is-desktop'}">
     <div id="game-host"></div>
 
     <div class="hud-cluster">
+      ${opts.hostBack ? `<button id="btn-host-back" class="hud-btn hud-btn--menu" aria-label="Volver al Loyola" title="Volver al Loyola">${ICON.back}</button>` : ''}
       ${fullscreen ? `<button id="btn-fullscreen-quick" class="hud-btn hud-btn--menu" aria-label="Pantalla completa" title="Pantalla completa (F)">${ICON.expand}</button>` : ''}
       ${opts.installHint ? `<button id="btn-install-quick" class="hud-btn hud-btn--menu" aria-label="Pantalla completa en iPhone" title="Pantalla completa">${ICON.expand}</button>` : ''}
       <button id="btn-settings" class="hud-btn hud-btn--menu" aria-label="Ajustes" title="Ajustes (Esc)">${ICON.gear}</button>

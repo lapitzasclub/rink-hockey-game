@@ -318,6 +318,11 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — el juego dentro de la PWA del Loyola
+
+- En iPhone, el «Jugar» del Loyola sacaba el juego a Safari con barra, porque es otro dominio. Ahora la web del Loyola sirve el juego bajo `/jugar/` (proxy en su worker hacia `rink-hockey-game.pages.dev`), dentro de su PWA, y se abre en la misma ventana sin barras.
+- En el juego: `base: './'` en Vite y rutas relativas en `index.html`, para que el mismo build sirva en la raíz y bajo `/jugar/`. Con `hostedByLoyola` (`shell/fullscreen.ts`) el menú enseña «Volver al Loyola» (`#btn-host-back`, que hace `history.back()`) y no sale el aviso de instalar. No se puede usar `pushState` ni cambiar el hash: romperían el «atrás».
+
 ### 2026-11-20 — pulido de efectos arcade y aviso de pantalla completa en iPhone
 
 - Pedido del usuario: «el hielo es horrible» (el cuadrado del jugador congelado) y «a todos se les puede dar un efecto más wow». En `render/arcadeFx.ts` las texturas se hornean al arrancar: cristal de hielo facetado, esquirlas, destellos, tres rayos ramificados deterministas, anillos, escudo hexagonal, cinta del aviso y una viñeta radial que sustituye al tinte de pantalla completa. Congelado: el cristal crece con rebote y va acompañado de niebla y destellos (`aura-frost`/`aura-glint`); tiembla en los últimos `ICE_CRACK_MS` y estalla en esquirlas al terminar. El escudo entra con onda y estalla al caducar. El rayo cae dos veces con parpadeo y el suelo se ilumina. Los textos flotantes se apilan (6 como máximo) y el aviso entra con golpe, destello y vaivén. Coger un powerup lanza una onda del color del powerup. La portería mini y el muro del portero escalan suavemente.

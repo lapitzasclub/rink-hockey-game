@@ -6,6 +6,8 @@ const root = dirname(fileURLToPath(import.meta.url))
 const IGNORED_DIRS = ['.claude', '.openclaw']
 
 export default defineConfig({
+  // Rutas relativas: el mismo build sirve en la raíz y bajo /jugar/ de la web del Loyola
+  base: './',
   server: {
     watch: {
       // Relativo a la raíz de este config: el servidor de main no vigila los worktrees de .claude/
