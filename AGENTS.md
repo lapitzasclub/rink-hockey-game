@@ -318,6 +318,12 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-21 — workflow general (/dev) y gasto de IA
+
+- `/dev` (`.claude/commands/dev.md`, `docs/dev/`) para lo que no es de un dominio con workflow propio. Enruta cada tarea al modelo más barato que la hace bien: `dev-scout` (haiku, localiza y devuelve un mapa `archivo:línea`), `dev-builder` (sonnet, mecánico con patrón), `dev-engineer` (opus, lógica difícil), `dev-qa` (haiku, medir, papeleo e integración).
+- Reglas de gasto comunes a todos los workflows (WORKFLOW §3) y registro de tokens y duración por paquete en `docs/dev/LEDGER.md`.
+- `/evo`: E-15 (física de patinaje), E-16 (partículas de pista), E-17 (animación secundaria) y E-18 (modelo de cerca) en el backlog; contrato `player.bump` en `types.ts`.
+
 ### 2026-11-21 — dentro del Loyola, como un juego nativo
 
 - `inHostApp` (`shell/fullscreen.ts`): bajo `/jugar/` en la PWA instalada o en el APK, que se detecta por `LoyolaHockeyApp` en el user agent. El puente de Capacitor solo se inyecta en el origen de la app, no en `pages.dev`. Allí no se ofrece pantalla completa (`fullscreenOffered`: ni botón, ni ajuste, ni tecla F, ni la automática al empezar).

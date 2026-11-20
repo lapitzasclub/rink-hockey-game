@@ -15,6 +15,12 @@ Juego de rink hockey 2D — Phaser 4, TypeScript, Vite. Lee [AGENTS.md](./AGENTS
 - No introducir dependencias nuevas sin consultarlo.
 - No mover la integración de nipplejs a controles Phaser nativos sin decisión explícita del usuario.
 
+## Workflow general y gasto de IA
+
+- Todo lo que no es de un dominio con workflow propio va por `/dev` según [docs/dev/WORKFLOW.md](./docs/dev/WORKFLOW.md) y [docs/dev/BACKLOG.md](./docs/dev/BACKLOG.md) (tareas T-XX).
+- Enrutado por coste (WORKFLOW §1): trivial → la sesión sin agente; localizar → `dev-scout` (haiku); mecánico con patrón → `dev-builder` (sonnet); lógica difícil o con riesgo → `dev-engineer` (opus); medir, papeleo e integración → `dev-qa` (haiku).
+- Reglas de gasto de §3 para **todos** los workflows: lectura acotada, humo de 20 solo para aceptar, informes cortos, máx. 2 rondas por modelo, y una fila por paquete en [docs/dev/LEDGER.md](./docs/dev/LEDGER.md).
+
 ## Workflow gráfico
 
 - La renovación gráfica se coordina con `/gfx` según [docs/graphics/WORKFLOW.md](./docs/graphics/WORKFLOW.md) (backlog, SPEC y auditoría en `docs/graphics/`).
