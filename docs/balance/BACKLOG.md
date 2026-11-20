@@ -13,9 +13,15 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | B-02 | Humano simulado en el humo (`human=touch\|pad`) | ai-engineer · opus | ✅ 2026-11-20 (sin calibrar) |
 | B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ✅ 2026-11-20 (resto → B-05) |
 | B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus | ✅ 2026-11-20 (pases → B-05) |
-| B-05 | Ajuste táctil y por nivel (barrido) | bal-tuner · sonnet | ⬜ |
-| B-06 | Jugabilidad táctil: portero, tiro al hueco, pérdidas | ai-engineer · opus | 🟨 |
-| B-99 | Cierre: batería final y partido real en el móvil | bal-qa · haiku + usuario | ⬜ |
+| B-05 | Ajuste táctil y por nivel (barrido) | bal-tuner · sonnet | ✅ 2026-11-20 (criba de 5) |
+| B-06 | Jugabilidad táctil: portero, tiro al hueco, pérdidas | ai-engineer · opus | ✅ 2026-11-20 (ronda 2 rechazada) |
+| B-07 | Partido real: robos, CAMBIO defendiendo, autogoles conduciendo | ai-engineer · opus | ✅ 2026-11-20 |
+| B-08 | Tiros cercanos táctiles al palo | ai-engineer · opus | ✅ 2026-11-20 |
+| B-09 | Pase al portero propio | ai-engineer · opus | ✅ 2026-11-20 (lado humano sin humo) |
+| B-10 | Posesión y juego pasivo en reglamento | ai-engineer · opus | ✅ 2026-11-20 |
+| B-11 | CAMBIO defendiendo con el stick hacia la bola (todos los controles) | coordinador | ✅ 2026-11-20 |
+| B-12 | Tiros cercanos con mando y batería por control y nivel | ai-engineer / bal-tuner | ⬜ |
+| B-99 | Cierre: batería final y partido real en el móvil | bal-qa · haiku + usuario | 🟨 (falta el partido final) |
 
 Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `constants.ts`) → B-05 → B-99.
 
@@ -77,6 +83,32 @@ Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `
 **Pedido del usuario (2026-11-20):** «hay que mejorar bien la jugabilidad en controles táctiles porque se siente difícil e injusto al jugar». No basta con barrer números (B-05).
 **Objetivo (solo táctil):** (1) el portero en manos de la persona acelera a la mitad porque el stick táctil llega a 0,5 (`moveHumanGoalie`); no se autoselecciona el portero en táctil. (2) El tiro táctil apunta al lado que deja abierto el portero (`TOUCH_SHOT_AIM`), no al centro. (3) Medir pérdidas en conducción e intentos de robo por lado y ayudar donde falle. Tablas nuevas con valor neutro para que B-05 las barra después.
 **Aceptación:** humano táctil contra NORMAL ↓ rojo − azul o ↑ tiros y pases del azul frente a la base; mando e IA contra IA sin cambios.
+
+**Hecho:** ronda 2 (doble marcaje) rechazada y guardada en `bal/b-06`. Lo aceptado: en táctil la IA coloca al portero de la persona ante un tiro rival, tiro al palo abierto, menos robos al portador y compañeros que roban. Lote de aceptación B-05 + B-06, 20 corridas (`smoke/…-B99-*`): táctil NORMAL rojo − azul +0,56 en arcade y +0,98 en reglamento; no cierra el objetivo.
+
+## B-07 — Lo que dijo el usuario tras el partido real
+
+**Hecho:** robos: sin ventaja de la IA (por intento 32 % frente a 28 %). CAMBIO defendiendo: el que va por detrás de la bola cuenta más lejos (`SWITCH_DEFEND`). Autogoles conduciendo: la bola conducida no cruza la propia línea de gol por la boca (`CARRY_OWN_GOAL`). El humo cuenta autogoles e intentos de robo.
+
+## B-08 — Tiros cercanos táctiles
+
+**Hecho:** el hueco de cerca venía de `shotAimPost` 0,9 de B-06, que apuntaba al borde del palo. `TOUCH_SHOT_AIM.postMarginPx` 9 lo mete hacia dentro. Táctil arcade de 0 a 50 px: 40 ± 22 % frente a 47 ± 14 % del rival; rojo − azul 0,55 → −0,10. Reglamento sigue en +1,10 por volumen de tiro del rojo (24 frente a 5 por corrida). El humo da % de gol por distancia (`goalPct<Equipo>B0|B50|B100|B180`).
+
+## B-09 — Pase al portero
+
+**Hecho:** tabla `GOALIE_PASS` (cono 0,9, 80–380 px, línea limpia, sin rival cerca del portero). La persona puede pasarle con cualquier control; la IA solo para salir de la presión en su campo. La bola llega a 230 px/s y los compañeros la dejan pasar. Contadores en `systems/goaliePassStats.ts`. IA: 1–3 pases por partido, 84–100 % atrapados, sin más goles en los 5 s siguientes; `bal-compare` todo «=». Abierto: autogoles sin tiro en táctil 1 → 4 de 10 (sin aclarar, posible ruido), y el humano simulado nunca pasa al portero.
+
+## B-10 — Pasividad en reglamento
+
+**Hecho:** `systems/passivity.ts`: posesión 10 s / 5 s, juego pasivo 10 s con aviso de 5 s y presión a 3 m. Se pita golpe franco indirecto, que no cuenta como falta de equipo (`registerPassivity` en `rules.ts`). Cuenta atrás en el HUD (`ui/passivityHud.ts`) y la IA atenta a los contadores. Con los valores reales el aviso de pasivo no llegó a saltar en el humo.
+
+## B-11 — CAMBIO con el stick hacia la bola
+
+**Hecho:** el usuario explicó que nadie pide un cambio sin mover el stick, porque es un reflejo empujarlo hacia la bola, con cualquier control. Defendiendo, el stick a menos de `SWITCH_DEFEND.ballAimRad` (0,7 rad) de la bola cuenta como sin dirección: decide la cercanía de B-07.
+
+## B-12 — Tiros cercanos con mando y batería por control y nivel
+
+**Pedido del usuario:** el equilibrio debe ser correcto con todos los controles y en todas las dificultades. Con mando, de 0 a 50 px el azul marcaba 9 % frente a 50 % del rival (n = 11, sin confirmar). Medirlo con 20 corridas y buscar la causa. Después, batería táctil y mando × FÁCIL…EXPERTO × arcade y reglamento: porteros iguales, misma curva por nivel en ambos controles. Pendientes: el hueco de NORMAL en reglamento y con mando; recalibrar `HUMAN_SIM` con la persona real.
 
 ## B-99 — Cierre
 
