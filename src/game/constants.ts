@@ -811,3 +811,12 @@ export const PASSIVITY_AI = {
   forceShotMin: 0.05,
   freshMs: 100,
 }
+
+/**
+ * B-08 · tiro asistido de la persona en táctil al palo abierto (TOUCH_ASSIST_EXTRA.shotAimPost).
+ * Solo es gol con el centro de la bola a menos de GOAL_HALF_H − BALL_RADIUS del centro, que es
+ * justo donde empieza la franja de choque con el palo: apuntando ahí, la mitad de los tiros
+ * cercanos daba en el palo y salía fuera. postMarginPx mete el punto de mira esos px hacia
+ * dentro (neutro 0).
+ */
+export const TOUCH_SHOT_AIM = { postMarginPx: 9 }
