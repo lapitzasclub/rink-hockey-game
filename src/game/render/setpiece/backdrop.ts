@@ -424,10 +424,12 @@ function poolCells(centers: Array<[number, number]>, r: number, halfW: number, b
   const cells = new Cells()
   const N = SETPIECE_STAGE.pool.cells
   for (const [cx, cy] of centers) {
+    // El pozo se encoge hasta caber entero en la pista: se funde a 0 antes del borde, sin recortes
+    const rr = Math.max(0.5, Math.min(r, halfW - Math.abs(cx), cy - backY, farY - cy))
     const at = (i: number, j: number) => {
-      const x = Math.max(-halfW, Math.min(halfW, cx + r * ((2 * i) / N - 1)))
-      const y = Math.max(backY, Math.min(farY, cy + r * ((2 * j) / N - 1)))
-      return [x, y, 0, (x - cx) / (2 * r) + 0.5, (y - cy) / (2 * r) + 0.5, 0, 0]
+      const x = cx + rr * ((2 * i) / N - 1)
+      const y = cy + rr * ((2 * j) / N - 1)
+      return [x, y, 0, i / N, j / N, 0, 0]
     }
     for (let i = 0; i < N; i++) {
       for (let j = 0; j < N; j++) cells.add([at(i, j), at(i, j + 1), at(i + 1, j), at(i + 1, j + 1)])
@@ -465,15 +467,11 @@ export class StageBackdrop {
     ensureHallTexture(scene)
     this.fixed.push(new TexGrid(scene, HALL_KEY, hallCells(ring.all), BACK_DEPTH - 2, 0))
     ensurePoolTexture(scene)
-    const len = farY - backY
-    const centers: Array<[number, number]> = []
-    for (const fx of LIGHT.poolsX) for (const fy of LIGHT.poolsY) centers.push([(fy - 0.5) * halfW * 2, backY + fx * len])
+    // Solo el pozo de la portería atacada: los del centro quedaban cortados por el plano cercano de la cámara
     const P = SETPIECE_STAGE.pool
-    const floor = new TexGrid(scene, POOL_KEY, poolCells(centers, LIGHT.poolRadius / PX_PER_M, halfW, backY, farY), BACK_DEPTH + 0.2, 0)
-    floor.mesh.setAlpha(Math.min(1, LIGHT.poolAlpha * P.k))
-    const goal = new TexGrid(scene, POOL_KEY, poolCells([[0, backY + LIGHT.goalPoolOffsetM], [0, farY - LIGHT.goalPoolOffsetM]], LIGHT.goalPoolRadius / PX_PER_M, halfW, backY, farY), BACK_DEPTH + 0.3, 0)
+    const goal = new TexGrid(scene, POOL_KEY, poolCells([[0, backY + LIGHT.goalPoolOffsetM]], LIGHT.goalPoolRadius / PX_PER_M, halfW, backY, farY), BACK_DEPTH + 0.3, 0)
     goal.mesh.setAlpha(Math.min(1, LIGHT.goalPoolAlpha * P.k))
-    this.fixed.push(floor, goal)
+    this.fixed.push(goal)
 
     this.stands.push({ kind: 'side', strips: ring.side, grid: null })
     this.stands.push({ kind: 'blue', strips: ring.back, grid: null }, { kind: 'red', strips: ring.back, grid: null })

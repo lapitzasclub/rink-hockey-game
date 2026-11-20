@@ -1010,8 +1010,8 @@ export const SETPIECE_STAGE = {
     /** Luz de la estructura (huella, contrahuella, pasillos) respecto a la del partido: más oscura, la masa la hace el público. */
     structK: 0.62,
     /** Escala de las figuras (se solapan filas como en el partido) y fracción de asientos vacíos respecto a `CROWD`. */
-    fanK: 1.14,
-    emptyK: 0.4,
+    fanK: 1.6,
+    emptyK: 1,
     /** Horneado: tiempo máximo por trozo (ms) antes de ceder el hilo. */
     sliceMs: 8,
   },
