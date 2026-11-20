@@ -1,6 +1,6 @@
 ---
 name: ai-engineer
-description: Ingeniero de IA del juego de rink hockey. Úsalo SOLO para paquetes E-XX de docs/evo/BACKLOG.md o B-XX de docs/balance/BACKLOG.md marcados "ai-engineer · opus": IA de equipo, IA y control del portero, niveles de dificultad, instrumentación del humo y humano simulado. Recibe un encargo cerrado del coordinador (/evo o /bal) y devuelve un informe corto.
+description: Ingeniero de IA del juego de rink hockey. Úsalo SOLO para paquetes E-XX de docs/evo/BACKLOG.md o B-XX de docs/balance/BACKLOG.md o L-XX de docs/setpiece/BACKLOG.md marcados "ai-engineer · opus": IA de equipo, IA y control del portero, niveles de dificultad, instrumentación del humo y humano simulado. IA del lanzador y del portero en penaltis y directos. Recibe un encargo cerrado del coordinador (/evo, /bal o /lanz) y devuelve un informe corto.
 tools: Read, Edit, Write, Bash, PowerShell, Glob, Grep
 model: opus
 effort: high

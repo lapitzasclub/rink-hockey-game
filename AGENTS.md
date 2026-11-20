@@ -101,6 +101,7 @@ docs/
   perf/                      Rendimiento y pulido: WORKFLOW (presupuestos, herramientas y reglas para todo el desarrollo),
                              BACKLOG (paquetes P-XX con medidas), bench/ (resultados en bruto del banco)
   evo/                       Evolutivo de animación, IA y dificultad: WORKFLOW (roles, ciclo, medir), BACKLOG (E-XX), smoke/ (humo en bruto)
+  setpiece/                  Lanzamientos (penalti y libre directo en tercera persona): WORKFLOW, BACKLOG (D-XX y L-XX), shots/, batch/ (lotes headless)
   balance/                   Equilibrio: dificultad en móvil y simetría de porteros; WORKFLOW, BACKLOG (B-XX), smoke/, real/ (partidos reales con ?stats=1)
 .claude/
   agents/gfx-*.md            Agentes del workflow gráfico: engineer (opus), builder (sonnet), qa (haiku)
@@ -109,6 +110,7 @@ docs/
   commands/perf.md           /perf — coordinador del workflow de rendimiento
   agents/ai-engineer.md      IA táctica, portero y dificultad (opus) del workflow evolutivo
   commands/evo.md            /evo — coordinador del workflow evolutivo (docs/evo/)
+  commands/lanz.md           /lanz — coordinador del workflow de lanzamientos (docs/setpiece/); agentes lanz-engineer (opus), lanz-artist (sonnet), lanz-qa (haiku), más ai-engineer y bal-tuner
   commands/bal.md            /bal — coordinador del workflow de equilibrio (docs/balance/); agentes bal-tuner (sonnet) y bal-qa (haiku)
 .openclaw/
   skills/
@@ -302,6 +304,10 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-20 — workflow de lanzamientos (/lanz)
+
+- Pedido del usuario: penalti y libre directo con cámara en tercera persona, apuntado, fuerza y efecto durante el trayecto y figuras más detalladas. Workflow en `docs/setpiece/` (WORKFLOW, BACKLOG con D-01…D-06 y L-00…L-99), coordinador `/lanz` y agentes `lanz-engineer`, `lanz-artist`, `lanz-qa`; `ai-engineer` y `bal-tuner` admiten L-XX. Sin código todavía. D-01 (delegada por el usuario): 2.5D en Phaser —el esqueleto del rig ya es 3D y se le añade la inclinación de cámara—, sin Three.js ni modo 7; L-00 lo valida.
 
 ### 2026-11-20 — workflow de equilibrio (/bal)
 

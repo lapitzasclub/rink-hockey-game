@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portero en lanzamientos</title>
+<style>
+  :root {
+    --bg: #f4f1ea; --card: #fffdf8; --ink: #1d1c1a; --muted: #6b665d; --line: #d9d2c4;
+    --orange: #e8590c; --blue: #1c5fd4; --red: #c92a2a; --ok: #2b8a3e; --warn: #b8860b; --floor: #e9dcc3; --net: #b9b2a4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161513; --card: #201f1c; --ink: #ece8df; --muted: #a29c90; --line: #3a3732;
+      --orange: #ff7a2e; --blue: #5b93ff; --red: #ff6b6b; --ok: #69db7c; --warn: #f2c14e; --floor: #3a3326; --net: #6d675c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 28px; max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  article { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  article.rec { border: 2px solid var(--orange); }
+  .tag { font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .rec .tag { color: var(--orange); }
+  h2 { font-size: 1.2rem; margin: 0; }
+  p { margin: 0; }
+  svg { width: 100%; height: auto; background: var(--floor); border-radius: 8px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: .92rem; }
+  dt { font-weight: 600; color: var(--muted); }
+  dd { margin: 0; }
+  ul { margin: 0; padding-left: 18px; font-size: .92rem; }
+  .pros li::marker { color: var(--ok); content: "+  "; }
+  .cons li::marker { color: var(--red); content: "−  "; }
+  .meter { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+  .meter b { color: var(--ink); }
+  footer { margin-top: 32px; color: var(--muted); font-size: .9rem; max-width: 70ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>¿Qué haces tú cuando tira la IA?</h1>
+  <p class="lead">Decisión D-02 del workflow <code>/lanz</code>. Cuando el rival lanza un penalti o un libre directo, tú llevas a tu portero. Hay cuatro formas de hacerlo, de la más sencilla a la de más habilidad. Los dibujos muestran la vista de cada propuesta: portería de 1,70 × 1,05 m, tu portero en azul y la bola del rival.</p>
+
+  <div class="grid">
+
+    <article>
+      <span class="tag">Propuesta 1</span>
+      <h2>Adivinar la zona</h2>
+      <svg viewBox="0 0 320 180" role="img" aria-label="Portería dividida en seis zonas, una elegida">
+        <rect x="70" y="40" width="180" height="111" fill="none" stroke="var(--orange)" stroke-width="6"/>
+        <g stroke="var(--net)" stroke-width="1.5" stroke-dasharray="4 4">
+          <line x1="130" y1="40" x2="130" y2="151"/><line x1="190" y1="40" x2="190" y2="151"/><line x1="70" y1="95" x2="250" y2="95"/>
+        </g>
+        <rect x="190" y="40" width="60" height="55" fill="var(--blue)" opacity=".25"/>
+        <ellipse cx="160" cy="132" rx="16" ry="20" fill="var(--blue)"/>
+        <circle cx="160" cy="105" r="9" fill="var(--blue)"/>
+        <circle cx="160" cy="170" r="5" fill="var(--ink)"/>
+        <text x="220" y="72" text-anchor="middle" font-size="12" fill="var(--blue)" font-weight="700">elegida</text>
+      </svg>
+      <p>Antes del golpeo marcas una de las 6 zonas de la portería con el stick. Al tirar la IA, el portero se lanza ahí. Si aciertas la zona, paras casi siempre.</p>
+      <dl><dt>Cámara</dt><dd>detrás del lanzador rival</dd><dt>Táctil</dt><dd>joystick hacia la zona; nada más</dd><dt>Mando / teclado</dt><dd>stick o flechas</dd></dl>
+      <ul class="pros"><li>Lo más fácil en el móvil</li><li>Lo más barato de hacer</li></ul>
+      <ul class="cons"><li>Es una lotería: poca habilidad</li><li>Aburre tras unos cuantos</li></ul>
+      <div class="meter"><span>Habilidad <b>●○○○</b></span><span>Táctil <b>●●●●</b></span><span>Coste <b>●○○○</b></span></div>
+    </article>
+
+    <article class="rec">
+      <span class="tag">Propuesta 2 · recomendada</span>
+      <h2>Lado y momento de la estirada</h2>
+      <svg viewBox="0 0 320 180" role="img" aria-label="Portero estirándose hacia la escuadra derecha a tiempo">
+        <rect x="70" y="40" width="180" height="111" fill="none" stroke="var(--orange)" stroke-width="6"/>
+        <path d="M160 170 Q 215 120 228 62" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/>
+        <circle cx="228" cy="62" r="6" fill="var(--ink)"/>
+        <g transform="rotate(-38 175 120)"><ellipse cx="175" cy="120" rx="15" ry="30" fill="var(--blue)"/></g>
+        <circle cx="205" cy="92" r="9" fill="var(--blue)"/>
+        <rect x="40" y="10" width="240" height="10" rx="5" fill="var(--line)"/>
+        <rect x="150" y="10" width="40" height="10" rx="5" fill="var(--ok)"/>
+        <text x="170" y="34" text-anchor="middle" font-size="11" fill="var(--muted)">ventana para estirarse</text>
+      </svg>
+      <p>Te mueves un poco por la línea antes del golpeo. Cuando la IA golpea, eliges hacia dónde estirarte (8 direcciones) y pulsas en el momento justo. Si te tiras pronto, el lanzador lo ve y cambia de lado; si tarde, no llegas. El cuerpo del lanzador da pistas, más claras en FÁCIL.</p>
+      <dl><dt>Cámara</dt><dd>detrás del lanzador rival</dd><dt>Táctil</dt><dd>joystick para el lado + botón de tiro para estirarse</dd><dt>Mando / teclado</dt><dd>stick o flechas + tiro</dd></dl>
+      <ul class="pros"><li>Mezcla de leer, adivinar y reflejos</li><li>Encaja con el efecto en vuelo: una bola con curva castiga al que se tira pronto</li><li>Mismos controles que al tirar</li></ul>
+      <ul class="cons"><li>Hay que ajustar bien la ventana para el móvil (L-08)</li></ul>
+      <div class="meter"><span>Habilidad <b>●●●○</b></span><span>Táctil <b>●●●○</b></span><span>Coste <b>●●○○</b></span></div>
+    </article>
+
+    <article>
+      <span class="tag">Propuesta 3</span>
+      <h2>Parada en vuelo</h2>
+      <svg viewBox="0 0 320 180" role="img" aria-label="Vista desde detrás del portero con la bola acercándose">
+        <rect x="0" y="0" width="320" height="60" fill="var(--line)" opacity=".5"/>
+        <ellipse cx="160" cy="58" rx="10" ry="16" fill="var(--red)"/>
+        <circle cx="160" cy="38" r="7" fill="var(--red)"/>
+        <path d="M168 76 Q 210 100 196 140" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/>
+        <circle cx="200" cy="120" r="9" fill="var(--ink)"/>
+        <rect x="40" y="115" width="240" height="65" fill="none" stroke="var(--orange)" stroke-width="6"/>
+        <circle cx="185" cy="138" r="14" fill="none" stroke="var(--blue)" stroke-width="4"/>
+        <text x="185" y="166" text-anchor="middle" font-size="11" fill="var(--blue)" font-weight="700">guante</text>
+      </svg>
+      <p>La cámara se pone detrás de tu portero. Mientras la bola vuela (con un instante a cámara lenta) mueves el guante o el stick en tiempo real para cortarla, siguiendo su curva.</p>
+      <dl><dt>Cámara</dt><dd>detrás de tu portero</dd><dt>Táctil</dt><dd>joystick mueve el guante</dd><dt>Mando / teclado</dt><dd>stick o flechas</dd></dl>
+      <ul class="pros"><li>La más espectacular y de más habilidad</li><li>Cada parada se siente tuya</li></ul>
+      <ul class="cons"><li>Muy difícil con el joystick táctil</li><li>Otra cámara y otro escenario (grada del otro fondo): más arte</li><li>La cámara lenta rompe un poco el ritmo</li></ul>
+      <div class="meter"><span>Habilidad <b>●●●●</b></span><span>Táctil <b>●○○○</b></span><span>Coste <b>●●●●</b></span></div>
+    </article>
+
+    <article>
+      <span class="tag">Propuesta 4</span>
+      <h2>Duelo de nervios</h2>
+      <svg viewBox="0 0 320 180" role="img" aria-label="Portero adelantado hacia un lado dejando hueco en el otro">
+        <rect x="70" y="40" width="180" height="111" fill="none" stroke="var(--orange)" stroke-width="6"/>
+        <rect x="70" y="40" width="62" height="111" fill="var(--red)" opacity=".15"/>
+        <text x="101" y="100" text-anchor="middle" font-size="11" fill="var(--red)" font-weight="700">hueco</text>
+        <ellipse cx="185" cy="128" rx="18" ry="22" fill="var(--blue)"/>
+        <circle cx="185" cy="99" r="10" fill="var(--blue)"/>
+        <path d="M150 128 L 138 128" stroke="var(--blue)" stroke-width="3"/><path d="M138 128 l6 -5 v10z" fill="var(--blue)"/>
+        <circle cx="160" cy="170" r="5" fill="var(--ink)"/>
+      </svg>
+      <p>Como la propuesta 2, pero el antes cuenta más: puedes amagar, abrir un lado a propósito para provocar y achicar. La IA lee tu postura y tira a donde ve hueco, así que puedes engañarla dejando un hueco falso y estirándote hacia él.</p>
+      <dl><dt>Cámara</dt><dd>detrás del lanzador rival</dd><dt>Táctil</dt><dd>joystick para amagar y estirarse + botón</dd><dt>Mando / teclado</dt><dd>stick o flechas + tiro; pase para amagar</dd></dl>
+      <ul class="pros"><li>El que más se parece a un penalti de verdad</li><li>Mucha rejugabilidad</li></ul>
+      <ul class="cons"><li>La IA que lee amagos es lo más caro de afinar (L-06)</li><li>Cuesta entenderlo sin un tutorial</li></ul>
+      <div class="meter"><span>Habilidad <b>●●●●</b></span><span>Táctil <b>●●○○</b></span><span>Coste <b>●●●○</b></span></div>
+    </article>
+
+  </div>
+
+  <footer>
+    Recomiendo la 2: es la que mejor equilibra habilidad y móvil, y usa la misma cámara y el mismo escenario que tu propio lanzamiento, así que no añade arte. La 4 se puede sumar más adelante encima de la 2 (amagos como capa extra) sin rehacer nada. Dime el número que prefieras, o una mezcla.
+  </footer>
+</main>
+</body>
+</html>

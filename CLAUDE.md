@@ -34,6 +34,12 @@ Juego de rink hockey 2D — Phaser 4, TypeScript, Vite. Lee [AGENTS.md](./AGENTS
 - Dificultad en móvil y simetría de porteros con `/bal` según [docs/balance/WORKFLOW.md](./docs/balance/WORKFLOW.md) y [docs/balance/BACKLOG.md](./docs/balance/BACKLOG.md).
 - `ai-engineer` (opus) solo para lógica nueva; `bal-tuner` (sonnet) barre tablas de `constants.ts`; `bal-qa` (haiku) pasa lotes y papeleo. Los lotes se comparan con `node tools/bal-compare.mjs <base> <nuevo>` (o `<lote> --sides`), no leyendo el JSON.
 
+## Workflow de lanzamientos
+
+- Penalti y libre directo en tercera persona (apuntado, fuerza y efecto en vuelo, figuras cercanas) con `/lanz` según [docs/setpiece/WORKFLOW.md](./docs/setpiece/WORKFLOW.md) y [docs/setpiece/BACKLOG.md](./docs/setpiece/BACKLOG.md).
+- `lanz-engineer` (opus) motor, cámara, rig cercano y animación; `ai-engineer` (opus) IA del lanzamiento; `lanz-artist` (sonnet) HUD, piezas, escenario y efectos; `bal-tuner` (sonnet) acierto; `lanz-qa` (haiku) build, capturas, lotes y papeleo.
+- Lo que solo toca el lanzamiento se mide con el lote headless (`?lab=setpiece&batch=N`), no con el humo; D-01: 2.5D en Phaser (sin Three.js); L-00 lo valida.
+
 ## Comandos
 
 ```bash

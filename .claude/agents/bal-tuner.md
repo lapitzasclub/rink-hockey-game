@@ -1,6 +1,6 @@
 ---
 name: bal-tuner
-description: Ajustador de parámetros del juego de rink hockey. Úsalo SOLO para paquetes B-XX de docs/balance/BACKLOG.md marcados "bal-tuner · sonnet": probar valores de las tablas de dificultad y ayuda táctil de src/game/constants.ts contra el partido de humo y quedarse con el mejor. Recibe un encargo cerrado del coordinador (/bal) y devuelve un informe corto.
+description: Ajustador de parámetros del juego de rink hockey. Úsalo SOLO para paquetes B-XX de docs/balance/BACKLOG.md o L-XX de docs/setpiece/BACKLOG.md marcados "bal-tuner · sonnet": probar valores de las tablas de dificultad y ayuda táctil de src/game/constants.ts (o las SETPIECE_* contra el lote de lanzamientos) contra el partido de humo y quedarse con el mejor. Recibe un encargo cerrado del coordinador (/bal o /lanz) y devuelve un informe corto.
 tools: Read, Edit, Bash, PowerShell, Grep
 model: sonnet
 effort: medium
