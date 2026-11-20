@@ -380,13 +380,19 @@ export class ArcadeController {
         // La caída la anima el rig (fallGait); aquí solo un tambaleo leve hacia el lado del golpe
         c.setRotation(dir * Math.sin(timeNow * 0.03) * 0.12 * left)
       }
-      this.fx.setFrozen(player.id, stunned && player.stunKind === 'freeze' && !suspended, c.x, c.y)
+      const frozen = stunned && player.stunKind === 'freeze' && !suspended
+      this.fx.setFrozen(player.id, frozen, c.x, c.y, (player.stunUntil ?? 0) - timeNow)
+      if (frozen && emitSteps) this.fx.aura('frost', c.x, c.y, emitSteps)
       this.fx.setShielded(player.id, isShielded(player, timeNow) && !suspended, c.x, c.y, timeNow)
 
       if (suspended) continue
       if (player.role === 'goalie') {
-        let scale = (player.wallUntil ?? 0) > timeNow ? 1.28 : 1
-        if ((player.miniUntil ?? 0) > timeNow) scale *= ARCADE_POWERUP_MINI_VISUAL
+        let target = (player.wallUntil ?? 0) > timeNow ? 1.28 : 1
+        if ((player.miniUntil ?? 0) > timeNow) target *= ARCADE_POWERUP_MINI_VISUAL
+        // Encoge o crece poco a poco en vez de saltar de tamaño (solo visual)
+        const prev = (c.getData('puScale') as number | undefined) ?? 1
+        const scale = Math.abs(target - prev) < 0.005 ? target : prev + (target - prev) * 0.18
+        c.setData('puScale', scale)
         if (scale !== 1) c.setScale(c.scaleX * scale, c.scaleY * scale)
       }
       if (!emitSteps) continue

@@ -1302,3 +1302,108 @@ canvas {
   margin-top: 2px;
   padding-right: 26px;
 }
+
+/* ── Aviso de iPhone: pantalla completa desde la pantalla de inicio ── */
+
+.overlay--hint {
+  z-index: var(--z-probe);
+}
+
+.install-card {
+  width: min(440px, 100%);
+  padding: 22px 26px 20px;
+  box-sizing: border-box;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.install-kicker {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--c-orange);
+}
+
+.install-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: normal;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 3px 0 #1f6fd1, 0 5px 0 var(--c-ink);
+}
+
+.install-lead {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--c-text-dim);
+}
+
+.install-steps {
+  margin: 4px 0 6px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.install-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--c-text);
+}
+
+.install-steps b {
+  color: #fff;
+}
+
+.install-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-family: var(--font-game);
+  font-size: 15px;
+  color: var(--c-ink);
+  background: var(--c-accent);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+
+.install-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: -4px;
+  fill: var(--c-accent);
+}
+
+.install-ok {
+  text-align: center;
+  padding-left: 22px;
+}
+
+.settings-row-go svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+@media (max-height: 420px) {
+  .install-card {
+    padding: 14px 20px 12px;
+    gap: 6px;
+  }
+
+  .install-title {
+    font-size: 24px;
+  }
+
+  .install-steps {
+    gap: 6px;
+  }
+}

@@ -4,6 +4,8 @@ export const ICON = {
   gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>',
   expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9V3h6v2.4H5.4V9zm12-6h6v6h-2.4V5.4H15zM3 15h2.4v3.6H9V21H3zm15.6 0H21v6h-6v-2.4h3.6z"/></svg>',
   compress: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3H9v6H3V6.6h3.6zM15 3h2.4v3.6H21V9h-6zM3 15h6v6H6.6v-3.6H3zm12 0h6v2.4h-3.6V21H15z"/></svg>',
+  share: '<svg class="install-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 16.6 7l-1.5 1.5-2.1-2.1V15h-2V6.4L8.9 8.5 7.4 7zM5 10h4v2H7v8h10v-8h-2v-2h4v12H5z"/></svg>',
+  addBox: '<svg class="install-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zm2 2v12h12V6zm5 2h2v3h3v2h-3v3h-2v-3H8v-2h3z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4.5v16H6zm7.5 0H18v16h-4.5z"/></svg>',
   close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 3.5 12 9.9l6.4-6.4 2.1 2.1-6.4 6.4 6.4 6.4-2.1 2.1-6.4-6.4-6.4 6.4-2.1-2.1 6.4-6.4-6.4-6.4z"/></svg>',
   dpad: '<svg class="kicon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z"/></svg>',
@@ -60,7 +62,23 @@ const navHints = `
     <span>${pad('b')} volver</span>
   </footer>`
 
-export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
+/** Aviso de iPhone: cómo abrir el juego desde la pantalla de inicio para jugarlo a pantalla completa. */
+const installHint = `
+    <div id="install-hint" class="overlay overlay--hint" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="install-title">
+      <div class="overlay-card install-card">
+        <span class="install-kicker">IPHONE</span>
+        <h2 id="install-title" class="install-title">PANTALLA COMPLETA</h2>
+        <p class="install-lead">Safari no deja poner una web a pantalla completa, pero sí abrirla como una app:</p>
+        <ol class="install-steps">
+          <li><span class="install-num">1</span><span>Toca <b>Compartir</b> ${ICON.share} en la barra de Safari.</span></li>
+          <li><span class="install-num">2</span><span>Elige <b>Añadir a pantalla de inicio</b> ${ICON.addBox}.</span></li>
+          <li><span class="install-num">3</span><span>Abre <b>Rink Hockey</b> desde el icono nuevo: se juega sin barras.</span></li>
+        </ol>
+        <button id="btn-install-close" class="menu-item install-ok" data-nav>Entendido</button>
+      </div>
+    </div>`
+
+export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean, installHint: boolean }) {
   const { isTouch, fullscreen } = opts
   return `
   <div id="game-shell" class="${isTouch ? 'is-touch' : 'is-desktop'}">
@@ -68,6 +86,7 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
 
     <div class="hud-cluster">
       ${fullscreen ? `<button id="btn-fullscreen-quick" class="hud-btn hud-btn--menu" aria-label="Pantalla completa" title="Pantalla completa (F)">${ICON.expand}</button>` : ''}
+      ${opts.installHint ? `<button id="btn-install-quick" class="hud-btn hud-btn--menu" aria-label="Pantalla completa en iPhone" title="Pantalla completa">${ICON.expand}</button>` : ''}
       <button id="btn-settings" class="hud-btn hud-btn--menu" aria-label="Ajustes" title="Ajustes (Esc)">${ICON.gear}</button>
       <button id="btn-pause" class="hud-btn hud-btn--match" aria-label="Pausa" title="Pausa (Esc)">${ICON.pause}</button>
     </div>
@@ -122,6 +141,9 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
             ${fullscreen ? `
             <h3 class="settings-section-title">PANTALLA</h3>
             ${toggleRow('btn-fullscreen', 'Pantalla completa')}` : ''}
+            ${opts.installHint ? `
+            <h3 class="settings-section-title">PANTALLA</h3>
+            <button id="btn-install-settings" class="settings-row" data-nav><span>Pantalla completa en iPhone</span><span class="settings-row-go" aria-hidden="true">${ICON.arrowRight}</span></button>` : ''}
             <h3 class="settings-section-title">PARTIDO</h3>
             <button id="half-length" class="settings-row settings-row--stepper" data-nav>
               <span>Duración de cada parte</span>
@@ -206,6 +228,8 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
         ${navHints}
       </div>
     </div>
+
+    ${opts.installHint ? installHint : ''}
 
     <div id="probe-veil" class="probe-veil" hidden role="alertdialog" aria-modal="true" aria-labelledby="probe-title" aria-describedby="probe-text">
       <div class="probe-card">

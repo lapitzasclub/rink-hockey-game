@@ -10,6 +10,16 @@ type LockableOrientation = ScreenOrientation & { lock?: (o: 'landscape') => Prom
 // iPhone no tiene Fullscreen API para elementos: allí no se ofrece la opción
 export const fullscreenSupported = !!(document.fullscreenEnabled || (document as WebkitDoc).webkitFullscreenEnabled)
 
+// iPadOS se anuncia como Mac: se distingue por la pantalla táctil
+const isIos = /iPhone|iPod|iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const isStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
+  || window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches
+/**
+ * En iPhone la única pantalla completa es abrir el juego desde la pantalla de inicio:
+ * donde iría el botón se ofrece cómo hacerlo (solo en Safari de iOS y fuera de la app).
+ */
+export const installHintSupported = !fullscreenSupported && isIos && !isStandalone
+
 export function isFullscreen() {
   return !!(document.fullscreenElement ?? (document as WebkitDoc).webkitFullscreenElement)
 }

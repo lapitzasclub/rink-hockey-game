@@ -212,7 +212,8 @@ export class ArcadePowerups {
     playPowerup()
     const sp = worldToScreen(player.pos.x, player.pos.y)
     this.fx.burst('gold', sp.x, sp.y - 16, 20)
-    const color = '#' + getPowerupColor(kind).toString(16).padStart(6, '0')
+    this.fx.shockwave(sp.x, sp.y - 10, getPowerupColor(kind), 1.3)
+    const color ='#' + getPowerupColor(kind).toString(16).padStart(6, '0')
     this.fx.floatText(sp.x, sp.y - 58, POWERUP_NAMES[kind], color, 20)
     if (player.team === 'blue') announce(POWERUP_NAMES[kind].toLowerCase())
 

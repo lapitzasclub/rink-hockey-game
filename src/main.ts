@@ -9,7 +9,7 @@ import { playUiMove } from './game/audio/sounds'
 import { consumePad, pollGamepad } from './game/input/gamepad'
 import { getInputMode, onInputModeChange, type InputMode } from './game/input/inputMode'
 import { ICON, shellHtml } from './shell/template'
-import { fullscreenSupported, isFullscreen, onFullscreenChange, toggleFullscreen } from './shell/fullscreen'
+import { fullscreenSupported, installHintSupported, isFullscreen, onFullscreenChange, toggleFullscreen } from './shell/fullscreen'
 import { attachMenuNav } from './shell/menuNav'
 import { createSettingsPanel } from './shell/settingsPanel'
 import { createPauseMenu, type PauseSummary } from './shell/pauseMenu'
@@ -18,7 +18,7 @@ import { createQualityProbe } from './shell/qualityProbe'
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenSupported })
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = shellHtml({ isTouch: isTouchDevice, fullscreen: fullscreenSupported, installHint: installHintSupported })
 
 let game: Phaser.Game | null = null
 
@@ -204,7 +204,8 @@ document.addEventListener('keydown', (e) => {
     const menuSetup = activeScene === 'menu' && !!game?.registry.get('menuSetup') && !settings.isOpen() && !probe.isRunning()
     if (menuSetup) return
     e.preventDefault()
-    if (probe.isRunning()) probe.cancel()
+    if (installHintEl && !installHintEl.hidden) closeInstallHint()
+    else if (probe.isRunning()) probe.cancel()
     else if (settings.isOpen()) settings.close()
     else if (pause.isOpen()) pause.back()
     else if (activeScene === 'match') { playUiMove(); pause.open() }
@@ -228,6 +229,21 @@ document.addEventListener('visibilitychange', () => {
 
 const fullscreenQuickBtn = document.querySelector<HTMLButtonElement>('#btn-fullscreen-quick')
 fullscreenQuickBtn?.addEventListener('click', () => void toggleFullscreen(shell, isTouchDevice))
+
+// iPhone: el botón explica cómo abrir el juego desde la pantalla de inicio
+const installHintEl = document.querySelector<HTMLElement>('#install-hint')
+const openInstallHint = () => {
+  if (!installHintEl) return
+  playUiMove()
+  installHintEl.hidden = false
+  installHintEl.querySelector<HTMLButtonElement>('#btn-install-close')?.focus()
+}
+const closeInstallHint = () => { if (installHintEl) installHintEl.hidden = true }
+document.querySelector('#btn-install-quick')?.addEventListener('click', openInstallHint)
+document.querySelector('#btn-install-settings')?.addEventListener('click', openInstallHint)
+document.querySelector('#btn-install-close')?.addEventListener('click', closeInstallHint)
+// Tocar fuera de la tarjeta también cierra
+installHintEl?.addEventListener('click', (e) => { if (e.target === installHintEl) closeInstallHint() })
 
 const updateFullscreenUi = () => {
   const fs = isFullscreen()

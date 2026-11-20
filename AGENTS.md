@@ -318,6 +318,12 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — pulido de efectos arcade y aviso de pantalla completa en iPhone
+
+- Pedido del usuario: «el hielo es horrible» (el cuadrado del jugador congelado) y «a todos se les puede dar un efecto más wow». En `render/arcadeFx.ts` las texturas se hornean al arrancar: cristal de hielo facetado, esquirlas, destellos, tres rayos ramificados deterministas, anillos, escudo hexagonal, cinta del aviso y una viñeta radial que sustituye al tinte de pantalla completa. Congelado: el cristal crece con rebote y va acompañado de niebla y destellos (`aura-frost`/`aura-glint`); tiembla en los últimos `ICE_CRACK_MS` y estalla en esquirlas al terminar. El escudo entra con onda y estalla al caducar. El rayo cae dos veces con parpadeo y el suelo se ilumina. Los textos flotantes se apilan (6 como máximo) y el aviso entra con golpe, destello y vaivén. Coger un powerup lanza una onda del color del powerup. La portería mini y el muro del portero escalan suavemente.
+- iPhone no tiene Fullscreen API para elementos, así que una web solo ocupa la pantalla entera si se abre desde la pantalla de inicio. Con `installHintSupported` (iOS, sin la API y fuera del modo app), el botón de pantalla completa y Ajustes › General › Pantalla abren un aviso de tres pasos (`#install-hint`). Se añade `public/apple-touch-icon.png` (180 px, sacado de `icon.svg`), porque iOS no usa SVG para el icono de inicio.
+- Verificado en Chrome con efectos forzados en un partido arcade, y con el aviso renderizado; build OK. Pendiente: probarlo en un iPhone real.
+
 ### 2026-11-20 — arcade ampliado (trucos, powerups, eventos, espectáculo)
 
 - Pedido del usuario: «darle un buen meneo al modo arcade». Diseño en «Modo arcade». Los powerups salen de `arcade.ts` a `arcadePowerups.ts` y llegan los nuevos (rayo, bola loca, escudo, portería mini). `arcadeTricks.ts` lleva el primer toque, el efecto, la barra de súper, el billar, la cámara lenta, «¡PARADÓN!» y los combos. `arcadeEvents.ts` lleva el gol doble, el hielo y la lluvia de powerups.
