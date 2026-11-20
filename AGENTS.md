@@ -307,6 +307,13 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — lanz L-02
+
+- **Cámara cercana del penalti y el directo:** al pitido la cámara del partido se acerca hasta quedar detrás del lanzador (misma lente, D-09) y vuelve al acabar el duelo (gol, rechace, parada, bola suelta o conducida) sin parar el juego. Código en `setpiece/duel.ts`, `scene.ts`, `stage.ts` y `figure.ts`; enganche en `MatchScene.startDuel/stepDuel/endDuel`.
+- Hasta el golpeo los demás jugadores no se mueven y la escena cercana funde a quien se ponga delante del lanzador (`SETPIECE_FOLLOW`); el reloj se para hasta que la bola está en juego; la persona tiene 5 s (`SETPIECE_MATCH.humanShotLimitMs`).
+- Ajustes: «Lanzamientos: cercana / clásica» (`?lanz=classic`).
+- Humo 20 × 2 modos dentro del IC de la base, 0 atascos ni errores (`docs/setpiece/batch/2026-11-20-l02-smoke-*`).
+
 ### 2026-11-20 — menú en dos pantallas
 
 - **Problema:** con partido externo, el selector de equipo, la dificultad y las ayudas no cabían en la pantalla de título; la línea de competición pisaba la tarjeta ARCADE.
