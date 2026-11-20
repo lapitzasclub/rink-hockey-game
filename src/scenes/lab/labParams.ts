@@ -1,3 +1,5 @@
+import { parseDifficulty } from '../../game/systems/difficulty'
+
 /** Parámetros de la URL del laboratorio gráfico (`?lab=<escena>&...`). Solo DEV. */
 export interface LabParams {
   scene: string
@@ -28,6 +30,9 @@ export interface LabParams {
   seed: number | null
   /** B-02: con `auto=1`, una persona simulada (táctil o mando) lleva al controlado del azul. */
   human: 'touch' | 'pad' | null
+  /** B-04: nivel de dificultad fijo por equipo (`facil|normal|dificil|experto` o índice 0..3); null = el del partido. */
+  diffBlue: number | null
+  diffRed: number | null
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -61,6 +66,8 @@ export function readLabParams(search: string): LabParams {
     follow: q.get('follow'),
     seed: num(q, 'seed'),
     human: q.get('human') === 'touch' ? 'touch' : q.get('human') === 'pad' ? 'pad' : null,
+    diffBlue: parseDifficulty(q.get('diffBlue')),
+    diffRed: parseDifficulty(q.get('diffRed')),
   }
 }
 

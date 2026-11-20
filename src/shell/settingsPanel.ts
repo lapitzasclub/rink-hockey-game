@@ -1,8 +1,8 @@
 import { isAnnouncerEnabled, setAnnouncerEnabled } from '../game/audio/announcer'
 import { getVolume, playUiBack, playUiMove, setVolume, type VolumeChannel } from '../game/audio/sounds'
 import { BIND_ACTIONS, getBindings, keyText, labelForEvent, RESERVED_CODES, resetBindings, setBinding, type BindAction } from '../game/input/keyBindings'
-import { HALF_REAL_MINUTES_OPTIONS } from '../game/constants'
-import { areRoleLabelsEnabled, getHalfRealMinutes, setHalfRealMinutes, setRoleLabelsEnabled } from '../game/ui/prefs'
+import { DIFFICULTY, HALF_REAL_MINUTES_OPTIONS, type DifficultyLevel } from '../game/constants'
+import { areRoleLabelsEnabled, getDifficulty, getHalfRealMinutes, setHalfRealMinutes, setRoleLabelsEnabled, stepDifficulty } from '../game/ui/prefs'
 import { bindGraphicsSettings } from './graphicsSettings'
 import { focusFirst } from './menuNav'
 import { keyGlyph } from './template'
@@ -105,6 +105,35 @@ export function createSettingsPanel(deps: {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
     e.preventDefault()
     stepHalf(e.key === 'ArrowLeft' ? -1 : 1)
+  })
+
+  // Dificultad del rival (B-04): misma mecánica de flechas que la duración
+  const diffBtn = $<HTMLButtonElement>('#difficulty')!
+  const diffValue = $<HTMLElement>('#difficulty-value')!
+  const diffNote = $<HTMLElement>('#difficulty-note')!
+  const DIFF_NOTE: Record<DifficultyLevel, string> = {
+    facil: 'El rival pasa y lee peor la jugada: sus pases se cortan a menudo.',
+    normal: 'Partido igualado; tus compañeros siempre juegan en NORMAL.',
+    dificil: 'El rival reacciona antes, presiona más y apenas falla pases.',
+    experto: 'El rival lee cada línea y su portero llega a casi todo.',
+  }
+  const paintDifficulty = () => {
+    const level = getDifficulty()
+    diffValue.textContent = DIFFICULTY[level].label
+    diffBtn.setAttribute('aria-label', `Dificultad del rival: ${DIFFICULTY[level].label}`)
+    diffNote.textContent = deps.isMatchRunning() ? 'Se aplicará en el próximo partido.' : DIFF_NOTE[level]
+  }
+  diffBtn.addEventListener('click', (e) => {
+    const arrow = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')
+    if (stepDifficulty(arrow ? Number(arrow.dataset.step) : 1, !arrow)) paintDifficulty()
+  })
+  diffBtn.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    if (stepDifficulty(e.key === 'ArrowLeft' ? -1 : 1)) {
+      paintDifficulty()
+      playUiMove()
+    }
   })
 
   const graphics = bindGraphicsSettings(deps)
@@ -226,6 +255,7 @@ export function createSettingsPanel(deps: {
 
   const syncToggles = (isFullscreen: boolean) => {
     paintHalf()
+    paintDifficulty()
     graphics.paint()
     setSwitch(fullscreenBtn, isFullscreen)
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
@@ -237,6 +267,7 @@ export function createSettingsPanel(deps: {
     returnFocus = from ?? (document.activeElement as HTMLElement | null)
     renderBindings()
     paintHalf()
+    paintDifficulty()
     graphics.paint()
     setTab(tab)
     panel.hidden = false

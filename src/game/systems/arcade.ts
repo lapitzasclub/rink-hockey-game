@@ -42,6 +42,7 @@ import { getPowerupColor, type ArcadeFx } from '../render/arcadeFx'
 import { announce, announceOneOf } from '../audio/announcer'
 import { playCheck, playFireShot, playFreeze, playOnFire, playPowerup, playTurboShot } from '../audio/sounds'
 import { findPlayerById } from './playerHelpers'
+import { rubberBandFor } from './difficulty'
 import type { Ball, Player, PowerupKind, TeamColor, Vector } from '../types'
 
 export type ShotKind = 'turbo' | 'fire'
@@ -315,7 +316,8 @@ export class ArcadeController {
     const diff = options.blueScore - options.redScore
     const rubber = (team: TeamColor) => {
       const behind = team === 'blue' ? -diff : diff
-      return behind > 0 ? 1 + Math.min(ARCADE_RUBBER_BAND_MAX, behind * ARCADE_RUBBER_BAND_PER_GOAL) : 1
+      // B-04: la persona siempre; la IA solo en FÁCIL y NORMAL
+      return behind > 0 && rubberBandFor(team) ? 1 + Math.min(ARCADE_RUBBER_BAND_MAX, behind * ARCADE_RUBBER_BAND_PER_GOAL) : 1
     }
 
     for (const player of players) {

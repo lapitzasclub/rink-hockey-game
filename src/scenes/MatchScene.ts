@@ -65,7 +65,8 @@ import {
   tryShotAction,
 } from '../game/systems/matchActions'
 import { matchTime, tickMatchClock } from '../game/systems/matchClock'
-import { getHalfRealMinutes } from '../game/ui/prefs'
+import { getDifficulty, getHalfRealMinutes } from '../game/ui/prefs'
+import { configureMatchDifficulty } from '../game/systems/difficulty'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { createLiveStats, type LiveStats } from '../shell/statsPanel'
 import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
@@ -200,6 +201,8 @@ export class MatchScene extends Phaser.Scene {
     this.mode = data.mode ?? 'arcade'
     this.probe = !!data.probe
     if (this.labTouch !== null) this.isTouchDevice = this.labTouch
+    // Niveles de IA del partido: el rival el elegido, los compañeros de la persona NORMAL
+    configureMatchDifficulty(getDifficulty(), this.isTouchDevice, autopilot.on ? null : 'blue')
     this.joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
     this.prevTouchButtons = { pass: false, shoot: false, switch: false }
     this.charging = null

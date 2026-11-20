@@ -11,6 +11,7 @@ import { driveBlueRestarts, startSmoke } from './lab/labSmoke'
 import { startGoalieKeyTest } from './lab/labGoalieKeys'
 import { startGoalieTrace } from './lab/labGoalieTrace'
 import { autopilot } from '../game/systems/playerControl'
+import { setDifficultyOverride } from '../game/systems/difficulty'
 import { atHooks, freezeMatch, lockMatchCamera, wantsCameraLock } from './lab/labAt'
 import { buildLabScene, WORLD_SCENES, type LabFrame } from './lab/labScenes'
 
@@ -114,6 +115,7 @@ export class LabScene extends Phaser.Scene {
       })
     }
     if (wantsCameraLock(this.params)) lockMatchCamera(match, this.params)
+    setDifficultyOverride(this.params.diffBlue, this.params.diffRed)
     this.scene.start('match', { mode })
     if (this.params.at && !this.params.auto) console.warn('[at] requiere auto=1; se ignora')
     if (this.params.auto && this.params.at) startSmoke(match, mode, 1e9, atHooks(match, this.params), this.params.human)
