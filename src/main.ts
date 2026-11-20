@@ -3,6 +3,7 @@ import * as Phaser from 'phaser'
 import { GAME_HEIGHT, GAME_WIDTH } from './game/constants'
 import { MenuScene } from './scenes/MenuScene'
 import { MatchScene } from './scenes/MatchScene'
+import { SetPieceScene } from './game/setpiece/scene'
 import { initPartidoExterno } from './game/externalMatch'
 import { playUiMove } from './game/audio/sounds'
 import { consumePad, pollGamepad } from './game/input/gamepad'
@@ -44,7 +45,8 @@ void Promise.all([fontReady, partidoReady]).then(async () => {
     height: GAME_HEIGHT,
     parent: 'game-host',
     backgroundColor: '#08111b',
-    scene: labScene ? [labScene, MenuScene, MatchScene] : [MenuScene, MatchScene],
+    // La escena cercana de los lanzamientos (L-02) va antes de 'match' para pintarse debajo
+    scene: labScene ? [labScene, MenuScene, SetPieceScene, MatchScene] : [MenuScene, SetPieceScene, MatchScene],
     scale: {
       // EXPAND: el lienzo ocupa toda la ventana; el pabellón rellena lo que sobra de 16:9
       mode: Phaser.Scale.EXPAND,

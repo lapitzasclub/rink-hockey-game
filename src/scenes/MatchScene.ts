@@ -16,7 +16,7 @@ import {
   SIM_MAX_STEPS,
   SIM_SNAP_DIST,
   SIM_STEP_MS,
-  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX, MANUAL_STEAL_RANGE, PRESS_LEAD_S, PRESS_STEAL_INTERVAL_MS } from '../game/constants'
+  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX, MANUAL_STEAL_RANGE, PRESS_LEAD_S, PRESS_STEAL_INTERVAL_MS, DIFFICULTY_LEVELS, BALL_RADIUS } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation, switchSides, teamSide } from '../game/formation'
@@ -67,8 +67,12 @@ import {
   tryShotAction,
 } from '../game/systems/matchActions'
 import { matchTime, tickMatchClock } from '../game/systems/matchClock'
-import { getDifficulty, getHalfRealMinutes } from '../game/ui/prefs'
-import { checkChanceScale, configureMatchDifficulty, mateStealRoll } from '../game/systems/difficulty'
+import { getDifficulty, getHalfRealMinutes, getSetPieceCamera } from '../game/ui/prefs'
+import { MatchDuel, type DuelEnd } from '../game/setpiece/duel'
+import { SetPieceScene } from '../game/setpiece/scene'
+import { PX_PER_M } from '../game/render/artSpec'
+import { attackDir } from '../game/formation'
+import { checkChanceScale, configureMatchDifficulty, getTeamDifficulty, mateStealRoll } from '../game/systems/difficulty'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
 import { createLiveStats, type LiveStats } from '../shell/statsPanel'
 import { BIND_ACTIONS, codesFor, onBindingsChange, type BindAction } from '../game/input/keyBindings'
@@ -164,6 +168,11 @@ export class MatchScene extends Phaser.Scene {
   private cameraDirector!: CameraDirector
   /** Solo lab (WP-66): si es true, la cámara principal no sigue ni cambia de zoom. */
   labCameraLock = false
+  /** L-02: penalti o directo en curso con la simulación del lanzamiento y su escena cercana. */
+  readonly duel = new MatchDuel()
+  private duelClose = false
+  private duelRefit = false
+  private readonly duelStick = { x: 0, y: 0 }
   /** Solo lab (B-02): fuerza táctil o no para la persona simulada del humo; null = lo que diga el dispositivo. */
   labTouch: boolean | null = null
   private arcade: ArcadeController | null = null
@@ -228,6 +237,7 @@ export class MatchScene extends Phaser.Scene {
     this.activeBully = null
     this.activeFoulRestart = null
     this.finalShot = null
+    this.duel.active = false
     this.activeKickoff = null
     this.nextKickoffTeam = 'blue'
     this.pendingSideSwitch = false
@@ -300,7 +310,10 @@ export class MatchScene extends Phaser.Scene {
     this.uiCamera.setSize(width, height)
     this.uiCamera.centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2)
     this.cameraDirector?.setTouchControls(getInputMode() === 'touch')
-    if (!this.labCameraLock) this.cameraDirector?.refit()
+    // L-02: mientras la escena cercana lleva la cámara, el reencuadre espera a que la suelte
+    const sp = this.scene.get(SetPieceScene.KEY) as SetPieceScene | null
+    if (sp?.owns) this.duelRefit = true
+    else if (!this.labCameraLock) this.cameraDirector?.refit()
     const css = safeAreaInsetsCss()
     const k = width / Math.max(1, this.scale.displaySize.width)   // px de juego por px CSS
     this.hudLayout.fit(
@@ -421,6 +434,10 @@ export class MatchScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.RESUME, onResume)
     })
 
+    // L-02: la escena cercana va debajo de esta (orden de main.ts); necesita WebGL
+    if (this.game.renderer.type === Phaser.WEBGL && !this.scene.isActive(SetPieceScene.KEY)) this.scene.launch(SetPieceScene.KEY)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scene.stop(SetPieceScene.KEY))
+
     this.savePrevPositions()
     this.updateHud()
   }
@@ -514,7 +531,8 @@ export class MatchScene extends Phaser.Scene {
     const next = tickMatchClock({
       matchEnded: this.matchEnded,
       restartAt: force ? 0 : this.restartAt,
-      paused: !force && !!(this.activeKickoff || this.activeFoulRestart || this.activeBully),
+      // L-02: en el duelo, parado hasta que la bola está en juego (mismo criterio que el saque clásico)
+      paused: !force && !!(this.activeKickoff || this.activeFoulRestart || this.activeBully || (this.duel.active && !this.duel.ballLive)),
       remainingSeconds: this.remainingSeconds,
       currentPeriod: this.currentPeriod,
       ruleState: this.ruleState,
@@ -604,14 +622,19 @@ export class MatchScene extends Phaser.Scene {
       updateBenchPlayers(this.benchPlayers, vt, this.ball)
       this.officials.update(vt, visualDt, this.ball, this.players)
       this.arena.update(vt, this.matchEnded ? 0.9 : this.getCrowdIntensity())
-      if (!this.labCameraLock) this.cameraDirector.update({
+      const sp = this.scene.get(SetPieceScene.KEY) as SetPieceScene | null
+      const close = !!sp?.ready && ((this.duelClose && this.duel.active) || sp.owns)
+      const z = this.duel.active ? this.duel.prevZ + (this.duel.z - this.duel.prevZ) * alpha : 0
+      const hidden = close && sp!.frame(vt, this.cameras.main, this.duel, this.players, this.ball, z, this.ballCarrierId)
+      if (this.duelRefit && !sp?.owns) { this.duelRefit = false; if (!this.labCameraLock) this.cameraDirector.refit() }
+      if (!this.labCameraLock && !(close && sp!.owns)) this.cameraDirector.update({
         dt: visualDt,
         timeNow: vt,
         ball: this.ball,
         ballVelocity: this.ballVelocity,
         controlled,
       })
-      if (controlled) updateVisuals(this.players, controlled, this.ball, this.ballCarrierId, vt)
+      if (controlled && !hidden) updateVisuals(this.players, controlled, this.ball, this.ballCarrierId, vt)
       // Partículas: tantas emisiones como pasos de simulación, para que la densidad no dependa de los fps
       this.arcade?.postVisuals(this.players, this.ball, this.ballVelocity, vt, this.restartAt > 0 || this.matchEnded ? 0 : steps)
     } finally {
@@ -671,6 +694,7 @@ export class MatchScene extends Phaser.Scene {
       this.coastPlayers(dt)
       return
     }
+    if (this.duel.active) { this.stepDuel(time, dt); return }
 
     // Saque de centro, de falta o neutral: solo avanza su ritual (colocación, pitido, ejecución)
     if (this.activeKickoff || this.activeBully || this.activeFoulRestart) {
@@ -772,14 +796,14 @@ export class MatchScene extends Phaser.Scene {
    * Carga del ejecutante humano de una falta: pulsar empieza a cargar y la acción se entrega a
    * updateFoulRestartPhase como «recién pulsado» al soltar (o al llenarse del todo).
    */
-  private foulChargeInput() {
+  private foulChargeInput(duelTaker?: Player) {
     const passDown = this.justDown('pass') || (this.joystickInput.pass && !this.prevTouchButtons.pass)
     const shootDown = this.justDown('shoot') || (this.joystickInput.shoot && !this.prevTouchButtons.shoot)
     this.prevTouchButtons = { pass: !!this.joystickInput.pass, shoot: !!this.joystickInput.shoot, switch: !!this.joystickInput.switch }
     const foul = this.activeFoulRestart
-    const taker = foul ? findPlayerById(this.players, foul.takerPlayerId) : null
+    const taker = duelTaker ?? (foul ? findPlayerById(this.players, foul.takerPlayerId) : null)
     const idle = { passJustDown: false, shootJustDown: false }
-    if (!foul || !taker || taker.team !== 'blue' || this.simNow < foul.readyAt) { this.foulCharge = null; return idle }
+    if (!taker || taker.team !== 'blue' || (!duelTaker && (!foul || this.simNow < foul.readyAt))) { this.foulCharge = null; return idle }
     if (!this.foulCharge && (passDown || shootDown)) this.foulCharge = { action: passDown ? 'pass' : 'shoot', start: this.simNow }
     const c = this.foulCharge
     if (!c) return idle
@@ -1469,6 +1493,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
     this.controlledPlayerIndex = state.controlledPlayerIndex
+    if (state.whistle && state.taker && this.startDuel(state.taker, time)) return
 
     if (!state.taker || !state.release) return
 
@@ -1491,6 +1516,92 @@ export class MatchScene extends Phaser.Scene {
       shoot: !!this.joystickInput.shoot,
       switch: !!this.joystickInput.switch,
     }
+  }
+
+  /**
+   * L-02: al pitido de un penalti o directo con la cámara cercana elegida, el duelo
+   * pasa a `setpiece/duel.ts` (lanzador, portero defensor y bola); la bola ya está en juego.
+   */
+  private startDuel(taker: Player, time: number): boolean {
+    const foul = this.activeFoulRestart
+    if (!foul || foul.sanction === 'free-hit' || getSetPieceCamera() !== 'close') return false
+    const goalie = this.players.find(p => p.team !== taker.team && p.role === 'goalie' && !((p.suspendedUntil ?? 0) > time))
+    if (!goalie) return false
+    const level = (t: TeamColor) => DIFFICULTY_LEVELS[Math.round(getTeamDifficulty(t))]
+    this.duel.begin({
+      kind: foul.sanction === 'penalty' ? 'penalty' : 'direct', finalShot: this.remainingSeconds <= 1,
+      taker, goalie, ball: this.ball, goalSide: attackDir(taker) > 0 ? 'right' : 'left',
+      human: taker.team === 'blue' && !autopilot.on, shooterLevel: level(taker.team), goalieLevel: level(goalie.team),
+      seed: Math.floor(Math.random() * 2 ** 31), now: time,
+    })
+    // Sin escena cercana (humo, sin WebGL) el duelo se resuelve igual, solo con la simulación
+    this.duelClose = !autopilot.on && !!(this.scene.get(SetPieceScene.KEY) as SetPieceScene | null)?.ready
+    this.finalShot = { at: time, held: false }
+    this.activeFoulRestart = null
+    this.aimIndicator.clear()
+    this.centerText.setVisible(false)
+    this.ballVelocity = { x: 0, y: 0 }
+    this.foulCharge = null
+    return true
+  }
+
+  /** Un paso del duelo: los demás siguen con su IA (solo moverse) y el duelo escribe lanzador, portero y bola. */
+  private stepDuel(time: number, dt: number) {
+    const duel = this.duel
+    const taker = duel.taker!
+    this.ballCarrierId = duel.carrying ? taker.id : null
+    if (duel.struck) {
+      updateTeamAIPlayers({ players: this.players, controlledPlayerIndex: this.controlledPlayerIndex, ball: this.ball, ballVelocity: this.ballVelocity, ballCarrierId: this.ballCarrierId, dt, timeNow: time, arcade: this.isArcade, updateGoalieAI, updateFieldPlayerAI })
+      resolvePlayerSpacing(this.players)
+    } else {
+      // Hasta el golpeo los demás siguen donde los dejó el ritual de la falta (saque clásico)
+      for (const p of this.players) {
+        if (p !== taker && p !== duel.goalie) { p.velocity.x = 0; p.velocity.y = 0; p.sprinting = false }
+      }
+    }
+    if (duel.human) {
+      const act = this.foulChargeInput(taker)
+      const s = this.duelStick
+      s.x = this.joystickInput.x; s.y = this.joystickInput.y
+      if (Math.hypot(s.x, s.y) < 0.15) { const k = this.keyboardAxis(); s.x = k.x; s.y = k.y }
+      // Con la cámara cercana el stick va en ejes de pantalla (arriba = hacia la portería)
+      if (!this.duelClose) duel.dirToScene(s.x, s.y, s)
+      duel.input(s.x, s.y, act.shootJustDown || act.passJustDown ? this.foulChargeLevel : null)
+    }
+    const end = duel.step(time, this.players)
+    if (duel.justShot) { playShot(); taker.charge = undefined; this.foulChargeLevel = 0 }
+    this.ballVelocity.x = duel.ballVel.x
+    this.ballVelocity.y = duel.ballVel.y
+    this.prevBallX = this.ball.x
+    this.ballCarrierId = duel.carrying ? taker.id : null
+    updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
+    if (end) this.endDuel(end, time)
+  }
+
+  /** Vuelta al partido: gol por el flujo normal; parada o poste con rechace vivo salvo el último lanzamiento (art. 23.6/30.9). */
+  private endDuel(end: DuelEnd, time: number) {
+    const duel = this.duel
+    const taker = duel.taker!
+    const side = duel.dir > 0 ? 'right' : 'left'
+    taker.charge = undefined
+    this.foulCharge = null
+    this.ballIgnoreContactsUntil = 0
+    this.lastTouch = duel.sim.touchedGoalie && end !== 'goal' ? duel.goalie!.team : taker.team
+    this.ballCarrierId = end === 'carried' ? taker.id : null
+    this.ballVelocity = end === 'held' ? { x: 0, y: 0 } : { x: duel.ballVel.x, y: duel.ballVel.y }
+    if (end === 'goal') {
+      const mid = RINK.y + RINK.height / 2, half = GOAL_HALF_H - BALL_RADIUS - 1
+      this.ball.x = getGoalLineX(side) + duel.dir * Math.max(-duel.sim.by * PX_PER_M, BALL_RADIUS + 1)
+      this.ball.y = Phaser.Math.Clamp(this.ball.y, mid - half, mid + half)
+      this.ballVelocity = { x: duel.dir * Math.max(60, Math.abs(duel.ballVel.x)), y: 0 }
+      this.ballEnteredGoalFromFront[side] = true
+      this.checkGoalState(time)
+    } else if (duel.finalShot && this.finalShot) {
+      // Último lanzamiento: sin rechace, la parte acaba aquí
+      this.finalShot.at = time - FINAL_SHOT_MAX_MS
+    }
+    this.prevBallX = this.ball.x
+    this.resolveFinalShot(time)
   }
 
   /** Dibuja un rastro punteado en la dirección de puntería del ejecutante. */

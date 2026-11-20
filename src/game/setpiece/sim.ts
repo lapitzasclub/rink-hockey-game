@@ -62,6 +62,9 @@ export class SetPieceSim {
   driveTx = 0; driveTy = 0
   driveStartT = 0
   windupEndT = 0
+  /** L-02: conducción a mano (persona); en 'drive' sigue la velocidad pedida (unitaria) en vez de ir al objetivo. */
+  manual = false
+  wantVx = 0; wantVy = 0
   /** Portero: posición, velocidad, objetivo y estirada (diveDir −1 = sin estirada). */
   goalieOn = true
   gx = 0; gy = GK.lineY; gvx = 0; gvy = 0
@@ -96,6 +99,7 @@ export class SetPieceSim {
     this.vx = 0; this.vy = 0; this.vz = 0; this.spin = 0; this.spinInput = 0
     this.sx = 0; this.sy = spot + D.ballLeadM + runUp; this.svx = 0; this.svy = 0
     this.drive = plan.drive && !finalShot
+    this.manual = false; this.wantVx = 0; this.wantVy = 0
     this.driveTx = clamp(plan.tx, -3, 3)
     this.driveTy = Math.max(D.minDriveYM, Math.min(spot, plan.ty))
     this.gx = 0; this.gy = GK.lineY; this.gvx = 0; this.gvy = 0
@@ -182,7 +186,7 @@ export class SetPieceSim {
         }
         break
       case 'drive':
-        if (this.skateTo(this.driveTx, this.driveTy + D.ballLeadM, dt) || this.t - this.driveStartT > D.maxDriveS) {
+        if ((this.manual ? this.steer(dt) : this.skateTo(this.driveTx, this.driveTy + D.ballLeadM, dt)) || this.t - this.driveStartT > D.maxDriveS) {
           this.phase = 'windup'
           this.windupEndT = this.t + D.windupS
         }
@@ -199,6 +203,25 @@ export class SetPieceSim {
     }
     this.stepGoalie(dt)
     if (this.outcome === null) this.checkEnd()
+  }
+
+  /** Fin de la conducción a mano: arranca el armado del golpeo. */
+  release() {
+    if (this.phase !== 'drive') return
+    this.phase = 'windup'
+    this.windupEndT = this.t + D.windupS
+  }
+
+  /** Conducción a mano: acelera hacia la velocidad pedida sin pasar de la distancia mínima a la línea. */
+  private steer(dt: number): boolean {
+    const wx = this.wantVx * D.skateSpeed - this.svx, wy = this.wantVy * D.skateSpeed - this.svy
+    const dv = Math.hypot(wx, wy), maxDv = D.skateAccel * dt
+    const u = dv > maxDv ? maxDv / dv : 1
+    this.svx += wx * u; this.svy += wy * u
+    this.sx += this.svx * dt; this.sy += this.svy * dt
+    const minY = D.minDriveYM + D.ballLeadM
+    if (this.sy < minY) { this.sy = minY; if (this.svy < 0) this.svy = 0 }
+    return false
   }
 
   /** Patina hacia (x, y) frenando al llegar; true al llegar. */

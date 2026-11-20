@@ -32,9 +32,44 @@ export class SetPieceView {
   private hy = -1
   private cos = 1
   private sin = 0
-  private readonly f = SETPIECE_CAMERA.focal
-  private readonly cx = GAME_WIDTH / 2
-  private readonly y0 = GAME_HEIGHT * SETPIECE_CAMERA.aimY
+  /** Picado (rad, > 0 mirando hacia abajo). */
+  tilt = 0
+  /** Lente: focal (px) y punto principal en pantalla; la transición (L-02) los anima. */
+  f: number = SETPIECE_CAMERA.focal
+  cx = GAME_WIDTH / 2
+  y0 = GAME_HEIGHT * SETPIECE_CAMERA.aimY
+
+  /** Cambia la lente sin tocar el ojo ni el rumbo. */
+  setLens(f: number, cx: number, y0: number): this {
+    this.f = f
+    this.cx = cx
+    this.y0 = y0
+    return this
+  }
+
+  /** Ojo, rumbo horizontal (rad, convenio `atan2(x, y)`) y picado (rad) dados a mano. */
+  setPose(ex: number, ey: number, ez: number, heading: number, tilt: number): this {
+    this.eyeX = ex
+    this.eyeY = ey
+    this.eyeZ = ez
+    this.hx = Math.sin(heading)
+    this.hy = Math.cos(heading)
+    this.tilt = tilt
+    this.cos = Math.cos(tilt)
+    this.sin = Math.sin(tilt)
+    return this
+  }
+
+  /** Rumbo horizontal actual (rad, convenio `atan2(x, y)`). */
+  heading(): number {
+    return Math.atan2(this.hx, this.hy)
+  }
+
+  /** Profundidad sobre el eje óptico (m): ≤ 0 detrás de la cámara (recorte del plano cercano). */
+  depth(wx: number, wy: number, wz: number): number {
+    const a = (wx - this.eyeX) * this.hx + (wy - this.eyeY) * this.hy
+    return a * this.cos + (this.eyeZ - wz) * this.sin
+  }
 
   /** Coloca el ojo y el punto de mira (m); el objetivo cae en (cx, `aimY`) de pantalla. */
   setCamera(ex: number, ey: number, ez: number, tx: number, ty: number, tz: number): this {
@@ -47,6 +82,7 @@ export class SetPieceView {
     this.hx = dx / dh
     this.hy = dy / dh
     const theta = Math.atan2(ez - tz, dh)
+    this.tilt = theta
     this.cos = Math.cos(theta)
     this.sin = Math.sin(theta)
     return this

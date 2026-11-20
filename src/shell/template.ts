@@ -135,6 +135,7 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
             ${stepperRow('difficulty', 'Dificultad del rival')}
             <p id="difficulty-note" class="settings-note"></p>
             ${toggleRow('btn-role-labels', 'Etiquetas de rol sobre los jugadores')}
+            ${toggleRow('btn-setpiece-close', 'Lanzamientos con cámara cercana')}
           </section>
 
           <section class="settings-pane" id="pane-graphics" role="tabpanel" aria-labelledby="tab-graphics" data-pane="graphics" hidden>

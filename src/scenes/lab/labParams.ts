@@ -46,6 +46,13 @@ export interface LabParams {
   spHuman: 'none' | 'shooter' | 'goalie'
   /** L-01: final de periodo (solo tiro directo). */
   finalShot: boolean
+  /** L-02 (`lab=match`): `sp=force` pita al empezar un penalti o directo (`kind`) a favor de `taker`. */
+  spForce: boolean
+  spTaker: 'blue' | 'red'
+  /** ms tras el pitido del duelo (o `end+N`: tras su final) a los que se congela. */
+  spAt: string | null
+  /** Stick fijo de la persona durante el duelo (`x,y`, ejes de pantalla). */
+  spStick: { x: number, y: number } | null
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -89,6 +96,13 @@ export function readLabParams(search: string): LabParams {
     batch: num(q, 'batch'),
     spHuman: q.get('human') === 'shooter' ? 'shooter' : q.get('human') === 'goalie' ? 'goalie' : 'none',
     finalShot: q.get('final') === '1',
+    spForce: q.get('sp') === 'force',
+    spTaker: q.get('taker') === 'red' ? 'red' : 'blue',
+    spAt: q.get('spAt'),
+    spStick: (() => {
+      const v = (q.get('spStick') ?? '').split(',').map(Number)
+      return v.length === 2 && v.every(Number.isFinite) ? { x: v[0], y: v[1] } : null
+    })(),
   }
 }
 

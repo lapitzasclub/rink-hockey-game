@@ -1010,3 +1010,30 @@ export const SETPIECE_HUMAN_SIM = {
   shooterPowerMin: 0.5,
   shooterPowerMax: 1,
 }
+
+/**
+ * L-02: duelo dentro del partido (`setpiece/duel.ts`). Otro jugador a `breakInM`
+ * de la bola corta el duelo y la bola vuelve al partido. Tiro provisional de la
+ * persona: altura `humanAimZ` (fracción de la boca), rumbo del stick proyectado a la
+ * línea de gol (con `aimMinUpM` m de fondo mínimo); conducción con `wallMarginM` de
+ * margen a la valla.
+ */
+export const SETPIECE_MATCH = {
+  breakInM: 1,
+  humanAimZ: 0.35,
+  aimMinUpM: 0.3,
+  wallMarginM: 0.6,
+  /** Sin soltar el tiro, la persona golpea sola tras esta espera (s) con esta carga. */
+  humanAimWaitS: 1.2,
+  humanAutoPower: 0.6,
+  /** Espera mínima (ms desde el pitido) antes de que la IA golpee: deja entrar la cámara (0.8 s) y asentarse. */
+  aiShotDelayMs: 1300,
+  /**
+   * Plazo de la persona para ejecutar tras el pitido (ms); agotado, tira sola con `humanAutoPower`.
+   * El reglamento (D-07) solo da cifra para el último lanzamiento (5 s, art. 30.14) y el saque
+   * clásico no tiene; con el reloj parado hasta que la bola está en juego hace falta uno: se usa ese.
+   */
+  humanShotLimitMs: 5000,
+  /** La bola está en juego cuando el lanzador la ha movido más de esto (m) o ha golpeado. */
+  liveMoveM: 0.05,
+}

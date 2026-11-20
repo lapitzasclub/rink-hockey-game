@@ -98,3 +98,27 @@ export function onDifficultyChange(fn: (level: DifficultyLevel) => void): () => 
   difficultyListeners.add(fn)
   return () => difficultyListeners.delete(fn)
 }
+
+// ─── Lanzamientos (L-02) ─────────────────────────────────────────────────────
+
+export type SetPieceCamera = 'close' | 'classic'
+const SETPIECE_KEY = 'rh-setpiece-camera'
+
+/** Penalti y libre directo con la cámara cercana (por defecto) o como siempre; `?lanz=close|classic` lo fuerza. */
+export function getSetPieceCamera(): SetPieceCamera {
+  try {
+    const q = new URLSearchParams(window.location.search).get('lanz')
+    if (q === 'close' || q === 'classic') return q
+    return localStorage.getItem(SETPIECE_KEY) === 'classic' ? 'classic' : 'close'
+  } catch {
+    return 'close'
+  }
+}
+
+export function setSetPieceCamera(mode: SetPieceCamera) {
+  try {
+    localStorage.setItem(SETPIECE_KEY, mode)
+  } catch {
+    // Sin storage la preferencia solo dura la sesión
+  }
+}

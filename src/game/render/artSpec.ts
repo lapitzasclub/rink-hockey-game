@@ -975,3 +975,39 @@ export const SETPIECE_CAMERA = {
   /** Suelo, fondo sobre la valla y valla (prototipo, sin hornear). */
   colors: { floor: 0x1f5fae, floorFar: 0x1a4f92, backdrop: 0x0a1322, board: 0x14243c, boardTop: 0xdfe8f4, kick: 0x0b0f14 },
 } as const
+
+/**
+ * L-02: cámara de seguimiento del duelo y transición con el partido (`setpiece/scene.ts`).
+ * Seguimiento: `back` m detrás del lanzador en la recta desde el centro de la boca,
+ * desplazada `side` m al lado contrario de su stick (L-00: si no, tapa un poste), a
+ * `height` m; muelle críticamente amortiguado de pulsación `omega` (1/s). Tras el
+ * golpeo el ancla va hacia la bola hasta `ballWeight` en `ballBlendS`.
+ * Entrada/vuelta: el partido se acerca al punto (`zoom`) mientras se funden las dos
+ * cámaras entre `fadeFrom` y `fadeTo` (fracción del tiempo de entrada); después la
+ * cámara cercana orbita desde la pose equivalente a la del partido hasta la de seguimiento.
+ */
+export const SETPIECE_FOLLOW = {
+  back: 1.8,
+  height: 1.7,
+  side: 1.8,
+  /** Fracción del ancla a la boca de gol a la que mira; altura del ancla (m). */
+  look: 0.6,
+  anchorZ: 0.3,
+  /**
+   * Nadie entre la cámara y el lanzador: el resto de figuras se funde hasta desaparecer si su
+   * profundidad (m, a la altura del pecho) queda `nearAheadM` por delante de la del lanzador,
+   * en un tramo de `nearFadeM`; con la cámara del partido (orbit 0) no se aplica.
+   */
+  nearAheadM: 0.4,
+  nearFadeM: 1.2,
+  omega: 7,
+  ballWeight: 0.45,
+  ballBlendS: 0.35,
+  enterMs: 800,
+  exitMs: 600,
+  fadeFrom: 0.06,
+  fadeTo: 0.36,
+  zoom: 2.6,
+  /** Altura (m) sobre el punto a la que apunta el zoom del partido. */
+  zoomLiftM: 0.6,
+} as const
