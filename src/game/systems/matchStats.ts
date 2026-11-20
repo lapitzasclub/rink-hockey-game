@@ -42,7 +42,7 @@ export type MatchView = Phaser.Scene & {
   blueScore: number
   redScore: number
   lastTouch: Team
-  ruleState: { teamFouls: Pair }
+  ruleState: { teamFouls: Pair, passivity?: { hudKind: string | null, stats: { possession: Pair, passive: Pair, warnings: Pair, countdowns: number } } }
   activeFoulRestart: null | { takerPlayerId: string, readyAt: number, sanction: string, x: number }
   activeBully: unknown
   activeKickoff: unknown
@@ -492,6 +492,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     unmarked: byTeam(t => (st.defSec[t] ? Math.round(100 * st.unmarkedSec[t] / st.defSec[t]) / 100 : null)),
     doublePct: byTeam(t => (st.defSec[t] ? Math.round(1000 * st.doubleSec[t] / st.defSec[t]) / 10 : null)),
     humanOnCarrierPct: byTeam(t => (st.defSec[t] ? Math.round(1000 * st.humanOnCarrierSec[t] / st.defSec[t]) / 10 : null)),
+    passivityCalls: s.ruleState.passivity?.stats ?? null,   // B-10: pitadas por equipo y tipo, avisos, cuentas atrás
     ...(opts.keepShots ? { shotLog } : {}),
   })
 

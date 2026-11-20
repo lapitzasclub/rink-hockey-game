@@ -46,6 +46,8 @@ import type { Scoreboard } from '../game/ui/scoreboard'
 import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
 import { createRuleState, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
+import { updatePassivity } from '../game/systems/passivity'
+import type { PassivityHud } from '../game/ui/passivityHud'
 import { getGoalLineX } from '../game/utils'
 import { peekAIPassAim, setAIPassAim } from '../game/systems/targeting'
 import {
@@ -119,6 +121,7 @@ export class MatchScene extends Phaser.Scene {
   /** Estadísticas con `?stats=1` (B-01); null sin el parámetro. */
   private liveStats: LiveStats | null = null
   private scoreboard!: Scoreboard
+  private passivityHud: PassivityHud | null = null
   private centerText!: Phaser.GameObjects.Text
   private blueScore = 0
   private redScore = 0
@@ -339,6 +342,7 @@ export class MatchScene extends Phaser.Scene {
       const hudStart = this.sys.displayList.length
       const hud = createHud(this, !this.isArcade)
       this.scoreboard = hud.scoreboard
+      this.passivityHud = hud.passivity
       this.centerText = hud.centerText.setDepth(55)
       this.hudLayout.capture(this, hudStart, 'top-left', { exclude: [hud.centerText] })
       if (this.isArcade) {
@@ -725,6 +729,8 @@ export class MatchScene extends Phaser.Scene {
     this.handleBallControl(time)
     this.handleLooseBallContacts()
     this.checkGoalieZoneFoul(time)
+    // B-10: tiempo de posesión y juego pasivo (solo reglamento); 'warn' = aviso del árbitro
+    if (!this.isArcade && updatePassivity(this.ruleState, { players: this.players, ball: this.ball, ballVelocity: this.ballVelocity, carrierId: this.ballCarrierId, now: time }) === 'warn') this.officials.passiveWarning()
     this.handleRuleRestarts()
     // La punta del stick (contactos con la bola) sale de su ángulo, que se fija aquí y no al pintar
     updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
@@ -1615,6 +1621,7 @@ export class MatchScene extends Phaser.Scene {
       players: this.players,
       timeNow: this.simNow,
     })
+    this.passivityHud?.update(this.ruleState.passivity, this.simNow)
     if (this.arcadeHud && this.arcade) {
       const controlled = getControlledPlayer(this.players, this.controlledPlayerIndex)
       this.arcadeHud.update({

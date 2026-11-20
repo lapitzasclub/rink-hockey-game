@@ -59,9 +59,11 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'unmarkedBlue', 'unmarkedRed', 'doublePctBlue', 'doublePctRed', 'humanOnCarrierPctBlue',
   'lossesBluePerMin', 'lossesRedPerMin', 'lossesCheckBluePerMin', 'lossesCheckRedPerMin', 'stealTriesBluePerMin', 'stealTriesRedPerMin', 'stealPctBlue', 'stealPctRed',
   'humanStealTriesPerMin', 'humanStealsPerMin', 'goalieHumanPctBlue', 'goalsVsHumanGoaliePerMin',
-  'humanTryPerPressS', 'humanStealPerPressS', 'redTryPerPressS', 'redStealPerPressS', 'humanLossPerPressS', 'blueLossPerPressS', 'humanGoalSidePctBlue'
+  'humanTryPerPressS', 'humanStealPerPressS', 'redTryPerPressS', 'redStealPerPressS', 'humanLossPerPressS', 'blueLossPerPressS', 'humanGoalSidePctBlue',
+  'passivityCallsBlue', 'passivityCallsRed'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
-$tot = @{ goalsNoShot = 0; goalsCarriedOwn = 0; jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0 }
+$tot = @{ goalsNoShot = 0; goalsCarriedOwn = 0; jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0;
+  possCallsBlue = 0; possCallsRed = 0; passiveCallsBlue = 0; passiveCallsRed = 0; passiveWarnings = 0; countdowns = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
   if (-not $line) { $tot.failed++; Write-Output ("run {0}/{1}: SIN [smoke]" -f $i, $Runs); continue }
@@ -141,6 +143,14 @@ foreach ($i in 1..$Runs) {
     if ($j.pressOnHumanSec.red -gt 1) { $samples.humanLossPerPressS += $j.lossesHuman.blue / $j.pressOnHumanSec.red }
     $tot.goalsCarriedOwn += [int]($j.goalsCarriedOwn.blue + $j.goalsCarriedOwn.red)
   }
+  # B-10: pitadas de tiempo de posesión y de juego pasivo (por partido y equipo), avisos y cuentas atrás del HUD
+  if ($null -ne $j.passivityCalls) {
+    $pc = $j.passivityCalls
+    $samples.passivityCallsBlue += $pc.possession.blue + $pc.passive.blue; $samples.passivityCallsRed += $pc.possession.red + $pc.passive.red
+    $tot.possCallsBlue += [int]$pc.possession.blue; $tot.possCallsRed += [int]$pc.possession.red
+    $tot.passiveCallsBlue += [int]$pc.passive.blue; $tot.passiveCallsRed += [int]$pc.passive.red
+    $tot.passiveWarnings += [int]($pc.warnings.blue + $pc.warnings.red); $tot.countdowns += [int]$pc.countdowns
+  }
   $tot.goalsNoShot += [int]($j.goalsNoShotAgainst.blue + $j.goalsNoShotAgainst.red)
   # Reinicios del reglamento (E-05): sumados en el lote
   $tot.freeHits += [int]$j.freeHits; $tot.directFreeHits += [int]$j.directFreeHits; $tot.penalties += [int]$j.penalties
@@ -164,6 +174,7 @@ foreach ($k in $keys) {
 }
 foreach ($k in $tot.Keys) { $agg[$k] = $tot[$k] }
 Write-Output ("reinicios: libres {0} · directos {1} · penaltis {2} · neutrales {3} · azules {4}" -f $tot.freeHits, $tot.directFreeHits, $tot.penalties, $tot.neutralRestarts, $tot.blueCards)
+Write-Output ("pasividad: posesión azul {0} rojo {1} · pasivo azul {2} rojo {3} · avisos {4} · cuentas atrás {5}" -f $tot.possCallsBlue, $tot.possCallsRed, $tot.passiveCallsBlue, $tot.passiveCallsRed, $tot.passiveWarnings, $tot.countdowns)
 Write-Output ("autogoles: sin tiro {0} · conduciendo hacia la propia {1}" -f $tot.goalsNoShot, $tot.goalsCarriedOwn)
 Write-Output ("totales: atascos {0} ({1:F1} s) · fuera de pista {2} · errores de consola {3} · fallidas {4}" -f $tot.jams, $tot.jamSec, $tot.badPlayerFrames, $tot.consoleErrors, $tot.failed)
 Write-Output ('[smoke-agg] ' + ($agg | ConvertTo-Json -Compress -Depth 4))

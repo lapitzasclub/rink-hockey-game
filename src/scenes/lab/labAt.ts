@@ -23,7 +23,7 @@ type MatchView = Phaser.Scene & {
   players: Array<{ id: string, team: Team, role: string, pos: Pos, suspendedUntil?: number, anim?: { type: string, at: number } }>
   blueScore: number
   redScore: number
-  ruleState: { teamFouls: Record<Team, number> }
+  ruleState: { teamFouls: Record<Team, number>, passivity?: { hudKind: string | null } }
   activeFoulRestart: unknown
   simNow: number
   officials?: { refs?: Array<{ x: number, y: number, gesture: unknown }> }
@@ -117,6 +117,8 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
       : at === 'foul' ? fouls > prev.fouls || (foulNow && !prev.foul)
       : at === 'card' ? carded
       : at === 'save' ? (gk !== null && gk !== prev.gk && prev.speed > 150) || saveAt > prev.saveAt
+      // B-10: cuenta atrás de tiempo de posesión (≤ 5 s) o aviso de juego pasivo en el HUD
+      : at === 'countdown' || at === 'passive' ? s.ruleState.passivity?.hudKind === (at === 'countdown' ? 'possession' : 'passive')
       : false
     prev.goals = goals; prev.fouls = fouls; prev.foul = foulNow; prev.saveAt = saveAt; prev.gk = gk
     prev.speed = Math.hypot(s.ballVelocity.x, s.ballVelocity.y)
