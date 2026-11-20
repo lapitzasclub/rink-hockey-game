@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BOARDS, CROWD, SETPIECE_STAGE, STANDS, STANDS_COLORS as SC } from '../artSpec'
+import { BOARDS, CROWD, LIGHT, PX_PER_M, SETPIECE_STAGE, STANDS, STANDS_COLORS as SC } from '../artSpec'
 import { ADS } from '../rink/ads'
 import { makeLook, paintFan, shade } from '../stands/fans'
 import { mulberry32 } from '../stands/layout'
@@ -171,7 +171,7 @@ type StandKind = 'side' | TeamColor
 interface StandGeo { tierPx: number; parPx: number; w: number; h: number; k: number; W: number }
 
 function standGeo(W: number, k: number): StandGeo {
-  const tierPx = Math.hypot(STANDS.tierDepthM, STANDS.tierRiseM) * k
+  const tierPx = Math.hypot(STANDS.tierDepthM, G.riseM) * k
   const parPx = Math.hypot(G.firstM - G.setbackM, 1) * k
   return { tierPx, parPx, w: Math.ceil(W * k), h: Math.ceil((G.tiers + 1) * tierPx + parPx), k, W }
 }
@@ -190,21 +190,22 @@ function* paintStand(ctx: CanvasRenderingContext2D, geo: StandGeo, kind: StandKi
 
   for (let j = T - 1; j >= 0; j--) {
     const top = (T - j) * tierPx
-    const t = Math.min(1, j / (STANDS.tiers - 1))
+    const t = Math.min(1, j / (T - 1))
     const light = SC.lightFront + (SC.lightBack - SC.lightFront) * t
     // Huella (arriba) y contrahuella (abajo) con el cantil dorado entre ambas
-    ctx.fillStyle = shade(SC.tread, light, 0)
+    const lightS = light * G.structK
+    ctx.fillStyle = shade(SC.tread, lightS, 0)
     ctx.fillRect(0, top, w, tierPx * 0.45 + 1)
-    ctx.fillStyle = shade(SC.riser, light, 0)
+    ctx.fillStyle = shade(SC.riser, lightS, 0)
     ctx.fillRect(0, top + tierPx * 0.45, w, tierPx * 0.55 + 1)
-    ctx.fillStyle = shade(SC.nosing, light, 0, 0.55)
+    ctx.fillStyle = shade(SC.nosing, lightS, 0, 0.55)
     ctx.fillRect(0, top + tierPx * 0.45, w, Math.max(1, k * 0.04))
     // Pasillos
-    ctx.fillStyle = shade(SC.tread, light * 1.18, 0)
+    ctx.fillStyle = shade(SC.tread, lightS * 1.18, 0)
     for (let c = 1; c < centers.length - 1; c++) ctx.fillRect((centers[c] - half) * k, top, STANDS.aisleM * k, tierPx + 1)
 
     const penaRow = pena !== null && j < CROWD.penaTiers
-    const empty = penaRow ? CROWD.penaEmpty : CROWD.emptyFront + (CROWD.emptyBack - CROWD.emptyFront) * t
+    const empty = (penaRow ? CROWD.penaEmpty : CROWD.emptyFront + (CROWD.emptyBack - CROWD.emptyFront) * t) * G.emptyK
     const hipY = top + tierPx * 0.5
     const seatCol = penaRow ? shade(kit[0], light * CROWD.penaSeatK, 0) : shade(SC.seats[(j >> 1) % SC.seats.length], light, 0)
     for (let b = 0; b < centers.length - 1; b++) {
@@ -218,7 +219,7 @@ function* paintStand(ctx: CanvasRenderingContext2D, geo: StandGeo, kind: StandKi
         ctx.fillRect(x - G.seatWidthM * 0.55 * k, hipY - 0.04 * k, G.seatWidthM * 1.1 * k, 0.14 * k)
         if (r() < empty) continue
         const look = makeLook(r, penaRow ? pena : null, kit[0], kit[1])
-        paintFan(ctx, x, hipY, k, look, light, { turn: (r() - 0.5) * 0.3, back: false, cheer: false })
+        paintFan(ctx, x, hipY, k * G.fanK, look, light, { turn: (r() - 0.5) * 0.3, back: false, cheer: false })
       }
     }
     yield
@@ -265,15 +266,65 @@ function next() {
   setTimeout(job, 16)
 }
 
-/** Celdas de una grada sobre una pared: peto vertical, `tiers` escalones y una fila vacía arriba para las cabezas. */
-function standCells(f: WallFrame, geo: StandGeo, weight: number): Cells {
+// ─── Tramos del anillo (rectas y esquinas) ──────────────────────────────────
+
+/**
+ * Tramo del anillo de gradas: `n` columnas y `at(c, d)` = (x, y, u) del borde `c` (0..n) a la
+ * distancia `d` (m) de la valla; `u` son los metros de textura a lo largo del tramo.
+ */
+interface Strip { n: number; at: (c: number, d: number) => [number, number, number] }
+
+/** Recta de una pared en trozos del ancho de la textura (`W`), con columnas de `colM`. */
+function straightStrips(f: WallFrame, W: number): Strip[] {
+  const out: Strip[] = []
+  for (let s = 0; s < f.len - 1e-6; s += W) {
+    const span = Math.min(W, f.len - s)
+    const n = Math.ceil(span / G.colM)
+    out.push({
+      n,
+      at: (c, d) => {
+        const u = s + (span * c) / n
+        return [f.ox + f.rx * u + f.nx * d, f.oy + f.ry * u + f.ny * d, u - s]
+      },
+    })
+  }
+  return out
+}
+
+/** Esquina entre dos paredes consecutivas: cuarto de círculo alrededor del vértice de la valla. */
+function cornerStrip(px: number, py: number, a: WallFrame, b: WallFrame): Strip {
+  const a0 = Math.atan2(a.ny, a.nx)
+  const delta = Math.atan2(a.nx * b.ny - a.ny * b.nx, a.nx * b.nx + a.ny * b.ny)
+  const n = G.cornerCols
+  return {
+    n,
+    at: (c, d) => {
+      const phi = (c / n) * delta
+      return [px + Math.cos(a0 + phi) * d, py + Math.sin(a0 + phi) * d, Math.abs(phi) * d]
+    },
+  }
+}
+
+/** Rectas laterales y de fondo contrario, y las cuatro esquinas (en el sentido del anillo: fondo, derecha, contrario, izquierda). */
+function ringStrips(frames: ReturnType<typeof wallFrames>, W: number) {
+  const order = [frames.back, frames.right, frames.far, frames.left]
+  const corners = order.map((f, i) => cornerStrip(f.ox + f.rx * f.len, f.oy + f.ry * f.len, f, order[(i + 1) % 4]))
+  return {
+    back: straightStrips(frames.back, W),
+    side: [frames.right, frames.far, frames.left].flatMap(f => straightStrips(f, W)).concat(corners),
+    all: order.flatMap(f => straightStrips(f, W)).concat(corners),
+  }
+}
+
+/** Celdas de gradas: peto vertical, `tiers` escalones y una fila vacía arriba para las cabezas. */
+function standCells(strips: Strip[], geo: StandGeo, weight: number): Cells {
   const cells = new Cells()
   const T = G.tiers
   // Fronteras de arriba abajo: (distancia a la valla, altura, y de textura)
   const bounds: Array<[number, number, number]> = []
   for (let b = 0; b <= T + 1; b++) {
     const j = T + 1 - b
-    bounds.push([G.firstM + j * STANDS.tierDepthM, 1 + j * STANDS.tierRiseM, b * geo.tierPx])
+    bounds.push([G.firstM + j * STANDS.tierDepthM, 1 + j * G.riseM, b * geo.tierPx])
   }
   bounds.push([G.setbackM, 0, (T + 1) * geo.tierPx + geo.parPx])
   const picks: number[] = []
@@ -281,19 +332,105 @@ function standCells(f: WallFrame, geo: StandGeo, weight: number): Cells {
   if (picks[picks.length - 1] !== T + 1) picks.push(T + 1)
   picks.push(T + 2)
 
-  for (let s = 0; s < f.len - 1e-6; s += geo.W) {
-    const span = Math.min(geo.W, f.len - s)
-    const cols = Math.ceil(span / G.colM)
-    for (let c = 0; c < cols; c++) {
-      const ua = s + (span * c) / cols, ub = s + (span * (c + 1)) / cols
+  for (const st of strips) {
+    for (let c = 0; c < st.n; c++) {
       for (let i = 0; i + 1 < picks.length; i++) {
         const A = bounds[picks[i]], B = bounds[picks[i + 1]]
-        const corner = (u: number, bd: [number, number, number], bi: number) => {
-          const sway = bi >= T + 1 ? 0 : weight
-          return [f.ox + f.rx * u + f.nx * bd[0], f.oy + f.ry * u + f.ny * bd[0], bd[1], ((u - s) * geo.k) / geo.w, bd[2] / geo.h, u * 1.9, sway]
+        const corner = (cc: number, bd: [number, number, number], bi: number) => {
+          const [x, y, u] = st.at(cc, bd[0])
+          return [x, y, bd[1], (u * geo.k) / geo.w, bd[2] / geo.h, x * 1.3 + y * 0.7, bi >= T + 1 ? 0 : weight]
         }
-        cells.add([corner(ua, A, picks[i]), corner(ua, B, picks[i + 1]), corner(ub, A, picks[i]), corner(ub, B, picks[i + 1])])
+        cells.add([corner(c, A, picks[i]), corner(c, B, picks[i + 1]), corner(c + 1, A, picks[i]), corner(c + 1, B, picks[i + 1])])
       }
+    }
+  }
+  return cells
+}
+
+// ─── Cierre del pabellón ─────────────────────────────────────────────────────
+
+const HALL_KEY = 'sp-hall'
+const HALL = SETPIECE_STAGE.hall
+const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`
+
+/** Textura vertical del muro sobre la grada: degradado oscuro con la tira LED del muro alto del partido. */
+function ensureHallTexture(scene: Phaser.Scene) {
+  if (scene.textures.exists(HALL_KEY)) return
+  const { texW: w, texH: h } = HALL
+  const tex = scene.textures.createCanvas(HALL_KEY, w, h)!
+  const ctx = tex.getContext()
+  const g = ctx.createLinearGradient(0, h, 0, 0)
+  g.addColorStop(0, hex(HALL.bottom))
+  g.addColorStop(0.4, shade(HALL.bottom, 0.6, 0))
+  g.addColorStop(1, hex(HALL.top))
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, w, h)
+  // Tira LED: panel, halo y línea, a `ledAtM` sobre la base
+  const pxM = h / HALL.heightM
+  const y = h - HALL.ledAtM * pxM
+  const [z0, z1] = STANDS.ledStripZ
+  ctx.fillStyle = hex(SC.ledPanel)
+  ctx.fillRect(0, y - z1 * pxM * 0.5, w, (z1 - z0) * pxM)
+  ctx.fillStyle = SC.ledGlow
+  ctx.fillRect(0, y - STANDS.ledGlowM * pxM * 2, w, STANDS.ledGlowM * pxM * 4)
+  ctx.fillStyle = SC.ledLine
+  ctx.fillRect(0, y - Math.max(1, pxM * 0.04), w, Math.max(1, pxM * 0.08))
+  tex.refresh()
+}
+
+/** Muro vertical por encima de la última fila: sin hueco con la grada. */
+function hallCells(strips: Strip[]): Cells {
+  const cells = new Cells()
+  const T = G.tiers
+  const d = G.firstM + T * STANDS.tierDepthM
+  const z0 = 1 + T * G.riseM
+  const zs = [z0, z0 + 2, z0 + 5, z0 + 10, z0 + HALL.heightM]
+  const v = (z: number) => 1 - (z - z0) / HALL.heightM
+  for (const st of strips) {
+    for (let c = 0; c < st.n; c++) {
+      for (let i = 0; i + 1 < zs.length; i++) {
+        const pt = (cc: number, z: number) => {
+          const [x, y] = st.at(cc, d)
+          return [x, y, z, 0.5, v(z), 0, 0]
+        }
+        cells.add([pt(c, zs[i + 1]), pt(c, zs[i]), pt(c + 1, zs[i + 1]), pt(c + 1, zs[i])])
+      }
+    }
+  }
+  return cells
+}
+
+// ─── Pozos de luz del suelo ──────────────────────────────────────────────────
+
+const POOL_KEY = 'sp-pool'
+
+/** Disco radial blanco azulado que se desvanece hasta el borde (una vez por juego). */
+function ensurePoolTexture(scene: Phaser.Scene) {
+  if (scene.textures.exists(POOL_KEY)) return
+  const n = SETPIECE_STAGE.pool.texPx
+  const tex = scene.textures.createCanvas(POOL_KEY, n, n)!
+  const ctx = tex.getContext()
+  const g = ctx.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2)
+  g.addColorStop(0, 'rgba(207,227,255,1)')
+  g.addColorStop(0.5, 'rgba(207,227,255,0.5)')
+  g.addColorStop(1, 'rgba(207,227,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, n, n)
+  tex.refresh()
+}
+
+/** Pozos de un radio dado (m) en el suelo, recortados a la pista: cuadrículas con la textura radial. */
+function poolCells(centers: Array<[number, number]>, r: number, halfW: number, backY: number, farY: number): Cells {
+  const cells = new Cells()
+  const N = SETPIECE_STAGE.pool.cells
+  for (const [cx, cy] of centers) {
+    const at = (i: number, j: number) => {
+      const x = Math.max(-halfW, Math.min(halfW, cx + r * ((2 * i) / N - 1)))
+      const y = Math.max(backY, Math.min(farY, cy + r * ((2 * j) / N - 1)))
+      return [x, y, 0, (x - cx) / (2 * r) + 0.5, (y - cy) / (2 * r) + 0.5, 0, 0]
+    }
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) cells.add([at(i, j), at(i, j + 1), at(i + 1, j), at(i + 1, j + 1)])
     }
   }
   return cells
@@ -301,12 +438,13 @@ function standCells(f: WallFrame, geo: StandGeo, weight: number): Cells {
 
 // ─── Conjunto ────────────────────────────────────────────────────────────────
 
-/** Gradas y publicidad: se crean con la escena; las gradas aparecen cuando su textura está horneada. */
+/** Gradas, publicidad, cierre y luz: se crean con la escena; las gradas aparecen cuando su textura está horneada. */
 export class StageBackdrop {
   private readonly scene: Phaser.Scene
   private readonly frames: ReturnType<typeof wallFrames>
   private readonly ads: TexGrid[] = []
-  private readonly stands: Array<{ kind: StandKind, wall: keyof ReturnType<typeof wallFrames>, grid: TexGrid | null }> = []
+  private readonly fixed: TexGrid[] = []
+  private readonly stands: Array<{ kind: StandKind, strips: Strip[], grid: TexGrid | null }> = []
   private pena: TeamColor | null = 'blue'
   private visible = true
   private readonly animated = crowdAnimated()
@@ -319,11 +457,26 @@ export class StageBackdrop {
     ensureAdAtlas(scene)
     const phases: Record<keyof ReturnType<typeof wallFrames>, number> = { back: 2, left: 0, right: 5, far: 1 }
     for (const w of ['back', 'left', 'right', 'far'] as const) {
-      const g = new TexGrid(scene, AD_KEY, adCells(this.frames[w], phases[w]), BACK_DEPTH + 1, 0)
-      this.ads.push(g)
+      this.ads.push(new TexGrid(scene, AD_KEY, adCells(this.frames[w], phases[w]), BACK_DEPTH + 1, 0))
     }
-    this.stands.push({ kind: 'side', wall: 'left', grid: null }, { kind: 'side', wall: 'right', grid: null }, { kind: 'side', wall: 'far', grid: null })
-    this.stands.push({ kind: 'blue', wall: 'back', grid: null }, { kind: 'red', wall: 'back', grid: null })
+    const ring = ringStrips(this.frames, this.frames.back.len)
+
+    // Cierre del pabellón (por debajo de las gradas) y pozos de luz (justo sobre el suelo)
+    ensureHallTexture(scene)
+    this.fixed.push(new TexGrid(scene, HALL_KEY, hallCells(ring.all), BACK_DEPTH - 2, 0))
+    ensurePoolTexture(scene)
+    const len = farY - backY
+    const centers: Array<[number, number]> = []
+    for (const fx of LIGHT.poolsX) for (const fy of LIGHT.poolsY) centers.push([(fy - 0.5) * halfW * 2, backY + fx * len])
+    const P = SETPIECE_STAGE.pool
+    const floor = new TexGrid(scene, POOL_KEY, poolCells(centers, LIGHT.poolRadius / PX_PER_M, halfW, backY, farY), BACK_DEPTH + 0.2, 0)
+    floor.mesh.setAlpha(Math.min(1, LIGHT.poolAlpha * P.k))
+    const goal = new TexGrid(scene, POOL_KEY, poolCells([[0, backY + LIGHT.goalPoolOffsetM], [0, farY - LIGHT.goalPoolOffsetM]], LIGHT.goalPoolRadius / PX_PER_M, halfW, backY, farY), BACK_DEPTH + 0.3, 0)
+    goal.mesh.setAlpha(Math.min(1, LIGHT.goalPoolAlpha * P.k))
+    this.fixed.push(floor, goal)
+
+    this.stands.push({ kind: 'side', strips: ring.side, grid: null })
+    this.stands.push({ kind: 'blue', strips: ring.back, grid: null }, { kind: 'red', strips: ring.back, grid: null })
     this.bake('side')
     this.bake('blue')
     this.bake('red')
@@ -339,8 +492,8 @@ export class StageBackdrop {
     const build = () => {
       for (const s of this.stands) {
         if (s.kind !== kind || s.grid) continue
-        const weight = !this.animated ? 0 : s.wall === 'back' ? 1 : 0.6
-        s.grid = new TexGrid(this.scene, key, standCells(this.frames[s.wall], geo, weight), BACK_DEPTH - 1, this.animated ? SETPIECE_STAGE.stands.swayM : 0)
+        const weight = !this.animated ? 0 : kind === 'side' ? 0.6 : 1
+        s.grid = new TexGrid(this.scene, key, standCells(s.strips, geo, weight), BACK_DEPTH - 1, this.animated ? G.swayM : 0)
         s.grid.mesh.setVisible(this.visible && this.shows(s.kind))
       }
       this.onReady()
@@ -364,13 +517,14 @@ export class StageBackdrop {
   setVisible(on: boolean) {
     this.visible = on
     for (const g of this.ads) g.mesh.setVisible(on)
+    for (const g of this.fixed) g.mesh.setVisible(on)
     for (const s of this.stands) s.grid?.mesh.setVisible(on && this.shows(s.kind))
   }
 
   draw(view: SetPieceView, ms: number) {
-    const t = ms * 0.001 * Math.PI * 2 * SETPIECE_STAGE.stands.swayHz
+    const t = ms * 0.001 * Math.PI * 2 * G.swayHz
     for (const g of this.ads) g.draw(view, 0)
+    for (const g of this.fixed) g.draw(view, 0)
     for (const s of this.stands) if (s.grid && this.shows(s.kind)) s.grid.draw(view, t)
   }
 }
-

@@ -994,19 +994,34 @@ export const SETPIECE_STAGE = {
   adGapM: 0.06,
   adCols: 4,
   stands: {
-    tiers: 16,
+    /** Filas (impar: el balanceo agrupa de dos en dos) y subida por fila (m): más tendida que la del partido. */
+    tiers: 9,
+    riseM: 0.3,
     setbackM: 0.6,
     firstM: 0.9,
     colM: 1.5,
+    /** Esquinas: tramos en que se parte cada cuarto de círculo. */
+    cornerCols: 6,
     pxPerM: { alta: 44, media: 44, baja: 30 },
     swayM: 0.035,
     swayHz: 0.8,
     seatWidthM: 0.46,
     seatHeightM: 0.34,
+    /** Luz de la estructura (huella, contrahuella, pasillos) respecto a la del partido: más oscura, la masa la hace el público. */
+    structK: 0.62,
+    /** Escala de las figuras (se solapan filas como en el partido) y fracción de asientos vacíos respecto a `CROWD`. */
+    fanK: 1.14,
+    emptyK: 0.4,
     /** Horneado: tiempo máximo por trozo (ms) antes de ceder el hilo. */
     sliceMs: 8,
   },
-  poolLayers: [1, 0.66, 0.33],
+  /**
+   * Cierre del pabellón sobre la última fila: muro oscuro (degradado de `bottom` a `top`) con la tira LED
+   * del muro alto del partido (`STANDS`/`STANDS_COLORS`); `heightM` sobre la última fila.
+   */
+  hall: { heightM: 18, bottom: 0x1b2433, top: 0x090c12, ledAtM: 0.5, texW: 4, texH: 256 },
+  /** Pozos de luz del suelo: textura radial horneada (lado, px) y alfa máximo respecto a `LIGHT.poolAlpha`/`goalPoolAlpha`. */
+  pool: { texPx: 128, cells: 6, k: 1.25 },
 } as const
 
 /**

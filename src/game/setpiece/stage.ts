@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser'
 import { DIRECT_FREE_HIT_SPOT_OFFSET, GOAL_LINE_OFFSET, PENALTY_SPOT_OFFSET, RINK, RINK_WIDTH_M } from '../constants'
-import { BOARDS, GOAL_VIS, LIGHT, MARKINGS, PX_PER_M, SETPIECE_CAMERA, SETPIECE_STAGE, STANDS_COLORS } from '../render/artSpec'
+import { BOARDS, GOAL_VIS, MARKINGS, PX_PER_M, SETPIECE_CAMERA, SETPIECE_STAGE, STANDS_COLORS } from '../render/artSpec'
 import { shade as shadeColor } from '../render/rink/boards'
 import { StageBackdrop } from '../render/setpiece/backdrop'
 import type { TeamColor } from '../types'
@@ -47,8 +47,6 @@ const WALL_BACK = wallPals(SETPIECE_STAGE.boardLumBack)
 const WALL_SIDE = wallPals(SETPIECE_STAGE.boardLumSide)
 const BOARD_EDGE = pal(0xf4f8fc, 0.9)
 const FLOOR_OUT = pal(shadeColor(STANDS_COLORS.floor, 0.8), 1)
-const POOL = pal(0xcfe3ff, LIGHT.poolAlpha * 0.45)
-const POOL_GOAL = pal(0xcfe3ff, LIGHT.goalPoolAlpha * 0.3)
 const NET_CLOTH = pal(0xdbe6f2, BOARDS.netAlpha * 0.5)
 const NET_LINE = pal(0xdbe6f2, BOARDS.netAlpha * 1.6)
 const NET_POST = pal(0x9fb2c9, 0.85)
@@ -255,24 +253,6 @@ function court(ops: Ops) {
   ops.poly(FLOOR, [[-halfW, backY], [halfW, backY], [halfW, farY], [-halfW, farY]])
   // Lejos, algo más oscuro: la luz cenital cae en el centro
   ops.poly(FLOOR_FAR, [[-halfW, backY], [halfW, backY], [halfW, backY + 2], [-halfW, backY + 2]])
-
-  // Luz cenital: pozos sobre la pista como los del partido (círculos concéntricos, sin salirse de la valla)
-  const len = farY - backY
-  const pool = (cx: number, cy: number, r: number, color: number) => {
-    for (const k of SETPIECE_STAGE.poolLayers) {
-      const pts: number[][] = []
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * Math.PI * 2
-        pts.push([Math.max(-halfW, Math.min(halfW, cx + r * k * Math.cos(a))), Math.max(backY, Math.min(farY, cy + r * k * Math.sin(a)))])
-      }
-      ops.poly(color, pts)
-    }
-  }
-  const poolR = LIGHT.poolRadius / PX_PER_M
-  for (const fx of LIGHT.poolsX) for (const fy of LIGHT.poolsY) pool((fy - 0.5) * RINK_WIDTH_M, backY + fx * len, poolR, POOL)
-  const goalR = LIGHT.goalPoolRadius / PX_PER_M
-  pool(0, backY + LIGHT.goalPoolOffsetM, goalR, POOL_GOAL)
-  pool(0, farY - LIGHT.goalPoolOffsetM, goalR, POOL_GOAL)
 
   // Marcas: área 9 × 5,40 m, semicírculo r 0,85 m, puntos de Ø 10 cm y línea central
   const lw = 0.08
