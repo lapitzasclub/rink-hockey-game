@@ -198,6 +198,35 @@ export function playFreeze(): void {
   noiseBurst(0.5, 0.18, 'highpass', 5000, 8000)
 }
 
+/** Chasquido eléctrico del rayo. */
+export function playBolt(): void {
+  noiseBurst(0.35, 0.5, 'highpass', 6000, 1500)
+  tone(1400, 90, 0.3, 0.32, 'sawtooth')
+  tone(70, 40, 0.45, 0.4, 'square', 0.03)
+}
+
+/** Aviso de barra de súper llena. */
+export function playSuperReady(): void {
+  ;[392, 523, 784].forEach((freq, i) => tone(freq, freq * 1.02, 0.14, 0.18, 'square', i * 0.06))
+}
+
+/** Súper tiro: subida y estallido grave. */
+export function playSuperShot(): void {
+  tone(120, 1800, 0.35, 0.3, 'sawtooth')
+  tone(60, 30, 0.7, 0.55, 'square', 0.1)
+  noiseBurst(0.8, 0.6, 'lowpass', 4200, 200, 0.08)
+}
+
+/** Sintonía de evento de partido. */
+export function playEventStart(): void {
+  ;[523, 659, 523, 784].forEach((freq, i) => tone(freq, freq, 0.16, 0.2, 'triangle', i * 0.11))
+}
+
+/** Golpe de bola loca contra la valla. */
+export function playBoing(): void {
+  tone(220, 660, 0.16, 0.22, 'triangle')
+}
+
 /** Ovación del público tras gol, más intensa cuanto mayor `intensity` (0..1). */
 export function playCrowdRoar(intensity = 0.6): void {
   noiseBurst(2.2, 0.22 + intensity * 0.25, 'bandpass', 900, 600, 0, 0.18)

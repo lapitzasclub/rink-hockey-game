@@ -13,6 +13,11 @@ import { findPlayerById, getControllablePlayers } from './playerHelpers'
  */
 /** Quién conducía la bola en el último updateBallPosition (B-07, para el humo: autogoles conduciendo). */
 export const ballCarriedBy = { team: '' as Player['team'] | '' }
+/**
+ * Modificadores arcade de la bola suelta: escala del rozamiento (pista de hielo) y contador
+ * de rebotes en la valla, que el arcade lee para la bola loca y el gol de billar.
+ */
+export const ballMods = { frictionScale: 1, wallBounces: 0 }
 
 export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrierId: string | null, players: Player[], dt: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
@@ -56,9 +61,10 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
     return { x: carrier.velocity.x * 0.35, y: carrier.velocity.y * 0.35 }
   }
 
+  const friction = 1 - (1 - BALL_FRICTION) * ballMods.frictionScale
   const nextVelocity = {
-    x: ballVelocity.x * BALL_FRICTION,
-    y: ballVelocity.y * BALL_FRICTION,
+    x: ballVelocity.x * friction,
+    y: ballVelocity.y * friction,
   }
 
   ball.x += nextVelocity.x * dt
@@ -79,16 +85,19 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
   if (ball.y <= top || ball.y >= bottom) {
     nextVelocity.y *= -0.88
     ball.y = Phaser.Math.Clamp(ball.y, top, bottom)
+    ballMods.wallBounces++
   }
 
   if (ball.x <= left && !inGoalMouth) {
     nextVelocity.x *= -0.88
     ball.x = left
+    ballMods.wallBounces++
   }
 
   if (ball.x >= right && !inGoalMouth) {
     nextVelocity.x *= -0.88
     ball.x = right
+    ballMods.wallBounces++
   }
 
   // Solo bloqueamos la cara del palo dentro de la franja de altura de la portería

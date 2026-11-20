@@ -16,7 +16,7 @@ import {
   SIM_MAX_STEPS,
   SIM_SNAP_DIST,
   SIM_STEP_MS,
-  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX, MANUAL_STEAL_RANGE, PRESS_LEAD_S, PRESS_STEAL_INTERVAL_MS, DIFFICULTY_LEVELS, BALL_RADIUS } from '../game/constants'
+  STICK_SWING_MS, CHARGE_AUTO_MS, CHARGE_FULL_MS, CHARGE_TAP_MS, AI_CHARGE_JITTER, AI_CHARGE_PASS_CHANCE, AI_CHARGE_PASS_MAX, AI_CHARGE_SHOT_FAR, AI_CHARGE_SHOT_NEAR, AI_CHARGE_PRESSURE_PX, MANUAL_STEAL_RANGE, PRESS_LEAD_S, PRESS_STEAL_INTERVAL_MS, DIFFICULTY_LEVELS, BALL_RADIUS, ARCADE_SUPER_MAX } from '../game/constants'
 import { createBall } from '../game/entities/createBall'
 import { createPlayer } from '../game/entities/createPlayer'
 import { getFormation, switchSides, teamSide } from '../game/formation'
@@ -83,6 +83,7 @@ import { playCrowdRoar, playFoul, playGoal, playPass, playPickup, playSave, play
 import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
 import { equipoDeHueco, nombreDeHueco } from '../game/externalMatch'
 import { ArcadeController } from '../game/systems/arcade'
+import { resetArcadeMods } from '../game/systems/arcadeEvents'
 import { celebrateGoal } from '../game/render/puppet/actions'
 import { CameraDirector } from '../game/systems/cameraDirector'
 import { createOfficials, type Officials } from '../game/systems/officials'
@@ -343,7 +344,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.isArcade) {
       this.fx = new ArcadeFx(this, (build) => this.withUi(build), particleDensity())
       // Antes que los jugadores: la capa de powerups queda por debajo
-      this.arcade = new ArcadeController(this, this.fx)
+      this.arcade = new ArcadeController(this, this.fx, !this.probe)
     }
     this.createTeams()
     this.ball = createBall(this)
@@ -401,6 +402,7 @@ export class MatchScene extends Phaser.Scene {
       this.crowd = null
       this.arcade?.destroy()
       this.fx?.destroy()
+      resetArcadeMods()
       stopAnnouncer()
     })
     this.resetKickoff('blue', true)
@@ -459,7 +461,9 @@ export class MatchScene extends Phaser.Scene {
       this.governor.meter.frame(frameMs)
       this.driveProbeRestart()
     } else if (qualityWatchEnabled) this.governor.frame(frameMs, SIM_MAX_FRAME_MS)
-    this.simAcc += Math.min(Math.max(0, frameMs), SIM_MAX_FRAME_MS)
+    // Cámara lenta arcade (súper y remates al límite): se simula menos tiempo por fotograma
+    const timeScale = this.arcade && !this.probe ? this.arcade.timeScale(this.simNow) : 1
+    this.simAcc += Math.min(Math.max(0, frameMs), SIM_MAX_FRAME_MS) * timeScale
     let steps = 0
     const simStart = performance.now()
     // La tolerancia absorbe el redondeo de `now += STEP` en el paso manual del laboratorio
@@ -669,6 +673,8 @@ export class MatchScene extends Phaser.Scene {
   private stepSimulation(time: number, dt: number) {
     // Los gestos que dispara este paso (falta, bully, gol) empiezan en su tiempo, no en el del último fotograma
     this.officials.syncTime(time)
+    // Física normal por defecto; el evento de hielo la vuelve a cambiar solo con la bola en juego
+    resetArcadeMods()
     this.advanceMatchClock()
     if (this.matchEnded) {
       this.coastPlayers(dt)
@@ -746,7 +752,9 @@ export class MatchScene extends Phaser.Scene {
     this.updateTeamAI(dt)
     resolvePlayerSpacing(this.players)
     const prevBallX = this.prevBallX || this.ball.x
+    this.arcade?.beforeBallStep(this.ballVelocity, this.ballCarrierId, dt)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
+    this.arcade?.afterBallStep(this.ball, this.ballVelocity, this.ballCarrierId, time, !this.probe)
     this.updateGoalEntryFlag(prevBallX)
     this.prevBallX = this.ball.x
     this.handleGoalieSave()
@@ -934,9 +942,17 @@ export class MatchScene extends Phaser.Scene {
     // Se pierde la carga si cambia el controlado o ya no lleva la bola
     if (this.charging && (this.charging.player !== player || this.ballCarrierId !== player.id)) this.cancelCharge()
     // El portero controlado no roba ni carga: para solo, por posición
-    if (actionPressed) {
+    // Remate al primer toque: tiro pulsado justo antes de que llegue el pase, sale nada más recibir
+    const buffered = this.arcade && this.ballCarrierId === player.id ? this.arcade.tricks.takeBufferedShot(player, this.simNow) : null
+    if (buffered) {
+      this.cancelCharge()
+      this.tryShot(player, buffered.turbo || turboHeld, 0)
+    } else if (actionPressed) {
       if (this.ballCarrierId === player.id) { if (!this.charging) this.charging = { action: 'shoot', start: this.simNow, player, turbo: false } }
-      else if (player.role !== 'goalie' && !(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
+      else if (player.role !== 'goalie') {
+        if (this.arcade && !this.ballCarrierId) this.arcade.tricks.bufferShot(player, turboHeld, this.simNow)
+        if (!(this.isArcade && turboHeld && this.tryCheck(player))) this.tryManualSteal(player)
+      }
     } else if (pressTarget && this.simNow - this.lastStealAt >= PRESS_STEAL_INTERVAL_MS) {
       // Presionando: entra solo al llegar a distancia de robo
       const carrier = this.ballCarrierId ? findPlayerById(this.players, this.ballCarrierId) : null
@@ -1004,6 +1020,10 @@ export class MatchScene extends Phaser.Scene {
             if (shouldGoaliePass(player, this.simNow)) this.tryPass(player)
             continue
           }
+          // Arcade: recibe cerca del área y remata de primeras, sin conducir ni cargar
+          if (!player.aiCharge && this.arcade?.tricks.aiWantsOneTimer(player, this.simNow)) {
+            player.aiCharge = { action: 'shoot', start: this.simNow, target: 0, turbo: (player.stamina ?? 0) > 45 && Math.random() < 0.35, aim: null }
+          }
           if (!player.aiCharge) {
             const choice = decideCarrierAction(player, this.players, this.simNow)
             if (choice === 'shoot' || choice === 'pass') {
@@ -1047,6 +1067,7 @@ export class MatchScene extends Phaser.Scene {
    * Permite que los porteros intervengan de forma más creíble ante tiros cercanos.
    */
   private handleGoalieSave() {
+    const shotVelocity = { x: this.ballVelocity.x, y: this.ballVelocity.y }
     const result = handleGoalieSaveAction({
       ball: this.ball,
       ballVelocity: this.ballVelocity,
@@ -1056,6 +1077,11 @@ export class MatchScene extends Phaser.Scene {
     })
     if (!result) return
     if (result.ballCarrierId) playSave()
+    if (this.arcade) {
+      const goalie = (result.ballCarrierId ? findPlayerById(this.players, result.ballCarrierId) : null)
+        ?? this.players.find(p => p.role === 'goalie' && p.team === result.lastTouch)
+      if (goalie) this.arcade.onSave(goalie, shotVelocity)
+    }
     this.ballVelocity = result.ballVelocity
     this.ballCarrierId = result.ballCarrierId
     if (result.lastTouch) this.lastTouch = result.lastTouch
@@ -1126,6 +1152,7 @@ export class MatchScene extends Phaser.Scene {
     })
     if (!result) return
     playPass()
+    this.arcade?.onPass(player, this.simNow)
     player.stickSwingUntil = this.simNow + STICK_SWING_MS
     this.ballCarrierId = result.ballCarrierId
     this.ballVelocity = result.ballVelocity
@@ -1149,7 +1176,7 @@ export class MatchScene extends Phaser.Scene {
   private tryShot(player: Player, wantsTurbo = false, charge = 0) {
     if (this.ballCarrierId !== player.id) return
     // En arcade el tipo de tiro (normal / turbo / fuego) se decide antes de soltar
-    const shot = this.arcade?.prepareShot(player, wantsTurbo) ?? { power: 1, kind: null, beatChance: 0 }
+    const shot = this.arcade?.prepareShot(player, wantsTurbo, this.simNow) ?? { power: 1, kind: null, beatChance: 0, oneTimer: false, super: false }
     const result = tryShotAction({
       player,
       ball: this.ball,
@@ -1167,8 +1194,8 @@ export class MatchScene extends Phaser.Scene {
     this.lastTouch = result.lastTouch
     if (player.role === 'goalie') this.releaseControlledGoalie(player)
     if (this.arcade) {
-      this.arcade.onShotReleased(player, this.players, this.ball, this.ballVelocity, shot, this.simNow)
-      this.cameraDirector.punchZoom(shot.kind === 'fire' ? 0.16 : shot.kind === 'turbo' ? 0.09 : 0.04)
+      this.arcade.onShotReleased(player, this.players, this.ball, this.ballVelocity, shot, this.simNow, !this.probe)
+      this.cameraDirector.punchZoom(shot.kind === 'super' ? 0.22 : shot.kind === 'fire' ? 0.16 : shot.kind === 'turbo' || shot.oneTimer ? 0.09 : 0.04)
       if (shot.kind === 'fire') this.cameras.main.shake(180, 0.005)
     }
   }
@@ -1310,6 +1337,11 @@ export class MatchScene extends Phaser.Scene {
       enteredFromFront: this.ballEnteredGoalFromFront,
     })
     if (!next) return
+    // Evento GOL DOBLE: el gol suma uno más
+    if (this.arcade?.events.is('double')) {
+      if (next.redScore > this.redScore) next.redScore++
+      else next.blueScore++
+    }
     this.events.emit('match:goal', { team: next.redScore > this.redScore ? 'red' : 'blue', blue: next.blueScore, red: next.redScore, time })
     playGoal()
     this.officials.goal()
@@ -1334,7 +1366,7 @@ export class MatchScene extends Phaser.Scene {
   /** Celebración arcade: banner, cámara a la red, partículas, público y locutor. */
   private celebrateArcadeGoal(scorer: TeamColor, time: number) {
     if (!this.arcade || !this.fx) return
-    const result = this.arcade.onGoal(scorer, this.players, time)
+    const result = this.arcade.onGoal(scorer, this.players, this.ball, time)
     const netSide = teamSide(this.players, scorer) === 'left' ? 'right' : 'left'
     const net = worldToScreen(getGoalLineX(netSide), RINK.y + RINK.height / 2)
     this.centerText.setVisible(false)
@@ -1343,16 +1375,24 @@ export class MatchScene extends Phaser.Scene {
     this.fx.burst(scorer, net.x, net.y, 46)
     this.fx.burst('gold', net.x, net.y, 30)
     if (result.fireGoal) this.fx.burst('fire', net.x, net.y, 36)
+    if (result.superGoal || result.bankGoal) {
+      this.fx.shockwave(net.x, net.y, result.superGoal ? 0xffe36a : 0x7ab8ff, 3.2)
+      this.fx.burst('crazy', net.x, net.y, 30)
+    }
     const external = equipoDeHueco(scorer)
     const teamName = external?.abrev ?? (scorer === 'blue' ? 'AZUL' : 'ROJO')
-    this.fx.showBanner('¡GOOOL!', ArcadeController.teamHex(scorer), result.sub || `GOL ${teamName}`, 1700)
-    playCrowdRoar(result.onFireStarted || result.fireGoal ? 1 : 0.65)
+    const title = result.superGoal ? '¡SÚPER GOOOL!' : result.comboCount >= 2 ? '¡GOLAZO!' : '¡GOOOL!'
+    this.fx.showBanner(title, ArcadeController.teamHex(scorer), result.sub || `GOL ${teamName}`, 1700)
+    playCrowdRoar(result.onFireStarted || result.fireGoal || result.superGoal || result.comboCount >= 2 ? 1 : 0.65)
     if (!result.onFireStarted) {
-      announceOneOf(result.fireGoal
-        ? ['¡Gol de fuego!', '¡La red está ardiendo!']
-        : external
-          ? [`¡Gol de ${external.nombre}!`, '¡Goool!', `¡${external.nombre} marca!`, '¡Gol, gol, gol!']
-          : ['¡Goool!', '¡Qué golazo!', '¡Gol, gol, gol!', '¡Directo a la red!'], true)
+      let lines = external
+        ? [`¡Gol de ${external.nombre}!`, '¡Goool!', `¡${external.nombre} marca!`, '¡Gol, gol, gol!']
+        : ['¡Goool!', '¡Qué golazo!', '¡Gol, gol, gol!', '¡Directo a la red!']
+      if (result.superGoal) lines = ['¡Súper gol!', '¡Imparable!', '¡Qué barbaridad!']
+      else if (result.bankGoal) lines = ['¡Gol de billar!', '¡A la banda y dentro!', '¡Por la valla!']
+      else if (result.fireGoal) lines = ['¡Gol de fuego!', '¡La red está ardiendo!']
+      else if (result.doubleGoal) lines = ['¡Gol doble!', '¡Vale por dos!']
+      announceOneOf(lines, true)
     }
   }
 
@@ -1738,6 +1778,7 @@ export class MatchScene extends Phaser.Scene {
       this.arcadeHud.update({
         controlled,
         statusLine: this.arcade.getStatusLine(controlled, this.players, this.simNow),
+        superMeter: this.arcade.tricks.meter[controlled.team] / ARCADE_SUPER_MAX,
         timeNow: this.simNow,
       })
     }

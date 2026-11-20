@@ -4,8 +4,12 @@ import type { PowerupKind } from '../types'
 
 export const ARCADE_FONT = '"Russo One", "Arial Black", Impact, sans-serif'
 
-type EmitterKey = 'trail-white' | 'trail-turbo' | 'trail-fire' | 'aura-fire' | 'aura-turbo' | 'aura-magnet'
-  | 'burst-gold' | 'burst-ice' | 'burst-fire' | 'burst-white' | 'burst-blue' | 'burst-red'
+type EmitterKey = 'trail-white' | 'trail-turbo' | 'trail-fire' | 'trail-super' | 'trail-curve' | 'aura-fire' | 'aura-turbo' | 'aura-magnet' | 'aura-shield'
+  | 'burst-gold' | 'burst-ice' | 'burst-fire' | 'burst-white' | 'burst-blue' | 'burst-red' | 'burst-bolt' | 'burst-crazy'
+
+/** Estela de la bola: tiro especial, súper o efecto. */
+export type TrailKind = 'turbo' | 'fire' | 'super' | 'curve' | null
+export type BurstKind = 'gold' | 'ice' | 'fire' | 'white' | 'blue' | 'red' | 'bolt' | 'crazy'
 
 const POWERUP_COLORS: Record<PowerupKind, number> = {
   fire: 0xff6a1a,
@@ -13,6 +17,10 @@ const POWERUP_COLORS: Record<PowerupKind, number> = {
   freeze: 0xa8e4ff,
   magnet: 0xc86bff,
   wall: 0x7dff7a,
+  bolt: 0xffe23a,
+  crazy: 0xff4fd8,
+  shield: 0x7ab8ff,
+  mini: 0xffa04d,
 }
 
 export function getPowerupColor(kind: PowerupKind) {
@@ -56,7 +64,7 @@ export function createArcadeFxTextures(scene: Phaser.Scene) {
   g.clear()
 
   // Orbes de powerup con icono dibujado
-  const kinds: PowerupKind[] = ['fire', 'turbo', 'freeze', 'magnet', 'wall']
+  const kinds: PowerupKind[] = ['fire', 'turbo', 'freeze', 'magnet', 'wall', 'bolt', 'crazy', 'shield', 'mini']
   for (const kind of kinds) {
     const color = POWERUP_COLORS[kind]
     const c = 22
@@ -91,6 +99,32 @@ export function createArcadeFxTextures(scene: Phaser.Scene) {
       g.fillStyle(0xffffff, 1)
       g.fillRect(c - 10, c - 11, 4, 3)
       g.fillRect(c + 6, c - 11, 4, 3)
+    } else if (kind === 'bolt') {
+      // Rayo grueso con punta
+      g.fillTriangle(c + 4, c - 12, c - 8, c + 2, c + 2, c + 1)
+      g.fillTriangle(c - 4, c + 12, c + 8, c - 2, c - 2, c - 1)
+      g.fillStyle(0xffffff, 1)
+      g.fillCircle(c + 3, c - 10, 2)
+    } else if (kind === 'crazy') {
+      // Bola con trayectoria en zigzag
+      g.lineBetween(c - 11, c + 7, c - 5, c - 5)
+      g.lineBetween(c - 5, c - 5, c + 1, c + 6)
+      g.fillCircle(c + 6, c - 3, 5)
+      g.fillStyle(0xffffff, 1)
+      g.fillCircle(c + 4, c - 5, 1.6)
+    } else if (kind === 'shield') {
+      // Escudo
+      g.fillTriangle(c - 9, c - 6, c + 9, c - 6, c, c + 11)
+      g.fillRect(c - 9, c - 10, 18, 5)
+      g.fillStyle(0x0b1420, 1)
+      g.fillTriangle(c - 4, c - 4, c + 4, c - 4, c, c + 5)
+    } else if (kind === 'mini') {
+      // Portería pequeña con flechas hacia dentro
+      g.strokeRect(c - 5, c - 4, 10, 8)
+      g.lineBetween(c - 12, c - 10, c - 7, c - 6)
+      g.lineBetween(c + 12, c - 10, c + 7, c - 6)
+      g.lineBetween(c - 12, c + 10, c - 7, c + 6)
+      g.lineBetween(c + 12, c + 10, c + 7, c + 6)
     } else {
       // Muro de ladrillos
       g.fillRect(c - 10, c - 8, 9, 5)
@@ -103,6 +137,35 @@ export function createArcadeFxTextures(scene: Phaser.Scene) {
     g.clear()
   }
 
+  // Rayo del powerup: zigzag vertical (se estira desde arriba hasta el objetivo)
+  g.lineStyle(7, 0xffe23a, 0.45)
+  const zig = [[12, 0], [5, 26], [17, 42], [7, 68], [16, 82], [11, 96]]
+  for (let i = 1; i < zig.length; i++) g.lineBetween(zig[i - 1][0], zig[i - 1][1], zig[i][0], zig[i][1])
+  g.lineStyle(3, 0xffffff, 1)
+  for (let i = 1; i < zig.length; i++) g.lineBetween(zig[i - 1][0], zig[i - 1][1], zig[i][0], zig[i][1])
+  g.generateTexture('fx-bolt', 24, 96)
+  g.clear()
+
+  // Onda expansiva (súper tiro, rayo)
+  g.lineStyle(5, 0xffffff, 0.9)
+  g.strokeCircle(32, 32, 28)
+  g.lineStyle(10, 0xffffff, 0.25)
+  g.strokeCircle(32, 32, 24)
+  g.generateTexture('fx-ring', 64, 64)
+  g.clear()
+
+  // Burbuja del escudo
+  g.fillStyle(0x7ab8ff, 0.16)
+  g.fillEllipse(30, 36, 56, 68)
+  g.lineStyle(2, 0xbfe0ff, 0.85)
+  g.strokeEllipse(30, 36, 56, 68)
+  g.lineStyle(3, 0xffffff, 0.7)
+  g.beginPath()
+  g.arc(30, 36, 22, Math.PI * 1.1, Math.PI * 1.45, false)
+  g.strokePath()
+  g.generateTexture('fx-shield', 60, 72)
+  g.clear()
+
   g.destroy()
 }
 
@@ -114,6 +177,8 @@ export function createArcadeFxTextures(scene: Phaser.Scene) {
 export class ArcadeFx {
   private emitters = new Map<EmitterKey, Phaser.GameObjects.Particles.ParticleEmitter>()
   private iceBlocks = new Map<string, Phaser.GameObjects.Image>()
+  private shields = new Map<string, Phaser.GameObjects.Image>()
+  private tint: Phaser.GameObjects.Rectangle | null = null
   private bannerTween: Phaser.Tweens.Tween | null = null
   private banner: Phaser.GameObjects.Container | null = null
 
@@ -156,6 +221,16 @@ export class ArcadeFx {
         return { texture: 'fx-dot', depth: 1, cfg: { lifespan: 520, speedY: { min: -90, max: -40 }, speedX: { min: -18, max: 18 }, scale: { start: 0.8, end: 0 }, alpha: { start: 0.8, end: 0 }, tint: [0xffe36a, 0xff8a1a, 0xff3d1a], blendMode: add } }
       case 'aura-turbo':
         return { texture: 'fx-dot', depth: 1, cfg: { lifespan: 300, scale: { start: 0.5, end: 0 }, alpha: { start: 0.6, end: 0 }, tint: 0x3ee8ff, blendMode: add } }
+      case 'trail-super':
+        return { texture: 'fx-dot', depth: 2, cfg: { lifespan: 560, speed: { min: 20, max: 70 }, scale: { start: 1.25, end: 0.1 }, alpha: { start: 1, end: 0 }, tint: [0xffffff, 0xffe36a, 0xff4fd8, 0x3ee8ff], blendMode: add } }
+      case 'trail-curve':
+        return { texture: 'fx-dot', depth: 2, cfg: { lifespan: 300, scale: { start: 0.55, end: 0 }, alpha: { start: 0.75, end: 0 }, tint: 0xb6ff5a, blendMode: add } }
+      case 'aura-shield':
+        return { texture: 'fx-spark', depth: 1, cfg: { lifespan: 420, speed: { min: 20, max: 50 }, rotate: { min: 0, max: 360 }, scale: { start: 0.5, end: 0 }, alpha: { start: 0.8, end: 0 }, tint: [0x7ab8ff, 0xffffff], blendMode: add } }
+      case 'burst-bolt':
+        return { texture: 'fx-spark', depth: 24, cfg: { lifespan: 520, speed: { min: 160, max: 420 }, angle: { min: 0, max: 360 }, rotate: { min: 0, max: 360 }, scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, tint: [0xffffff, 0xffe23a], blendMode: add } }
+      case 'burst-crazy':
+        return { texture: 'fx-spark', depth: 24, cfg: { lifespan: 460, speed: { min: 120, max: 300 }, angle: { min: 0, max: 360 }, rotate: { min: 0, max: 360 }, scale: { start: 0.8, end: 0 }, alpha: { start: 1, end: 0 }, tint: [0xff4fd8, 0xffffff, 0x3ee8ff], blendMode: add } }
       case 'aura-magnet':
         return { texture: 'fx-spark', depth: 1, cfg: { lifespan: 380, speed: { min: 30, max: 70 }, rotate: { min: 0, max: 360 }, scale: { start: 0.6, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: 0xc86bff, blendMode: add } }
       case 'burst-gold':
@@ -174,25 +249,28 @@ export class ArcadeFx {
   }
 
   /** Estela de la bola según el tipo de tiro activo; `speed` en px/s mundo. `n` = pasos de simulación del fotograma. */
-  ballTrail(x: number, y: number, speed: number, kind: 'turbo' | 'fire' | null, n = 1) {
+  ballTrail(x: number, y: number, speed: number, kind: TrailKind, n = 1) {
     const k = this.density
     if (k <= 0) return
-    if (kind === 'fire') this.emitter('trail-fire').emitParticleAt(x, y, Math.max(1, Math.round(3 * n * k)))
+    if (kind === 'super') this.emitter('trail-super').emitParticleAt(x, y, Math.max(1, Math.round(4 * n * k)))
+    else if (kind === 'curve') this.emitter('trail-curve').emitParticleAt(x, y, Math.max(1, Math.round(n * k)))
+    else if (kind === 'fire') this.emitter('trail-fire').emitParticleAt(x, y, Math.max(1, Math.round(3 * n * k)))
     else if (kind === 'turbo') this.emitter('trail-turbo').emitParticleAt(x, y, Math.max(1, Math.round(2 * n * k)))
     else if (speed > 430 && Math.random() < k) this.emitter('trail-white').emitParticleAt(x, y, n)
   }
 
   /** Aura de un jugador; `n` = pasos de simulación del fotograma (una emisión por paso). */
-  aura(kind: 'fire' | 'turbo' | 'magnet', x: number, y: number, n = 1) {
+  aura(kind: 'fire' | 'turbo' | 'magnet' | 'shield', x: number, y: number, n = 1) {
     for (let i = 0; i < n; i++) {
       if (Math.random() >= this.density) continue
       if (kind === 'fire') this.emitter('aura-fire').emitParticleAt(x + Phaser.Math.Between(-10, 10), y + Phaser.Math.Between(-6, 18), 1)
       else if (kind === 'turbo') this.emitter('aura-turbo').emitParticleAt(x + Phaser.Math.Between(-6, 6), y + 16, 1)
+      else if (kind === 'shield') { if (Math.random() < 0.3) this.emitter('aura-shield').emitParticleAt(x + Phaser.Math.Between(-20, 20), y - Phaser.Math.Between(0, 50), 1) }
       else if (Math.random() < 0.35) this.emitter('aura-magnet').emitParticleAt(x, y, 1)
     }
   }
 
-  burst(kind: 'gold' | 'ice' | 'fire' | 'white' | 'blue' | 'red', x: number, y: number, count = 24) {
+  burst(kind: BurstKind, x: number, y: number, count = 24) {
     if (this.density <= 0) return
     this.emitter(`burst-${kind}`).explode(Math.max(4, Math.round(count * this.density)), x, y)
   }
@@ -209,6 +287,49 @@ export class ArcadeFx {
       this.iceBlocks.set(playerId, block)
     }
     block.setVisible(true).setPosition(x, y - 18)
+  }
+
+  /** Burbuja del escudo sobre un jugador (igual que el bloque de hielo: una imagen por jugador, reutilizada). */
+  setShielded(playerId: string, on: boolean, x = 0, y = 0, timeNow = 0) {
+    let bubble = this.shields.get(playerId)
+    if (!on) {
+      bubble?.setVisible(false)
+      return
+    }
+    if (!bubble) {
+      bubble = this.scene.add.image(x, y, 'fx-shield').setDepth(4).setBlendMode(Phaser.BlendModes.ADD)
+      this.shields.set(playerId, bubble)
+    }
+    bubble.setVisible(true).setPosition(x, y - 26).setAlpha(0.65 + Math.sin(timeNow * 0.012) * 0.2)
+  }
+
+  /**
+   * Velo de color a pantalla (capa UI) mientras dura un evento de partido; null lo quita.
+   * Se crea una vez y solo cambia al empezar o acabar el evento.
+   */
+  setScreenTint(color: number | null) {
+    if (color === null) {
+      this.tint?.setVisible(false)
+      return
+    }
+    if (!this.tint) {
+      this.tint = this.withUi(() => this.scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xffffff, 1).setDepth(1))
+    }
+    this.tint.setFillStyle(color, 0.08).setVisible(true)
+  }
+
+  /** Rayo que cae del techo sobre un punto de pantalla mundo, con chispas. */
+  lightning(x: number, y: number) {
+    const bolt = this.scene.add.image(x, y, 'fx-bolt').setOrigin(0.5, 1).setDepth(25).setBlendMode(Phaser.BlendModes.ADD)
+    bolt.setScale(Phaser.Math.FloatBetween(1.1, 1.5), 3.2).setFlipX(Math.random() < 0.5)
+    this.scene.tweens.add({ targets: bolt, alpha: { from: 1, to: 0 }, duration: 260, ease: 'Quad.In', onComplete: () => bolt.destroy() })
+    this.burst('bolt', x, y - 4, 12)
+  }
+
+  /** Onda expansiva desde un punto del mundo. */
+  shockwave(x: number, y: number, color: number, scale = 2.4) {
+    const ring = this.scene.add.image(x, y, 'fx-ring').setDepth(23).setTint(color).setBlendMode(Phaser.BlendModes.ADD).setScale(0.3, 0.18)
+    this.scene.tweens.add({ targets: ring, scaleX: scale, scaleY: scale * 0.6, alpha: { from: 1, to: 0 }, duration: 420, ease: 'Cubic.Out', onComplete: () => ring.destroy() })
   }
 
   /** Texto flotante en el mundo (p. ej. "¡PUM!" sobre una carga). */
@@ -280,6 +401,8 @@ export class ArcadeFx {
   destroy() {
     this.emitters.clear()
     this.iceBlocks.clear()
+    this.shields.clear()
+    this.tint = null
     this.banner = null
     this.bannerTween = null
   }

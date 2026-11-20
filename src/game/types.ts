@@ -6,7 +6,7 @@ export type TeamSide = 'left' | 'right'
 export type TeamColor = 'blue' | 'red'
 /** arcade: reglas relajadas, turbo, cargas, powerups y cámara dinámica. classic: reglamento. */
 export type GameMode = 'arcade' | 'classic'
-export type PowerupKind = 'fire' | 'turbo' | 'freeze' | 'magnet' | 'wall'
+export type PowerupKind = 'fire' | 'turbo' | 'freeze' | 'magnet' | 'wall' | 'bolt' | 'crazy' | 'shield' | 'mini'
 export type Role = 'goalie' | 'defender' | 'wing' | 'pivot'
 
 export type Vector = { x: number, y: number }
@@ -85,6 +85,12 @@ export type Player = {
   turboUntil?: number
   magnetUntil?: number
   wallUntil?: number
+  /** Escudo: ni cargas, ni robos, ni congelados, ni rayos hasta este instante. */
+  shieldUntil?: number
+  /** Portero encogido por el powerup «portería mini» del rival. */
+  miniUntil?: number
+  /** Instante en que recibió el último pase de un compañero (remate al primer toque). */
+  receivedPassAt?: number
   /** El siguiente tiro sale como bola de fuego (powerup). */
   fireShotReady?: boolean
   onFire?: boolean

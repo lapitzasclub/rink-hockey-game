@@ -62,7 +62,10 @@ src/
       qualityGovernor.ts     Medidor de trabajo por fotograma (`FrameWorkMeter`, CPU con la simulación proyectada a 55 fps) y regulador de auto (`QualityGovernor`)
     systems/
       ai.ts                  IA de portero y jugadores de campo
-      arcade.ts              ArcadeController: turbo, tiros turbo/fuego, cargas, rachas, powerups, rubber-band
+      arcade.ts              ArcadeController: turbo, tiros turbo/fuego/súper, cargas, rachas, rubber-band; coordina los tres siguientes
+      arcadePowerups.ts      Powerups arcade (9 tipos): aparición, recogida, efectos
+      arcadeTricks.ts        Primer toque, efecto, barra de súper, billar, cámara lenta, combos del gol
+      arcadeEvents.ts        Eventos de partido (gol doble, hielo, lluvia de powerups)
       cameraDirector.ts      Cámara dinámica (seguimiento con anticipación, zoom contextual, punch)
       ball.ts                Física y posición de la pelota
       matchActions.ts        Acciones: pase, tiro, robo, contactos, parada portero
@@ -77,7 +80,7 @@ src/
     ui/
       createHud.ts
       matchHud.ts
-      arcadeHud.ts           Barra de turbo y línea de estado (arcade)
+      arcadeHud.ts           Barras de súper y turbo y línea de estado (arcade)
       hudLayout.ts           Anclaje del HUD a las esquinas visibles con zonas seguras; en táctil el turbo sube bajo el marcador
       scoreboard.ts          Videomarcador común (ambos modos)
       prefs.ts               Preferencias: etiquetas de rol (`?labels=1|0`) y minutos reales por parte (`?half=N`)
@@ -196,7 +199,14 @@ Estilo NBA Jam manteniendo el 5v5 y relajando las reglas. Se elige en el menú; 
 - **Sin faltas**: el robo nunca pita falta (el resultado se convierte en bola suelta), no hay falta de zona del portero y el bully se sustituye por una melé: la bola sale disparada en dirección aleatoria.
 - **Turbo**: Shift/S gasta stamina con más velocidad. **Shift+U con bola** = tiro turbo (más potencia, puede batir al portero). **Shift+U sin bola** = carga: derriba al rival cercano y, si es el portador, suelta la bola.
 - **En racha (on fire)**: 2 goles seguidos del mismo jugador → turbo infinito y tiros de fuego hasta que el rival marca.
-- **Powerups** sobre la pista (máx. 2): fuego (siguiente tiro de fuego), turbo, congelar (2 rivales), imán (bola), muro (portero más grande). La IA también va a por ellos.
+- **Powerups** sobre la pista (máx. 2, sorteo con pesos `ARCADE_POWERUP_WEIGHTS`): fuego (siguiente tiro de fuego), turbo, congelar (2 rivales), imán (bola), muro (portero más grande), rayo (aturde a los rivales cercanos y suelta la bola), bola loca (la bola sale más rápida y desviada de la valla), escudo (inmune a cargas, robos y hielo) y portería mini (el portero rival encoge y para peor). La IA también va a por ellos. Código en `systems/arcadePowerups.ts`.
+- **Trucos** (`systems/arcadeTricks.ts`, mismos botones):
+  - *Remate al primer toque*: tirar en menos de `ARCADE_ONE_TIMER_MS` tras recibir un pase (o pulsar tiro justo antes de que llegue: `ARCADE_ONE_TIMER_BUFFER_MS`) da más potencia y opción de batir al portero. La IA remata de primeras al recibir cerca del área.
+  - *Tiro con efecto*: tirar patinando de lado curva la bola; sale abierta y el arco la devuelve al punto apuntado (más curva con turbo).
+  - *Barra de súper* por equipo (HUD bajo la de turbo): se llena con pases, robos, cargas, trucos, paradones y goles de billar. Llena, el siguiente tiro es el súper (potencia ×1,55, casi siempre bate al portero, cámara lenta). Si el rival recupera la bola con la barra llena, baja a 40.
+  - *Gol de billar*: el gol tras rebotar en la valla da +30 de barra.
+  - *Espectáculo*: cámara lenta en el súper y en remates rápidos al límite (siempre con tiros especiales, a veces con los normales); «¡PARADÓN!»; el banner del gol suma combos (súper, billar, primer toque, efecto, por la escuadra, doblete, hat-trick).
+- **Eventos de partido** (`systems/arcadeEvents.ts`): a los 40 s de juego vivo y luego cada 50–70 s, 20 s de GOL DOBLE (cada gol suma 2), PISTA DE HIELO (patines y bola deslizan: `skateMods`, `ballMods`) o LLUVIA DE POWERUPS (hasta 5 a la vez). Salen de una bolsa barajada, sin repetir hasta que salen los tres.
 - **Rubber-band**: el equipo que pierde recibe un pequeño bonus de velocidad.
 - La IA hace cargas (`ARCADE_AI_CHECK_CHANCE`) y tiros turbo.
 - Locutor por síntesis de voz y ambiente de público procedural cuya intensidad sube cerca de las porterías.
@@ -247,6 +257,7 @@ Joystick analógico izquierdo (nipplejs), botones A (tiro/robo), B (pase/cambio)
 - Menú inicial, panel de ajustes, audio procedural, animación de stick
 - Animación de patinaje procedural v3: fase acumulada, contrafase 180°, zancada por dirección, `sideFactor`, texturas de espalda, sprint
 - Modo arcade estilo NBA Jam (cámara dinámica, turbo, cargas, powerups, racha de fuego, locutor, HUD arcade) con selección de modo en el menú
+- Arcade ampliado: 4 powerups nuevos, remate al primer toque, tiro con efecto, barra de súper, gol de billar, eventos de partido, cámara lenta y combos del gol
 - Menús con aspecto de videojuego: menú principal sobre el pabellón, acceso directo a pantalla completa, ajustes renovados y aviso de orientación en móvil
 - Menú de pausa (Esc / Start / botón táctil), ajustes por pestañas con volúmenes, reasignación de teclas, soporte de mando y UI adaptada a teclado, mando o táctil
 - Rendimiento y formato: simulación a paso fijo (velocidad igual con cualquier pantalla), pista horneada, calidad gráfica con modo automático, formato apaisado responsivo y workflow de rendimiento (`docs/perf/`, `/perf`)
@@ -306,6 +317,14 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - No sobrescribir assets finales con salidas IA sin revisión. Generar candidatos en `public/assets/generated/`, inspeccionar PNG aislado y captura in-game, y solo entonces integrar.
 
 ## Work log
+
+### 2026-11-20 — arcade ampliado (trucos, powerups, eventos, espectáculo)
+
+- Pedido del usuario: «darle un buen meneo al modo arcade». Diseño en «Modo arcade». Los powerups salen de `arcade.ts` a `arcadePowerups.ts` y llegan los nuevos (rayo, bola loca, escudo, portería mini). `arcadeTricks.ts` lleva el primer toque, el efecto, la barra de súper, el billar, la cámara lenta, «¡PARADÓN!» y los combos. `arcadeEvents.ts` lleva el gol doble, el hielo y la lluvia de powerups.
+- Modificadores globales nuevos: `ballMods` (`ball.ts`: rozamiento de la bola suelta, contador de rebotes en la valla) y `skateMods` (`movement.ts`: agarre de los patines, solo jugadores de campo). `stepSimulation` los vuelve a neutro en cada paso y el hielo los aplica solo con la bola en juego. Cámara lenta: `MatchScene.update` escala el tiempo que entra al acumulador con `arcade.timeScale(simNow)` (no en la prueba del equipo). HUD: barra SÚPER encima de la de turbo.
+- IA: remata de primeras al recibir cerca del área (50 %), usa el súper en cualquier tiro con la barra llena, recibe los efectos de los powerups nuevos y va a por ellos.
+- Humo arcade (10 + 10 corridas, 240 s, nuevo frente a base a16b73a): 0 errores y 0 atascos. Goles 2,05 ± 0,46 frente a 1,90 ± 0,38 por minuto y tiros 9,0 ± 1,0 frente a 7,5 ± 0,9, con IC que se solapan. Robos 8,8 ± 1,4 frente a 11,8 ± 1,4, ya sin solaparse: el escudo y los remates de primeras dejan menos tiempo con la bola. Rojo − azul −0,15 ± 0,83.
+- No hecho: repetición del gol (necesita grabar y reproducir el estado, mucho riesgo para este paquete). Pendiente: probarlo jugando y ajustar las ganancias de la barra (`ARCADE_SUPER_GAIN`).
 
 ### 2026-11-20 — lanz L-05b
 

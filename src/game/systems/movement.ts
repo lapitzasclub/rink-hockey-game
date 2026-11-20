@@ -19,6 +19,10 @@ export function seek(player: Player, target: Vector, intensity: number, dt: numb
   player.velocity.y += (dy / len) * PLAYER_ACCEL * intensity * dt
 }
 
+/** Agarre del patín (1 = normal); el evento arcade «pista de hielo» lo baja. */
+export const skateMods = { grip: 1 }
+const lastSkateVelocity = new WeakMap<Player, Vector>()
+
 /**
  * Integra el movimiento del jugador con una sensación simple de inercia.
  *
@@ -28,6 +32,12 @@ export function seek(player: Player, target: Vector, intensity: number, dt: numb
 export function applySkating(player: Player, dt: number) {
   player.velocity.x *= PLAYER_FRICTION
   player.velocity.y *= PLAYER_FRICTION
+  // Pista de hielo (arcade): solo una fracción del cambio de velocidad del paso «agarra»; el resto es deriva
+  const last = lastSkateVelocity.get(player)
+  if (skateMods.grip < 1 && player.role !== 'goalie' && last) {
+    player.velocity.x = last.x + (player.velocity.x - last.x) * skateMods.grip
+    player.velocity.y = last.y + (player.velocity.y - last.y) * skateMods.grip
+  }
 
   const speed = Math.hypot(player.velocity.x, player.velocity.y)
   const stamina = player.stamina ?? 100
@@ -40,6 +50,10 @@ export function applySkating(player: Player, dt: number) {
 
   player.pos.x += player.velocity.x * dt
   player.pos.y += player.velocity.y * dt
+  if (last) {
+    last.x = player.velocity.x
+    last.y = player.velocity.y
+  } else lastSkateVelocity.set(player, { x: player.velocity.x, y: player.velocity.y })
 
   const radius = player.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS
   player.pos.x = Phaser.Math.Clamp(player.pos.x, RINK.x + radius, RINK.x + RINK.width - radius)

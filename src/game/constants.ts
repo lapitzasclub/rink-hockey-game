@@ -1,3 +1,5 @@
+import type { PowerupKind } from './types'
+
 /** Límites legales de la longitud de pista en metros (REG TR a.1 ap. 3): 34 a 44 m, proporción 2:1. */
 const RINK_LENGTH_MIN_M = 34
 const RINK_LENGTH_MAX_M = 44
@@ -602,6 +604,75 @@ export const ARCADE_POWERUP_WALL_MS = 10000
 export const ARCADE_POWERUP_WALL_SAVE_SCALE = 1.65
 export const ARCADE_POWERUP_FREEZE_MS = 2600
 export const ARCADE_POWERUP_FREEZE_TARGETS = 2
+/** Rayo: tumba a los rivales de campo en este radio (px mundo) durante este tiempo. */
+export const ARCADE_POWERUP_BOLT_RADIUS = 230
+export const ARCADE_POWERUP_BOLT_STUN_MS = 1300
+/** Bola loca: cada rebote en la valla acelera la bola y la desvía al azar. */
+export const ARCADE_POWERUP_CRAZY_MS = 10000
+export const ARCADE_CRAZY_BOUNCE_BOOST = 1.32
+export const ARCADE_CRAZY_BOUNCE_SPREAD = 0.65
+export const ARCADE_CRAZY_MAX_SPEED = 820
+export const ARCADE_POWERUP_SHIELD_MS = 9000
+/** Portería mini: el portero rival encoge (radio de parada y figura). */
+export const ARCADE_POWERUP_MINI_MS = 10000
+export const ARCADE_POWERUP_MINI_SAVE_SCALE = 0.6
+export const ARCADE_POWERUP_MINI_VISUAL = 0.74
+/** Reparto de powerups (pesos relativos). */
+export const ARCADE_POWERUP_WEIGHTS: Record<PowerupKind, number> = {
+  fire: 0.14, turbo: 0.13, freeze: 0.1, magnet: 0.09, wall: 0.1,
+  bolt: 0.12, crazy: 0.1, shield: 0.1, mini: 0.12,
+}
+
+// ─── Trucos arcade ─────────────────────────────────────────────────────────
+
+/**
+ * Remate al primer toque: tirar antes de esta ventana desde que se recibe un pase.
+ * Un tiro pulsado hasta BUFFER ms antes de recibir sale solo al controlar la bola.
+ */
+export const ARCADE_ONE_TIMER_MS = 650
+export const ARCADE_ONE_TIMER_BUFFER_MS = 350
+export const ARCADE_ONE_TIMER_POWER = 1.18
+export const ARCADE_ONE_TIMER_BEAT_GOALIE = 0.34
+/**
+ * Tiro con efecto: la velocidad lateral del tirador respecto al tiro (fracción de
+ * PLAYER_MAX_SPEED) a partir de MIN abre la bola hacia ese lado hasta MAX_ANGLE (rad)
+ * y la curva la devuelve a la portería. Con turbo la curva es más cerrada.
+ */
+export const ARCADE_CURVE_MIN_LATERAL = 0.3
+export const ARCADE_CURVE_MAX_ANGLE = 0.38
+export const ARCADE_CURVE_TURBO_SCALE = 1.4
+export const ARCADE_CURVE_MIN_DIST = 140
+export const ARCADE_CURVE_BEAT_BONUS = 0.1
+/** Barra de súper por equipo (0..MAX) y lo que da cada acción. */
+export const ARCADE_SUPER_MAX = 100
+export const ARCADE_SUPER_GAIN = { pass: 4, steal: 9, check: 10, oneTimer: 12, curve: 7, save: 8, bank: 30 }
+/** Si el rival recupera la bola con el súper listo, la barra baja a esto. */
+export const ARCADE_SUPER_KEEP_ON_LOSS = 40
+export const ARCADE_SUPER_POWER = 1.55
+export const ARCADE_SUPER_BEAT_GOALIE = 0.9
+/** Cámara lenta (escala del tiempo y duración en ms de simulación) al soltar el súper. */
+export const ARCADE_SUPER_SLOWMO = { scale: 0.28, simMs: 260 }
+/**
+ * Cámara lenta en remates al límite: bola a puerta, rápida y a menos de RANGE px de la
+ * línea. Siempre con tiros especiales; con los normales, con probabilidad PLAIN_CHANCE.
+ */
+export const ARCADE_SLOWMO = { scale: 0.32, simMs: 190, range: 170, minSpeed: 470, cooldownMs: 5000, plainChance: 0.3 }
+/** Fracción de la media altura de la portería a partir de la que un gol va «por la escuadra». */
+export const ARCADE_CORNER_FRAC = 0.62
+
+// ─── Eventos de partido arcade ─────────────────────────────────────────────
+
+/** Tiempo de juego vivo (ms de simulación) hasta el primer evento y entre eventos; duración. */
+export const ARCADE_EVENT_FIRST_MS = 40000
+export const ARCADE_EVENT_INTERVAL_MIN_MS = 50000
+export const ARCADE_EVENT_INTERVAL_MAX_MS = 70000
+export const ARCADE_EVENT_MS = 20000
+/** Pista de hielo: fracción del rozamiento normal que queda (jugadores y bola). */
+export const ARCADE_EVENT_ICE_GRIP = 0.38
+export const ARCADE_EVENT_ICE_BALL_GLIDE = 0.45
+/** Lluvia de powerups: tope de orbes a la vez e intervalo de aparición (ms). */
+export const ARCADE_EVENT_RAIN_MAX_ACTIVE = 5
+export const ARCADE_EVENT_RAIN_INTERVAL_MS = [1300, 2300] as const
 
 /** Cámara dinámica: zoom base, en zona de ataque y con bola rápida. */
 export const ARCADE_CAMERA_ZOOM = 1.32
