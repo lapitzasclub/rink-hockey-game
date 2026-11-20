@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_CARRY_GAP, BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BALL_WALL_MARGIN, BULLY_CLUSTER_RADIUS, BULLY_CONTEST_GAP, GOAL_NET_HOLD_X, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
+import { BALL_CARRY_GAP, BALL_CLAIM_FACING_BONUS, BALL_CLAIM_FACING_PENALTY, BALL_CLAIM_FRONT_DOT, BALL_CONTROL_DISTANCE, BALL_CONTROL_PROTECTION_BACK_EXTRA_MS, BALL_CONTROL_PROTECTION_MS, BALL_FRICTION, BALL_MAGNET_DISTANCE, BALL_MAGNET_MAX_SPEED, BALL_PICKUP_DISTANCE, BALL_PROTECT_OFFSET_SIDE, BALL_PROTECT_VELOCITY_BLEND, BALL_RADIUS, BALL_WALL_MARGIN, BULLY_CLUSTER_RADIUS, CARRY_OWN_GOAL, BULLY_CONTEST_GAP, GOAL_NET_HOLD_X, BULLY_MIN_PLAYERS, GAME_HEIGHT, GOAL_BACK_DEPTH, GOAL_HALF_H, GOALIE_CLAIM_RADIUS, GOALIE_RADIUS, GOALIE_SAVE_RADIUS, GOAL_POST_REBOUND, GOAL_SIDE_REBOUND, PLAYER_RADIUS, RINK } from '../constants'
 import type { Ball, BullyCandidate, Player, Vector } from '../types'
 import { scorerAtGoal } from '../formation'
 import { getGoalLineX } from '../utils'
@@ -11,8 +11,12 @@ import { findPlayerById, getControllablePlayers } from './playerHelpers'
  * Si existe portador, el balón queda anclado delante del jugador. Si no,
  * avanza con inercia, rebote en bandas y apertura del área de portería.
  */
+/** Quién conducía la bola en el último updateBallPosition (B-07, para el humo: autogoles conduciendo). */
+export const ballCarriedBy = { team: '' as Player['team'] | '' }
+
 export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrierId: string | null, players: Player[], dt: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
+  ballCarriedBy.team = carrier ? carrier.team : ''
 
   if (carrier) {
     const carryOffset = carrier.role === 'goalie' ? GOALIE_RADIUS + BALL_CARRY_GAP : PLAYER_RADIUS + BALL_CARRY_GAP
@@ -39,6 +43,12 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
     }
     if (carrier.pos.x < rightNetBackX && carrier.pos.x > rightGoalLineX - PLAYER_RADIUS && !insideRightGoalCage && nextBallX > rightGoalLineX && carrierInGoalHeight) {
       nextBallX = rightGoalLineX - BALL_RADIUS
+    }
+    // B-07: conducida no entra en la propia portería por la boca: se queda en la línea delante del
+    // portador (ball.x es aún la posición del paso anterior; si ya estaba dentro, no se la saca)
+    if (CARRY_OWN_GOAL.block && nextBallY > goalTop - BALL_RADIUS && nextBallY < goalBottom + BALL_RADIUS) {
+      if (carrier.side === 'left' && nextBallX < leftGoalLineX + BALL_RADIUS && (ball.x >= leftGoalLineX || carrier.pos.x > leftGoalLineX)) nextBallX = leftGoalLineX + BALL_RADIUS
+      else if (carrier.side === 'right' && nextBallX > rightGoalLineX - BALL_RADIUS && (ball.x <= rightGoalLineX || carrier.pos.x < rightGoalLineX)) nextBallX = rightGoalLineX - BALL_RADIUS
     }
 
     ball.x = nextBallX

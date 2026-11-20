@@ -1,10 +1,12 @@
 import * as Phaser from 'phaser'
-import { GOALIE_AI_MAX_Y, GOAL_HALF_H, PLAYER_RADIUS, RINK, SHOT_CONTEXT, SHOT_QUALITY } from '../constants'
+import { GOALIE_AI_MAX_Y, GOAL_HALF_H, MANUAL_STEAL_RANGE, PLAYER_RADIUS, RINK, SHOT_CONTEXT, SHOT_QUALITY } from '../constants'
 import type { Player } from '../types'
 import { getGoalLineX } from '../utils'
 import { bisectorY } from './goalieAI'
 import { autopilot } from './playerControl'
 import { getControlledPlayer } from './playerHelpers'
+import { stealTryCount } from './matchActions'
+import { ballCarriedBy } from './ball'
 
 /**
  * Estadísticas del partido (WP-64, B-01): observa MatchScene en solo lectura y cuenta goles,
@@ -119,8 +121,15 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     // (SHOT_CONTEXT.markPx), s con el portador doblado y s con la persona encima del portador
     defSec: pair(), unmarkedSec: pair(), doubleSec: pair(), humanOnCarrierSec: pair(),
     // B-06: pérdidas en conducción del portador de campo (robo directo o bola suelta por toque rival),
-    // de ellas, por carga arcade; intentos de robo (animación de robo) y, de la persona, intentos y robos directos
+    // de ellas, por carga arcade; intentos de robo (stealTryCount, B-07) y, de la persona, intentos y robos directos
     losses: pair(), lossesCheck: pair(), stealTries: pair(), stealTriesHuman: pair(), stealsHuman: pair(),
+    // B-07, por equipo que encaja: goles con la bola conducida por uno de los suyos (ballCarriedBy)
+    goalsCarriedOwn: pair(),
+    // B-07, por equipo que defiende: jugador·s de campo a distancia de robo del portador rival (la
+    // persona aparte), robos directos, y s de rivales encima de la persona cuando ella conduce y sus pérdidas
+    pressSec: pair(), pressSecHuman: pair(), stealsDirect: pair(), pressOnHumanSec: pair(), lossesHuman: pair(),
+    // B-07: s defendiendo con la persona por el lado de nuestra portería respecto al portador
+    humanGoalSideSec: pair(),
   }
   const shotLog: ShotRecord[] = []
   let ms = 0
@@ -147,8 +156,8 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
   const stealAt: Pair = { blue: -Infinity, red: -Infinity }
   /** Jugador en manos de la persona en este paso (null con piloto automático). */
   let humanId: string | null = null
-  /** B-06: marca de la última animación de robo vista por jugador (un intento por animación nueva). */
-  const stealAnimAt = new Map<string, number>()
+  /** B-07: intentos de robo ya contados por jugador (stealTryCount es acumulado entre partidos). */
+  const stealTriesSeen = new Map<string, number>()
   /** B-06: el portador de campo `from` pierde la bola; `thiefId` si el rival se la queda directamente. */
   const noteLoss = (from: MatchView['players'][number], thiefId: string | null) => {
     if (from.role !== 'goalie') {
@@ -156,6 +165,8 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       if (from.stunKind === 'check' && (from.stunUntil ?? 0) > s.simNow) st.lossesCheck[from.team]++
     }
     if (thiefId && thiefId === humanId) st.stealsHuman[other(from.team)]++
+    if (thiefId) st.stealsDirect[other(from.team)]++
+    if (from.id === humanId) st.lossesHuman[from.team]++
   }
   /** Dirección de ataque del equipo según su lado actual (cambia en el descanso). */
   const attackDir = (team: Team) => (s.players.find(p => p.team === team)?.side === 'right' ? -1 : 1)
@@ -192,6 +203,8 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
           if (pending.rec) pending.rec.result = 'goal'
           pending = null
         } else st.goalsNoShotAgainst[def] += n
+        // Conducida en el mismo paso del gol (un pase o despeje que entra no cuenta)
+        if (ballCarriedBy.team === def) st.goalsCarriedOwn[def] += n
       }
       prevScore[t] = sc
     }
@@ -223,11 +236,13 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       const bad = !(Number.isFinite(p.pos.x) && Number.isFinite(p.pos.y) && Number.isFinite(p.velocity.x) && Number.isFinite(p.velocity.y)) ||
         (!(su > s.simNow) && (p.pos.x < RINK.x - 12 || p.pos.x > RINK.x + RINK.width + 12 || p.pos.y < RINK.y - 12 || p.pos.y > RINK.y + RINK.height + 40))
       if (bad) { st.badPlayerFrames++; st.badSample ||= `${p.id}@${Math.round(p.pos.x)},${Math.round(p.pos.y)}` }
-      const a = p.anim
-      if (a && a.type === 'steal' && stealAnimAt.get(p.id) !== a.at) {
-        stealAnimAt.set(p.id, a.at)
-        st.stealTries[p.team]++
-        if (p.id === humanId) st.stealTriesHuman[p.team]++
+      const tries = stealTryCount.get(p.id) ?? 0
+      const seen = stealTriesSeen.get(p.id)
+      if (seen === undefined) stealTriesSeen.set(p.id, tries)
+      else if (tries > seen) {
+        stealTriesSeen.set(p.id, tries)
+        st.stealTries[p.team] += tries - seen
+        if (p.id === humanId) st.stealTriesHuman[p.team] += tries - seen
       }
     }
 
@@ -260,6 +275,15 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     if (release && (release.age += dt * 1000) > 4000) release = null
 
     if (carrier && carrier.role !== 'goalie' && inPlay) coverage(carrier, ctrl?.team === other(carrier.team) ? ctrl.id : null, dt)
+    if (carrier && carrier.role !== 'goalie' && inPlay) {
+      const def = other(carrier.team)
+      for (const d of s.players) {
+        if (d.team !== def || !live(d) || Math.hypot(d.pos.x - carrier.pos.x, d.pos.y - carrier.pos.y) > MANUAL_STEAL_RANGE) continue
+        if (d.id === humanId) st.pressSecHuman[def] += dt
+        else st.pressSec[def] += dt
+        if (carrier.id === humanId) st.pressOnHumanSec[def] += dt
+      }
+    }
 
     // Bola parada (atasco): tramos > JAM_SECONDS sin que la bola se mueva y con el juego vivo
     const moved = Math.hypot(s.ball.x - prevBall.x, s.ball.y - prevBall.y) / Math.max(dt, 1e-3)
@@ -375,8 +399,10 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     const r = SHOT_CONTEXT.markPx
     st.defSec[def] += dt
     let onCarrier = 0
+    const toOwn = getGoalLineX(carrier.side === 'left' ? 'right' : 'left') < carrier.pos.x ? -1 : 1
     for (const d of s.players) {
       if (d.team !== def || !live(d)) continue
+      if (d.id === humanId && (d.pos.x - carrier.pos.x) * toOwn > 0) st.humanGoalSideSec[def] += dt
       if (Math.hypot(d.pos.x - carrier.pos.x, d.pos.y - carrier.pos.y) < r) {
         onCarrier++
         if (d.id === humanId) st.humanOnCarrierSec[def] += dt

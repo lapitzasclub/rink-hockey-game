@@ -332,6 +332,12 @@ export function tryShotAction(options: {
 }
 
 /**
+ * Intentos de robo que llegan a la tirada, acumulados por jugador (B-07). Los lee matchStats por
+ * diferencia: contarlos por la animación se quedaba corto porque startAnim no la reinicia a mitad.
+ */
+export const stealTryCount = new Map<string, number>()
+
+/**
  * Intenta robar la bola al portador rival.
  *
  * Las probabilidades de éxito, bola suelta y falta se modulan por el ángulo
@@ -422,6 +428,7 @@ export function tryManualStealAction(options: {
   }
 
   startAnim(options.player, 'steal', options.timeNow)
+  stealTryCount.set(options.player.id, (stealTryCount.get(options.player.id) ?? 0) + 1)
   const roll = Math.random()
   if (roll < foulChance) {
     // Por detrás y con el portador lanzado, la falta suele ser un enganche o una zancadilla: grave
