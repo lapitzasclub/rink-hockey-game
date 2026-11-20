@@ -1,0 +1,9 @@
+﻿[45012:24076:1120/153439.516:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5192/@vite/client (851)
+[45012:24076:1120/153439.523:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5192/@vite/client (955)
+[45012:24076:1120/153439.659:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5192/@vite/client (851)
+[45012:24076:1120/153439.678:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5192/@vite/client (955)
+[45012:24076:1120/153440.138:INFO:CONSOLE:12751] "%cPhaser v4.2.0 (WebGL | Web Audio)%c https://phaser.io/v402 color: #ffffff; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAOCAYAAAAmL5yKAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAARBJREFUeNpi/P//P0OHsPB/BiCoePuW [...]
+[45012:24076:1120/153440.234:INFO:CONSOLE:0] "[.WebGL-0x3b34003f6c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5192/?lab=setpiece&kind=penalty (0)
+[45012:24076:1120/153440.361:INFO:CONSOLE:0] "[.WebGL-0x3b34003f6c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5192/?lab=setpiece&kind=penalty (0)
+[45012:24076:1120/153440.361:INFO:CONSOLE:0] "[.WebGL-0x3b34003f6c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5192/?lab=setpiece&kind=penalty (0)
+[45012:24076:1120/153440.373:INFO:CONSOLE:0] "[.WebGL-0x3b34003f6c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://127.0.0.1:5192/?lab=setpiece&kind=penalty (0)

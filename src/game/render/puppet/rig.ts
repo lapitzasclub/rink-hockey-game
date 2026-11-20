@@ -9,7 +9,7 @@
  * origen es el de `PUPPET_LOCAL` (pies en `feetY`).
  */
 import * as Phaser from 'phaser'
-import { PUPPET_LOCAL, RIG_GEAR, RIG_PROPORTIONS, RIG_SORT_HYSTERESIS, RIG_STICK_MIN_PX, RIG_TEX_SUPERSAMPLE } from '../artSpec'
+import { PUPPET_LOCAL, RIG_FLOOR_FORESHORTEN, RIG_GEAR, RIG_PROPORTIONS, RIG_SORT_HYSTERESIS, RIG_STICK_MIN_PX, RIG_TEX_SUPERSAMPLE } from '../artSpec'
 import { puppetAtlas, type FrameRef, type PuppetAtlas } from './atlas'
 import type { RigKit } from './kit'
 import type { FigureKind, PuppetPose, Side } from './pose'
@@ -57,6 +57,8 @@ export class PuppetRig {
   readonly kit: RigKit
   /** Lado del stick (1 = pala a la derecha); el portero lleva el blocker en esa mano. */
   readonly stickSide: Side
+  /** Escorzo del suelo de la figura; la escena de lanzamientos lo fija con su cámara baja. */
+  floorForeshorten = RIG_FLOOR_FORESHORTEN
   readonly skeleton: Skeleton
   private readonly slots: Slot[] = []
   private readonly scene: Phaser.Scene
@@ -162,7 +164,7 @@ export class PuppetRig {
   apply(pose: PuppetPose) {
     const sk = this.skeleton
     sk.solve(pose)
-    sk.project(pose.yaw, RIG_UNIT, PUPPET_LOCAL.feetY)
+    sk.project(pose.yaw, RIG_UNIT, PUPPET_LOCAL.feetY, this.floorForeshorten)
     const { px, py, pd } = sk
     const bodyView = viewIndex(pose.yaw)
     const fz = sk.view.fz
