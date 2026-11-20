@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { DIFFICULTY, DIFFICULTY_LEVELS, GAME_WIDTH, GAME_HEIGHT } from '../game/constants'
+import { GAME_WIDTH, GAME_HEIGHT } from '../game/constants'
 import { createProceduralPuppetTextures } from '../game/render/createProceduralPuppetTextures'
 import { ARCADE_FONT } from '../game/render/arcadeFx'
 import { createArena, type Arena } from '../game/render/arena'
@@ -7,14 +7,16 @@ import { drawRink } from '../game/render/drawRink'
 import { playUiConfirm, playUiMove, playUiThump } from '../game/audio/sounds'
 import type { GameMode } from '../game/types'
 import { consumePad } from '../game/input/gamepad'
-import { getDifficulty, getHalfRealMinutes, onDifficultyChange, onHalfRealMinutesChange, stepDifficulty } from '../game/ui/prefs'
-import { claveEscudo, descartarPartido, equipoDeHueco, getLadoHumano, getPartidoExterno, ladoDeHueco, registrarEscudos, setLadoHumano, type Lado } from '../game/externalMatch'
+import { getHalfRealMinutes, onDifficultyChange, onHalfRealMinutesChange, stepDifficulty } from '../game/ui/prefs'
+import { descartarPartido, equipoDeHueco, getLadoHumano, getPartidoExterno, ladoDeHueco, setLadoHumano, type Lado } from '../game/externalMatch'
 import { teamKit } from '../game/render/puppet/kit'
 import { getInputMode, onInputModeChange, PAD_GLYPH } from '../game/input/inputMode'
+import { C, slantPts } from './menuStyle'
+import { MenuSetup } from './menuSetup'
 
 type MenuData = { blueScore?: number; redScore?: number; blueFouls?: number; redFouls?: number; mode?: GameMode }
 
-type Hint = { key: string } | { pad: string } | { arrows: true }
+type Hint = { key: string } | { pad: string } | { arrows: true } | { arrowsV: true }
 
 type ModeDef = { mode: GameMode, title: string, lines: string[], color: number, hex: string, dark: number }
 
@@ -35,14 +37,6 @@ const UI = {
   zoom: { min: 1.1, max: 1.22 },
 } as const
 
-const C = {
-  ink: '#08111b',
-  inkN: 0x08111b,
-  orange: 0xff8a1a,
-  blue: '#4da3ff',
-  red: '#ff5d6c',
-} as const
-
 function loadMode(): GameMode {
   try {
     return localStorage.getItem(MODE_KEY) === 'classic' ? 'classic' : 'arcade'
@@ -59,16 +53,6 @@ function saveMode(mode: GameMode) {
   }
 }
 
-/** Paralelogramo centrado en el origen: la inclinación da el aire «deportivo» de toda la UI. */
-function slantPts(w: number, h: number, skew: number, cx = 0, cy = 0) {
-  return [
-    new Phaser.Math.Vector2(cx - w / 2 + skew / 2, cy - h / 2),
-    new Phaser.Math.Vector2(cx + w / 2 + skew / 2, cy - h / 2),
-    new Phaser.Math.Vector2(cx + w / 2 - skew / 2, cy + h / 2),
-    new Phaser.Math.Vector2(cx - w / 2 - skew / 2, cy + h / 2),
-  ]
-}
-
 /** Los sonidos de hover solo si ya hubo gesto: antes, Chrome bloquea el AudioContext y avisa en consola. */
 function canPlayAudio() {
   const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation
@@ -79,8 +63,10 @@ type Card = { def: ModeDef, frame: Phaser.GameObjects.Graphics, container: Phase
 
 /**
  * Pantalla principal. Fondo: el pabellón real (gradas con público y pista) con
- * una cámara que deriva despacio; encima, en una cámara de UI fija, logo,
- * tarjetas de modo y ayudas. Mismo enrutado de dos cámaras que MatchScene.
+ * una cámara que deriva despacio; encima, en una cámara de UI fija, dos
+ * pantallas: la de título (logo, resultado y tarjetas de modo) y, al elegir
+ * modo, «prepara el partido» (equipos, dificultad y jugar; `menuSetup.ts`).
+ * Mismo enrutado de dos cámaras que MatchScene.
  */
 export class MenuScene extends Phaser.Scene {
   private selected: GameMode = 'arcade'
@@ -94,8 +80,11 @@ export class MenuScene extends Phaser.Scene {
   private beams: Phaser.GameObjects.Image[] = []
   private starting = false
   private reducedMotion = false
-  private pickerRedraw: (() => void) | null = null
-  private diffRedraw: (() => void) | null = null
+  private screen: 'title' | 'setup' = 'title'
+  private setup: MenuSetup | null = null
+  /** Objetos de la pantalla de título que se esconden al pasar a «prepara el partido». */
+  private titleFade: Phaser.Tweens.Tween | null = null
+  private titleObjs: (Phaser.GameObjects.Container | Phaser.GameObjects.Graphics | Phaser.GameObjects.Text)[] = []
 
   constructor() {
     super('menu')
@@ -108,8 +97,10 @@ export class MenuScene extends Phaser.Scene {
     this.chevrons = []
     this.beams = []
     this.starting = false
-    this.pickerRedraw = null
-    this.diffRedraw = null
+    this.screen = 'title'
+    this.setup = null
+    this.titleObjs = []
+    this.game.registry.set('menuSetup', false)
     this.drift = { t: 0 }
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -121,8 +112,8 @@ export class MenuScene extends Phaser.Scene {
       for (const c of this.cards) (c.container.getByName('duration') as Phaser.GameObjects.Text | null)?.setText(MenuScene.durationLabel())
     })
     // Igual con la dificultad: el selector del menú y el de Ajustes son la misma preferencia
-    const offDiff = onDifficultyChange(() => this.diffRedraw?.())
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { offMode(); offHalf(); offDiff() })
+    const offDiff = onDifficultyChange(() => this.setup?.redraw())
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { offMode(); offHalf(); offDiff(); this.game.registry.set('menuSetup', false) })
 
     this.arena = createArena(this)
     drawRink(this)
@@ -137,14 +128,17 @@ export class MenuScene extends Phaser.Scene {
     this.arena.update(time, 0.25)
     // Mando (el shell ya lo sondeó en este frame y se queda con lo que use un panel abierto)
     if (!this.isBlockedByDom()) {
-      if (consumePad('left') || consumePad('right')) this.select(this.selected === 'arcade' ? 'classic' : 'arcade')
-      if (this.pickerRedraw && (consumePad('up') || consumePad('down'))) this.pickSide(getLadoHumano() === 'local' ? 'visitante' : 'local')
-      else if (!this.pickerRedraw) {
-        if (consumePad('up')) this.stepDifficulty(1)
-        if (consumePad('down')) this.stepDifficulty(-1)
+      if (this.screen === 'title') {
+        if (consumePad('left') || consumePad('right')) this.select(this.selected === 'arcade' ? 'classic' : 'arcade')
+        if (consumePad('confirm')) this.openSetup()
+      } else {
+        if (consumePad('up')) this.moveFocus(-1)
+        if (consumePad('down')) this.moveFocus(1)
+        if (consumePad('left')) this.changeFocused(-1)
+        if (consumePad('right')) this.changeFocused(1)
+        if (consumePad('back')) this.closeSetup()
+        if (consumePad('confirm')) this.startMatch()
       }
-      if (this.pickerRedraw && consumePad('back')) this.partidoLibre()
-      if (consumePad('confirm')) this.startMatch()
     }
     const t = this.drift.t
     const cam = this.cameras.main
@@ -197,28 +191,24 @@ export class MenuScene extends Phaser.Scene {
     ]
     this.beams.forEach(b => b.setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.55).setScale(1.4, 1.6))
 
+    const ext = getPartidoExterno()
     const logoY = hasResult ? 82 : 168
     const logo = this.createLogo(cx, logoY, hasResult ? 0.62 : 1)
     logo.setName('logo')
-    if (!hasResult && !getPartidoExterno()) this.createRibbon(cx, logoY + 80).setName('ribbon')
-    else if (hasResult) this.createResult(cx, 228, data)
+    this.titleObjs.push(logo)
+    if (hasResult) this.titleObjs.push(this.createResult(cx, 228, data))
+    else this.titleObjs.push(this.createRibbon(cx, logoY + 80, ext ? `${ext.local.abrev}  VS  ${ext.visitante.abrev}` : 'HOCKEY SOBRE PATINES').setName('ribbon'))
 
-    // Partido externo: la persona elige qué equipo controla (el local siempre se muestra a la izquierda)
-    if (getPartidoExterno()) this.createTeamPicker(cx, hasResult ? 322 : 292)
-
-    const cardsY = (hasResult ? 452 : 430) + (getPartidoExterno() ? 28 : 0)
+    const cardsY = hasResult ? 452 : 436
     MODES.forEach((def, i) => this.createModeCard(def, cx + (i === 0 ? -UI.cardGap / 2 : UI.cardGap / 2), cardsY))
     this.chevrons = [0, 1].map(() => this.add.graphics({ y: cardsY }).setName('chevron'))
     this.refreshCards(false)
 
-    // Selector de dificultad bajo las tarjetas; con resultado y partido externo se aprieta contra ellas
-    const diffY = Math.min(cardsY + UI.cardH / 2 + 34, 600)
-    this.createDifficultyStepper(cx, diffY)
-    const promptY = diffY + 44
-    const prompt = this.add.text(cx, promptY, '', {
+    const prompt = this.add.text(cx, cardsY + UI.cardH / 2 + 56, '', {
       fontFamily: ARCADE_FONT, fontSize: '26px', color: '#ffffff', stroke: C.ink, strokeThickness: 7,
     }).setOrigin(0.5).setName('prompt')
     prompt.setShadow(0, 3, '#000000', 0, true, true)
+    this.titleObjs.push(prompt, ...this.chevrons, ...this.cards.map(c => c.container))
 
     this.refreshHints(false)
   }
@@ -282,7 +272,7 @@ export class MenuScene extends Phaser.Scene {
     return container
   }
 
-  private createRibbon(x: number, y: number) {
+  private createRibbon(x: number, y: number, label: string) {
     const container = this.add.container(x, y)
     const g = this.add.graphics()
     g.fillStyle(0x000000, 0.45)
@@ -292,7 +282,7 @@ export class MenuScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.22)
     g.fillPoints(slantPts(462, 6, 2, 3, -17), true)
     container.add(g)
-    container.add(this.add.text(0, 1, 'HOCKEY SOBRE PATINES', {
+    container.add(this.add.text(0, 1, label, {
       fontFamily: ARCADE_FONT, fontSize: '24px', color: '#ffffff', stroke: '#7a3300', strokeThickness: 5,
     }).setOrigin(0.5))
     return container
@@ -345,78 +335,74 @@ export class MenuScene extends Phaser.Scene {
         fontFamily: ARCADE_FONT, fontSize: '13px', color: '#7f9cbf',
       }).setOrigin(0.5))
     }
+    return container
   }
 
-  /** Selector del equipo que controla la persona: dos píldoras (local a la izquierda), clic o ↑/↓ para cambiar. */
-  private createTeamPicker(cx: number, y: number) {
-    registrarEscudos(this.textures)
-    const W = 300, H = 46, GAP = 16
-    const container = this.add.container(cx, y).setName('picker')
-    const g = this.add.graphics()
-    container.add(g)
-    const lados: Lado[] = ['local', 'visitante']
-    const clip = (t: string) => (t.length > 22 ? `${t.slice(0, 20)}..` : t)
-    const tags: Phaser.GameObjects.Text[] = []
-    const px = (i: number) => (i === 0 ? -(W / 2 + GAP / 2) : W / 2 + GAP / 2)
-    lados.forEach((lado, i) => {
-      const slot = ladoDeHueco('blue') === lado ? 'blue' : 'red'
-      const team = equipoDeHueco(slot)!
-      const x = px(i)
-      const key = claveEscudo(lado)
-      if (key) {
-        const img = this.add.image(x - W / 2 + 26, 0, key)
-        img.setScale(26 / Math.max(img.width, img.height))
-        container.add(img)
-      } else {
-        container.add(this.add.text(x - W / 2 + 26, 0, team.abrev, { fontFamily: ARCADE_FONT, fontSize: '14px', color: '#ffffff' }).setOrigin(0.5))
-      }
-      container.add(this.add.text(x - W / 2 + 52, -12, lado === 'local' ? 'LOCAL' : 'VISITANTE', { fontFamily: ARCADE_FONT, fontSize: '10px', color: '#9fb6cf' }).setOrigin(0, 0.5))
-      container.add(this.add.text(x - W / 2 + 52, 7, clip(team.nombre), { fontFamily: ARCADE_FONT, fontSize: '15px', color: '#ffffff', stroke: C.ink, strokeThickness: 3 }).setOrigin(0, 0.5))
-      const tag = this.add.text(x + W / 2 - 10, -12, 'TU EQUIPO', { fontFamily: ARCADE_FONT, fontSize: '10px', color: '#ffb347' }).setOrigin(1, 0.5)
-      tags.push(tag)
-      container.add(tag)
-      const zone = this.add.zone(x, 0, W, H).setInteractive({ useHandCursor: true })
-      zone.on('pointerdown', () => this.pickSide(lado))
-      container.add(zone)
-    })
-    this.pickerRedraw = () => {
-      g.clear()
-      lados.forEach((lado, i) => {
-        const slot = ladoDeHueco('blue') === lado ? 'blue' : 'red'
-        const active = getLadoHumano() === lado
-        const x = px(i)
-        g.fillStyle(0x0b1828, active ? 0.95 : 0.6)
-        g.fillRoundedRect(x - W / 2, -H / 2, W, H, 8)
-        g.fillStyle(teamKit(slot).jersey, active ? 1 : 0.6)
-        g.fillRoundedRect(x - W / 2, -H / 2, 8, H, { tl: 8, bl: 8, tr: 0, br: 0 })
-        // Disco claro bajo el escudo: su color principal es el de la camiseta
-        g.fillStyle(0xffffff, active ? 0.92 : 0.5)
-        g.fillCircle(x - W / 2 + 26, 0, 17)
-        g.lineStyle(active ? 3 : 1, active ? C.orange : 0xffffff, active ? 1 : 0.18)
-        g.strokeRoundedRect(x - W / 2, -H / 2, W, H, 8)
-        tags[i].setVisible(active)
+  // ─── Segunda pantalla: prepara el partido ──────────────────────────────────
+
+  /** Título → «prepara el partido»: el título baja y se apaga, el panel entra desde abajo. */
+  private openSetup() {
+    if (this.starting || this.screen === 'setup' || this.isBlockedByDom()) return
+    this.screen = 'setup'
+    this.game.registry.set('menuSetup', true)
+    playUiConfirm()
+    const def = MODES.find(m => m.mode === this.selected)!
+    this.withUi(() => {
+      this.setup = new MenuSetup({
+        scene: this,
+        modeTitle: def.title,
+        modeColor: def.color,
+        durationLabel: MenuScene.durationLabel(),
+        pickSide: lado => this.pickSide(lado),
+        stepDifficulty: dir => this.stepDifficulty(dir),
+        play: () => this.startMatch(),
+        back: () => this.closeSetup(),
+        free: () => this.partidoLibre(),
       })
+    })
+    const panel = this.setup!.container
+    for (const ch of this.chevrons) this.tweens.killTweensOf(ch)
+    const d = this.reducedMotion ? 0 : 1
+    this.titleFade = this.tweens.add({ targets: this.titleObjs, alpha: 0, duration: 160 * d + 1, onComplete: () => this.titleObjs.forEach(o => o.setVisible(false)) })
+    panel.setAlpha(0).setY(40 * d)
+    this.tweens.add({ targets: panel, alpha: 1, y: 0, duration: 260 * d + 1, delay: 90 * d, ease: 'Cubic.Out' })
+    this.withUi(() => this.refreshHints(true))
+  }
+
+  /** Vuelta a la pantalla de título con el modo que estaba elegido. */
+  private closeSetup() {
+    if (this.starting || this.screen !== 'setup' || this.isBlockedByDom()) return
+    this.screen = 'title'
+    this.game.registry.set('menuSetup', false)
+    playUiMove()
+    const panel = this.setup!.container
+    this.setup = null
+    const d = this.reducedMotion ? 0 : 1
+    this.tweens.add({ targets: panel, alpha: 0, y: 30 * d, duration: 150 * d + 1, onComplete: () => panel.destroy() })
+    // Un fundido por objeto: refreshCards mata los tweens de los chevrons y un tween compartido caería con ellos
+    this.titleFade?.stop()
+    this.titleFade = null
+    this.titleObjs.forEach(o => o.setVisible(true))
+    this.refreshCards(false)
+    for (const o of this.titleObjs) {
+      if (this.cards.some(c => c.container === o)) continue
+      o.setAlpha(0)
+      this.tweens.add({ targets: o, alpha: 1, duration: 220 * d + 1 })
     }
-    // Competición, fecha y hora si vienen en el enlace (a la izquierda; el botón a la derecha)
-    const p = getPartidoExterno()!
-    const info = [p.competicion, [p.fecha, p.hora].filter(Boolean).join(' ')].filter(Boolean).join(' - ')
-    const rowY = H / 2 + 20
-    if (info) container.add(this.add.text(-W - GAP / 2, rowY, info.length > 46 ? `${info.slice(0, 44)}..` : info, { fontFamily: ARCADE_FONT, fontSize: '11px', color: '#cfe4ff', stroke: C.ink, strokeThickness: 3 }).setOrigin(0, 0.5))
-    // Salida al modo normal: botón (clic o toque), tecla L o B del mando
-    const bw = 170, bh = 24, by = rowY, bx = W + GAP / 2 - bw / 2
-    const bg = this.add.graphics()
-    bg.fillStyle(0x0b1828, 0.85)
-    bg.fillRoundedRect(bx - bw / 2, by - bh / 2, bw, bh, 6)
-    bg.lineStyle(1, 0xffffff, 0.3)
-    bg.strokeRoundedRect(bx - bw / 2, by - bh / 2, bw, bh, 6)
-    container.add(bg)
-    container.add(this.add.text(bx, by, 'PARTIDO LIBRE (L)', { fontFamily: ARCADE_FONT, fontSize: '11px', color: '#ffffff' }).setOrigin(0.5))
-    const free = this.add.zone(bx, by, bw + 16, bh + 12).setInteractive({ useHandCursor: true })
-    free.on('pointerdown', () => this.partidoLibre())
-    container.add(free)
-    this.pickerRedraw()
-    // Los escudos se añadieron antes que el disco: el disco va debajo
-    container.sendToBack(g)
+    for (const c of this.cards) {
+      const a = c.container.alpha
+      c.container.setAlpha(0)
+      this.tweens.add({ targets: c.container, alpha: a, duration: 220 * d + 1 })
+    }
+    this.withUi(() => this.refreshHints(true))
+  }
+
+  private moveFocus(dir: number) {
+    if (this.setup?.moveFocus(dir)) playUiMove()
+  }
+
+  private changeFocused(dir: number) {
+    this.setup?.change(dir)
   }
 
   /** Descarta el partido externo y reabre el menú normal (el hash se conserva para recargar). */
@@ -431,45 +417,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.starting || this.isBlockedByDom() || getLadoHumano() === lado) return
     setLadoHumano(lado)
     playUiMove()
-    this.pickerRedraw?.()
-  }
-
-  /**
-   * Dificultad del rival (B-04): «◀ NIVEL ▶» con flechas pulsables; Q/E en teclado,
-   * arriba/abajo en teclado y mando cuando no hay selector de equipo. Solo se
-   * redibuja al cambiar el nivel.
-   */
-  private createDifficultyStepper(cx: number, y: number) {
-    const W = 300, H = 32
-    const container = this.add.container(cx, y).setName('difficulty')
-    const bg = this.add.graphics()
-    bg.fillStyle(0x0b1828, 0.85)
-    bg.fillRoundedRect(-W / 2, -H / 2, W, H, 8)
-    bg.lineStyle(1, 0xffffff, 0.25)
-    bg.strokeRoundedRect(-W / 2, -H / 2, W, H, 8)
-    const arrows = this.add.graphics()
-    const label = this.add.text(-W / 2 + 14, 0, 'DIFICULTAD', { fontFamily: ARCADE_FONT, fontSize: '12px', color: '#9fb6cf' }).setOrigin(0, 0.5)
-    const value = this.add.text(62, 0, '', { fontFamily: ARCADE_FONT, fontSize: '17px', color: '#ffb347', stroke: C.ink, strokeThickness: 4 }).setOrigin(0.5)
-    container.add([bg, arrows, label, value])
-    const ax = [-14, 138]
-    ax.forEach((x, i) => {
-      const zone = this.add.zone(x, 0, 44, H + 12).setInteractive({ useHandCursor: true })
-      zone.on('pointerdown', () => this.stepDifficulty(i === 0 ? -1 : 1))
-      container.add(zone)
-    })
-    this.diffRedraw = () => {
-      const level = getDifficulty()
-      value.setText(DIFFICULTY[level].label)
-      const i = DIFFICULTY_LEVELS.indexOf(level)
-      arrows.clear()
-      ax.forEach((x, k) => {
-        const dir = k === 0 ? -1 : 1
-        const live = k === 0 ? i > 0 : i < DIFFICULTY_LEVELS.length - 1
-        arrows.fillStyle(0xffffff, live ? 0.95 : 0.2)
-        arrows.fillTriangle(x + 7 * dir, 0, x - 5 * dir, -7, x - 5 * dir, 7)
-      })
-    }
-    this.diffRedraw()
+    this.setup?.redraw()
   }
 
   private stepDifficulty(dir: number) {
@@ -509,10 +457,11 @@ export class MenuScene extends Phaser.Scene {
     container.add(footer)
     container.setSize(w, h)
     container.setInteractive({ useHandCursor: true })
-    container.on('pointerover', () => this.select(def.mode, canPlayAudio()))
+    container.on('pointerover', () => { if (this.screen === 'title') this.select(def.mode, canPlayAudio()) })
     container.on('pointerdown', () => {
+      if (this.screen !== 'title') return
       this.select(def.mode, false)
-      this.startMatch()
+      this.openSetup()
     })
     this.cards.push({ def, frame, container, baseY: y })
   }
@@ -557,13 +506,19 @@ export class MenuScene extends Phaser.Scene {
   private refreshHints(animate: boolean) {
     const mode = getInputMode()
     const prompt = this.children.getByName('prompt') as Phaser.GameObjects.Text | null
-    prompt?.setText(mode === 'touch' ? 'TOCA UN MODO PARA JUGAR' : mode === 'gamepad' ? 'PULSA  A  PARA JUGAR' : 'PULSA ESPACIO PARA JUGAR')
+    prompt?.setText(mode === 'touch' ? 'TOCA UN MODO' : mode === 'gamepad' ? 'PULSA  A  PARA SEGUIR' : 'PULSA ESPACIO PARA SEGUIR')
     this.children.getByName('hints')?.destroy()
     if (mode === 'touch') return
+    const setup = this.screen === 'setup'
     const hints: [Hint, string][] = mode === 'gamepad'
-      ? [[{ pad: 'dpad' }, 'ELEGIR'], [{ pad: 'a' }, 'JUGAR'], [{ pad: 'START' }, 'AJUSTES']]
-      : [[{ arrows: true }, 'ELEGIR'], [{ key: 'Q E' }, 'DIFICULTAD'], [{ key: 'ESPACIO' }, 'JUGAR'], [{ key: 'ESC' }, 'AJUSTES']]
-    if (mode === 'keyboard' && document.fullscreenEnabled) hints.push([{ key: 'F' }, 'PANTALLA COMPLETA'])
+      ? setup
+        ? [[{ pad: 'dpad' }, 'MOVER Y CAMBIAR'], [{ pad: 'a' }, 'JUGAR'], [{ pad: 'b' }, 'VOLVER']]
+        : [[{ pad: 'dpad' }, 'ELEGIR'], [{ pad: 'a' }, 'SEGUIR'], [{ pad: 'START' }, 'AJUSTES']]
+      : setup
+        ? [[{ arrowsV: true }, 'MOVER'], [{ arrows: true }, 'CAMBIAR'], [{ key: 'ESPACIO' }, 'JUGAR'], [{ key: 'ESC' }, 'VOLVER']]
+        : [[{ arrows: true }, 'ELEGIR'], [{ key: 'ESPACIO' }, 'SEGUIR'], [{ key: 'ESC' }, 'AJUSTES']]
+    if (mode === 'keyboard' && setup && getPartidoExterno()) hints.push([{ key: 'L' }, 'PARTIDO LIBRE'])
+    if (mode === 'keyboard' && !setup && document.fullscreenEnabled) hints.push([{ key: 'F' }, 'PANTALLA COMPLETA'])
     const row = this.createHintRow(GAME_WIDTH / 2, 676, hints)
     if (animate && !this.reducedMotion) {
       row.setAlpha(0)
@@ -579,16 +534,21 @@ export class MenuScene extends Phaser.Scene {
       const g = this.add.graphics()
       let w: number
       let glyph: Phaser.GameObjects.GameObject
-      if ('arrows' in hint) {
-        // Tecla con las flechas izquierda y derecha dibujadas
+      if ('arrows' in hint || 'arrowsV' in hint) {
+        // Tecla con las flechas dibujadas: izquierda/derecha o arriba/abajo
         w = 52
         g.fillStyle(0x6f86a3, 1)
         g.fillRoundedRect(x, -14, w, 30, 6)
         g.fillStyle(0xe8f0fa, 1)
         g.fillRoundedRect(x, -16, w, 27, 6)
         g.fillStyle(C.inkN, 1)
-        g.fillTriangle(x + 10, -3, x + 20, -9, x + 20, 3)
-        g.fillTriangle(x + w - 10, -3, x + w - 20, -9, x + w - 20, 3)
+        if ('arrows' in hint) {
+          g.fillTriangle(x + 10, -3, x + 20, -9, x + 20, 3)
+          g.fillTriangle(x + w - 10, -3, x + w - 20, -9, x + w - 20, 3)
+        } else {
+          g.fillTriangle(x + 18, -9, x + 12, -1, x + 24, -1)
+          g.fillTriangle(x + w - 18, -1, x + w - 24, -9, x + w - 12, -9)
+        }
         glyph = this.add.zone(0, 0, 1, 1)
       } else if ('pad' in hint && hint.pad === 'dpad') {
         // Cruceta dibujada sobre un botón oscuro
@@ -726,9 +686,7 @@ export class MenuScene extends Phaser.Scene {
     const result = byName('result')
     const prompt = byName('prompt')
     const hints = byName('hints')
-    const picker = byName('picker')
-    const diff = byName('difficulty')
-    const rest = [ribbon, result, hints, picker, diff].filter(Boolean) as Phaser.GameObjects.Container[]
+    const rest = [ribbon, result, hints].filter(Boolean) as Phaser.GameObjects.Container[]
 
     this.cameras.main.fadeIn(this.reducedMotion ? 200 : 700, 0, 0, 0)
 
@@ -778,11 +736,6 @@ export class MenuScene extends Phaser.Scene {
       ch.setAlpha(0)
       this.tweens.add({ targets: ch, alpha: 1, duration: 240, delay: 1050 })
     }
-    for (const o of [picker, diff]) {
-      if (!o) continue
-      o.setAlpha(0)
-      this.tweens.add({ targets: o, alpha: 1, duration: 300, delay: o === diff ? 1000 : 900 })
-    }
     if (hints) {
       hints.setAlpha(0)
       this.tweens.add({ targets: hints, alpha: 1, duration: 300, delay: 1100 })
@@ -801,15 +754,14 @@ export class MenuScene extends Phaser.Scene {
     this.starting = true
     saveMode(this.selected)
     playUiConfirm()
-    const card = this.cards.find(c => c.def.mode === this.selected)
+    const panel = this.setup?.container
     const go = () => this.scene.start('match', { mode: this.selected })
-    if (this.reducedMotion || !card) {
+    if (this.reducedMotion || !panel) {
       this.cameras.main.fadeOut(180)
       this.uiCamera.fadeOut(180, 0, 0, 0, (_c: unknown, p: number) => { if (p >= 1) go() })
       return
     }
-    this.tweens.killTweensOf(card.container)
-    this.tweens.add({ targets: card.container, scale: 1.12, duration: 140, yoyo: true, ease: 'Quad.Out' })
+    this.tweens.add({ targets: panel, alpha: 0.85, duration: 140, yoyo: true, ease: 'Quad.Out' })
     this.uiCamera.flash(160, 255, 255, 255)
     this.time.delayedCall(260, () => {
       this.cameras.main.fadeOut(320)
@@ -819,20 +771,19 @@ export class MenuScene extends Phaser.Scene {
 
   private setupInput() {
     const keyboard = this.input.keyboard!
-    const toggle = () => this.select(this.selected === 'arcade' ? 'classic' : 'arcade')
-    for (const code of ['LEFT', 'RIGHT', 'A', 'D'] as const) {
-      keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[code]).on('down', toggle)
-    }
-    for (const code of ['UP', 'DOWN', 'W', 'S'] as const) {
-      keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[code]).on('down', () => {
-        if (this.pickerRedraw) this.pickSide(getLadoHumano() === 'local' ? 'visitante' : 'local')
-        else this.stepDifficulty(code === 'UP' || code === 'W' ? 1 : -1)
-      })
-    }
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q).on('down', () => this.stepDifficulty(-1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E).on('down', () => this.stepDifficulty(1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', () => this.partidoLibre())
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => this.startMatch())
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.startMatch())
+    const key = (code: keyof typeof Phaser.Input.Keyboard.KeyCodes, fn: () => void) => keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[code]).on('down', fn)
+    const onTitle = (fn: () => void) => () => { if (this.screen === 'title') fn() }
+    const onSetup = (fn: () => void) => () => { if (this.screen === 'setup' && !this.isBlockedByDom()) fn() }
+    for (const code of ['LEFT', 'A'] as const) key(code, () => this.screen === 'title' ? this.select(this.selected === 'arcade' ? 'classic' : 'arcade') : onSetup(() => this.changeFocused(-1))())
+    for (const code of ['RIGHT', 'D'] as const) key(code, () => this.screen === 'title' ? this.select(this.selected === 'arcade' ? 'classic' : 'arcade') : onSetup(() => this.changeFocused(1))())
+    for (const code of ['UP', 'W'] as const) key(code, onSetup(() => this.moveFocus(-1)))
+    for (const code of ['DOWN', 'S'] as const) key(code, onSetup(() => this.moveFocus(1)))
+    key('Q', onSetup(() => this.stepDifficulty(-1)))
+    key('E', onSetup(() => this.stepDifficulty(1)))
+    key('L', onSetup(() => this.partidoLibre()))
+    // Esc en la segunda pantalla vuelve (main.ts no abre Ajustes mientras `menuSetup` esté activo)
+    key('ESC', onSetup(() => this.closeSetup()))
+    key('BACKSPACE', onSetup(() => this.closeSetup()))
+    for (const code of ['SPACE', 'ENTER'] as const) key(code, () => this.screen === 'title' ? onTitle(() => this.openSetup())() : this.startMatch())
   }
 }

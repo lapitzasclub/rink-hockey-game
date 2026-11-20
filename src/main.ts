@@ -198,6 +198,9 @@ pauseBtn.addEventListener('click', () => { playUiMove(); pause.open() })
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !e.repeat) {
+    // En «prepara el partido» Esc vuelve al título: lo atiende MenuScene, y Phaser ignora eventos ya prevenidos
+    const menuSetup = activeScene === 'menu' && !!game?.registry.get('menuSetup') && !settings.isOpen() && !probe.isRunning()
+    if (menuSetup) return
     e.preventDefault()
     if (probe.isRunning()) probe.cancel()
     else if (settings.isOpen()) settings.close()
