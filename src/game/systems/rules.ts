@@ -32,6 +32,41 @@ export type RuleState = {
     message: string
     participants: BullyParticipant
   }
+  /** Tiempo de posesión y juego pasivo (B-10); lo avanza passivity.ts. */
+  passivity: PassivityState
+}
+
+export type PassivityKind = 'possession' | 'passive'
+
+/** Contadores de posesión y pasividad del equipo con la bola (tiempos en simNow). */
+export type PassivityState = {
+  /** Equipo en posesión (último que controló la bola); null tras un parón hasta que alguien la controle. */
+  team: TeamColor | null
+  /** Ya pisó campo rival en esta posesión: al volver a su campo solo tiene PASSIVITY.returnMs. */
+  crossed: boolean
+  /** simNow en que la bola entró en su campo (-1 = el tiempo de posesión no corre) y su límite. */
+  ownSince: number
+  limitMs: number
+  /** Juego pasivo en campo rival: ms sin avanzar ni presión, mejor distancia a la portería y aviso. */
+  idleMs: number
+  bestDist: number
+  warned: boolean
+  warnElapsedMs: number
+  lastStep: number
+  /** Lo que enseña el HUD: tipo, equipo y ms que quedan. */
+  hudKind: PassivityKind | null
+  hudTeam: TeamColor
+  hudMs: number
+  /** Para el humo: pitadas por equipo y tipo, avisos y veces que aparece la cuenta atrás. */
+  stats: { possession: Record<TeamColor, number>, passive: Record<TeamColor, number>, warnings: Record<TeamColor, number>, countdowns: number }
+}
+
+export function createPassivityState(): PassivityState {
+  return {
+    team: null, crossed: false, ownSince: -1, limitMs: 0, idleMs: 0, bestDist: Infinity, warned: false, warnElapsedMs: 0,
+    lastStep: -Infinity, hudKind: null, hudTeam: 'blue', hudMs: 0,
+    stats: { possession: { blue: 0, red: 0 }, passive: { blue: 0, red: 0 }, warnings: { blue: 0, red: 0 }, countdowns: 0 },
+  }
 }
 
 export function createRuleState(): RuleState {
@@ -40,6 +75,7 @@ export function createRuleState(): RuleState {
     period: 1,
     pendingFoul: null,
     pendingBully: null,
+    passivity: createPassivityState(),
   }
 }
 
@@ -184,6 +220,39 @@ export function registerGoalieZoneFoul(state: RuleState, players: Player[], offe
   registerFoul(state, { players, offender, victim: goalie, x: goalie.pos.x + advance * 60, y: goalie.pos.y, timeNow })
   if (state.pendingFoul && state.pendingFoul.sanction === SANCTION.FREE_HIT) {
     state.pendingFoul.message = `Falta al portero · ${state.pendingFoul.message}`
+  }
+}
+
+/**
+ * Tiempo de posesión agotado o juego pasivo tras el aviso: libre indirecto para el rival
+ * donde está la bola, sin falta de equipo. Saca el jugador de campo rival más cercano a la bola.
+ * Dentro del área del infractor se saca en el borde del área; detrás de su portería, en la esquina.
+ */
+export function registerPassivity(state: RuleState, players: Player[], team: TeamColor, kind: PassivityKind, x: number, y: number, timeNow: number) {
+  let offender: Player | null = null
+  let taker: Player | null = null
+  let dOff = Infinity
+  let dTaker = Infinity
+  for (const p of players) {
+    if (p.role === 'goalie' || (p.suspendedUntil && p.suspendedUntil > timeNow)) continue
+    const d = Math.hypot(p.pos.x - x, p.pos.y - y)
+    if (p.team === team) { if (d < dOff) { dOff = d; offender = p } } else if (d < dTaker) { dTaker = d; taker = p }
+  }
+  if (!offender || !taker) return
+  const side = offender.side
+  const gl = getGoalLineX(side)
+  if (side === 'left' ? x < gl : x > gl) ({ x, y } = areaCorner(side, y))
+  else if (insideGoalArea(side, x, y)) x = gl + (side === 'left' ? 1 : -1) * (PENALTY_AREA_DEPTH + FREE_HIT_BOARD_MARGIN)
+  const m = FREE_HIT_BOARD_MARGIN
+  state.passivity.stats[kind][team] += 1
+  state.pendingFoul = {
+    againstTeam: team,
+    byPlayerId: offender.id,
+    victimPlayerId: taker.id,
+    restartX: Math.min(Math.max(x, RINK.x + m), RINK.x + RINK.width - m),
+    restartY: Math.min(Math.max(y, RINK.y + m), RINK.y + RINK.height - m),
+    sanction: SANCTION.FREE_HIT,
+    message: `${kind === 'possession' ? 'Tiempo de posesión' : 'Juego pasivo'} de ${teamLabel(team)} · libre indirecto`,
   }
 }
 

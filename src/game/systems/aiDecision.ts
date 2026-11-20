@@ -4,6 +4,7 @@ import {
   AI_PASS_MIN_DIST,
   AI_RIVAL_RUN_SPEED,
   AI_SHOOT_DISTANCE,
+  PASSIVITY_AI,
   BALL_CONTROL_DISTANCE,
   BALL_FRICTION,
   GAME_HEIGHT,
@@ -15,6 +16,7 @@ import {
 import type { Player } from '../types'
 import { getGoalLineX } from '../utils'
 import { setAIPassAim } from './targeting'
+import { passivityView } from './passivity'
 
 /**
  * Lectura de juego y decisión del portador (E-02).
@@ -70,6 +72,7 @@ export function isAvailable(player: Player, now: number) {
 }
 
 const LOG_FRICTION = Math.log(BALL_FRICTION)
+const CENTER_X = RINK.x + RINK.width / 2
 
 /**
  * Tiempo (s) que tarda una bola lanzada a `speed` en recorrer `distance`
@@ -195,8 +198,10 @@ const lead = { x: 0, y: 0 }
 /**
  * Evalúa a todos los compañeros de campo como receptores y deja la mejor
  * opción en `passPick`. Solo cuentan las líneas que no corta ningún rival.
+ * B-10: `cross` (0..1) premia los pases que pasan la línea central y castiga los
+ * que se quedan en campo propio; `attack` (0..1) premia los que dejan en posición de tiro.
  */
-export function evaluatePasses(player: Player, players: Player[], profile: AiProfile, now: number) {
+export function evaluatePasses(player: Player, players: Player[], profile: AiProfile, now: number, cross = 0, attack = 0) {
   passPick.mate = null
   passPick.score = 0
   const goalX = getGoalLineX(player.side === 'left' ? 'right' : 'left')
@@ -218,7 +223,9 @@ export function evaluatePasses(player: Player, players: Player[], profile: AiPro
     const freeF = clamp01((nearestRivalDist(lead.x, lead.y, player.team, players, now) - 40) / 90)
     const advance = Math.max(-1, Math.min(1, (carrierGoal - Math.hypot(goalX - lead.x, goalY - lead.y)) / 260))
     const threat = shotGeometry(lead.x, lead.y, player.side)
-    const score = 0.28 * openF + 0.24 * freeF + 0.26 * (advance * 0.5 + 0.5) + 0.22 * threat - 0.08 * (dist / AI_PASS_MAX_DIST)
+    let score = 0.28 * openF + 0.24 * freeF + 0.26 * (advance * 0.5 + 0.5) + 0.22 * threat - 0.08 * (dist / AI_PASS_MAX_DIST)
+    if (cross) score += cross * PASSIVITY_AI.crossPassBonus * ((lead.x - CENTER_X) * (player.side === 'left' ? 1 : -1) > 0 ? 1 : -1)
+    if (attack) score += attack * PASSIVITY_AI.threatPassBonus * threat
     if (score > passPick.score) {
       passPick.mate = mate
       passPick.x = lead.x
@@ -261,21 +268,28 @@ export function decideCarrierAction(player: Player, players: Player[], now: numb
   const profile = aiProfileFor(player.team)
   const st = aiStateOf(player)
   if (now - st.gotBallAt < profile.reactionMs || now < st.nextDecisionAt) return 'hold'
-  st.nextDecisionAt = now + profile.decisionIntervalMs * (0.75 + Math.random() * 0.5)
+  // B-10: urgencia frente al tiempo de posesión (cross) o al juego pasivo; 0 en arcade (no hay contadores)
+  const urg = now - passivityView.at <= PASSIVITY_AI.freshMs ? passivityView.urgency[player.team] : 0
+  const cross = urg > 0 && passivityView.cross[player.team]
+  const P = PASSIVITY_AI
+  st.nextDecisionAt = now + profile.decisionIntervalMs * (0.75 + Math.random() * 0.5) * (1 - P.fasterDecision * urg)
 
   const shot = now - st.gotBallAt >= profile.shotReactionMs ? shotScore(player, players, now) : 0
-  evaluatePasses(player, players, profile, now)
+  evaluatePasses(player, players, profile, now, cross ? urg : 0, cross ? 0 : urg)
   const pass = passPick.mate ? passPick.score : 0
-  const dribble = dribbleScore(player, players, profile, now)
+  const dribble = dribbleScore(player, players, profile, now) * (1 - P.dribbleCut * urg)
+  const shootThreshold = profile.shootThreshold * (cross ? 1 : 1 - P.shootThresholdCut * urg)
 
-  if (shot >= profile.shootThreshold && shot >= pass * 0.9) return 'shoot'
-  if (pass >= profile.passThreshold && pass > dribble) {
+  if (shot >= shootThreshold && shot >= pass * 0.9) return 'shoot'
+  if (pass >= profile.passThreshold * (1 - P.passThresholdCut * urg) && pass > dribble) {
     const angle = Math.atan2(passPick.y - player.pos.y, passPick.x - player.pos.x) + (Math.random() * 2 - 1) * profile.passErrorRad
     setAIPassAim(player.id, Math.cos(angle), Math.sin(angle))
     return 'pass'
   }
   // Sin línea de pase y con un rival encima: rematar si hay algo de tiro
-  if (dribble < 0.08 && shot >= profile.shootThreshold * 0.6) return 'shoot'
+  if (dribble < 0.08 && shot >= shootThreshold * 0.6) return 'shoot'
+  // Al borde del límite: despejar hacia campo rival sin espacio para conducir, o rematar lo que haya
+  if (urg >= P.forceAt && (cross ? dribble < P.clearDribble : shot >= P.forceShotMin)) return 'shoot'
   return 'hold'
 }
 

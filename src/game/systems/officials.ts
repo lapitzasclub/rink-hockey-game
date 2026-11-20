@@ -178,6 +178,12 @@ export class Officials {
     this.gesture('whistle', b.x, b.y, 0, R.gestureMs.whistle)
   }
 
+  /** Aviso de juego pasivo (B-10): brazo en alto hacia la bola, sin silbar ni parar el juego. */
+  passiveWarning() {
+    const b = this.ball ?? { x: CX, y: CY }
+    this.gesture('whistle', b.x, b.y, 0, R.gestureMs.point)
+  }
+
   /** Gol: el más cercano a la bola señala el centro de la pista. */
   goal() {
     this.gesture('point', CX, CY, R.pointDown, R.gestureMs.goal)

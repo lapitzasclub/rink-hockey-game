@@ -760,3 +760,51 @@ export const TOUCH_ASSIST_EXTRA = {
  */
 export const CARRY_OWN_GOAL = { block: true }
 export const SWITCH_DEFEND = { behindPx: 120, rampPx: 60 }
+
+/**
+ * Tiempo de posesión y juego pasivo (B-10, solo reglamento). Tiempos en ms reales de simulación
+ * (simNow), no del reloj acelerado del marcador: 10 s de juego serían poco más de un segundo.
+ * - ownHalfMs / returnMs: con la bola en su campo, el equipo que la tiene debe pasar la línea
+ *   central en ownHalfMs; si vuelve a su campo tras pisar el rival, en returnMs. Si no, libre
+ *   indirecto para el rival donde esté la bola (no cuenta como falta de equipo).
+ * - passiveMs: en campo rival, ms acumulados con la bola conducida sin acercarse advancePx a la
+ *   portería rival, sin tirar y sin ningún rival de campo a menos de pressPx del portador (con
+ *   presión el contador se para). Al llegar, aviso del árbitro; warnMs más igual → libre indirecto.
+ *   Avanzar advancePx o tirar (bola suelta a shotSpeed px/s hacia la portería rival) lo anula.
+ * - hudFromMs: la cuenta atrás de posesión se ve cuando quedan estos ms o menos (la del aviso, siempre).
+ * - resumeGapMs: un hueco mayor entre pasos en juego es un parón (gol, falta, saque): posesión nueva.
+ * - aiLeadMs: la IA empieza a darse prisa estos ms antes de cada límite (aiDecision).
+ */
+export const PASSIVITY = {
+  ownHalfMs: 10000,
+  returnMs: 5000,
+  passiveMs: 10000,
+  warnMs: 5000,
+  pressPx: 3 * METER_PX,
+  advancePx: 1.5 * METER_PX,
+  shotSpeed: 380,
+  hudFromMs: 5000,
+  resumeGapMs: 100,
+  aiLeadMs: 3500,
+}
+/**
+ * Cómo atiende la IA a los contadores de PASSIVITY (aiDecision). Con urgencia u (0..1, sube en los
+ * últimos aiLeadMs; en el aviso de pasivo va de 0,5 a 1) decide antes (intervalo × (1 − fasterDecision·u)),
+ * conduce menos (dribble × (1 − dribbleCut·u)) y baja el listón de pase (passThresholdCut). Por tiempo de
+ * posesión premia los pases que cruzan el centro (± crossPassBonus·u); por pasivo, baja el listón de tiro
+ * (shootThresholdCut) y premia los pases a posición de tiro (threatPassBonus·u·amenaza). Desde forceAt
+ * despeja si no puede conducir (dribble < clearDribble) o remata con tiro ≥ forceShotMin.
+ * freshMs: la IA ignora los contadores si no se han actualizado hace poco (arcade, parones).
+ */
+export const PASSIVITY_AI = {
+  fasterDecision: 0.5,
+  dribbleCut: 0.5,
+  passThresholdCut: 0.3,
+  crossPassBonus: 0.3,
+  shootThresholdCut: 0.45,
+  threatPassBonus: 0.25,
+  forceAt: 0.8,
+  clearDribble: 0.2,
+  forceShotMin: 0.05,
+  freshMs: 100,
+}
