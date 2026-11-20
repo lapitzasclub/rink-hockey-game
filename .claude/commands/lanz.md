@@ -10,7 +10,7 @@ Argumento recibido: `$ARGUMENTS` (vacío = `status`).
 ## Guardas
 1. Agentes y modelos: `lanz-engineer`→`opus`, `ai-engineer`→`opus` (L-06), `lanz-artist`→`sonnet`, `bal-tuner`→`sonnet` (L-08), `lanz-qa`→`haiku`. Pasa siempre `model`. Si un agente no está cargado, `general-purpose` con su modelo siguiendo `.claude/agents/<nombre>.md`.
 2. Antes de cada encargo, diagnostica tú con `grep` y lecturas por rangos y escribe la hipótesis y los rangos en el encargo (WORKFLOW §6). Ningún agente explora el repo. Los arreglos pequeños los haces tú.
-3. D-01 está decidida (2.5D en Phaser); si L-00 la tumba, consulta al usuario antes de cualquier dependencia. D-02 la decide el usuario: pregúntasela antes de L-06. El resto de decisiones las tomas tú y las anotas en BACKLOG.
+3. D-01 está decidida (2.5D en Phaser); si L-00 la tumba, consulta al usuario antes de cualquier dependencia. D-02 decidida: propuesta 2 (lado y momento de la estirada). El resto de decisiones las tomas tú y las anotas en BACKLOG.
 4. Lo que solo toca el lanzamiento se mide con el lote (`batch`), no con el humo. Humo 20 × 2 modos solo en L-02, L-06 y L-99. Números con `node tools/bal-compare.mjs`, nunca abriendo el JSON; solo cuentan IC 95 % sin solapar.
 5. Lotes y humo en segundo plano; mientras miden, nadie edita `src/` de ese árbol.
 6. Máximo 2 rondas de cambios por paquete, por SendMessage al mismo agente. Revisa de cerca cada elemento con el listón de un indie publicado antes de aceptar.
