@@ -61,6 +61,9 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'humanStealTriesPerMin', 'humanStealsPerMin', 'goalieHumanPctBlue', 'goalsVsHumanGoaliePerMin',
   'humanTryPerPressS', 'humanStealPerPressS', 'redTryPerPressS', 'redStealPerPressS', 'humanLossPerPressS', 'blueLossPerPressS', 'humanGoalSidePctBlue'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
+# B-08: tiros y goles por banda de distancia a la línea de gol (px) y equipo que tira, sumados en el lote
+$bands = @(@{ k = 'B0'; lo = 0; hi = 50 }, @{ k = 'B50'; lo = 50; hi = 100 }, @{ k = 'B100'; lo = 100; hi = 180 }, @{ k = 'B180'; lo = 180; hi = 1e9 })
+$bandN = @{}; $bandG = @{}; foreach ($b in $bands) { foreach ($t in 'Blue', 'Red') { $bandN["$t$($b.k)"] = 0; $bandG["$t$($b.k)"] = 0 } }
 $tot = @{ goalsNoShot = 0; goalsCarriedOwn = 0; jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
@@ -141,6 +144,11 @@ foreach ($i in 1..$Runs) {
     if ($j.pressOnHumanSec.red -gt 1) { $samples.humanLossPerPressS += $j.lossesHuman.blue / $j.pressOnHumanSec.red }
     $tot.goalsCarriedOwn += [int]($j.goalsCarriedOwn.blue + $j.goalsCarriedOwn.red)
   }
+  foreach ($r in @($j.shotLog)) {
+    if ($null -eq $r) { continue }
+    $t = if ($r.team -eq 'blue') { 'Blue' } else { 'Red' }
+    foreach ($b in $bands) { if ($r.dist -ge $b.lo -and $r.dist -lt $b.hi) { $bandN["$t$($b.k)"]++; if ($r.result -eq 'goal') { $bandG["$t$($b.k)"]++ } } }
+  }
   $tot.goalsNoShot += [int]($j.goalsNoShotAgainst.blue + $j.goalsNoShotAgainst.red)
   # Reinicios del reglamento (E-05): sumados en el lote
   $tot.freeHits += [int]$j.freeHits; $tot.directFreeHits += [int]$j.directFreeHits; $tot.penalties += [int]$j.penalties
@@ -162,6 +170,18 @@ foreach ($k in $keys) {
   $agg[$k] = [ordered]@{ mean = [math]::Round($mean, 3); ci95 = [math]::Round($ci, 3); sd = [math]::Round($sd, 3); n = $n }
   Write-Output ([string]::Format($inv, "{0,-20} {1,7:F2} ± {2:F2}  (sd {3:F2}, n {4})", $k, $mean, $ci, $sd, $n))
 }
+# % de gol por banda con todos los tiros del lote juntos; ci95 = semiancho del intervalo de Wilson
+$bandLine = @()
+foreach ($b in $bands) {
+  foreach ($t in 'Blue', 'Red') {
+    $n = $bandN["$t$($b.k)"]; if ($n -eq 0) { continue }
+    $p = $bandG["$t$($b.k)"] / $n; $z2 = 1.96 * 1.96
+    $hw = 100 * 1.96 * [math]::Sqrt($p * (1 - $p) / $n + $z2 / (4 * $n * $n)) / (1 + $z2 / $n)
+    $agg["goalPct$t$($b.k)"] = [ordered]@{ mean = [math]::Round(100 * $p, 1); ci95 = [math]::Round($hw, 1); sd = 0; n = $n }
+    $bandLine += [string]::Format($inv, '{0} {1}: {2:F0} % ± {3:F0} (n {4})', $t.ToLower(), $b.k, 100 * $p, $hw, $n)
+  }
+}
+if ($bandLine.Count) { Write-Output ('gol por banda: ' + ($bandLine -join ' · ')) }
 foreach ($k in $tot.Keys) { $agg[$k] = $tot[$k] }
 Write-Output ("reinicios: libres {0} · directos {1} · penaltis {2} · neutrales {3} · azules {4}" -f $tot.freeHits, $tot.directFreeHits, $tot.penalties, $tot.neutralRestarts, $tot.blueCards)
 Write-Output ("autogoles: sin tiro {0} · conduciendo hacia la propia {1}" -f $tot.goalsNoShot, $tot.goalsCarriedOwn)

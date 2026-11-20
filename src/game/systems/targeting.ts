@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { BALL_RADIUS, GAME_HEIGHT, GOAL_HALF_H, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, TOUCH_ASSIST, TOUCH_ASSIST_EXTRA, aiProfileFor } from '../constants'
+import { BALL_RADIUS, GAME_HEIGHT, GOAL_HALF_H, PASS_ASSIST_BLEND, PASS_ASSIST_CONE_DOT, PASS_HUMAN_LEAD_S, PASS_LANE_BLOCK_PENALTY, PASS_LANE_CLEAR_DIST, SHOT_AIM_MAX_OFFSET, SHOT_ASSIST_BLEND, SHOT_ASSIST_BLEND_HUMAN, TOUCH_ASSIST, TOUCH_ASSIST_EXTRA, TOUCH_SHOT_AIM, aiProfileFor } from '../constants'
 import { touchAssist } from './difficulty'
 import type { Player, Vector } from '../types'
 import { autopilot } from './playerControl'
@@ -194,8 +194,9 @@ export function getAssistedShotDirection(player: Player, fallbackDirection: Vect
 }
 
 /**
- * y del palo (menos el radio de la bola) del lado que el portero rival deja más abierto: se
- * proyecta el portero sobre la línea de gol desde el tirador y gana el hueco más grande.
+ * y del palo (menos el radio de la bola y TOUCH_SHOT_AIM.postMarginPx) del lado que el portero
+ * rival deja más abierto: se proyecta el portero sobre la línea de gol desde el tirador y gana
+ * el hueco más grande.
  */
 function openPostY(shooter: Player, players: Player[], lineX: number) {
   const cy = GAME_HEIGHT / 2
@@ -208,7 +209,7 @@ function openPostY(shooter: Player, players: Player[], lineX: number) {
     gy = dx * lx > 0 && Math.abs(dx) > 1 ? shooter.pos.y + (p.pos.y - shooter.pos.y) * (lx / dx) : p.pos.y
     break
   }
-  const half = GOAL_HALF_H - BALL_RADIUS
+  const half = GOAL_HALF_H - BALL_RADIUS - TOUCH_SHOT_AIM.postMarginPx
   // Hueco por arriba (gy − palo superior) frente a hueco por abajo (palo inferior − gy)
   return gy - (cy - half) >= (cy + half) - gy ? cy - half : cy + half
 }
