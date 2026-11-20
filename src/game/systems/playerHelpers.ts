@@ -62,7 +62,8 @@ export function switchAim(aim: { x: number, y: number }, touch: boolean) {
  * marcado, el compañero hacia donde apunta (el portero cuenta si la bola está cerca de su
  * portería); (3) el de campo más cercano a la bola. Al pulsar cambio sin stick no se queda en el
  * mismo: si ya era el más cercano pasa al portero (bola cerca de su portería) o al siguiente.
- * Defendiendo, la cercanía penaliza al que va por detrás de la bola (SWITCH_DEFEND, B-07).
+ * Defendiendo, la cercanía penaliza al que va por detrás de la bola (SWITCH_DEFEND, B-07), y el
+ * stick hacia la bola no cuenta como dirección de cambio (B-11).
  * Sin `request` (control automático) puede devolver el actual. En táctil, con
  * TOUCH_ASSIST_EXTRA.goalieAutoSelect en false, al portero solo se llega con el CAMBIO que le apunta (B-06).
  */
@@ -81,9 +82,20 @@ export function selectBestControlledPlayer(players: Player[], controlledPlayerIn
   const nearGoal = !!goalie && Phaser.Math.Distance.Between(getGoalLineX(goalie.side), GAME_HEIGHT / 2, ballX, ballY) < GOALIE_SELECT_RANGE
   const free = (p: Player) => p.role !== 'goalie' && (p.suspendedUntil ?? 0) <= now
 
+  const ownLineX = getGoalLineX(current.side)
+  const towardOwn = ownLineX < ballX ? -1 : 1
+  const defending = ballCarrier ? ballCarrier.team !== 'blue' : Math.abs(ballX - ownLineX) < Math.abs(ballX - getGoalLineX(current.side === 'left' ? 'right' : 'left'))
+
   const aim = request?.aim
   const aimLen = aim ? Math.hypot(aim.x, aim.y) : 0
-  if (aim && aimLen >= SWITCH_AIM_MIN) {
+  // B-11: defendiendo, el stick hacia la bola es el reflejo de ir a por ella, con cualquier control,
+  // no una elección de compañero: decide la cercanía con SWITCH_DEFEND (el que puede encarar)
+  const toBallX = ballX - current.pos.x
+  const toBallY = ballY - current.pos.y
+  const toBall = Math.hypot(toBallX, toBallY)
+  const aimAtBall = defending && !!aim && aimLen > 0 && toBall > 1 &&
+    Math.acos(Phaser.Math.Clamp((toBallX * aim.x + toBallY * aim.y) / (toBall * aimLen), -1, 1)) <= SWITCH_DEFEND.ballAimRad
+  if (aim && aimLen >= SWITCH_AIM_MIN && !aimAtBall) {
     let best = -1
     let bestScore = Infinity
     for (let i = 0; i < options.length; i += 1) {
@@ -103,9 +115,6 @@ export function selectBestControlledPlayer(players: Player[], controlledPlayerIn
 
   // Por cercanía a la bola: el más cercano y el siguiente (por si el más cercano ya es el actual).
   // Defendiendo (B-07), el que va por detrás de la bola respecto a nuestra portería cuenta más lejos
-  const ownLineX = getGoalLineX(current.side)
-  const towardOwn = ownLineX < ballX ? -1 : 1
-  const defending = ballCarrier ? ballCarrier.team !== 'blue' : Math.abs(ballX - ownLineX) < Math.abs(ballX - getGoalLineX(current.side === 'left' ? 'right' : 'left'))
   let nearest = -1
   let nearestDist = Infinity
   let nearestRaw = Infinity

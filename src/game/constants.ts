@@ -757,6 +757,9 @@ export const TOUCH_ASSIST_EXTRA = {
  *   campo propio), al jugador que está detrás de la bola respecto a nuestra portería se le suman
  *   behindPx px a su distancia, a pleno desde rampPx px por detrás (proporcional antes), para que
  *   salga el que puede encarar al portador y no el que lo persigue (neutro behindPx 0).
+ *   ballAimRad (B-11): defendiendo, un CAMBIO con el stick a menos de este ángulo (rad) de la bola
+ *   se trata como sin dirección, con cualquier control: el stick va por reflejo hacia la bola
+ *   (neutro -1).
  */
 export const CARRY_OWN_GOAL = { block: true }
-export const SWITCH_DEFEND = { behindPx: 120, rampPx: 60 }
+export const SWITCH_DEFEND = { behindPx: 120, rampPx: 60, ballAimRad: 0.7 }
