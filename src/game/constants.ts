@@ -746,3 +746,17 @@ export const TOUCH_ASSIST_EXTRA = {
   mateSteal: 0.5,
   humanNearCoverPx: 95,
 }
+
+/**
+ * Quejas del partido real en móvil (B-07). Valen para todos los controles y los dos equipos.
+ * - CARRY_OWN_GOAL.block: la bola conducida no cruza la línea de la propia portería por la boca;
+ *   se queda en la línea delante del portador. Girando hacia su portería tras robar, la persona se
+ *   la metía sola (5 de 5 «autogoles conduciendo» del humo eran del azul). Los autogoles por
+ *   rebote o desvío siguen valiendo (neutro false).
+ * - SWITCH_DEFEND: en el cambio por cercanía a la bola defendiendo (bola del rival, o suelta en
+ *   campo propio), al jugador que está detrás de la bola respecto a nuestra portería se le suman
+ *   behindPx px a su distancia, a pleno desde rampPx px por detrás (proporcional antes), para que
+ *   salga el que puede encarar al portador y no el que lo persigue (neutro behindPx 0).
+ */
+export const CARRY_OWN_GOAL = { block: true }
+export const SWITCH_DEFEND = { behindPx: 120, rampPx: 60 }
