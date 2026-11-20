@@ -73,7 +73,11 @@ export class MatchDuel {
   private stickY = 0
   private fire = -1
   private dived = false
+  private shotFired = false
   private ball: Ball | null = null
+  /** Punto de la escena donde estaba la bola al pitido. */
+  private bx0 = 0
+  private by0 = 0
 
   // ─── Conversión mundo ↔ escena ─────────────────────────────────────────────
 
@@ -136,6 +140,8 @@ export class MatchDuel {
     // Si no está ya pegado a la bola, se acerca primero (fase de carrerilla de la simulación)
     if (Math.hypot(s.sx, s.sy - (s.by + D.ballLeadM)) > 0.08) s.phase = 'runup'
     s.gx = this.simX(o.goalie.pos.y)
+    this.bx0 = s.bx
+    this.by0 = s.by
     this.goalieAi.begin(s, this.rng)
     this.z = s.bz
     this.prevZ = s.bz
@@ -148,6 +154,21 @@ export class MatchDuel {
     this.stickX = 0
     this.stickY = 0
     this.dived = false
+    this.shotFired = false
+  }
+
+  /** ¿Ya golpeó el lanzador? Hasta entonces los demás esperan; luego vuelven y juegan el rechace. */
+  get struck(): boolean {
+    return this.shotFired
+  }
+
+  /**
+   * ¿Está la bola en juego? Desde el golpeo o desde que el lanzador la mueve de su
+   * sitio; hasta entonces el reloj sigue parado (como en el saque clásico).
+   */
+  get ballLive(): boolean {
+    const s = this.sim
+    return this.shotFired || Math.hypot(s.bx - this.bx0, s.by - this.by0) > M.liveMoveM
   }
 
   /** Entrada de la persona: stick en ejes de la escena (con la cámara cercana, los de pantalla) y, al soltar el tiro, su carga 0..1. */
@@ -181,6 +202,8 @@ export class MatchDuel {
     const goalie = this.goalie!
     const ball = this.ball!
     this.justShot = false
+    // Plazo para ejecutar: agotado sin soltar, el lanzador tira solo con una carga media
+    if (this.human && !this.shotFired && this.fire < 0 && now - this.startedAt >= M.humanShotLimitMs) this.fire = M.humanAutoPower
     if (this.human && s.manual && s.phase === 'drive') {
       const len = Math.hypot(this.stickX, this.stickY)
       const k = len > 0.15 ? Math.min(1, len) / len : 0
@@ -225,6 +248,7 @@ export class MatchDuel {
     const s = this.sim
     s.launch(this.shot)
     this.fire = -1
+    this.shotFired = true
     this.justShot = true
     const taker = this.taker!
     if (!taker.anim || taker.anim.type !== 'shot' || now - taker.anim.at > 400) taker.anim = { type: 'shot', at: now - D.windupS * 1000 }

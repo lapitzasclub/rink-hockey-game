@@ -993,6 +993,13 @@ export const SETPIECE_FOLLOW = {
   /** Fracción del ancla a la boca de gol a la que mira; altura del ancla (m). */
   look: 0.6,
   anchorZ: 0.3,
+  /**
+   * Nadie entre la cámara y el lanzador: el resto de figuras se funde hasta desaparecer si su
+   * profundidad (m, a la altura del pecho) queda `nearAheadM` por delante de la del lanzador,
+   * en un tramo de `nearFadeM`; con la cámara del partido (orbit 0) no se aplica.
+   */
+  nearAheadM: 0.4,
+  nearFadeM: 1.2,
   omega: 7,
   ballWeight: 0.45,
   ballBlendS: 0.35,

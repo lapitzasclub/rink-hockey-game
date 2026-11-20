@@ -33,6 +33,8 @@ const Y0 = (() => {
   return CAMERA.farEdgeY + (CAMERA.focal * (d * Math.sin(THETA) - CAMERA.height * Math.cos(THETA))) / (d * Math.cos(THETA) + CAMERA.height * Math.sin(THETA))
 })()
 
+/** Altura (m) a la que se mide la profundidad de una figura para el fundido cercano. */
+const NEAR_Z = 0.9
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v)
 const smooth = (a: number, b: number, v: number) => { const t = clamp01((v - a) / (b - a)); return t * t * (3 - 2 * t) }
@@ -275,11 +277,21 @@ export class SetPieceScene extends Phaser.Scene {
     const bx = this.v2.x, by = this.v2.y
     const n = ++this.frameNo
     const st = this.st
+    const taker = duel.taker
+    let near = -Infinity
+    if (taker) {
+      duel.toScene(taker.pos.x, taker.pos.y, this.v2)
+      near = v.depth(this.v2.x, this.v2.y, NEAR_Z) - FW.nearAheadM
+    }
     for (const p of players) {
       if ((p.suspendedUntil ?? 0) > vt) continue
       duel.toScene(p.pos.x, p.pos.y, this.v2)
       st.x = this.v2.x; st.y = this.v2.y
       if (!inFrame(v, st.x, st.y, w, h)) continue
+      // Los que se meten entre la cámara y el lanzador se funden (no tapan el lanzamiento)
+      let a = 1
+      if (p !== taker && p !== duel.goalie) a = 1 - blend * (1 - clamp01((v.depth(st.x, st.y, NEAR_Z) - near) / FW.nearFadeM))
+      if (a < 0.02) continue
       duel.dirToScene(p.facing.x, p.facing.y, this.v2)
       st.fx = this.v2.x; st.fy = this.v2.y
       duel.dirToScene(p.velocity.x, p.velocity.y, this.v2)
@@ -289,6 +301,8 @@ export class SetPieceScene extends Phaser.Scene {
       m.sprinting = p.sprinting
       m.charge = p.charge
       placeFigure(v, m, this.proxy, st, bx, by, carrierId === p.id, vt, blend)
+      m.container.setAlpha(a)
+      m.shadow.setAlpha(a)
       this.seenAt.set(p.id, n)
     }
     for (const [id, m] of this.mirrors) {

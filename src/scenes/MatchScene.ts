@@ -531,7 +531,8 @@ export class MatchScene extends Phaser.Scene {
     const next = tickMatchClock({
       matchEnded: this.matchEnded,
       restartAt: force ? 0 : this.restartAt,
-      paused: !force && !!(this.activeKickoff || this.activeFoulRestart || this.activeBully),
+      // L-02: en el duelo, parado hasta que la bola está en juego (mismo criterio que el saque clásico)
+      paused: !force && !!(this.activeKickoff || this.activeFoulRestart || this.activeBully || (this.duel.active && !this.duel.ballLive)),
       remainingSeconds: this.remainingSeconds,
       currentPeriod: this.currentPeriod,
       ruleState: this.ruleState,
@@ -1549,8 +1550,15 @@ export class MatchScene extends Phaser.Scene {
     const duel = this.duel
     const taker = duel.taker!
     this.ballCarrierId = duel.carrying ? taker.id : null
-    updateTeamAIPlayers({ players: this.players, controlledPlayerIndex: this.controlledPlayerIndex, ball: this.ball, ballVelocity: this.ballVelocity, ballCarrierId: this.ballCarrierId, dt, timeNow: time, arcade: this.isArcade, updateGoalieAI, updateFieldPlayerAI })
-    resolvePlayerSpacing(this.players)
+    if (duel.struck) {
+      updateTeamAIPlayers({ players: this.players, controlledPlayerIndex: this.controlledPlayerIndex, ball: this.ball, ballVelocity: this.ballVelocity, ballCarrierId: this.ballCarrierId, dt, timeNow: time, arcade: this.isArcade, updateGoalieAI, updateFieldPlayerAI })
+      resolvePlayerSpacing(this.players)
+    } else {
+      // Hasta el golpeo los demás siguen donde los dejó el ritual de la falta (saque clásico)
+      for (const p of this.players) {
+        if (p !== taker && p !== duel.goalie) { p.velocity.x = 0; p.velocity.y = 0; p.sprinting = false }
+      }
+    }
     if (duel.human) {
       const act = this.foulChargeInput(taker)
       const s = this.duelStick

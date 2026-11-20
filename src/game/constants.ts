@@ -1028,4 +1028,12 @@ export const SETPIECE_MATCH = {
   humanAutoPower: 0.6,
   /** Espera mínima (ms desde el pitido) antes de que la IA golpee: deja entrar la cámara (0.8 s) y asentarse. */
   aiShotDelayMs: 1300,
+  /**
+   * Plazo de la persona para ejecutar tras el pitido (ms); agotado, tira sola con `humanAutoPower`.
+   * El reglamento (D-07) solo da cifra para el último lanzamiento (5 s, art. 30.14) y el saque
+   * clásico no tiene; con el reloj parado hasta que la bola está en juego hace falta uno: se usa ese.
+   */
+  humanShotLimitMs: 5000,
+  /** La bola está en juego cuando el lanzador la ha movido más de esto (m) o ha golpeado. */
+  liveMoveM: 0.05,
 }
