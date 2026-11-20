@@ -26,6 +26,8 @@ export interface LabParams {
   /** Objeto que centra la cámara bloqueada al congelar: ball|referee|goalie-blue|goalie-red. */
   follow: string | null
   seed: number | null
+  /** B-02: con `auto=1`, una persona simulada (táctil o mando) lleva al controlado del azul. */
+  human: 'touch' | 'pad' | null
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -58,6 +60,7 @@ export function readLabParams(search: string): LabParams {
     after: num(q, 'after') ?? 400,
     follow: q.get('follow'),
     seed: num(q, 'seed'),
+    human: q.get('human') === 'touch' ? 'touch' : q.get('human') === 'pad' ? 'pad' : null,
   }
 }
 

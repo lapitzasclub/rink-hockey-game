@@ -1,13 +1,16 @@
 import * as Phaser from 'phaser'
 import { autopilot } from '../../game/systems/playerControl'
 import { createMatchStats, type MatchView } from '../../game/systems/matchStats'
+import { startHumanSim, type HumanKind } from './humanSim'
 
 /**
  * Partido de humo (WP-64): IA contra IA sin humano. Observa la escena `match` en solo
  * lectura (salvo el pulso de pase del sacador azul en saques, que sustituye a la tecla)
  * y cuenta estadísticas con `matchStats` (compartido con `?stats=1`). Imprime
  * `[smoke] {json}` al cumplirse `smokeMs` de juego y una línea parcial cada 30 s.
- * Uso: `?lab=match&mode=reglamento&auto=1&smokeMs=120000`.
+ * Uso: `?lab=match&mode=reglamento&auto=1&smokeMs=120000`. Con `human=touch|pad` (B-02) el
+ * controlado del azul lo lleva una persona simulada (humanSim) sin piloto automático, y ella
+ * también saca las faltas del azul; el JSON lo registra en `human`.
  */
 
 /** Ganchos opcionales (WP-66): `onStep` tras cada paso de juego; `onDone` al terminar (sin informe de humo). */
@@ -35,9 +38,9 @@ export function driveBlueRestarts(match: Phaser.Scene) {
   return () => { match.events.off(Phaser.Scenes.Events.UPDATE, drive) }
 }
 
-export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, hooks?: SmokeHooks) {
+export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, hooks?: SmokeHooks, human: HumanKind | null = null) {
   const s = match as MatchView
-  autopilot.on = true
+  autopilot.on = !human
   const stats = createMatchStats(match, mode)
   let nextPartial = 30000
   let done = false
@@ -48,7 +51,8 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
   const origError = console.error
   console.error = (...a: unknown[]) => { errors++; origError.apply(console, a) }
 
-  const snapshot = (final: boolean) => ({ ...stats.snapshot(), consoleErrors: errors, final })
+  const sim = human ? startHumanSim(match, human) : null
+  const snapshot = (final: boolean) => ({ ...stats.snapshot(), consoleErrors: errors, final, ...(sim ? { human, humanActs: sim.acts } : {}) })
 
   const observe = (delta: number) => {
     if (done || !stats.step(delta)) return
@@ -74,7 +78,7 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
     hooks?.onDone()
   }
   const post = (_t: number, delta: number) => observe(delta)
-  const stopDrive = driveBlueRestarts(match)
+  const stopDrive = sim ? sim.stop : driveBlueRestarts(match)
   match.events.on(Phaser.Scenes.Events.POST_UPDATE, post)
 
   // Simulación acelerada: el bucle de Phaser se detiene y la escena avanza a pasos fijos sin

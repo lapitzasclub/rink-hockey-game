@@ -159,6 +159,8 @@ export class MatchScene extends Phaser.Scene {
   private cameraDirector!: CameraDirector
   /** Solo lab (WP-66): si es true, la cámara principal no sigue ni cambia de zoom. */
   labCameraLock = false
+  /** Solo lab (B-02): fuerza táctil o no para la persona simulada del humo; null = lo que diga el dispositivo. */
+  labTouch: boolean | null = null
   private arcade: ArcadeController | null = null
   private fx: ArcadeFx | null = null
   private arcadeHud: ArcadeHud | null = null
@@ -196,6 +198,7 @@ export class MatchScene extends Phaser.Scene {
   init(data: MatchSceneData = {}) {
     this.mode = data.mode ?? 'arcade'
     this.probe = !!data.probe
+    if (this.labTouch !== null) this.isTouchDevice = this.labTouch
     this.joystickInput = { x: 0, y: 0, pass: false, shoot: false, switch: false, sprint: false }
     this.prevTouchButtons = { pass: false, shoot: false, switch: false }
     this.charging = null

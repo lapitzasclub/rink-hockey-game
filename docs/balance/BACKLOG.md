@@ -10,7 +10,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 |---|---|---|---|
 | B-00 | Referencia: simetría IA contra IA y partido real de partida | coordinador + usuario | 🟨 (IA contra IA hecho) |
 | B-01 | Instrumentar: calidad de tiro, portero controlado y `?stats=1` | ai-engineer · opus | ✅ 2026-11-20 |
-| B-02 | Humano simulado en el humo (`human=touch\|pad`) | ai-engineer · opus | ⬜ |
+| B-02 | Humano simulado en el humo (`human=touch\|pad`) | ai-engineer · opus | ✅ 2026-11-20 (sin calibrar) |
 | B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ⬜ |
 | B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus + UI sonnet | ⬜ |
 | B-05 | Ajuste táctil y por nivel (barrido) | bal-tuner · sonnet | ⬜ |
@@ -42,7 +42,11 @@ Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `
 **Archivos:** nuevo `src/scenes/lab/humanSim.ts`, `labSmoke.ts`, lo mínimo de `playerControl.ts` para inyectar la entrada simulada.
 **Aceptación:** build; 20 corridas `human=touch` y 20 `human=pad` en arcade sin atascos ni errores; el táctil pierde por más que el mando (IC sin solapar) y reproduce la queja del usuario.
 
+**Hecho:** `scenes/lab/humanSim.ts` juega por el camino de la persona: en táctil escribe `joystickInput` como nipplejs; con mando usa un Gamepad falso que pasa por la zona muerta y los flancos reales. Reacción, ruido del pulgar, cargas variables, CAMBIO, ROBAR mantenido y faltas del azul salen de `HUMAN_SIM`. Decide con `shotScore`, `evaluatePasses` y `dribbleScore`, pero sin la dirección exacta de la IA. Humo arcade de 10 (`smoke/2026-11-20-B02-*10.txt`), rojo − azul: IA contra IA −0,25 ± 0,20; mando 0,80 ± 0,55; táctil 1,57 ± 0,60 goles/min. Táctil: el azul marca 0,45 y encaja 2,02; tira 1,8 veces por minuto frente a 5,5 del rojo y completa 3,7 pases por minuto frente a 10,0. Calidad de tiro 0,64 frente a 0,58. Paradas 61 % frente a 68 % (se solapan). Queda calibrarlo con el partido real.
+
 ## B-03 — Porteros
+
+**Hallazgo de B-02 (fallo del juego real):** nipplejs da un vector de como mucho 0,5, y `SWITCH_AIM_MIN` también es 0,5, así que en táctil el CAMBIO casi nunca elige por dirección y cae en el más cercano a la bola. Con la bola cerca de la portería propia, ese puede ser el portero (hipótesis 2).
 
 **Objetivo:** a igual calidad de tiro, los dos porteros paran lo mismo (IC solapados) con `human=touch`.
 **Hipótesis del coordinador (comprobar con B-01/B-02, en este orden):**

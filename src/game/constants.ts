@@ -555,3 +555,39 @@ export const SHOT_QUALITY = {
   pressGap: AI_PRESS_DISTANCE,
   hi: 0.5,
 }
+
+/**
+ * Persona simulada del humo (B-02, `?lab=match&auto=1&human=touch|pad`; solo laboratorio): mueve
+ * al controlado del azul por la entrada de una persona. Tiempos en ms, ángulos en rad.
+ * - reactionMs: lo que ve llega al stick con este retardo; los botones salen tras él (+ jitter).
+ * - thinkMs: cada cuánto relee la jugada (tiro, pase, cambio, presión).
+ * - stickNoiseRad: error del pulgar (uniforme ±), renovado cada noiseHoldMs; stickSmoothMs: giro del stick.
+ * - cruise: recorrido del stick sin querer correr (1 = a fondo). shortChance: queriendo correr no
+ *   llega a fondo; overshootChance: va a fondo sin querer (en táctil eso esprinta).
+ * - aimErrorRad / passErrorRad: error al apuntar a portería o al compañero (donde está, sin anticipar).
+ * - tapUnderPressure: toque corto con un rival a menos de AI_CHARGE_PRESSURE_PX; si no, carga
+ *   shotHoldMs / passHoldMs (mín., máx.), y el pase solo con passChargeChance.
+ * - switchFarPx / switchChance / switchCooldownMs: CAMBIO defendiendo con el controlado lejos de la bola.
+ * - pressRangePx: mantiene ROBAR (tiro sin bola) con el portador a menos de esto.
+ * - lineUpMs: lo que tarda en apuntar un saque de falta antes de pulsar.
+ */
+export const HUMAN_SIM = {
+  touch: {
+    reactionMs: 250, reactionJitterMs: 90, thinkMs: 320,
+    stickNoiseRad: 0.25, noiseHoldMs: 260, stickSmoothMs: 110,
+    cruise: 0.74, shortChance: 0.3, overshootChance: 0.22,
+    aimErrorRad: 0.2, passErrorRad: 0.26,
+    tapUnderPressure: 0.85, shotHoldMs: [140, 750], passHoldMs: [140, 450], passChargeChance: 0.2,
+    switchFarPx: 240, switchChance: 0.45, switchCooldownMs: 1100, pressRangePx: 120,
+    lineUpMs: [350, 900],
+  },
+  pad: {
+    reactionMs: 180, reactionJitterMs: 60, thinkMs: 260,
+    stickNoiseRad: 0.1, noiseHoldMs: 300, stickSmoothMs: 70,
+    cruise: 0.95, shortChance: 0, overshootChance: 0,
+    aimErrorRad: 0.12, passErrorRad: 0.14,
+    tapUnderPressure: 0.7, shotHoldMs: [140, 700], passHoldMs: [140, 400], passChargeChance: 0.3,
+    switchFarPx: 220, switchChance: 0.65, switchCooldownMs: 900, pressRangePx: 130,
+    lineUpMs: [250, 650],
+  },
+}

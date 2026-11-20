@@ -116,8 +116,8 @@ export class LabScene extends Phaser.Scene {
     if (wantsCameraLock(this.params)) lockMatchCamera(match, this.params)
     this.scene.start('match', { mode })
     if (this.params.at && !this.params.auto) console.warn('[at] requiere auto=1; se ignora')
-    if (this.params.auto && this.params.at) startSmoke(match, mode, 1e9, atHooks(match, this.params))
-    else if (this.params.auto) startSmoke(match, mode, this.params.smokeMs)
+    if (this.params.auto && this.params.at) startSmoke(match, mode, 1e9, atHooks(match, this.params), this.params.human)
+    else if (this.params.auto) startSmoke(match, mode, this.params.smokeMs, undefined, this.params.human)
     else if (this.params.ai) {
       autopilot.on = true
       match.events.once(Phaser.Scenes.Events.CREATE, () => {
