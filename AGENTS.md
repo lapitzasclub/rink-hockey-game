@@ -305,6 +305,16 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-20 — lanz L-00 y reglas del lanzamiento
+
+- **L-00 ✅**: `?lab=setpiece` (`kind`, `ballx/bally/ballz`, `takerm`) con una cámara estenopeica móvil detrás del lanzador (`src/game/setpiece/view.ts`, `SETPIECE_CAMERA` en artSpec) y escena en `scenes/lab/labSetPiece.ts`. El escorzo del rig pasa a ser un parámetro de `Skeleton.project`/`groundFromLocal` (0,3 por defecto, el partido no cambia). D-01 (2.5D) confirmada; los pendientes para L-04a y L-02 están en BACKLOG.
+- **Reglas verificadas en el reglamento World Skate 2026, art. 28–30 (D-07)**:
+  - Penalti y directo son un mano a mano: tirar o conducir.
+  - En el penalti se parte parado; en el directo, con hasta 3 m de carrerilla.
+  - El portero es libre tras el pitido y hay rechace.
+- **D-08**: cuatro situaciones (penalti o directo, atacar o defender) con un solo motor.
+- **D-09**: transición continua 2D ↔ 2.5D, y el duelo se juega en la simulación del partido.
+
 ### 2026-11-20 — workflow de lanzamientos (/lanz)
 
 - Pedido del usuario: penalti y libre directo con cámara en tercera persona, apuntado, fuerza y efecto durante el trayecto y figuras más detalladas. Workflow en `docs/setpiece/` (WORKFLOW, BACKLOG con D-01…D-06 y L-00…L-99), coordinador `/lanz` y agentes `lanz-engineer`, `lanz-artist`, `lanz-qa`; `ai-engineer` y `bal-tuner` admiten L-XX. Sin código todavía. D-01 (delegada por el usuario): 2.5D en Phaser —el esqueleto del rig ya es 3D y se le añade la inclinación de cámara—, sin Three.js ni modo 7; L-00 lo valida.

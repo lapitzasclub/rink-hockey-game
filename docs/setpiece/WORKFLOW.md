@@ -26,7 +26,7 @@ src/game/render/setpiece/
   closeKit.ts   nivel de detalle cercano del rig (atlas de alta resolución, piezas extra)
 ```
 
-Contrato con el partido: `MatchScene` entrega un `SetPieceRequest` cuando el árbitro pita un directo o un penalti y recibe un `SetPieceResult`. Con gol, sigue el flujo de gol de siempre; con parada o palo, la bola vuelve al partido en juego con su posición y velocidad (hay rechace, salvo art. 23.6). En el humo (IA contra IA) y con la opción «clásica», se resuelve con `sim.ts` sin pintar nada: el resultado sale de la misma física que ve la persona.
+Contrato con el partido (D-09): el duelo se juega en la simulación del partido; la escena cercana cambia la cámara con una transición continua, añade el detalle y la altura y el efecto de la bola en vuelo, y devuelve el control al acabar el duelo sin parar el juego. `MatchScene` entrega un `SetPieceRequest` cuando el árbitro pita un directo o un penalti y recibe un `SetPieceResult`. Con gol, sigue el flujo de gol de siempre; con parada o palo, la bola vuelve al partido en juego con su posición y velocidad (hay rechace, salvo art. 23.6). En el humo (IA contra IA) y con la opción «clásica», se resuelve con `sim.ts` sin pintar nada: el resultado sale de la misma física que ve la persona.
 
 ## 2. Roles y coste
 
@@ -92,7 +92,7 @@ node tools/perf-bench.mjs --base <url> --profile movil-bajo --mode reglamento --
 - La escena cercana se ve bien en las tres calidades: lo vistoso se conserva en alta y media; en baja, menos detalle pero sin romper el estilo.
 - El atlas cercano se genera al entrar por primera vez en la escena (o en reposo tras el saque inicial), nunca en mitad de un fotograma de juego, y se reutiliza.
 - La dificultad no cambia la física: el nivel cambia la reacción y la lectura del portero de la IA, la puntería de su lanzador y las ayudas al humano, nunca la velocidad de la bola ni el efecto máximo.
-- El reglamento manda (art. 30): portero sobre la línea hasta el golpeo, los demás en el área contraria, un solo toque del lanzador. Medidas de portería en [../graphics/REGLAMENTO-MEDIDAS.md](../graphics/REGLAMENTO-MEDIDAS.md).
+- El reglamento manda (art. 28–30, resumidos en D-07): portero quieto en la línea hasta el pitido y libre después; el lanzador puede tirar o conducir (en el penalti parte parado; en el directo, con hasta 3 m de carrerilla); no puede pasar; hay rechace tras tocar el portero, la portería o la valla; los demás esperan en el área de la otra mitad. Medidas de portería en [../graphics/REGLAMENTO-MEDIDAS.md](../graphics/REGLAMENTO-MEDIDAS.md).
 - Constantes de juego en `src/game/constants.ts` en tablas (`SETPIECE_*`, por nivel y control) para que `bal-tuner` las barra sin leer la lógica; visuales en `src/game/render/artSpec.ts`.
 - Comentarios en español, sin comentar lo obvio. Archivos ≤ 500 líneas. Sin dependencias nuevas (D-01: 2.5D en Phaser). nipplejs no se migra; `.openclaw/` no se toca. Nunca `git stash` a secas ni matar procesos por PID.
 
