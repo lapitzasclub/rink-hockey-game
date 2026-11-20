@@ -981,10 +981,9 @@ export const SETPIECE_CAMERA = {
  * `CROWD`, `LIGHT`) visto con la cámara baja.
  * Valla: luminosidad de la cara según la pared (el fondo equivale a un lateral del partido, 0,72 ± 0,16;
  * los laterales y el fondo contrario a la lejana, 1,06), grosor del canto (m) y hueco de cada panel (m).
- * Grada: plano inclinado detrás de la valla (el peto vertical hasta 1 m y `tiers` escalones de
- * `STANDS`); el público se hornea una vez con las figuras de `render/stands/fans.ts` a `pxPerM`
- * px por metro de figura (por calidad; sin desenfoque propio: la textura a esa resolución y el filtro lineal
- * bastan para que lo lejano quede suave). `swayM`/`swayHz`: balanceo de la peña en calidad media y alta.
+ * Grada: plano inclinado detrás de la valla con la estructura (peto y `tiers` escalones de `STANDS`) y, de pie
+ * sobre él, una tarjeta del público por fila (`crowd`, L-05b) con las figuras de `render/stands/fans.ts` a `pxPerM`
+ * px por metro (por calidad), horneadas una vez en tandas.
  * Luz: pozos cenitales en el suelo como los del partido (`LIGHT.pools*`), en m.
  */
 export const SETPIECE_STAGE = {
@@ -994,23 +993,22 @@ export const SETPIECE_STAGE = {
   adGapM: 0.06,
   adCols: 4,
   stands: {
-    /** Filas (impar: el balanceo agrupa de dos en dos) y subida por fila (m): más tendida que la del partido. */
+    /** Filas y subida por fila (m): más tendida que la del partido. */
     tiers: 9,
-    riseM: 0.3,
+    riseM: 0.42,
     setbackM: 0.6,
     firstM: 0.9,
     colM: 1.5,
     /** Esquinas: tramos en que se parte cada cuarto de círculo. */
     cornerCols: 6,
-    pxPerM: { alta: 44, media: 44, baja: 30 },
-    swayM: 0.035,
-    swayHz: 0.8,
+    /** Resolución (px por m) de las tarjetas del público y del plano de la estructura (escalones, pasillos y peto). */
+    pxPerM: { alta: 44, media: 40, baja: 30 },
+    structPxPerM: { alta: 24, media: 24, baja: 16 },
     seatWidthM: 0.46,
     seatHeightM: 0.34,
     /** Luz de la estructura (huella, contrahuella, pasillos) respecto a la del partido: más oscura, la masa la hace el público. */
     structK: 0.62,
-    /** Escala de las figuras (se solapan filas como en el partido) y fracción de asientos vacíos respecto a `CROWD`. */
-    fanK: 1.6,
+    /** Fracción de asientos vacíos respecto a `CROWD`. */
     emptyK: 1,
     /** Horneado: tiempo máximo por trozo (ms) antes de ceder el hilo. */
     sliceMs: 8,
@@ -1020,8 +1018,78 @@ export const SETPIECE_STAGE = {
    * del muro alto del partido (`STANDS`/`STANDS_COLORS`); `heightM` sobre la última fila.
    */
   hall: { heightM: 18, bottom: 0x1b2433, top: 0x090c12, ledAtM: 0.5, texW: 4, texH: 256 },
-  /** Pozos de luz del suelo: textura radial horneada (lado, px) y alfa máximo respecto a `LIGHT.poolAlpha`/`goalPoolAlpha`. */
-  pool: { texPx: 128, cells: 6, k: 1.25 },
+  /** Pozos de luz del suelo: textura radial horneada (lado, px), celdas por lado y alfa respecto a `LIGHT.goalPoolAlpha`; bajo cada haz, radio (m) y alfa. */
+  pool: { texPx: 128, cells: 4, k: 1.25, beamR: 2.6, beamAlpha: 0.12 },
+  /**
+   * L-05b. Plano cercano (m) del decorado lejano (`TexGrid`, descarta la celda) y del suelo y la luz
+   * (`ClipBatch`, la recorta: con la cámara a 1,4 m o más, la recta del recorte cae siempre bajo la pantalla).
+   */
+  nearClipM: 0.8,
+  clipNearM: 0.4,
+  /**
+   * Suelo con la receta de `arena.ts` en metros: la mitad atacada (20 × 20 m, la otra la repite en espejo)
+   * a `pxPerM`; celdas de `cellM` m (`farCellM` en la otra mitad) que se parten en 2 × 2 a menos de `subM` m.
+   * Grano fino en tesela de `noisePx` (alfa máx. `noiseAlpha`) y las motas del 2D (`dotsPerM2`, de 4 a 7 cm).
+   * Marcas de ruedas (arcos de 1 a 4 m del 2D): repartidas, junto al punto de penalti, en la frontal del área,
+   * del portero en la boca y algunas oscuras de goma. Barniz: reflejos de focos de `spotR` m en las posiciones
+   * de `FLOOR_STYLE`. Sombra interior de `shadowM` m junto a la valla.
+   */
+  floor: {
+    pxPerM: { alta: 56, media: 40, baja: 28 },
+    cellM: 1,
+    farCellM: 2,
+    subM: 3.5,
+    maxSub: 64,
+    noisePx: 128,
+    noiseAlpha: 0.06,
+    dotsPerM2: 20,
+    marks: { spread: 55, spot: 50, area: 30, crease: 26, dark: 16 },
+    markAlpha: [0.03, 0.075],
+    spotR: 3.8,
+    shadowM: 1.1,
+    shadowAlpha: 0.34,
+  },
+  /** Reflejo del barniz: valla, publicidad y portería espejadas (z → −z), alfa y caída hasta 0 a `fadeM` m bajo el suelo. */
+  reflect: { alpha: 0.3, adsAlpha: 0.34, fadeM: 1.0 },
+  /**
+   * Público en relieve: una tarjeta vertical por fila a `atM` m del borde del escalón, de pie sobre el plano de la
+   * grada, con columnas de `colM` m. Figuras de `fans.ts` a `fanK` (cadera a `hipM` del escalón). Luz de la primera
+   * a la última fila; las altas, a `resBack` de resolución (desenfoque) y con bruma del cierre hasta `hazeBack`.
+   * De pie con los brazos arriba: fracción en la peña y en el resto. Oleaje (media y alta): `waveM` m a `waveHz`,
+   * desfasado `waveK` rad/m a lo largo del anillo y `rowPhase` rad por fila; el resto de la grada a `sideK`.
+   */
+  crowd: {
+    atM: 0.42,
+    colM: 2.5,
+    fanK: 1.05,
+    hipM: 0.42,
+    resBack: 0.55,
+    hazeBack: 0.3,
+    lightFront: 0.98,
+    lightBack: 0.5,
+    standPena: 0.09,
+    standSide: 0.02,
+    waveM: 0.06,
+    waveHz: 0.7,
+    waveK: 0.45,
+    rowPhase: 0.8,
+    sideK: 0.5,
+  },
+  /** Banderas de la peña: a lo largo del fondo (m desde la izquierda) y fila; tela, mástil sobre las manos, ondeo. */
+  flags: { at: [[5.2, 3], [11.4, 5], [15.8, 2]] as ReadonlyArray<readonly [number, number]>, wM: 1.6, hM: 1.0, poleM: 2.5, cols: 6, ampM: 0.22, hz: 0.9 },
+  /** Flashes de cámara (media y alta): a la vez, duración (ms), periodo de cada uno (ms) y tamaño (px). */
+  flashes: { count: 6, ms: 110, periodMs: [1700, 4600], sizePx: 22, alpha: 0.9 },
+  /**
+   * Haces cenitales (media y alta): columnas aditivas encaradas a la cámara, del techo (`topZ`) al suelo, con
+   * ancho arriba y abajo (m), `rows` tramos (sin quiebros del mapeo afín) y alfa.
+   */
+  beams: { at: [[-4.2, 3.4], [4.2, 3.4], [0, -1.4]] as ReadonlyArray<readonly [number, number]>, topZ: 13, topW: 1.0, botW: 3.6, rows: 10, alpha: 0.4 },
+  /** Halo aditivo de la tira LED (alto, m) y focos del pabellón sobre el cierre: altura sobre su base, separación, tamaño y alfa. */
+  bloom: { ledHM: 0.9, ledAlpha: 0.7, lampZ: 2.3, lampEveryM: 4.6, lampW: 0.9, lampH: 0.42, haloM: 2.4, lampAlpha: 0.9 },
+  /** Viñeta de pantalla (media y alta): radio sin oscurecer (fracción) y alfa en las esquinas. */
+  vignette: { inner: 0.52, alpha: 0.45 },
+  /** Transición (L-02): giro extra alrededor del punto (grados) y alejamiento relativo, máximos a mitad de la órbita. */
+  arc: { yawDeg: 14, pullK: 0.14 },
 } as const
 
 /**
