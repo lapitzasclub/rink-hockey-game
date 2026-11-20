@@ -15,6 +15,7 @@ import {
   DIFFICULTY,
   DIFFICULTY_LEVELS,
   DIFFICULTY_TOUCH_SHIFT,
+  TOUCH_ASSIST_EXTRA,
   type AiProfile,
   type DifficultyLevel,
 } from '../constants'
@@ -86,10 +87,27 @@ export function configureMatchDifficulty(chosen: DifficultyLevel, touch: boolean
   }
 }
 
-/** ¿El equipo recibe la ayuda arcade (rubber-banding) cuando va perdiendo? */
 /** Equipo de la persona si juega en táctil (si no, null): recibe TOUCH_ASSIST en el apuntado (targeting.ts). */
 export const touchAssist = { team: null as TeamColor | null }
 
+/**
+ * Factor de la probabilidad de carga (arcade) de la IA contra un portador de este equipo (B-06):
+ * TOUCH_ASSIST_EXTRA.checkOnCarrier si es el de la persona en táctil (el portador de campo de su
+ * equipo es siempre el controlado), 1 si no.
+ */
+export function checkChanceScale(carrierTeam: TeamColor): number {
+  return carrierTeam === touchAssist.team ? TOUCH_ASSIST_EXTRA.checkOnCarrier : 1
+}
+
+/**
+ * ¿Deja este paso a un compañero de la persona en táctil probar a robar (B-06)? Probabilidad
+ * TOUCH_ASSIST_EXTRA.mateSteal por paso, antes de la tirada normal de la IA (shouldAIAttemptSteal).
+ */
+export function mateStealRoll(team: TeamColor): boolean {
+  return team === touchAssist.team && TOUCH_ASSIST_EXTRA.mateSteal > 0 && Math.random() < TOUCH_ASSIST_EXTRA.mateSteal
+}
+
+/** ¿El equipo recibe la ayuda arcade (rubber-banding) cuando va perdiendo? */
 export function rubberBandFor(team: TeamColor): boolean {
   return teamRubber[team]
 }

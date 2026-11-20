@@ -316,7 +316,7 @@ export function tryShotAction(options: {
 }) {
   if (options.ballCarrierId !== options.player.id) return null
   const charge = options.charge ?? 0
-  let direction = getAssistedShotDirection(options.player, getAimingDirection(options.player))
+  let direction = getAssistedShotDirection(options.player, getAimingDirection(options.player), options.players)
   if (charge > 0) {
     direction = spreadDirection(direction, CHARGE_SHOT_SPREAD * charge * charge)
   }

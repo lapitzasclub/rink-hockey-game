@@ -56,7 +56,9 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'shotQualityBlue', 'shotQualityRed', 'savePctBlueHi', 'savePctBlueLo', 'savePctRedHi', 'savePctRedLo',
   'afterPassPctBlue', 'afterPassPctRed', 'gkOffBlue', 'gkOffRed', 'placeBlue', 'placeRed',
   'savePctPassBlue', 'savePctPassRed', 'savePctNoPassBlue', 'savePctNoPassRed',
-  'unmarkedBlue', 'unmarkedRed', 'doublePctBlue', 'doublePctRed', 'humanOnCarrierPctBlue'
+  'unmarkedBlue', 'unmarkedRed', 'doublePctBlue', 'doublePctRed', 'humanOnCarrierPctBlue',
+  'lossesBluePerMin', 'lossesRedPerMin', 'lossesCheckBluePerMin', 'lossesCheckRedPerMin', 'stealTriesBluePerMin', 'stealTriesRedPerMin', 'stealPctBlue', 'stealPctRed',
+  'humanStealTriesPerMin', 'humanStealsPerMin', 'goalieHumanPctBlue', 'goalsVsHumanGoaliePerMin'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 $tot = @{ jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0 }
 foreach ($i in 1..$Runs) {
@@ -109,6 +111,19 @@ foreach ($i in 1..$Runs) {
     }
   }
   if ($null -ne $j.humanOnCarrierPct -and $j.human) { $samples.humanOnCarrierPctBlue += $j.humanOnCarrierPct.blue }
+  # B-06: pérdidas del portador de campo, intentos de robo (y % que acaban en robo) y portero en manos de la persona
+  if ($null -ne $j.losses) {
+    $samples.lossesBluePerMin += $j.losses.blue / $min; $samples.lossesRedPerMin += $j.losses.red / $min
+    $samples.lossesCheckBluePerMin += $j.lossesCheck.blue / $min; $samples.lossesCheckRedPerMin += $j.lossesCheck.red / $min
+    $samples.stealTriesBluePerMin += $j.stealTries.blue / $min; $samples.stealTriesRedPerMin += $j.stealTries.red / $min
+    if ($j.stealTries.blue -gt 0) { $samples.stealPctBlue += 100 * $j.steals.blue / $j.stealTries.blue }
+    if ($j.stealTries.red -gt 0) { $samples.stealPctRed += 100 * $j.steals.red / $j.stealTries.red }
+    if ($j.human) {
+      $samples.humanStealTriesPerMin += $j.stealTriesHuman.blue / $min; $samples.humanStealsPerMin += $j.stealsHuman.blue / $min
+      $samples.goalieHumanPctBlue += 100 * $j.goalieHumanSec.blue / [math]::Max(0.001, $j.sec)
+      $samples.goalsVsHumanGoaliePerMin += $j.goalsAgainstHumanGoalie.blue / $min
+    }
+  }
   # Reinicios del reglamento (E-05): sumados en el lote
   $tot.freeHits += [int]$j.freeHits; $tot.directFreeHits += [int]$j.directFreeHits; $tot.penalties += [int]$j.penalties
   $tot.neutralRestarts += [int]$j.neutralRestarts; $tot.blueCards += [int]($j.blueCards.blue + $j.blueCards.red)

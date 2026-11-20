@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
-import { GAME_HEIGHT, GOALIE_SELECT_RANGE, SWITCH_AIM_ANGLE_PX, SWITCH_AIM_MAX_ANGLE, SWITCH_AIM_MIN, SWITCH_AIM_TOUCH_SCALE } from '../constants'
+import { GAME_HEIGHT, GOALIE_SELECT_RANGE, SWITCH_AIM_ANGLE_PX, SWITCH_AIM_MAX_ANGLE, SWITCH_AIM_MIN, SWITCH_AIM_TOUCH_SCALE, TOUCH_ASSIST_EXTRA } from '../constants'
+import { touchAssist } from './difficulty'
 import { getGoalLineX } from '../utils'
 import type { Player, TeamColor } from '../types'
 
@@ -61,7 +62,8 @@ export function switchAim(aim: { x: number, y: number }, touch: boolean) {
  * marcado, el compañero hacia donde apunta (el portero cuenta si la bola está cerca de su
  * portería); (3) el de campo más cercano a la bola. Al pulsar cambio sin stick no se queda en el
  * mismo: si ya era el más cercano pasa al portero (bola cerca de su portería) o al siguiente.
- * Sin `request` (control automático) puede devolver el actual.
+ * Sin `request` (control automático) puede devolver el actual. En táctil, con
+ * TOUCH_ASSIST_EXTRA.goalieAutoSelect en false, al portero solo se llega con el CAMBIO que le apunta (B-06).
  */
 export function selectBestControlledPlayer(players: Player[], controlledPlayerIndex: number, ballCarrierId: string | null, ballX: number, ballY: number, now = 0, request?: SwitchRequest) {
   const options = getControllablePlayers(players)
@@ -112,7 +114,8 @@ export function selectBestControlledPlayer(players: Player[], controlledPlayerIn
   }
   if (nearest < 0) return controlledPlayerIndex % options.length
 
-  if (goalie && current !== goalie && nearGoal) {
+  const autoGoalie = TOUCH_ASSIST_EXTRA.goalieAutoSelect || touchAssist.team !== 'blue'
+  if (goalie && current !== goalie && nearGoal && autoGoalie) {
     const goalieDist = Phaser.Math.Distance.Between(goalie.pos.x, goalie.pos.y, ballX, ballY)
     if (goalieDist < nearestDist || (request && options[nearest] === current)) return goalieIndex
   }

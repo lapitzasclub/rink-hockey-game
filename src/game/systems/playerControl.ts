@@ -1,5 +1,6 @@
-import { GAME_HEIGHT, GOALIE_HUMAN_MAX_Y, PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND, PRESS_STICK_BLEND } from '../constants'
+import { GAME_HEIGHT, GOALIE_HUMAN_MAX_Y, PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULTIPLIER, STAMINA_LOW_THRESHOLD, STAMINA_MAX, STAMINA_RECOVERY_PER_SECOND, STAMINA_SPRINT_DRAIN_PER_SECOND, PRESS_STICK_BLEND, TOUCH_ASSIST_EXTRA } from '../constants'
 import { prepareTeamAI } from './aiTeam'
+import { touchAssist } from './difficulty'
 import { steerGoalieFacing, type GoalieContext } from './goalieAI'
 import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
@@ -7,6 +8,21 @@ import type { Ball, Player, Vector } from '../types'
 
 /** Autopiloto (partido de humo, WP-64): la IA también mueve al jugador "humano". */
 export const autopilot = { on: false }
+
+/**
+ * B-06: id del portero en manos de la persona táctil que mueve la IA porque viene un tiro rival
+ * (TOUCH_ASSIST_EXTRA.goalieAiShotSpeed). Lo fija updateTeamAIPlayers; el movimiento del
+ * controlado lo respeta en el paso siguiente.
+ */
+const goalieTakeover = { id: '' }
+
+/** ¿Hay un tiro rival en camino hacia la portería de este portero (bola suelta y rápida hacia ella)? */
+function rivalShotIncoming(goalie: Player, ballVelocity: Vector, ballCarrierId: string | null) {
+  if (ballCarrierId) return false
+  const vx = ballVelocity.x
+  if (goalie.side === 'left' ? vx >= 0 : vx <= 0) return false
+  return Math.hypot(vx, ballVelocity.y) >= TOUCH_ASSIST_EXTRA.goalieAiShotSpeed
+}
 
 /**
  * Lee el input del jugador humano (teclado o joystick táctil), actualiza el
@@ -30,7 +46,7 @@ export function updateControlledPlayerMotion(options: {
   pressTarget?: { x: number, y: number } | null
 }) {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
-  if (autopilot.on) return player // lo mueve updateTeamAIPlayers
+  if (autopilot.on || goalieTakeover.id === player.id) return player // lo mueve updateTeamAIPlayers
 
   // Si el jugador controlado está suspendido, solo aplicar rozamiento (sin input)
   if ((player.suspendedUntil && player.suspendedUntil > options.timeNow) || (player.stunUntil ?? 0) > options.timeNow) {
@@ -63,7 +79,9 @@ export function updateControlledPlayerMotion(options: {
   }
 
   if (player.role === 'goalie') {
-    moveHumanGoalie(player, inputX, inputY, len, options.ball, options.dt)
+    // nipplejs da |stick| ≤ 0,5: en táctil se escala para que el portero acelere como con mando
+    const k = usingJoystick && touchAssist.team === player.team ? TOUCH_ASSIST_EXTRA.goalieStickScale : 1
+    moveHumanGoalie(player, inputX, inputY, len, k, options.ball, options.dt)
     return player
   }
 
@@ -87,13 +105,13 @@ export function updateControlledPlayerMotion(options: {
 /**
  * Portero en manos del humano: patina con el mando sin sprint, dentro de su zona (el tope en x lo
  * pone applySkating; aquí el recorrido lateral) y mirando a la bola como el de la IA. Las paradas
- * siguen siendo automáticas por posición (tryGoalieSave).
+ * siguen siendo automáticas por posición (tryGoalieSave). `stickScale` escala el módulo del stick.
  */
-function moveHumanGoalie(player: Player, inputX: number, inputY: number, len: number, ball: { x: number, y: number }, dt: number) {
+function moveHumanGoalie(player: Player, inputX: number, inputY: number, len: number, stickScale: number, ball: { x: number, y: number }, dt: number) {
   player.sprinting = false
   player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * dt)
   if (len > 0) {
-    const k = Math.min(1, len)
+    const k = Math.min(1, len * stickScale)
     player.velocity.x += (inputX / len) * k * PLAYER_ACCEL * dt
     player.velocity.y += (inputY / len) * k * PLAYER_ACCEL * dt
   }
@@ -141,8 +159,14 @@ export function updateTeamAIPlayers(options: {
   goalieCtx.arcade = options.arcade
   prepareTeamAI(options.players, options.ball, options.ballVelocity, options.ballCarrierId, autopilot.on ? null : controlled.id, options.timeNow)
 
+  // Táctil: con un tiro rival en camino, la IA coloca al portero que lleva la persona (B-06)
+  const takeover = !autopilot.on && controlled.role === 'goalie' && touchAssist.team === controlled.team &&
+    (TOUCH_ASSIST_EXTRA.goalieAiWithoutBall ? options.ballCarrierId !== controlled.id
+      : goalieTakeover.id === controlled.id ? !options.ballCarrierId && Math.hypot(options.ballVelocity.x, options.ballVelocity.y) > 30 : rivalShotIncoming(controlled, options.ballVelocity, options.ballCarrierId))
+  goalieTakeover.id = takeover ? controlled.id : ''
+
   for (const player of options.players) {
-    if (player.id === controlled.id && !autopilot.on) continue
+    if (player.id === controlled.id && !autopilot.on && !takeover) continue
     // Jugador suspendido: no actualizar IA ni física (lo gestiona updateSuspendedPlayers)
     if (player.suspendedUntil && player.suspendedUntil > options.timeNow) continue
     if ((player.stunUntil ?? 0) > options.timeNow) {
