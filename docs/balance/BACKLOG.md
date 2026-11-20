@@ -1,0 +1,69 @@
+# Backlog de equilibrio (B-XX)
+
+Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso · ✅ aceptado · ❌ rechazado.
+
+**Pedido del usuario (2026-11-20):** «estuve probando jugar unas partidas en móvil y es demasiado difícil usando los controles táctiles… en móvil hay que rebajar la dificultad. Además me fijé que el portero contrario paraba bastante más de lo que paraba el mío».
+
+## Estado
+
+| B-XX | Título | Agente · modelo | Estado |
+|---|---|---|---|
+| B-00 | Referencia: simetría IA contra IA y partido real de partida | coordinador + usuario | 🟨 (IA contra IA hecho) |
+| B-01 | Instrumentar: calidad de tiro, portero controlado y `?stats=1` | ai-engineer · opus | ⬜ |
+| B-02 | Humano simulado en el humo (`human=touch\|pad`) | ai-engineer · opus | ⬜ |
+| B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ⬜ |
+| B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus + UI sonnet | ⬜ |
+| B-05 | Ajuste táctil y por nivel (barrido) | bal-tuner · sonnet | ⬜ |
+| B-99 | Cierre: batería final y partido real en el móvil | bal-qa · haiku + usuario | ⬜ |
+
+Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `constants.ts`) → B-05 → B-99.
+
+---
+
+## B-00 — Referencia
+
+**IA contra IA (hecho, sin coste):** los porteros son simétricos. `evo/smoke/2026-11-20-carga.txt`, arcade 20 corridas: paradas azul 67,8 ± 7,2 %, rojo 66,9 ± 5,7 %; rojo − azul −0,03 ± 0,34 goles/min. La asimetría que vio el usuario viene de que juega una persona.
+**Falta:** con B-01 listo, un partido real del usuario en el móvil (arcade, NORMAL) con `?stats=1`, guardado en `real/`.
+
+## B-01 — Instrumentar
+
+**Objetivo:** que el humo y un partido real digan *por qué* para un portero y no el otro.
+- Por tiro: distancia a la portería, ángulo, velocidad, si el tirador estaba presionado (rival a < `AI_PRESS_DISTANCE`) y una **calidad** 0–1 a partir de eso (tabla en `constants.ts`). Agregados por equipo: `shotQualityBlue/Red` y % de paradas en tiros buenos y malos (`savePctBlueHi/Lo`, `savePctRedHi/Lo`, corte en 0,5).
+- Por parada o gol: si el portero lo llevaba la IA o la persona (`goalieHumanSec`, `goalsAgainstHumanGoalie`).
+- `?stats=1` en partido normal (también en producción): al terminar, un botón «Copiar estadísticas» con el mismo JSON que `[smoke]` más el control usado (táctil, mando, teclado).
+**Archivos:** `src/scenes/lab/labSmoke.ts` (extraer la contabilidad a `src/game/systems/matchStats.ts` para compartirla), `tools/gfx-smoke.ps1` (claves nuevas en el agregado), el gancho mínimo en `MatchScene.ts` y la pantalla final.
+**Aceptación:** build; humo de 5 por modo sin errores y con las claves nuevas; `bal-compare --sides` las muestra; el botón copia un JSON válido en móvil (captura headless con `pointer: coarse` emulado).
+
+## B-02 — Humano simulado
+
+**Objetivo:** con `human=touch|pad` el jugador controlado del azul lo mueve un conductor que pasa por el mismo camino que la persona (`playerControl` y las acciones de pase, tiro, cambio y presión de E-14), no por la IA: reacción ~250 ms (táctil) / ~180 ms (mando), dirección del stick con ruido y retraso, apuntado con `SHOT_ASSIST_BLEND_HUMAN` hacia donde mira, pases sin la anticipación de la IA, cambio de jugador con CAMBIO (y por tanto el portero cuando toca), tiro y pase cargados. El resto del azul sigue con la IA.
+**Calibrar:** con el partido real de B-00, el humano simulado táctil contra NORMAL debe dar tiros, % de pases y goles encajados dentro de un margen razonable (±30 %) del partido real. Los parámetros van en `HUMAN_SIM` de `constants.ts`.
+**Archivos:** nuevo `src/scenes/lab/humanSim.ts`, `labSmoke.ts`, lo mínimo de `playerControl.ts` para inyectar la entrada simulada.
+**Aceptación:** build; 20 corridas `human=touch` y 20 `human=pad` en arcade sin atascos ni errores; el táctil pierde por más que el mando (IC sin solapar) y reproduce la queja del usuario.
+
+## B-03 — Porteros
+
+**Objetivo:** a igual calidad de tiro, los dos porteros paran lo mismo (IC solapados) con `human=touch`.
+**Hipótesis del coordinador (comprobar con B-01/B-02, en este orden):**
+1. *Calidad de tiro.* El rojo tira con apuntado exacto (`SHOT_ASSIST_BLEND` 1, `targeting.ts:177`) y solo cuando la valoración de `aiDecision.ts` lo aconseja; la persona tira con 0,75 hacia donde mira, bajo presión y de lejos. Entonces el portero rival no es mejor: recibe peores tiros. Arreglo: ayuda de apuntado táctil (B-05), no tocar el portero.
+2. *Portero propio en manos de la persona.* Con la bola a < `GOALIE_SELECT_RANGE` (280) de la portería propia, el cambio puede elegir al portero (`playerHelpers.ts:62`); en táctil, con CAMBIO en el arco del pulgar, se acaba controlando sin querer, y una persona para peor que la IA. Arreglo posible: en táctil el portero solo se elige con el stick apuntándole, o el control vuelve a la IA ante un tiro.
+3. *Contragolpes.* Las pérdidas de la persona dan al rojo 2 contra 1 de calidad alta. Esto es dificultad (B-04/B-05), no portero.
+**Archivos:** según la hipótesis confirmada; `playerHelpers.ts`, `goalieAI.ts`, `targeting.ts`, constantes `GOALIE_*`.
+**Aceptación:** `bal-compare --sides` con `savePctBlueHi/Lo` frente a `savePctRedHi/Lo` en `=` en 20 corridas; IA contra IA sigue simétrica.
+
+## B-04 — Niveles de dificultad (antes E-04 de `/evo`)
+
+**Objetivo:** cuatro niveles (FÁCIL, NORMAL, DIFÍCIL, EXPERTO) que cambian tiempo de reacción, precisión de pase y tiro, agresividad (presión y robo), acierto del portero y lectura de la jugada; no la física. Tabla `DIFFICULTY` en `constants.ts` que `aiProfileFor(team)` (`constants.ts:458`) aplica sobre `AI_PROFILE_NORMAL`. Menú y ajustes con el selector, guardado en `localStorage` (`rh-difficulty`); `?diffBlue=` y `?diffRed=` en el laboratorio. Ayuda arcade (`ARCADE_RUBBER_BAND_*`): para el humano siempre; la IA solo en FÁCIL y NORMAL.
+**Pedido previo (tras E-02):** la IA completa ~90 % de pases; en FÁCIL y NORMAL debe fallar pases y leer peor las líneas para que se pueda cortar.
+**Aceptación:** IA contra IA, cada nivel contra NORMAL ordenado FÁCIL < NORMAL < DIFÍCIL < EXPERTO sin IC solapados entre vecinos (en arcade al menos); NORMAL dentro del IC de la IA actual; menú revisado en escritorio y móvil.
+
+## B-05 — Ajuste táctil y por nivel
+
+**Objetivo:** cumplir la tabla de objetivos de WORKFLOW §4.
+**Mandos (sin tocar código fuera de tablas):** `TOUCH_ASSIST` (en táctil: apuntado del humano más cerca del de la IA, más anticipación en el pase, radio de robo con presión) y un ajuste de la IA rival cuando el humano juega en táctil (`DIFFICULTY_TOUCH_SHIFT`: p. ej. NORMAL táctil = entre FÁCIL y NORMAL).
+**Método:** `bal-tuner` criba cada candidato con 5 corridas `human=touch` en arcade; el mejor pasa a 20 × 2 modos con `bal-qa`. Máximo 6 candidatos por ronda.
+**Aceptación:** tabla de objetivos con `bal-compare`; con `human=pad` y teclado no cambia nada (las ayudas son solo táctiles).
+
+## B-99 — Cierre
+
+Batería final: IA contra IA (simetría), `human=touch` y `human=pad` en los niveles de la tabla. Partido real del usuario en el móvil con `?stats=1` en arcade NORMAL. AGENTS.md al día e informe corto.

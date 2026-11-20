@@ -29,6 +29,11 @@ Juego de rink hockey 2D — Phaser 4, TypeScript, Vite. Lee [AGENTS.md](./AGENTS
 - **Reglas para cualquier cambio** (WORKFLOW §5): el juego avanza en `MatchScene.stepSimulation` a paso fijo (60 Hz) y se pinta en `renderFrame`; tiempos del partido con `simNow`; Graphics estáticos horneados (`render/bake.ts`); nada de `setColor`/`setStyle`/formas por fotograma; HUD registrado en `HudLayout`; efectos caros según `render/quality.ts`.
 - Medir: `node tools/perf-bench.mjs --base <url> --profile movil|movil-bajo|escritorio --mode arcade|reglamento --runs 3` (requiere `npm run dev`; no editar `src/` mientras mide). Panel en vivo: `?perf=1` (también en producción). Trazas: `node tools/perf-trace.mjs <traza.json.gz>`.
 
+## Workflow de equilibrio
+
+- Dificultad en móvil y simetría de porteros con `/bal` según [docs/balance/WORKFLOW.md](./docs/balance/WORKFLOW.md) y [docs/balance/BACKLOG.md](./docs/balance/BACKLOG.md).
+- `ai-engineer` (opus) solo para lógica nueva; `bal-tuner` (sonnet) barre tablas de `constants.ts`; `bal-qa` (haiku) pasa lotes y papeleo. Los lotes se comparan con `node tools/bal-compare.mjs <base> <nuevo>` (o `<lote> --sides`), no leyendo el JSON.
+
 ## Comandos
 
 ```bash

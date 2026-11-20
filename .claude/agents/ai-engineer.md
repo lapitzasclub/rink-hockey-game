@@ -1,6 +1,6 @@
 ---
 name: ai-engineer
-description: Ingeniero de IA del juego de rink hockey. Úsalo SOLO para paquetes E-XX de docs/evo/BACKLOG.md marcados "ai-engineer · opus": IA de equipo (desmarques, presión, pase o tiro), IA y control del portero, niveles de dificultad. Recibe un encargo cerrado del coordinador (/evo) y devuelve un informe corto.
+description: Ingeniero de IA del juego de rink hockey. Úsalo SOLO para paquetes E-XX de docs/evo/BACKLOG.md o B-XX de docs/balance/BACKLOG.md marcados "ai-engineer · opus": IA de equipo, IA y control del portero, niveles de dificultad, instrumentación del humo y humano simulado. Recibe un encargo cerrado del coordinador (/evo o /bal) y devuelve un informe corto.
 tools: Read, Edit, Write, Bash, PowerShell, Glob, Grep
 model: opus
 effort: high
@@ -32,4 +32,5 @@ Medidas: <humo corto: goles/min, pases completados, % paradas, atascos, errores>
 Build: <ok>   Consola: <0 errores>
 Riesgos / pendientes: <máx. 3 líneas>
 ```
+En encargos B-XX (/bal) compara lotes con `node tools/bal-compare.mjs <base> <nuevo>` y pega esa salida en vez de leer el JSON.
 Si recibes una ronda de cambios (SendMessage), aplica solo lo pedido y devuelve el mismo formato.

@@ -10,7 +10,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-01 | Sesgo rojo/azul en IA contra IA | coordinador | ✅ 2026-11-19 |
 | E-02 | IA de equipo: desmarques, presión y repliegue, pase o tiro | ai-engineer · opus | ✅ 2026-11-19 |
 | E-03 | Portero: IA, movimientos raros y portero seleccionable | ai-engineer · opus | ✅ 2026-11-20 (mando y táctil sin probar en aparato real) |
-| E-04 | Niveles de dificultad | ai-engineer · opus (+ UI sonnet) | ⬜ |
+| E-04 | Niveles de dificultad | → `/bal` B-04 | ➡️ |
 | E-14 | Controles táctiles: sprint en el stick, presionar para robar, botones al alcance del pulgar | coordinador | ✅ 2026-11-20 |
 | E-05 | Reglas: faltas de equipo, libre directo, penalti, saque neutral | coordinador | 🟨 |
 | E-12 | Transiciones sin teletransporte: gol, saque de centro, descanso | coordinador | 🟨 |
@@ -52,6 +52,8 @@ IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distinto
 **Aceptación:** humo: % de paradas dentro del IC de la referencia o mejor; capturas o vídeo de la tira del portero sin temblor; cambio al portero probado con teclado, mando y táctil.
 
 ## E-04 — Niveles de dificultad
+
+**Movido a `/bal` (2026-11-20):** se hace como B-04 de [../balance/BACKLOG.md](../balance/BACKLOG.md), junto con el ajuste táctil y la simetría de porteros. Lo de abajo queda como antecedente.
 
 **Objetivo:** cuatro niveles (FÁCIL, NORMAL, DIFÍCIL, EXPERTO) que cambian tiempo de reacción, precisión de pase y tiro, agresividad (presión y robo), acierto del portero y lectura de la jugada. No cambian la física.
 **Parámetros:** tabla `DIFFICULTY` en `constants.ts`. Se elige en el menú y en los ajustes y se guarda en `localStorage` (`rh-difficulty`). `?diffBlue=` y `?diffRed=` lo fijan por equipo en el laboratorio.
