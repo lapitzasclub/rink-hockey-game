@@ -75,7 +75,8 @@ Orden: L-00 → L-01 → L-02 → (L-03, L-04a → L-04b, L-05 en paralelo) → 
 ## L-05 — Escenario cercano
 
 **Objetivo:** `render/setpiece/backdrop.ts`: portería con tubos y red con profundidad, valla y publicidad detrás, grada de fondo (desenfocada y horneada, con peña que se mueve en media y alta), pozos de luz. Por lado y calidad, horneado.
-**Aceptación:** capturas de los dos lados en las tres calidades; nada de público ni valla «flotando».
+**Debe verse como el partido, de cerca**: la misma valla con su publicidad (`render/rink/boards.ts`, `ads.ts`), la misma grada y la misma afición (`render/stands/`), la misma luz (`render/lighting.ts`, `arena.ts`) y la misma portería (`rink/goal.ts`), con el mismo color y estilo, pero vistas desde la cámara baja y con más detalle. Además, **la red de retención** detrás de la portería, sobre la valla del fondo. El partido aún no la pinta; se añade también allí por `/gfx`. El prototipo L-00 solo lleva el suelo y una portería esquemática.
+**Aceptación:** capturas de los dos lados en las tres calidades, junto a una captura del partido para comparar que es «el mismo pabellón»; nada de público ni valla «flotando».
 
 ## L-06 — IA del lanzamiento y portero humano
 
