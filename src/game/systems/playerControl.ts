@@ -4,6 +4,7 @@ import { touchAssist } from './difficulty'
 import { steerGoalieFacing, type GoalieContext } from './goalieAI'
 import { applySkating } from './movement'
 import { getControlledPlayer } from './playerHelpers'
+import { watchGoaliePass } from './targeting'
 import type { Ball, Player, Vector } from '../types'
 
 /** Autopiloto (partido de humo, WP-64): la IA también mueve al jugador "humano". */
@@ -158,6 +159,7 @@ export function updateTeamAIPlayers(options: {
   goalieCtx.now = options.timeNow
   goalieCtx.arcade = options.arcade
   prepareTeamAI(options.players, options.ball, options.ballVelocity, options.ballCarrierId, autopilot.on ? null : controlled.id, options.timeNow)
+  watchGoaliePass(options.players, options.ball, options.ballVelocity, options.ballCarrierId, options.timeNow)
 
   // Táctil: con un tiro rival en camino, la IA coloca al portero que lleva la persona (B-06)
   const takeover = !autopilot.on && controlled.role === 'goalie' && touchAssist.team === controlled.team &&

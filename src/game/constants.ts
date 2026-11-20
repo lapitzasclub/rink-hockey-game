@@ -820,3 +820,43 @@ export const PASSIVITY_AI = {
  * dentro (neutro 0).
  */
 export const TOUCH_SHOT_AIM = { postMarginPx: 9 }
+
+/**
+ * B-09 · pase al portero propio (lo permite el reglamento; el tiempo de posesión de B-10 sigue
+ * corriendo con la bola en el portero, que la saca en GOALIE_DISTRIBUTION_DELAY_MS o, en manos
+ * de la persona, en GOALIE_HUMAN_HOLD_MS). Neutro (como antes, nunca se le pasa): enabled false.
+ * Para todos: distancia pasador→portero en [minDistPx, maxDistPx], ningún rival de campo a menos
+ * de laneClearPx de la línea ni a menos de rivalNearGoaliePx del portero (boca de la portería).
+ * La bola sale recta y con la potencia justa para llegar a arriveSpeed px/s (< 260: el portero la
+ * atrapa en vez de despejarla, tryGoalieSave), sin pasar de maxPower ni sumar carga.
+ * Persona: el portero solo es receptor si la mirada le apunta con coseno ≥ coneDot (más estrecho
+ * que PASS_ASSIST_CONE_DOT) y mejor que al compañero de campo elegido.
+ * IA: solo para salir de presión en su campo (rival de campo a menos de aiPressPx, sin pase de
+ * campo ni conducción buenos: dribble < aiMaxDribble), con margen de línea ≥ aiLaneMargin
+ * (laneMargin), urgencia de B-10 < aiMaxUrgency, como mucho uno por equipo cada aiCooldownMs y
+ * con probabilidad aiChance por decisión (no por paso).
+ * Los de campo del equipo (y el pasador) la dejan pasar lo que tarda en llegar más mateLetExtraMs (como
+ * mucho mateLetMaxMs): sin esto, el que defiende delante de la portería se la quedaba a medio camino.
+ * Esa ventana se corta en cuanto alguien la controla, la bola rebasa la vertical del portero o él
+ * no la atrapa (rebota o se para): entonces cualquiera puede despejarla. Tampoco se pasa con un
+ * rival de campo a menos de rivalNearMouthPx del centro de la boca (remataría el fallo).
+ */
+export const GOALIE_PASS = {
+  enabled: true,
+  coneDot: 0.9,
+  minDistPx: 80,
+  maxDistPx: 380,
+  laneClearPx: 45,
+  rivalNearGoaliePx: 110,
+  arriveSpeed: 230,
+  maxPower: 460,
+  aiPressPx: 60,
+  aiMaxDribble: 0.2,
+  aiLaneMargin: 25,
+  aiMaxUrgency: 0.5,
+  aiCooldownMs: 10000,
+  aiChance: 0.6,
+  mateLetExtraMs: 400,
+  mateLetMaxMs: 1800,
+  rivalNearMouthPx: 150,
+}

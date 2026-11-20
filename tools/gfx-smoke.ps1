@@ -60,13 +60,14 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'lossesBluePerMin', 'lossesRedPerMin', 'lossesCheckBluePerMin', 'lossesCheckRedPerMin', 'stealTriesBluePerMin', 'stealTriesRedPerMin', 'stealPctBlue', 'stealPctRed',
   'humanStealTriesPerMin', 'humanStealsPerMin', 'goalieHumanPctBlue', 'goalsVsHumanGoaliePerMin',
   'humanTryPerPressS', 'humanStealPerPressS', 'redTryPerPressS', 'redStealPerPressS', 'humanLossPerPressS', 'blueLossPerPressS', 'humanGoalSidePctBlue',
-  'passivityCallsBlue', 'passivityCallsRed'
+  'passivityCallsBlue', 'passivityCallsRed', 'goaliePassesBlue', 'goaliePassesRed'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 # B-08: tiros y goles por banda de distancia a la línea de gol (px) y equipo que tira, sumados en el lote
 $bands = @(@{ k = 'B0'; lo = 0; hi = 50 }, @{ k = 'B50'; lo = 50; hi = 100 }, @{ k = 'B100'; lo = 100; hi = 180 }, @{ k = 'B180'; lo = 180; hi = 1e9 })
 $bandN = @{}; $bandG = @{}; foreach ($b in $bands) { foreach ($t in 'Blue', 'Red') { $bandN["$t$($b.k)"] = 0; $bandG["$t$($b.k)"] = 0 } }
 $tot = @{ goalsNoShot = 0; goalsCarriedOwn = 0; jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0;
-  possCallsBlue = 0; possCallsRed = 0; passiveCallsBlue = 0; passiveCallsRed = 0; passiveWarnings = 0; countdowns = 0 }
+  possCallsBlue = 0; possCallsRed = 0; passiveCallsBlue = 0; passiveCallsRed = 0; passiveWarnings = 0; countdowns = 0;
+  gkPassBlue = 0; gkPassRed = 0; gkDoneBlue = 0; gkDoneRed = 0; gkGoalsBlue = 0; gkGoalsRed = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
   if (-not $line) { $tot.failed++; Write-Output ("run {0}/{1}: SIN [smoke]" -f $i, $Runs); continue }
@@ -154,6 +155,13 @@ foreach ($i in 1..$Runs) {
     $tot.passiveCallsBlue += [int]$pc.passive.blue; $tot.passiveCallsRed += [int]$pc.passive.red
     $tot.passiveWarnings += [int]($pc.warnings.blue + $pc.warnings.red); $tot.countdowns += [int]$pc.countdowns
   }
+  # B-09: pases al portero propio (por partido y equipo que pasa), los que atrapa y goles encajados en los 5 s siguientes
+  if ($null -ne $j.goaliePasses) {
+    $samples.goaliePassesBlue += $j.goaliePasses.blue; $samples.goaliePassesRed += $j.goaliePasses.red
+    $tot.gkPassBlue += [int]$j.goaliePasses.blue; $tot.gkPassRed += [int]$j.goaliePasses.red
+    $tot.gkDoneBlue += [int]$j.goaliePassesDone.blue; $tot.gkDoneRed += [int]$j.goaliePassesDone.red
+    $tot.gkGoalsBlue += [int]$j.goalsAfterGoaliePass.blue; $tot.gkGoalsRed += [int]$j.goalsAfterGoaliePass.red
+  }
   foreach ($r in @($j.shotLog)) {
     if ($null -eq $r) { continue }
     $t = if ($r.team -eq 'blue') { 'Blue' } else { 'Red' }
@@ -195,6 +203,7 @@ if ($bandLine.Count) { Write-Output ('gol por banda: ' + ($bandLine -join ' · '
 foreach ($k in $tot.Keys) { $agg[$k] = $tot[$k] }
 Write-Output ("reinicios: libres {0} · directos {1} · penaltis {2} · neutrales {3} · azules {4}" -f $tot.freeHits, $tot.directFreeHits, $tot.penalties, $tot.neutralRestarts, $tot.blueCards)
 Write-Output ("pasividad: posesión azul {0} rojo {1} · pasivo azul {2} rojo {3} · avisos {4} · cuentas atrás {5}" -f $tot.possCallsBlue, $tot.possCallsRed, $tot.passiveCallsBlue, $tot.passiveCallsRed, $tot.passiveWarnings, $tot.countdowns)
+Write-Output ("pase al portero: azul {0} (atrapa {1}, goles en contra 5 s {2}) · rojo {3} (atrapa {4}, goles en contra 5 s {5})" -f $tot.gkPassBlue, $tot.gkDoneBlue, $tot.gkGoalsBlue, $tot.gkPassRed, $tot.gkDoneRed, $tot.gkGoalsRed)
 Write-Output ("autogoles: sin tiro {0} · conduciendo hacia la propia {1}" -f $tot.goalsNoShot, $tot.goalsCarriedOwn)
 Write-Output ("totales: atascos {0} ({1:F1} s) · fuera de pista {2} · errores de consola {3} · fallidas {4}" -f $tot.jams, $tot.jamSec, $tot.badPlayerFrames, $tot.consoleErrors, $tot.failed)
 Write-Output ('[smoke-agg] ' + ($agg | ConvertTo-Json -Compress -Depth 4))

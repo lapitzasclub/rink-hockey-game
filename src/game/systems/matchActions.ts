@@ -52,6 +52,9 @@ import {
   getAssistedPassDirection,
   getAssistedShotDirection,
   getGoalieDistributionDirection,
+  goaliePassPower,
+  letGoaliePassThrough,
+  takeGoalieRelease,
   getGoalieDistributionTarget,
 } from './targeting'
 import { clearGoalieCatch, getAimingDirection, markGoalieCaughtBall } from './ai'
@@ -268,9 +271,14 @@ export function tryPassAction(options: {
   const isGoalie = options.player.role === 'goalie'
   const charge = options.charge ?? 0
   const chargeMult = 1 + charge * (CHARGE_PASS_MAX - 1)
-  let direction = isGoalie ? getGoalieDistributionDirection(options.players, options.player) : getAssistedPassDirection(options.players, options.player, getAimingDirection(options.player))
-  if (charge > 0) direction = spreadDirection(direction, CHARGE_PASS_SPREAD * charge * charge)
-  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, (isGoalie ? GOALIE_DISTRIBUTION_POWER : PASS_POWER) * chargeMult, options.timeNow, isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS, isGoalie ? GOALIE_RELEASE_DISTANCE : undefined)
+  let direction = isGoalie ? getGoalieDistributionDirection(options.players, options.player) : getAssistedPassDirection(options.players, options.player, getAimingDirection(options.player), options.timeNow)
+  // B-09: al portero propio, recta y con la potencia justa para que llegue a GOALIE_PASS.arriveSpeed
+  const toGoalie = isGoalie ? -1 : takeGoalieRelease(options.player.id)
+  let power = (isGoalie ? GOALIE_DISTRIBUTION_POWER : PASS_POWER) * chargeMult
+  if (toGoalie >= 0) power = goaliePassPower(toGoalie)
+  else if (charge > 0) direction = spreadDirection(direction, CHARGE_PASS_SPREAD * charge * charge)
+  const released = releaseBall(options.ball, options.players, options.ballCarrierId, direction, power, options.timeNow, isGoalie ? GOALIE_RELEASE_COOLDOWN_MS : POSSESSION_RELEASE_COOLDOWN_MS, isGoalie ? GOALIE_RELEASE_DISTANCE : undefined)
+  if (toGoalie >= 0) letGoaliePassThrough(options.players, options.player, power, options.timeNow)
   startAnim(options.player, 'pass', options.timeNow)
 
   if (isGoalie) {

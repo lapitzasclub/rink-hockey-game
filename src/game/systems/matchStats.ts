@@ -7,6 +7,7 @@ import { autopilot } from './playerControl'
 import { getControlledPlayer } from './playerHelpers'
 import { stealTryCount } from './matchActions'
 import { ballCarriedBy } from './ball'
+import { goaliePassTracker } from './goaliePassStats'
 
 /**
  * Estadísticas del partido (WP-64, B-01): observa MatchScene en solo lectura y cuenta goles,
@@ -133,17 +134,15 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
   }
   const shotLog: ShotRecord[] = []
   let ms = 0
-  let prevBully: unknown = null
-  let prevKickoff: unknown = null
+  let prevBully: unknown = null, prevKickoff: unknown = null
   const prevBall = { x: 0, y: 0 }
-  let prevSpeed = 0
-  let prevCarrier: string | null = null
-  let lastCarrierTeam: Team | null = null
-  let still = 0
+  let prevSpeed = 0, still = 0
+  let prevCarrier: string | null = null, lastCarrierTeam: Team | null = null
   const prevScore = pair()
   let prevFoulObj: unknown = null
   const prevFouls = pair()
   const prevSusp = new Map<string, number>()
+  const gkPass = goaliePassTracker(s)  // B-09: pases al portero propio
   /** Último simNow en que la persona llevaba al portero de cada equipo. */
   const humanGoalieAt: Pair = { blue: -Infinity, red: -Infinity }
   let pending: null | { team: Team, onTarget: boolean, age: number, hi: boolean, pass: boolean, rec: ShotRecord | null } = null
@@ -208,7 +207,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       }
       prevScore[t] = sc
     }
-
+    gkPass.step()
     // Faltas, sanciones y tarjetas
     // pendingFoul se consume en el mismo frame que nace: se detecta el saque (activeFoulRestart)
     const af = s.activeFoulRestart
@@ -492,6 +491,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     unmarked: byTeam(t => (st.defSec[t] ? Math.round(100 * st.unmarkedSec[t] / st.defSec[t]) / 100 : null)),
     doublePct: byTeam(t => (st.defSec[t] ? Math.round(1000 * st.doubleSec[t] / st.defSec[t]) / 10 : null)),
     humanOnCarrierPct: byTeam(t => (st.defSec[t] ? Math.round(1000 * st.humanOnCarrierSec[t] / st.defSec[t]) / 10 : null)),
+    ...gkPass.stats,
     passivityCalls: s.ruleState.passivity?.stats ?? null,   // B-10: pitadas por equipo y tipo, avisos, cuentas atrás
     ...(opts.keepShots ? { shotLog } : {}),
   })

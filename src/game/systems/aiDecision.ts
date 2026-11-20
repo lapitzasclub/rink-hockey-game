@@ -8,6 +8,7 @@ import {
   BALL_CONTROL_DISTANCE,
   BALL_FRICTION,
   GAME_HEIGHT,
+  GOALIE_PASS,
   PASS_POWER,
   RINK,
   aiProfileFor,
@@ -15,7 +16,7 @@ import {
 } from '../constants'
 import type { Player } from '../types'
 import { getGoalLineX } from '../utils'
-import { setAIPassAim } from './targeting'
+import { clearAIGoaliePass, goaliePassPower, markAIGoaliePass, ownGoalieTarget, setAIPassAim } from './targeting'
 import { passivityView } from './passivity'
 
 /**
@@ -44,6 +45,8 @@ export type AiPlayerState = {
 }
 
 const states = new Map<string, AiPlayerState>()
+/** B-09: simNow del último pase al portero propio de cada equipo (GOALIE_PASS.aiCooldownMs). */
+const goalieOutletAt: Record<Player['team'], number> = { blue: -Infinity, red: -Infinity }
 
 export function aiStateOf(player: Player): AiPlayerState {
   let st = states.get(player.id)
@@ -56,6 +59,7 @@ export function aiStateOf(player: Player): AiPlayerState {
 
 /** Nuevo partido (simNow vuelve a 0): olvida temporizadores viejos. */
 export function resetAiStates() {
+  goalieOutletAt.blue = goalieOutletAt.red = -Infinity
   for (const st of states.values()) {
     st.gotBallAt = 0
     st.nextDecisionAt = 0
@@ -284,8 +288,10 @@ export function decideCarrierAction(player: Player, players: Player[], now: numb
   if (pass >= profile.passThreshold * (1 - P.passThresholdCut * urg) && pass > dribble) {
     const angle = Math.atan2(passPick.y - player.pos.y, passPick.x - player.pos.x) + (Math.random() * 2 - 1) * profile.passErrorRad
     setAIPassAim(player.id, Math.cos(angle), Math.sin(angle))
+    clearAIGoaliePass(player.id)
     return 'pass'
   }
+  if (goalieOutlet(player, players, profile, now, urg, dribble)) return 'pass'
   // Sin línea de pase y con un rival encima: rematar si hay algo de tiro
   if (dribble < 0.08 && shot >= shootThreshold * 0.6) return 'shoot'
   // Al borde del límite: despejar hacia campo rival sin espacio para conducir, o rematar lo que haya
@@ -293,3 +299,29 @@ export function decideCarrierAction(player: Player, players: Player[], now: numb
   return 'hold'
 }
 
+/**
+ * B-09: salida de presión hacia el portero propio. Solo en su campo, con un rival de campo encima,
+ * sin conducción buena (lo que llega aquí ya descartó el pase de campo), lejos del límite de
+ * B-10 y con la línea limpia; como mucho uno por equipo cada GOALIE_PASS.aiCooldownMs.
+ * Deja la dirección exacta al portero y el pase marcado para su potencia.
+ */
+function goalieOutlet(player: Player, players: Player[], profile: AiProfile, now: number, urg: number, dribble: number) {
+  const G = GOALIE_PASS
+  if (!G.enabled || urg >= G.aiMaxUrgency || dribble >= G.aiMaxDribble) return false
+  const last = goalieOutletAt[player.team]
+  if (now >= last && now - last < G.aiCooldownMs) return false
+  if ((player.pos.x - CENTER_X) * (player.side === 'left' ? 1 : -1) >= 0) return false
+  if (nearestRivalDist(player.pos.x, player.pos.y, player.team, players, now) >= G.aiPressPx) return false
+  const gk = ownGoalieTarget(players, player, now)
+  if (!gk || !isAvailable(gk, now) || Math.random() >= G.aiChance) return false
+  const dx = gk.pos.x - player.pos.x
+  const dy = gk.pos.y - player.pos.y
+  const dist = Math.hypot(dx, dy) || 1
+  const fx = player.pos.x + (dx / dist) * BALL_CONTROL_DISTANCE
+  const fy = player.pos.y + (dy / dist) * BALL_CONTROL_DISTANCE
+  if (laneMargin(fx, fy, gk.pos.x, gk.pos.y, goaliePassPower(dist), player.team, players, profile, now) < G.aiLaneMargin) return false
+  goalieOutletAt[player.team] = now
+  setAIPassAim(player.id, dx / dist, dy / dist)
+  markAIGoaliePass(player.id, gk.id, now)
+  return true
+}
