@@ -318,6 +318,11 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-21 — el juego dentro del Loyola también en Android
+
+- La PWA del Loyola fija el vertical en su manifest y Chrome lo aplica también a `/jugar/`: `lockLandscapeInHostApp()` (`shell/fullscreen.ts`) pide el apaisado al arrancar si va bajo `/jugar/` instalada, y «Volver» lo suelta.
+- La app Android del Loyola abre ahora `https://loyola-hockey-matches.pages.dev/jugar/` en su propio WebView (`server.allowNavigation`), sin barras; el atrás de Android es el del WebView y vuelve al partido. Probado en el emulador: apaisado libre, fuente y pantalla completa (las barras del sistema siguen encima, transparentes).
+
 ### 2026-11-20 — el juego dentro de la PWA del Loyola
 
 - En iPhone, el «Jugar» del Loyola sacaba el juego a Safari con barra, porque es otro dominio. Ahora la web del Loyola sirve el juego bajo `/jugar/` (proxy en su worker hacia `rink-hockey-game.pages.dev`), dentro de su PWA, y se abre en la misma ventana sin barras.

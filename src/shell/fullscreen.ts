@@ -27,8 +27,17 @@ export const hostedByLoyola = location.pathname.startsWith('/jugar/')
 
 export const installHintSupported = !fullscreenSupported && isIos && !isStandalone && !hostedByLoyola
 
+/**
+ * La PWA del Loyola instalada en Android fija el vertical de su manifest también en /jugar/.
+ * Instalada, Chrome deja girar sin pantalla completa ni gesto; iOS no tiene `lock` y ya gira.
+ */
+export function lockLandscapeInHostApp() {
+  if (hostedByLoyola && isStandalone) void (screen.orientation as LockableOrientation | undefined)?.lock?.('landscape').catch(() => {})
+}
+
 /** El juego no toca el historial: atrás es la página del Loyola desde la que se abrió. */
 export function backToHost() {
+  try { screen.orientation?.unlock?.() } catch { /* sin bloqueo que soltar */ }
   if (history.length > 1) history.back()
   else location.assign('/')
 }
