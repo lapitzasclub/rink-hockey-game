@@ -27,6 +27,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | L-04a | Nivel de detalle cercano del rig | lanz-engineer · opus | ⬜ |
 | L-04b | Piezas cercanas pintadas: lanzador y portero | lanz-artist · sonnet | ⬜ |
 | L-05 | Escenario cercano: portería, red, valla, grada y luz | lanz-artist · sonnet | ✅ 2026-11-20 |
+| L-05b | Efecto wow del plano cercano (suelo, público con relieve, luz) | lanz-engineer · opus | ✅ 2026-11-20 |
 | L-06 | IA del lanzamiento y portero humano | ai-engineer · opus | ⬜ |
 | L-07 | Animación: armado, golpeo, estirada, reacción | lanz-engineer · opus | ⬜ |
 | L-08 | Ajuste de acierto por nivel y control | bal-tuner · sonnet | ⬜ |
