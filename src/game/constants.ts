@@ -367,7 +367,7 @@ export const AI_BALL_PATH_SAMPLES = 28
 export const AI_BALL_PATH_STEP = 3
 
 /**
- * Perfil de IA por equipo: todo lo que E-04 ajustará por nivel de dificultad.
+ * Perfil de IA por equipo: lo que cambia cada nivel de dificultad (DIFFICULTY).
  * Nunca toca la física (velocidad, aceleración, potencias): solo reacción,
  * lectura, precisión y agresividad.
  */
@@ -426,6 +426,7 @@ export type AiProfile = {
 /** Distancia a la que el defensor más cercano se planta delante del portador rival. */
 export const AI_PRESS_DISTANCE = 26 * K
 
+/** IA anterior a B-04: base sobre la que DIFFICULTY sustituye valores. */
 export const AI_PROFILE_NORMAL: AiProfile = {
   reactionMs: 170,
   shotReactionMs: 450,
@@ -454,9 +455,81 @@ export const AI_PROFILE_NORMAL: AiProfile = {
   arcadeGoalieReactionScale: 0.78,
 }
 
-/** Perfil de IA de un equipo. E-04 lo conectará a los niveles de dificultad. */
-export function aiProfileFor(_team: 'blue' | 'red'): AiProfile {
-  return AI_PROFILE_NORMAL
+// ─── Dificultad (B-04) ──────────────────────────────────────────────────────
+
+export type DifficultyLevel = 'facil' | 'normal' | 'dificil' | 'experto'
+/** Orden de los niveles: el índice es el nivel numérico (0 = FÁCIL), y admite fracciones entre vecinos. */
+export const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = ['facil', 'normal', 'dificil', 'experto']
+export const DEFAULT_DIFFICULTY: DifficultyLevel = 'normal'
+
+/**
+ * Niveles de dificultad: valores que sustituyen a los de AI_PROFILE_NORMAL (lo
+ * que no aparece se queda igual). Solo reacción, precisión, agresividad,
+ * portero y lectura; nunca velocidad, aceleración ni potencia.
+ * - FÁCIL y NORMAL fallan pases (passErrorRad, passLead corto) y leen peor las
+ *   líneas (laneRead bajo, interceptReactionS alto: cree que el rival tarda en
+ *   reaccionar y pasa por donde se puede cortar). NORMAL es algo más flojo que
+ *   la IA anterior a B-04 (AI_PROFILE_NORMAL tal cual).
+ * - `rubberBand`: la IA de ese nivel recibe la ayuda arcade al ir perdiendo
+ *   (la persona la recibe siempre).
+ */
+export const DIFFICULTY: Record<DifficultyLevel, { label: string, rubberBand: boolean, profile: Partial<AiProfile> }> = {
+  facil: {
+    label: 'FÁCIL',
+    rubberBand: true,
+    profile: {
+      reactionMs: 300, shotReactionMs: 650, goalieReactionMs: 370, decisionIntervalMs: 250, supportRefreshMs: 420,
+      interceptReactionS: 0.3, passLaneMargin: 1, laneRead: 0.3, passLead: 0.45, passErrorRad: 0.13, shotErrorRad: 0.07,
+      stealAttemptChance: 0.12, pressIntensity: 0.78, cutDepth: 0.55, markTightness: 0.55, checkChance: 0.18,
+    },
+  },
+  normal: {
+    label: 'NORMAL',
+    rubberBand: true,
+    profile: {
+      reactionMs: 200, shotReactionMs: 490, goalieReactionMs: 290, decisionIntervalMs: 170, supportRefreshMs: 300,
+      interceptReactionS: 0.18, passLaneMargin: 4, laneRead: 0.58, passLead: 0.68, passErrorRad: 0.065, shotErrorRad: 0.025,
+      stealAttemptChance: 0.25, pressIntensity: 0.93, cutDepth: 0.68, markTightness: 0.75, checkChance: 0.3,
+    },
+  },
+  dificil: {
+    label: 'DIFÍCIL',
+    rubberBand: false,
+    profile: {
+      reactionMs: 150, shotReactionMs: 420, goalieReactionMs: 250, decisionIntervalMs: 130, supportRefreshMs: 230,
+      interceptReactionS: 0.1, passLaneMargin: 7, laneRead: 0.85, passLead: 0.85, passErrorRad: 0.022, shotErrorRad: 0,
+      stealAttemptChance: 0.34, pressIntensity: 1, cutDepth: 0.74, markTightness: 0.85, checkChance: 0.4,
+    },
+  },
+  experto: {
+    label: 'EXPERTO',
+    rubberBand: false,
+    profile: {
+      reactionMs: 110, shotReactionMs: 360, goalieReactionMs: 215, decisionIntervalMs: 105, supportRefreshMs: 190,
+      interceptReactionS: 0.06, passLaneMargin: 9, laneRead: 1, passLead: 0.9, passErrorRad: 0.01, shotErrorRad: 0,
+      stealAttemptChance: 0.42, pressIntensity: 1, cutDepth: 0.78, markTightness: 0.9, checkChance: 0.46,
+    },
+  },
+}
+
+/**
+ * Niveles que baja el rival cuando la persona juega en táctil (nivel efectivo =
+ * elegido − shift, fraccional: se interpola entre perfiles vecinos). B-05 lo ajusta.
+ */
+export const DIFFICULTY_TOUCH_SHIFT = 0
+
+/** Los cuatro perfiles completos, precalculados en el orden de DIFFICULTY_LEVELS. */
+export const AI_PROFILES_BY_LEVEL: readonly AiProfile[] = DIFFICULTY_LEVELS.map(l => ({ ...AI_PROFILE_NORMAL, ...DIFFICULTY[l].profile }))
+
+/** Perfil activo de cada equipo; lo fija systems/difficulty.ts al crear el partido. */
+export const AI_TEAM_PROFILE: Record<'blue' | 'red', AiProfile> = {
+  blue: { ...AI_PROFILES_BY_LEVEL[1] },
+  red: { ...AI_PROFILES_BY_LEVEL[1] },
+}
+
+/** Perfil de IA de un equipo según su nivel de dificultad (sin asignar nada: se llama por paso). */
+export function aiProfileFor(team: 'blue' | 'red'): AiProfile {
+  return AI_TEAM_PROFILE[team]
 }
 
 // ─── Modo arcade ────────────────────────────────────────────────────────────

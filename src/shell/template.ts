@@ -132,6 +132,8 @@ export function shellHtml(opts: { isTouch: boolean, fullscreen: boolean }) {
               </span>
             </button>
             <p id="half-length-note" class="settings-note">Dos partes de 25:00 en el marcador, como en el reglamento; el reloj corre acelerado.</p>
+            ${stepperRow('difficulty', 'Dificultad del rival')}
+            <p id="difficulty-note" class="settings-note"></p>
             ${toggleRow('btn-role-labels', 'Etiquetas de rol sobre los jugadores')}
           </section>
 

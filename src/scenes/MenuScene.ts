@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { GAME_WIDTH, GAME_HEIGHT } from '../game/constants'
+import { DIFFICULTY, DIFFICULTY_LEVELS, GAME_WIDTH, GAME_HEIGHT } from '../game/constants'
 import { createProceduralPuppetTextures } from '../game/render/createProceduralPuppetTextures'
 import { ARCADE_FONT } from '../game/render/arcadeFx'
 import { createArena, type Arena } from '../game/render/arena'
@@ -7,7 +7,7 @@ import { drawRink } from '../game/render/drawRink'
 import { playUiConfirm, playUiMove, playUiThump } from '../game/audio/sounds'
 import type { GameMode } from '../game/types'
 import { consumePad } from '../game/input/gamepad'
-import { getHalfRealMinutes, onHalfRealMinutesChange } from '../game/ui/prefs'
+import { getDifficulty, getHalfRealMinutes, onDifficultyChange, onHalfRealMinutesChange, stepDifficulty } from '../game/ui/prefs'
 import { claveEscudo, descartarPartido, equipoDeHueco, getLadoHumano, getPartidoExterno, ladoDeHueco, registrarEscudos, setLadoHumano, type Lado } from '../game/externalMatch'
 import { teamKit } from '../game/render/puppet/kit'
 import { getInputMode, onInputModeChange, PAD_GLYPH } from '../game/input/inputMode'
@@ -95,6 +95,7 @@ export class MenuScene extends Phaser.Scene {
   private starting = false
   private reducedMotion = false
   private pickerRedraw: (() => void) | null = null
+  private diffRedraw: (() => void) | null = null
 
   constructor() {
     super('menu')
@@ -108,6 +109,7 @@ export class MenuScene extends Phaser.Scene {
     this.beams = []
     this.starting = false
     this.pickerRedraw = null
+    this.diffRedraw = null
     this.drift = { t: 0 }
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -118,7 +120,9 @@ export class MenuScene extends Phaser.Scene {
     const offHalf = onHalfRealMinutesChange(() => {
       for (const c of this.cards) (c.container.getByName('duration') as Phaser.GameObjects.Text | null)?.setText(MenuScene.durationLabel())
     })
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { offMode(); offHalf() })
+    // Igual con la dificultad: el selector del menú y el de Ajustes son la misma preferencia
+    const offDiff = onDifficultyChange(() => this.diffRedraw?.())
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { offMode(); offHalf(); offDiff() })
 
     this.arena = createArena(this)
     drawRink(this)
@@ -135,6 +139,10 @@ export class MenuScene extends Phaser.Scene {
     if (!this.isBlockedByDom()) {
       if (consumePad('left') || consumePad('right')) this.select(this.selected === 'arcade' ? 'classic' : 'arcade')
       if (this.pickerRedraw && (consumePad('up') || consumePad('down'))) this.pickSide(getLadoHumano() === 'local' ? 'visitante' : 'local')
+      else if (!this.pickerRedraw) {
+        if (consumePad('up')) this.stepDifficulty(1)
+        if (consumePad('down')) this.stepDifficulty(-1)
+      }
       if (this.pickerRedraw && consumePad('back')) this.partidoLibre()
       if (consumePad('confirm')) this.startMatch()
     }
@@ -203,7 +211,10 @@ export class MenuScene extends Phaser.Scene {
     this.chevrons = [0, 1].map(() => this.add.graphics({ y: cardsY }).setName('chevron'))
     this.refreshCards(false)
 
-    const promptY = cardsY + UI.cardH / 2 + 50
+    // Selector de dificultad bajo las tarjetas; con resultado y partido externo se aprieta contra ellas
+    const diffY = Math.min(cardsY + UI.cardH / 2 + 34, 600)
+    this.createDifficultyStepper(cx, diffY)
+    const promptY = diffY + 44
     const prompt = this.add.text(cx, promptY, '', {
       fontFamily: ARCADE_FONT, fontSize: '26px', color: '#ffffff', stroke: C.ink, strokeThickness: 7,
     }).setOrigin(0.5).setName('prompt')
@@ -423,6 +434,49 @@ export class MenuScene extends Phaser.Scene {
     this.pickerRedraw?.()
   }
 
+  /**
+   * Dificultad del rival (B-04): «◀ NIVEL ▶» con flechas pulsables; Q/E en teclado,
+   * arriba/abajo en teclado y mando cuando no hay selector de equipo. Solo se
+   * redibuja al cambiar el nivel.
+   */
+  private createDifficultyStepper(cx: number, y: number) {
+    const W = 300, H = 32
+    const container = this.add.container(cx, y).setName('difficulty')
+    const bg = this.add.graphics()
+    bg.fillStyle(0x0b1828, 0.85)
+    bg.fillRoundedRect(-W / 2, -H / 2, W, H, 8)
+    bg.lineStyle(1, 0xffffff, 0.25)
+    bg.strokeRoundedRect(-W / 2, -H / 2, W, H, 8)
+    const arrows = this.add.graphics()
+    const label = this.add.text(-W / 2 + 14, 0, 'DIFICULTAD', { fontFamily: ARCADE_FONT, fontSize: '12px', color: '#9fb6cf' }).setOrigin(0, 0.5)
+    const value = this.add.text(62, 0, '', { fontFamily: ARCADE_FONT, fontSize: '17px', color: '#ffb347', stroke: C.ink, strokeThickness: 4 }).setOrigin(0.5)
+    container.add([bg, arrows, label, value])
+    const ax = [-14, 138]
+    ax.forEach((x, i) => {
+      const zone = this.add.zone(x, 0, 44, H + 12).setInteractive({ useHandCursor: true })
+      zone.on('pointerdown', () => this.stepDifficulty(i === 0 ? -1 : 1))
+      container.add(zone)
+    })
+    this.diffRedraw = () => {
+      const level = getDifficulty()
+      value.setText(DIFFICULTY[level].label)
+      const i = DIFFICULTY_LEVELS.indexOf(level)
+      arrows.clear()
+      ax.forEach((x, k) => {
+        const dir = k === 0 ? -1 : 1
+        const live = k === 0 ? i > 0 : i < DIFFICULTY_LEVELS.length - 1
+        arrows.fillStyle(0xffffff, live ? 0.95 : 0.2)
+        arrows.fillTriangle(x + 7 * dir, 0, x - 5 * dir, -7, x - 5 * dir, 7)
+      })
+    }
+    this.diffRedraw()
+  }
+
+  private stepDifficulty(dir: number) {
+    if (this.starting || this.isBlockedByDom()) return
+    if (stepDifficulty(dir)) playUiMove()
+  }
+
   /** Pie de las tarjetas: dos partes y su duración real (Ajustes → General). */
   private static durationLabel() {
     const m = getHalfRealMinutes()
@@ -508,7 +562,7 @@ export class MenuScene extends Phaser.Scene {
     if (mode === 'touch') return
     const hints: [Hint, string][] = mode === 'gamepad'
       ? [[{ pad: 'dpad' }, 'ELEGIR'], [{ pad: 'a' }, 'JUGAR'], [{ pad: 'START' }, 'AJUSTES']]
-      : [[{ arrows: true }, 'ELEGIR'], [{ key: 'ESPACIO' }, 'JUGAR'], [{ key: 'ESC' }, 'AJUSTES']]
+      : [[{ arrows: true }, 'ELEGIR'], [{ key: 'Q E' }, 'DIFICULTAD'], [{ key: 'ESPACIO' }, 'JUGAR'], [{ key: 'ESC' }, 'AJUSTES']]
     if (mode === 'keyboard' && document.fullscreenEnabled) hints.push([{ key: 'F' }, 'PANTALLA COMPLETA'])
     const row = this.createHintRow(GAME_WIDTH / 2, 676, hints)
     if (animate && !this.reducedMotion) {
@@ -673,7 +727,8 @@ export class MenuScene extends Phaser.Scene {
     const prompt = byName('prompt')
     const hints = byName('hints')
     const picker = byName('picker')
-    const rest = [ribbon, result, hints, picker].filter(Boolean) as Phaser.GameObjects.Container[]
+    const diff = byName('difficulty')
+    const rest = [ribbon, result, hints, picker, diff].filter(Boolean) as Phaser.GameObjects.Container[]
 
     this.cameras.main.fadeIn(this.reducedMotion ? 200 : 700, 0, 0, 0)
 
@@ -723,9 +778,10 @@ export class MenuScene extends Phaser.Scene {
       ch.setAlpha(0)
       this.tweens.add({ targets: ch, alpha: 1, duration: 240, delay: 1050 })
     }
-    if (picker) {
-      picker.setAlpha(0)
-      this.tweens.add({ targets: picker, alpha: 1, duration: 300, delay: 900 })
+    for (const o of [picker, diff]) {
+      if (!o) continue
+      o.setAlpha(0)
+      this.tweens.add({ targets: o, alpha: 1, duration: 300, delay: o === diff ? 1000 : 900 })
     }
     if (hints) {
       hints.setAlpha(0)
@@ -770,8 +826,11 @@ export class MenuScene extends Phaser.Scene {
     for (const code of ['UP', 'DOWN', 'W', 'S'] as const) {
       keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[code]).on('down', () => {
         if (this.pickerRedraw) this.pickSide(getLadoHumano() === 'local' ? 'visitante' : 'local')
+        else this.stepDifficulty(code === 'UP' || code === 'W' ? 1 : -1)
       })
     }
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q).on('down', () => this.stepDifficulty(-1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E).on('down', () => this.stepDifficulty(1))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', () => this.partidoLibre())
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => this.startMatch())
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.startMatch())

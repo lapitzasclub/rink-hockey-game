@@ -1,0 +1,37 @@
+run 1/10: goles 7-2 ú tiros 17-19 ú paradas 13-8 ú pases 28/34-23/26 ú atascos 0 ú errores 0
+run 2/10: goles 7-2 ú tiros 16-17 ú paradas 13-8 ú pases 51/54-22/24 ú atascos 0 ú errores 0
+run 3/10: goles 6-3 ú tiros 17-12 ú paradas 9-7 ú pases 35/37-37/46 ú atascos 0 ú errores 0
+run 4/10: goles 8-2 ú tiros 19-16 ú paradas 10-9 ú pases 36/39-26/31 ú atascos 0 ú errores 0
+run 5/10: goles 9-2 ú tiros 18-11 ú paradas 5-9 ú pases 35/41-32/35 ú atascos 0 ú errores 0
+run 6/10: goles 5-2 ú tiros 15-14 ú paradas 9-10 ú pases 30/33-32/35 ú atascos 0 ú errores 0
+run 7/10: goles 2-3 ú tiros 17-13 ú paradas 8-11 ú pases 35/38-29/34 ú atascos 0 ú errores 0
+run 8/10: goles 4-2 ú tiros 25-8 ú paradas 4-20 ú pases 62/63-21/35 ú atascos 0 ú errores 0
+run 9/10: goles 5-6 ú tiros 15-16 ú paradas 9-9 ú pases 48/52-29/35 ú atascos 0 ú errores 0
+run 10/10: goles 8-1 ú tiros 20-15 ú paradas 12-11 ú pases 38/41-45/47 ú atascos 0 ú errores 0
+goalsPerMin             2.15 ñ 0.35  (sd 0.50, n 10)
+shotsPerMin             8.00 ñ 0.48  (sd 0.69, n 10)
+onTargetPerMin          7.43 ñ 0.53  (sd 0.75, n 10)
+savePct                69.17 ñ 5.28  (sd 7.49, n 10)
+foulsPerMin             0.00 ñ 0.00  (sd 0.00, n 10)
+redMinusBluePerMin     -0.90 ñ 0.52  (sd 0.74, n 10)
+goalsBluePerMin         1.53 ñ 0.38  (sd 0.53, n 10)
+goalsRedPerMin          0.63 ñ 0.24  (sd 0.34, n 10)
+shotsBluePerMin         4.48 ñ 0.52  (sd 0.74, n 10)
+shotsRedPerMin          3.53 ñ 0.57  (sd 0.80, n 10)
+savePctBlue            77.66 ñ 7.15  (sd 10.16, n 10)
+savePctRed             62.02 ñ 8.95  (sd 12.71, n 10)
+passesPerMin           19.50 ñ 1.98  (sd 2.81, n 10)
+passPct                88.96 ñ 2.29  (sd 3.25, n 10)
+passesDoneBluePerMin    9.95 ñ 1.86  (sd 2.65, n 10)
+passesDoneRedPerMin     7.40 ñ 1.30  (sd 1.85, n 10)
+possessionBluePct      49.57 ñ 4.10  (sd 5.82, n 10)
+stealsPerMin            9.15 ñ 1.21  (sd 1.72, n 10)
+shotQualityBlue         0.53 ñ 0.03  (sd 0.04, n 10)
+shotQualityRed          0.53 ñ 0.02  (sd 0.03, n 10)
+savePctBlueHi          66.06 ñ 11.27  (sd 16.01, n 10)
+savePctBlueLo          98.75 ñ 2.78  (sd 3.95, n 10)
+savePctRedHi           52.54 ñ 12.80  (sd 18.17, n 10)
+savePctRedLo           70.58 ñ 12.19  (sd 17.31, n 10)
+reinicios: libres 0 ú directos 0 ú penaltis 0 ú neutrales 0 ú azules 0
+totales: atascos 0 (0,0 s) ú fuera de pista 0 ú errores de consola 0 ú fallidas 0
+[smoke-agg] {"mode":"arcade","extra":"diffBlue=normal\u0026diffRed=facil","smokeMs":240000,"runs":10,"goalsPerMin":{"mean":2.15,"ci95":0.354,"sd":0.503,"n":10},"shotsPerMin":{"mean":8,"ci95":0.484,"sd":0.687,"n":10},"onTargetPerMin":{"mean":7.425,"ci95":0.525,"sd":0.746,"n":10},"savePct":{"mean":69.17,"ci95":5.275,"sd":7.492,"n":10},"foulsPerMin":{"mean":0,"ci95":0,"sd":0,"n":10},"redMinusBluePerMin":{"mean":-0.9,"ci95":0.52,"sd":0.738,"n":10},"goalsBluePerMin":{"mean":1.525,"ci95":0.375,"sd":0.533,"n":10},"goalsRedPerMin":{"mean":0.625,"ci95":0.238,"sd":0.339,"n":10},"shotsBluePerMin":{"mean":4.475,"ci95":0.521,"sd":0.74,"n":10},"shotsRedPerMin":{"mean":3.525,"ci95":0.566,"sd":0.803,"n":10},"savePctBlue":{"mean":77.662,"ci95":7.155,"sd":10.161,"n":10},"savePctRed":{"mean":62.025,"ci95":8.947,"sd":12.707,"n":10},"passesPerMin":{"mean":19.5,"ci95":1.976,"sd":2.806,"n":10},"passPct":{"mean":88.965,"ci95":2.286,"sd":3.246,"n":10},"passesDoneBluePerMin":{"mean":9.95,"ci95":1.863,"sd":2.645,"n":10},"passesDoneRedPerMin":{"mean":7.4,"ci95":1.302,"sd":1.849,"n":10},"possessionBluePct":{"mean":49.574,"ci95":4.097,"sd":5.819,"n":10},"stealsPerMin":{"mean":9.15,"ci95":1.209,"sd":1.717,"n":10},"shotQualityBlue":{"mean":0.526,"ci95":0.027,"sd":0.039,"n":10},"shotQualityRed":{"mean":0.531,"ci95":0.018,"sd":0.026,"n":10},"savePctBlueHi":{"mean":66.056,"ci95":11.27,"sd":16.006,"n":10},"savePctBlueLo":{"mean":98.75,"ci95":2.783,"sd":3.953,"n":10},"savePctRedHi":{"mean":52.538,"ci95":12.796,"sd":18.172,"n":10},"savePctRedLo":{"mean":70.575,"ci95":12.187,"sd":17.307,"n":10},"freeHits":0,"badPlayerFrames":0,"jamSec":0,"neutralRestarts":0,"failed":0,"directFreeHits":0,"blueCards":0,"consoleErrors":0,"penalties":0,"jams":0}

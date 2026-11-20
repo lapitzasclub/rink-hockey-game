@@ -1,9 +1,9 @@
 /**
  * Preferencias persistidas en localStorage: etiquetas sobre jugadores (WP-34,
- * `?labels=1|0` en la URL fuerza el valor) y duración real de cada parte.
+ * `?labels=1|0` en la URL fuerza el valor), duración real de cada parte y dificultad.
  */
 
-import { DEFAULT_HALF_REAL_MINUTES, HALF_REAL_MINUTES_OPTIONS } from '../constants'
+import { DEFAULT_DIFFICULTY, DEFAULT_HALF_REAL_MINUTES, DIFFICULTY_LEVELS, HALF_REAL_MINUTES_OPTIONS, type DifficultyLevel } from '../constants'
 
 const STORAGE_KEY = 'rh-role-labels'
 
@@ -58,4 +58,43 @@ export function setHalfRealMinutes(minutes: number) {
 export function onHalfRealMinutesChange(fn: (minutes: number) => void): () => void {
   halfListeners.add(fn)
   return () => halfListeners.delete(fn)
+}
+
+// ─── Dificultad ──────────────────────────────────────────────────────────────
+
+const DIFFICULTY_KEY = 'rh-difficulty'
+const difficultyListeners = new Set<(level: DifficultyLevel) => void>()
+
+/** Nivel del rival en los partidos con persona; NORMAL por defecto. */
+export function getDifficulty(): DifficultyLevel {
+  try {
+    const v = localStorage.getItem(DIFFICULTY_KEY) as DifficultyLevel | null
+    return v && DIFFICULTY_LEVELS.includes(v) ? v : DEFAULT_DIFFICULTY
+  } catch {
+    return DEFAULT_DIFFICULTY
+  }
+}
+
+export function setDifficulty(level: DifficultyLevel) {
+  try {
+    localStorage.setItem(DIFFICULTY_KEY, level)
+  } catch {
+    // Sin storage la preferencia solo dura la sesión
+  }
+  difficultyListeners.forEach(fn => fn(level))
+}
+
+/** Paso de `dir` niveles desde el actual (con `wrap`, tras EXPERTO vuelve a FÁCIL); devuelve si cambió. */
+export function stepDifficulty(dir: number, wrap = false): boolean {
+  const i = DIFFICULTY_LEVELS.indexOf(getDifficulty())
+  const n = DIFFICULTY_LEVELS.length
+  const next = DIFFICULTY_LEVELS[wrap ? (i + dir + n) % n : Math.min(n - 1, Math.max(0, i + dir))]
+  if (next === DIFFICULTY_LEVELS[i]) return false
+  setDifficulty(next)
+  return true
+}
+
+export function onDifficultyChange(fn: (level: DifficultyLevel) => void): () => void {
+  difficultyListeners.add(fn)
+  return () => difficultyListeners.delete(fn)
 }
