@@ -1,0 +1,74 @@
+run 1/20: goles 3-4 · tiros 11-19 · paradas 14-6 · pases 18/26-30/31 · atascos 0 · errores 0
+run 2/20: goles 1-4 · tiros 11-18 · paradas 12-8 · pases 19/30-29/31 · atascos 0 · errores 0
+run 3/20: goles 3-5 · tiros 9-20 · paradas 16-6 · pases 14/29-45/46 · atascos 0 · errores 0
+run 4/20: goles 4-5 · tiros 9-17 · paradas 12-4 · pases 16/22-30/33 · atascos 0 · errores 0
+run 5/20: goles 2-7 · tiros 10-16 · paradas 7-6 · pases 20/27-40/43 · atascos 0 · errores 0
+run 6/20: goles 7-5 · tiros 13-18 · paradas 12-8 · pases 14/22-34/37 · atascos 0 · errores 0
+run 7/20: goles 3-6 · tiros 8-19 · paradas 11-4 · pases 17/26-37/39 · atascos 0 · errores 0
+run 8/20: goles 3-6 · tiros 15-17 · paradas 11-9 · pases 18/20-31/34 · atascos 0 · errores 0
+run 9/20: goles 4-5 · tiros 12-14 · paradas 9-7 · pases 17/21-36/41 · atascos 0 · errores 0
+run 10/20: goles 1-4 · tiros 13-18 · paradas 14-11 · pases 12/18-42/49 · atascos 0 · errores 0
+run 11/20: goles 2-6 · tiros 10-15 · paradas 8-7 · pases 16/24-29/31 · atascos 0 · errores 0
+run 12/20: goles 4-3 · tiros 16-17 · paradas 14-11 · pases 15/20-40/45 · atascos 0 · errores 0
+run 13/20: goles 6-3 · tiros 14-7 · paradas 4-7 · pases 14/19-40/45 · atascos 0 · errores 0
+run 14/20: goles 2-10 · tiros 7-21 · paradas 11-4 · pases 17/22-35/37 · atascos 0 · errores 0
+run 15/20: goles 3-10 · tiros 8-18 · paradas 6-5 · pases 12/21-24/26 · atascos 0 · errores 0
+run 16/20: goles 5-6 · tiros 15-16 · paradas 11-11 · pases 15/21-32/35 · atascos 0 · errores 0
+run 17/20: goles 4-3 · tiros 11-12 · paradas 10-6 · pases 15/21-49/52 · atascos 0 · errores 0
+run 18/20: goles 2-6 · tiros 11-20 · paradas 12-7 · pases 16/24-42/42 · atascos 0 · errores 0
+run 19/20: goles 1-6 · tiros 10-19 · paradas 12-9 · pases 17/26-34/36 · atascos 0 · errores 0
+run 20/20: goles 3-4 · tiros 13-15 · paradas 11-9 · pases 19/25-32/36 · atascos 0 · errores 0
+goalsPerMin             2.14 ± 0.25  (sd 0.54, n 20)
+shotsPerMin             7.03 ± 0.36  (sd 0.78, n 20)
+onTargetPerMin          6.76 ± 0.39  (sd 0.84, n 20)
+savePct                67.36 ± 4.32  (sd 9.26, n 20)
+foulsPerMin             0.00 ± 0.00  (sd 0.00, n 20)
+redMinusBluePerMin      0.56 ± 0.33  (sd 0.71, n 20)
+goalsBluePerMin         0.79 ± 0.19  (sd 0.40, n 20)
+goalsRedPerMin          1.35 ± 0.23  (sd 0.49, n 20)
+shotsBluePerMin         2.83 ± 0.30  (sd 0.63, n 20)
+shotsRedPerMin          4.20 ± 0.37  (sd 0.80, n 20)
+savePctBlue            66.32 ± 5.20  (sd 11.15, n 20)
+savePctRed             69.68 ± 5.63  (sd 12.07, n 20)
+passesPerMin           15.41 ± 0.79  (sd 1.70, n 20)
+passPct                83.65 ± 1.63  (sd 3.50, n 20)
+passesDoneBluePerMin    4.01 ± 0.26  (sd 0.55, n 20)
+passesDoneRedPerMin     8.89 ± 0.73  (sd 1.57, n 20)
+possessionBluePct      54.38 ± 1.29  (sd 2.77, n 20)
+stealsPerMin           11.76 ± 0.81  (sd 1.73, n 20)
+shotQualityBlue         0.62 ± 0.02  (sd 0.04, n 20)
+shotQualityRed          0.57 ± 0.02  (sd 0.05, n 20)
+savePctBlueHi          58.41 ± 7.61  (sd 16.32, n 20)
+savePctBlueLo          89.03 ± 6.85  (sd 14.27, n 19)
+savePctRedHi           70.55 ± 5.66  (sd 12.12, n 20)
+savePctRedLo          100.00 ± 0.00  (sd 0.00, n 3)
+afterPassPctBlue       35.07 ± 4.30  (sd 9.22, n 20)
+afterPassPctRed         9.52 ± 5.12  (sd 10.97, n 20)
+gkOffBlue               4.46 ± 0.79  (sd 1.69, n 20)
+gkOffRed               12.52 ± 2.10  (sd 4.50, n 20)
+placeBlue              12.96 ± 0.58  (sd 1.25, n 20)
+placeRed               16.60 ± 0.66  (sd 1.42, n 20)
+savePctPassBlue        59.37 ± 8.90  (sd 19.08, n 20)
+savePctPassRed         66.67 ± 29.66  (sd 44.72, n 11)
+savePctNoPassBlue      72.27 ± 7.19  (sd 15.42, n 20)
+savePctNoPassRed       71.08 ± 5.82  (sd 12.47, n 20)
+unmarkedBlue            1.84 ± 0.04  (sd 0.09, n 20)
+unmarkedRed             1.92 ± 0.04  (sd 0.08, n 20)
+doublePctBlue          23.73 ± 1.97  (sd 4.22, n 20)
+doublePctRed           17.33 ± 1.77  (sd 3.80, n 20)
+humanOnCarrierPctBlue   27.75 ± 2.36  (sd 5.05, n 20)
+lossesBluePerMin        5.95 ± 0.53  (sd 1.14, n 20)
+lossesRedPerMin         5.80 ± 0.51  (sd 1.09, n 20)
+lossesCheckBluePerMin    1.66 ± 0.19  (sd 0.42, n 20)
+lossesCheckRedPerMin    1.91 ± 0.29  (sd 0.61, n 20)
+stealTriesBluePerMin   11.60 ± 1.21  (sd 2.60, n 20)
+stealTriesRedPerMin     8.60 ± 0.87  (sd 1.87, n 20)
+stealPctBlue           51.27 ± 3.95  (sd 8.47, n 20)
+stealPctRed            70.38 ± 5.71  (sd 12.23, n 20)
+humanStealTriesPerMin    8.53 ± 1.11  (sd 2.39, n 20)
+humanStealsPerMin       2.81 ± 0.40  (sd 0.86, n 20)
+goalieHumanPctBlue      0.71 ± 0.34  (sd 0.73, n 20)
+goalsVsHumanGoaliePerMin    0.08 ± 0.05  (sd 0.12, n 20)
+reinicios: libres 0 · directos 0 · penaltis 0 · neutrales 0 · azules 0
+totales: atascos 0 (0,0 s) · fuera de pista 0 · errores de consola 0 · fallidas 0
+[smoke-agg] {"mode":"arcade","extra":"human=touch\u0026diffRed=normal","smokeMs":240000,"runs":20,"goalsPerMin":{"mean":2.138,"ci95":0.252,"sd":0.541,"n":20},"shotsPerMin":{"mean":7.025,"ci95":0.363,"sd":0.778,"n":20},"onTargetPerMin":{"mean":6.762,"ci95":0.39,"sd":0.837,"n":20},"savePct":{"mean":67.36,"ci95":4.321,"sd":9.263,"n":20},"foulsPerMin":{"mean":0,"ci95":0,"sd":0,"n":20},"redMinusBluePerMin":{"mean":0.562,"ci95":0.332,"sd":0.711,"n":20},"goalsBluePerMin":{"mean":0.788,"ci95":0.186,"sd":0.4,"n":20},"goalsRedPerMin":{"mean":1.35,"ci95":0.228,"sd":0.489,"n":20},"shotsBluePerMin":{"mean":2.825,"ci95":0.296,"sd":0.634,"n":20},"shotsRedPerMin":{"mean":4.2,"ci95":0.372,"sd":0.797,"n":20},"savePctBlue":{"mean":66.322,"ci95":5.202,"sd":11.15,"n":20},"savePctRed":{"mean":69.683,"ci95":5.63,"sd":12.068,"n":20},"passesPerMin":{"mean":15.412,"ci95":0.795,"sd":1.704,"n":20},"passPct":{"mean":83.653,"ci95":1.635,"sd":3.504,"n":20},"passesDoneBluePerMin":{"mean":4.012,"ci95":0.258,"sd":0.553,"n":20},"passesDoneRedPerMin":{"mean":8.888,"ci95":0.731,"sd":1.568,"n":20},"possessionBluePct":{"mean":54.385,"ci95":1.293,"sd":2.771,"n":20},"stealsPerMin":{"mean":11.762,"ci95":0.807,"sd":1.729,"n":20},"shotQualityBlue":{"mean":0.623,"ci95":0.017,"sd":0.036,"n":20},"shotQualityRed":{"mean":0.572,"ci95":0.022,"sd":0.047,"n":20},"savePctBlueHi":{"mean":58.408,"ci95":7.615,"sd":16.323,"n":20},"savePctBlueLo":{"mean":89.029,"ci95":6.853,"sd":14.269,"n":19},"savePctRedHi":{"mean":70.553,"ci95":5.656,"sd":12.123,"n":20},"savePctRedLo":{"mean":100,"ci95":0,"sd":0,"n":3},"afterPassPctBlue":{"mean":35.065,"ci95":4.303,"sd":9.224,"n":20},"afterPassPctRed":{"mean":9.52,"ci95":5.116,"sd":10.967,"n":20},"gkOffBlue":{"mean":4.46,"ci95":0.79,"sd":1.694,"n":20},"gkOffRed":{"mean":12.52,"ci95":2.101,"sd":4.503,"n":20},"placeBlue":{"mean":12.955,"ci95":0.583,"sd":1.25,"n":20},"placeRed":{"mean":16.6,"ci95":0.662,"sd":1.419,"n":20},"savePctPassBlue":{"mean":59.37,"ci95":8.901,"sd":19.079,"n":20},"savePctPassRed":{"mean":66.673,"ci95":29.665,"sd":44.721,"n":11},"savePctNoPassBlue":{"mean":72.265,"ci95":7.194,"sd":15.422,"n":20},"savePctNoPassRed":{"mean":71.075,"ci95":5.818,"sd":12.472,"n":20},"unmarkedBlue":{"mean":1.838,"ci95":0.044,"sd":0.095,"n":20},"unmarkedRed":{"mean":1.924,"ci95":0.036,"sd":0.078,"n":20},"doublePctBlue":{"mean":23.725,"ci95":1.968,"sd":4.219,"n":20},"doublePctRed":{"mean":17.325,"ci95":1.774,"sd":3.802,"n":20},"humanOnCarrierPctBlue":{"mean":27.75,"ci95":2.357,"sd":5.052,"n":20},"lossesBluePerMin":{"mean":5.95,"ci95":0.533,"sd":1.143,"n":20},"lossesRedPerMin":{"mean":5.8,"ci95":0.51,"sd":1.093,"n":20},"lossesCheckBluePerMin":{"mean":1.662,"ci95":0.194,"sd":0.416,"n":20},"lossesCheckRedPerMin":{"mean":1.912,"ci95":0.286,"sd":0.614,"n":20},"stealTriesBluePerMin":{"mean":11.6,"ci95":1.213,"sd":2.6,"n":20},"stealTriesRedPerMin":{"mean":8.6,"ci95":0.873,"sd":1.872,"n":20},"stealPctBlue":{"mean":51.274,"ci95":3.951,"sd":8.469,"n":20},"stealPctRed":{"mean":70.384,"ci95":5.708,"sd":12.235,"n":20},"humanStealTriesPerMin":{"mean":8.525,"ci95":1.113,"sd":2.387,"n":20},"humanStealsPerMin":{"mean":2.812,"ci95":0.4,"sd":0.858,"n":20},"goalieHumanPctBlue":{"mean":0.708,"ci95":0.342,"sd":0.733,"n":20},"goalsVsHumanGoaliePerMin":{"mean":0.075,"ci95":0.055,"sd":0.118,"n":20},"freeHits":0,"badPlayerFrames":0,"jamSec":0,"neutralRestarts":0,"failed":0,"directFreeHits":0,"blueCards":0,"consoleErrors":0,"penalties":0,"jams":0}
