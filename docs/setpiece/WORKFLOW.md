@@ -1,6 +1,6 @@
 # Workflow de lanzamientos: penalti y libre directo en tercera persona
 
-Cómo se construye la escena cercana de los lanzamientos a puerta (penalti y libre directo): cámara detrás del lanzador, apuntado, fuerza y efecto durante el trayecto, y figuras con más detalle. Lo coordina `/lanz`.
+Cómo se construye la escena cercana de los lanzamientos a puerta (penalti y libre directo): un mano a mano en el que el lanzador puede patinar con la bola hacia la portería (D-07), con la cámara detrás de él, apuntado, fuerza y efecto durante el trayecto, y figuras con más detalle. Lo coordina `/lanz`.
 Documentos hermanos:
 
 - [BACKLOG.md](./BACKLOG.md): decisiones D-XX y paquetes L-XX con objetivo, archivos, aceptación y estado.
