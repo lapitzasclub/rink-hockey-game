@@ -2,7 +2,7 @@ import { isAnnouncerEnabled, setAnnouncerEnabled } from '../game/audio/announcer
 import { getVolume, playUiBack, playUiMove, setVolume, type VolumeChannel } from '../game/audio/sounds'
 import { BIND_ACTIONS, getBindings, keyText, labelForEvent, RESERVED_CODES, resetBindings, setBinding, type BindAction } from '../game/input/keyBindings'
 import { DIFFICULTY, HALF_REAL_MINUTES_OPTIONS, type DifficultyLevel } from '../game/constants'
-import { areRoleLabelsEnabled, getDifficulty, getHalfRealMinutes, setHalfRealMinutes, setRoleLabelsEnabled, stepDifficulty } from '../game/ui/prefs'
+import { areRoleLabelsEnabled, getDifficulty, getHalfRealMinutes, getSetPieceCamera, setHalfRealMinutes, setRoleLabelsEnabled, setSetPieceCamera, stepDifficulty } from '../game/ui/prefs'
 import { bindGraphicsSettings } from './graphicsSettings'
 import { focusFirst } from './menuNav'
 import { keyGlyph } from './template'
@@ -72,6 +72,13 @@ export function createSettingsPanel(deps: {
   roleLabelsBtn.addEventListener('click', () => {
     setRoleLabelsEnabled(!areRoleLabelsEnabled())
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
+  })
+
+  // L-02: penalti y libre directo con la cámara cercana o la clásica
+  const setPieceBtn = $<HTMLButtonElement>('#btn-setpiece-close')!
+  setPieceBtn.addEventListener('click', () => {
+    setSetPieceCamera(getSetPieceCamera() === 'close' ? 'classic' : 'close')
+    setSwitch(setPieceBtn, getSetPieceCamera() === 'close')
   })
 
   // Duración de cada parte: ← → (o clic en las flechas) recorren las opciones
@@ -259,6 +266,7 @@ export function createSettingsPanel(deps: {
     graphics.paint()
     setSwitch(fullscreenBtn, isFullscreen)
     setSwitch(roleLabelsBtn, areRoleLabelsEnabled())
+    setSwitch(setPieceBtn, getSetPieceCamera() === 'close')
     setSwitch(announcerBtn, isAnnouncerEnabled())
   }
 

@@ -140,3 +140,86 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
     },
   }
 }
+
+/** Vuelve a posar la escena cercana con el mismo instante y la cámara actual del partido. */
+function repose(match: Phaser.Scene, s: DuelView) {
+  const sp = match.scene.get('setpiece') as unknown as { lastVt: number, owns: boolean, frame: (...a: unknown[]) => boolean } | null
+  if (sp?.owns) sp.frame(sp.lastVt, match.cameras.main, s.duel, s.players, s.ball, s.duel.z, s.ballCarrierId)
+}
+
+type DuelView = MatchView & {
+  activeKickoff: unknown
+  ruleState: { pendingFoul: unknown }
+  joystickInput: { x: number, y: number }
+  duel: { active: boolean, startedAt: number, endedAt: number, end: string | null, z: number }
+}
+
+/**
+ * L-02 (`sp=force`): en vez del saque inicial pita un penalti o directo (`kind`) a favor de
+ * `taker`; `spAt=<ms>` congela a esos ms del pitido y `spAt=end+<ms>` tras acabar el duelo;
+ * `spStick=x,y` fija el stick de la persona mientras dura.
+ */
+export function forceSetPiece(match: Phaser.Scene, p: LabParams) {
+  const s = match as DuelView
+  match.events.once(Phaser.Scenes.Events.CREATE, () => {
+    let fouled = false
+    let stopped = false
+    let whistle = -1
+    const at = p.spAt ?? ''
+    const afterEnd = at.startsWith('end+')
+    const atMs = Number(afterEnd ? at.slice(4) : at)
+    const onUpdate = () => {
+      // El saque azul espera a la persona: se salta y se pita la falta
+      if (!fouled && s.simNow > 600) {
+        fouled = true
+        s.activeKickoff = null
+        const taker = s.players.find(q => q.team === p.spTaker && q.role === 'pivot') ?? s.players.find(q => q.team === p.spTaker && q.role !== 'goalie')
+        const by = s.players.find(q => q.team !== p.spTaker && q.role !== 'goalie')
+        if (!taker || !by) return
+        const penalty = p.kind === 'penalty'
+        s.ruleState.pendingFoul = {
+          againstTeam: by.team, byPlayerId: by.id, victimPlayerId: taker.id, restartX: taker.pos.x, restartY: taker.pos.y,
+          message: penalty ? 'PENALTI' : 'LIBRE DIRECTO', sanction: penalty ? 'penalty' : 'direct-free-hit',
+        }
+      }
+      const d = s.duel
+      if (p.spStick) { s.joystickInput.x = d.active ? p.spStick.x : 0; s.joystickInput.y = d.active ? p.spStick.y : 0 }
+      // Pitido: empieza el duelo o (cámara clásica) el lanzador ya puede golpear
+      const f = s.activeFoulRestart as { readyAt: number } | null
+      if (d.active) whistle = d.startedAt
+      else if (f && d.startedAt <= 0) whistle = f.readyAt
+      if (!at || !Number.isFinite(atMs) || whistle < 0) return
+      const t0 = afterEnd ? (d.startedAt > 0 ? d.endedAt : NaN) : whistle
+      if (Number.isFinite(t0) && (afterEnd ? !d.active : true) && s.simNow >= t0 + atMs) {
+        match.events.off(Phaser.Scenes.Events.POST_UPDATE, onUpdate)
+        console.log(`[spAt] ${at} t=${Math.round(s.simNow)} fin=${d.end}`)
+        stopped = true
+      }
+    }
+    // Con spAt avanza a pasos fijos (como el humo, sin piloto automático): el tiempo virtual
+    // de Chrome headless no da tiempo de juego fiable; al congelar se reanuda el bucle para pintar
+    if (at) {
+      const game = match.game
+      game.loop.stop()
+      const STEP = 1000 / 60
+      let now = game.loop.time
+      const chunk = () => {
+        for (let i = 0; i < 300 && !stopped; i++) {
+          now += STEP
+          match.sys.step(now, STEP)
+          if (s.simNow > 40000) { console.log('[spAt] timeout'); stopped = true }
+        }
+        if (!stopped) { window.setTimeout(chunk, 0); return }
+        freezeMatch(match, p)
+        game.loop.start(game.step.bind(game))
+        // La captura cambia el tamaño del lienzo con el partido congelado: se reencuadra la escena cercana
+        const onResize = () => repose(match, s)
+        match.scale.on(Phaser.Scale.Events.RESIZE, onResize)
+        match.events.once(Phaser.Scenes.Events.SHUTDOWN, () => match.scale.off(Phaser.Scale.Events.RESIZE, onResize))
+      }
+      window.setTimeout(chunk, 0)
+    }
+    match.events.on(Phaser.Scenes.Events.POST_UPDATE, onUpdate)
+    match.events.once(Phaser.Scenes.Events.SHUTDOWN, () => match.events.off(Phaser.Scenes.Events.POST_UPDATE, onUpdate))
+  })
+}
