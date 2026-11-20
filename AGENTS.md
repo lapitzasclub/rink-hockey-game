@@ -320,8 +320,8 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ### 2026-11-21 — dentro del Loyola, como un juego nativo
 
-- `inHostApp` (`shell/fullscreen.ts`): bajo `/jugar/` en la PWA instalada o en el APK (se detecta por el puente `window.Capacitor` que inyecta). Allí no se ofrece pantalla completa (`fullscreenOffered`: ni botón, ni ajuste, ni tecla F, ni la automática al empezar).
-- APK: la actividad del Loyola gira a apaisado y oculta las barras mientras la URL está bajo `/jugar/`. El atrás de Android llega por `App.backButton` del puente (`onHostBackButton`) y hace de Esc (pausa, cierra paneles, vuelve al título); solo desde el título en reposo regresa al Loyola.
+- `inHostApp` (`shell/fullscreen.ts`): bajo `/jugar/` en la PWA instalada o en el APK, que se detecta por `LoyolaHockeyApp` en el user agent. El puente de Capacitor solo se inyecta en el origen de la app, no en `pages.dev`. Allí no se ofrece pantalla completa (`fullscreenOffered`: ni botón, ni ajuste, ni tecla F, ni la automática al empezar).
+- APK: la actividad del Loyola gira a apaisado y oculta las barras mientras la URL está bajo `/jugar/`. El atrás de Android llega como evento cancelable `loyola:atras` (`onHostBackButton`) y hace de Esc (pausa, cierra paneles, vuelve al título). Solo desde el título en reposo no se cancela, y el WebView vuelve al Loyola.
 - PWA de Android: `hideBarsInHostApp` pide pantalla completa en el primer toque (y en los siguientes si el sistema la quitó), para quitar las barras del sistema.
 - Arranque: fondo oscuro inline en `index.html` (sin destello blanco) y Russo One servida desde `public/fonts/` con `preload`, en vez de Google Fonts.
 

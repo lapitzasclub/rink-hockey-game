@@ -225,8 +225,9 @@ document.addEventListener('keydown', (e) => {
 onHostBackButton(() => {
   const idle = activeScene === 'menu' && !game?.registry.get('menuSetup') && !settings.isOpen() && !probe.isRunning()
     && (!installHintEl || installHintEl.hidden)
-  if (idle) backToHost()
-  else sendKey('Escape', document)
+  if (idle) return false
+  sendKey('Escape', document)
+  return true
 })
 
 // Al cambiar de pestaña o minimizar, el partido se queda en pausa con el menú abierto
