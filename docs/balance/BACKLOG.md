@@ -11,8 +11,8 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | B-00 | Referencia: simetría IA contra IA y partido real de partida | coordinador + usuario | 🟨 (IA contra IA hecho) |
 | B-01 | Instrumentar: calidad de tiro, portero controlado y `?stats=1` | ai-engineer · opus | ✅ 2026-11-20 |
 | B-02 | Humano simulado en el humo (`human=touch\|pad`) | ai-engineer · opus | ✅ 2026-11-20 (sin calibrar) |
-| B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ⬜ |
-| B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus + UI sonnet | ⬜ |
+| B-03 | Porteros: encontrar y quitar la asimetría | ai-engineer · opus | ✅ 2026-11-20 (resto → B-05) |
+| B-04 | Niveles de dificultad (antes E-04) | ai-engineer · opus | ✅ 2026-11-20 (pases → B-05) |
 | B-05 | Ajuste táctil y por nivel (barrido) | bal-tuner · sonnet | ⬜ |
 | B-99 | Cierre: batería final y partido real en el móvil | bal-qa · haiku + usuario | ⬜ |
 
@@ -55,11 +55,13 @@ Orden: B-01 → B-02 → (B-03 y B-04 en paralelo: no comparten archivos salvo `
 3. *Contragolpes.* Las pérdidas de la persona dan al rojo 2 contra 1 de calidad alta. Esto es dificultad (B-04/B-05), no portero.
 **Archivos:** según la hipótesis confirmada; `playerHelpers.ts`, `goalieAI.ts`, `targeting.ts`, constantes `GOALIE_*`.
 **Aceptación:** `bal-compare --sides` con `savePctBlueHi/Lo` frente a `savePctRedHi/Lo` en `=` en 20 corridas; IA contra IA sigue simétrica.
+**Hecho:** antes del arreglo, tiros buenos parados: azul 57,6 % frente a rojo 81,3 % en arcade y 40,6 % frente a 70,9 % en reglamento (`smoke/…-B03-touch20*.txt`). Los porteros estaban bien colocados (H1a descartada). El hueco venía de la defensa del azul: con la persona sin presionar, nadie salía al portador y el 42 % de los tiros contra el azul eran tras pase o con el tirador libre. `aiDefense.ts` ahora elige quién presiona entre la IA; la persona solo cuenta si es la más cercana y está en el lado de la portería. Arreglado H3: `switchAim` escala el stick táctil ×2 (`SWITCH_AIM_TOUCH_SCALE`). `matchStats` añade el contexto de cada tiro (`SHOT_CONTEXT`). Después (`…-B03-fix-touch20.txt`): tiros con tirador libre 35 % (parados 68 %); savePct·Hi 56,4 ± 6,0 frente a 70,5 ± 10,3, «=»; IA contra IA todo «=». Lo que queda viene del apuntado: la IA tira al primer palo y la persona al centro (B-05). Reglamento sin repetir tras el arreglo.
 
 ## B-04 — Niveles de dificultad (antes E-04 de `/evo`)
 
 **Objetivo:** cuatro niveles (FÁCIL, NORMAL, DIFÍCIL, EXPERTO) que cambian tiempo de reacción, precisión de pase y tiro, agresividad (presión y robo), acierto del portero y lectura de la jugada; no la física. Tabla `DIFFICULTY` en `constants.ts` que `aiProfileFor(team)` (`constants.ts:458`) aplica sobre `AI_PROFILE_NORMAL`. Menú y ajustes con el selector, guardado en `localStorage` (`rh-difficulty`); `?diffBlue=` y `?diffRed=` en el laboratorio. Ayuda arcade (`ARCADE_RUBBER_BAND_*`): para el humano siempre; la IA solo en FÁCIL y NORMAL.
 **Pedido previo (tras E-02):** la IA completa ~90 % de pases; en FÁCIL y NORMAL debe fallar pases y leer peor las líneas para que se pueda cortar.
+**Hecho:** `systems/difficulty.ts` con niveles por equipo (rival = elegido − `DIFFICULTY_TOUCH_SHIFT` en táctil; compañeros NORMAL), selector en menú y Ajustes (`rh-difficulty`), `?diffBlue/diffRed`, ayuda arcade para la IA solo en FÁCIL/NORMAL. Arcade 10 corridas, rojo − azul: FÁCIL −0,90 ± 0,52, NORMAL 0,13 ± 0,67, DIFÍCIL 0,90 ± 0,60, EXPERTO 1,35 ± 0,51; NORMAL = IA anterior (todo «=»). Orden correcto, pero solo EXPERTO se separa de NORMAL con 10 corridas. Pendiente para B-05: en FÁCIL/NORMAL la IA aún completa 85–86 % de pases (`passErrorRad`, `laneRead`).
 **Aceptación:** IA contra IA, cada nivel contra NORMAL ordenado FÁCIL < NORMAL < DIFÍCIL < EXPERTO sin IC solapados entre vecinos (en arcade al menos); NORMAL dentro del IC de la IA actual; menú revisado en escritorio y móvil.
 
 ## B-05 — Ajuste táctil y por nivel
