@@ -34,6 +34,7 @@ import { markDirect, clearDirect, directFor, directStats, koShot } from '../game
 import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIAttemptSteal } from '../game/systems/ai'
 import { decideCarrierAction } from '../game/systems/aiDecision'
 import { resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
+import { createReactionState, reactFoul, reactPost, reactSave, updateReactions } from '../game/systems/reactions'
 import {
   findPlayerById,
   getControllablePlayers,
@@ -143,6 +144,8 @@ export class MatchScene extends Phaser.Scene {
   private restartAt = 0
   private lastTouch: TeamColor = 'blue'
   private ruleState: RuleState = createRuleState()
+  /** Reacciones en juego (E-20): último tiro y palmada pendiente. */
+  private reactions = createReactionState()
   private lastLooseBallTime = 0
   private ballIgnoreContactsUntil = 0
   private activeBully: ActiveBully | null = null
@@ -700,6 +703,7 @@ export class MatchScene extends Phaser.Scene {
     // Los sancionados siguen su camino al banquillo también en los parones; su sanción solo corre con el reloj
     const stopped = this.restartAt > 0 || !!(this.activeKickoff || this.activeBully || this.activeFoulRestart)
     updateSuspendedPlayers(this.players, time, dt, stopped)
+    updateReactions(this.reactions, this.players, this.ball, this.ballCarrierId, time, !stopped)
 
     if (this.restartAt > 0) {
       this.pause.step(this.players, time, dt)
@@ -764,7 +768,7 @@ export class MatchScene extends Phaser.Scene {
     this.arcade?.beforeBallStep(this.ballVelocity, this.ballCarrierId, dt)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
     this.arcade?.afterBallStep(this.ball, this.ballVelocity, this.ballCarrierId, time, !this.probe)
-    if (ballFrameHit.post) { ballFrameHit.post = false; clearDirect() }   // art. 7.3.b: el poste cuenta como toque
+    if (ballFrameHit.post) { ballFrameHit.post = false; clearDirect(); reactPost(this.reactions, this.players, this.ball, this.ballCarrierId, time) }   // art. 7.3.b: el poste cuenta como toque
     this.updateGoalEntryFlag(prevBallX)
     this.prevBallX = this.ball.x
     this.handleGoalieSave()
@@ -1090,10 +1094,10 @@ export class MatchScene extends Phaser.Scene {
     if (!result) return
     clearDirect()   // parada o desvío del portero: toque válido
     if (result.ballCarrierId) playSave()
+    const saver = (result.ballCarrierId ? findPlayerById(this.players, result.ballCarrierId) : null) ?? this.players.find(p => p.role === 'goalie' && p.team === result.lastTouch) ?? null
+    reactSave(this.reactions, this.players, saver?.role === 'goalie' ? saver : null, !!result.ballCarrierId, result.ballCarrierId, this.simNow)
     if (this.arcade) {
-      const goalie = (result.ballCarrierId ? findPlayerById(this.players, result.ballCarrierId) : null)
-        ?? this.players.find(p => p.role === 'goalie' && p.team === result.lastTouch)
-      if (goalie) this.arcade.onSave(goalie, shotVelocity)
+      if (saver) this.arcade.onSave(saver, shotVelocity)
     }
     this.ballVelocity = result.ballVelocity
     this.ballCarrierId = result.ballCarrierId
@@ -1290,6 +1294,7 @@ export class MatchScene extends Phaser.Scene {
       if (offender?.suspendedUntil && offender.suspendedUntil > this.simNow) {
         this.events.emit('match:card', { team: offender.team, playerId: offender.id, time: this.simNow })
       }
+      reactFoul(this.reactions, this.players, foul.byPlayerId, foul.victimPlayerId, null, this.simNow)   // con el pitido nadie conduce
       playFoul()
       this.officials.foul(foul, this.players)
       this.centerText.setText(foul.message).setVisible(true)
