@@ -84,7 +84,52 @@ export const PLAYER_MAX_SPEED = 320
 export const PLAYER_SPRINT_MAX_SPEED = 500
 export const PLAYER_ACCEL = 860
 export const PLAYER_SPRINT_ACCEL_MULTIPLIER = 1.42
+/** Rozamiento isótropo por paso (60 Hz): solo el portero, que conserva su manejo de siempre. */
 export const PLAYER_FRICTION = 0.925
+/*
+ * Patinaje de los jugadores de campo (E-15). El patín rueda en su dirección de marcha (heading):
+ * la velocidad lateral respecto a ella se disipa con agarre finito (deriva en curvas rápidas), el
+ * heading gira más despacio cuanto más rápido se va y darse la vuelta es frenar y volver a arrancar.
+ */
+/** Rozamiento de rodadura por paso (60 Hz): deslizamiento al soltar el stick (τ ≈ 0,55 s). */
+export const SKATE_GLIDE_FRICTION = 0.97
+/**
+ * Curva de empuje: con aceleración pedida A el empuje cae como 1 − (v / (A·esto))². Arranque con A
+ * entero y cada vez más duro cerca del tope; con el rozamiento deja ≈ 176 px/s a pie y ≈ 250 en sprint.
+ */
+export const SKATE_THRUST_SPEED_PER_ACCEL = 0.26
+/** Agarre lateral (px/s²): lo máximo que el patín quita por segundo a la velocidad de costado. */
+export const SKATE_LATERAL_GRIP = 800
+/** Giro del patín (rad/s) parado; se divide por (1 + v / SKATE_TURN_SPEED_REF): curvas abiertas a sprint. */
+export const SKATE_TURN_RATE = 28
+export const SKATE_TURN_SPEED_REF = 55
+/** Por debajo de esta velocidad (px/s) manda el juego de pies: empuja hacia donde quiere ir y no frena para girar. */
+export const SKATE_PIVOT_SPEED = 85
+/** Frenada máxima (px/s²) al invertir el sentido o al llegar más rápido de lo que se quiere. */
+export const SKATE_BRAKE_DECEL = 1100
+/**
+ * Ángulo entre la marcha y donde quiere ir (coseno): desde SKATE_TURN_BRAKE_COS frena en parte para
+ * cerrar la curva y por debajo de SKATE_REVERSE_COS frena del todo sin girar (invertir el sentido).
+ */
+export const SKATE_TURN_BRAKE_COS = 0.2
+export const SKATE_REVERSE_COS = -0.5
+/** Con la bola: fracción del agarre lateral y del giro que queda. */
+export const SKATE_BALL_GRIP = 0.9
+/** Llegada de la IA: frena con esta fracción de SKATE_BRAKE_DECEL (margen) para parar a SKATE_ARRIVE_STOP_PX del objetivo. */
+export const SKATE_ARRIVE_DECEL_FACTOR = 0.7
+export const SKATE_ARRIVE_STOP_PX = 4
+/** A menos de esto (px) del objetivo la IA ya está en su sitio: frena hasta parar sin empujar. */
+export const SKATE_ARRIVE_DEADZONE = 6
+/** Valla: restitución de la componente normal y rozamiento (fracción del cambio normal que se pierde en tangencial). */
+export const SKATE_WALL_RESTITUTION = 0.25
+export const SKATE_WALL_FRICTION = 0.3
+/** Choques entre jugadores: restitución y masa del portero (la de campo vale 1). */
+export const SKATE_COLLISION_RESTITUTION = 0.15
+export const SKATE_GOALIE_MASS = 1.8
+/** Empujón de contacto (px/s relativos por paso de solape, repartido por masas): los cuerpos se apartan. */
+export const SKATE_CONTACT_PUSH = 40
+/** Impulso mínimo (px/s) de un choque o rebote para apuntarlo en `player.bump` (lo anima E-17). */
+export const SKATE_BUMP_MIN = 60
 export const BALL_FRICTION = 0.989
 export const BALL_CONTROL_DISTANCE = 30 * K
 export const BALL_PICKUP_DISTANCE = 38 * K
