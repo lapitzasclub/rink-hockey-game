@@ -10,6 +10,7 @@ import { getGoalLineX } from '../../game/utils'
 import type { Ball, Player, Role, TeamColor } from '../../game/types'
 import { officialsScene } from './labOfficials'
 import { ACTION_STRIPS } from './labActionStrips'
+import { MOTION_STRIPS } from './labMotionStrips'
 import { GOALIE_STRIPS } from './labGoalieStrips'
 import { createFigure, type FigureSpec, type LabFigure } from './labFigures'
 import type { LabParams } from './labParams'
@@ -232,6 +233,7 @@ function playersGrid(ctx: LabBuildCtx): LabBuild {
 /** Hojas de contactos: `?strip=<nombre>`. WP-31 y WP-32 añaden aquí sus entradas. */
 const STRIPS: Record<string, (ctx: LabBuildCtx) => FigureSpec[]> = {
   ...ACTION_STRIPS,
+  ...MOTION_STRIPS,
   ...GOALIE_STRIPS,
   /** Ciclo de 8 fotogramas: empujando (3/4 frente y de espaldas) y en crucero, con deslizamientos. */
   stride: () => [

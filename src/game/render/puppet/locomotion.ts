@@ -7,12 +7,15 @@
  * trayectoria (cruces) y frenada. Ese estado vive en un WeakMap por jugador; la
  * fase y la amplitud siguen en los datos del contenedor ('sp', 'ab', 'pt'), que
  * el lab fija a mano. Con dt = 0 (lab) los pesos van directos al objetivo: pose determinista.
+ * El peso y la inercia (muelles del tronco, cadera y brazos, choques, canto) los pone
+ * `secondary.ts` sobre la mezcla de pasos (E-17).
  */
 import * as Phaser from 'phaser'
 import { ARCADE_CHECK_STUN_MS, PLAYER_ACCEL } from '../../constants'
-import { RIG_LOCO } from '../artSpec'
+import { RIG_LOCO, RIG_MOTION } from '../artSpec'
 import type { Player } from '../../types'
-import { backGait, brakeGait, crossGait, fallGait, idleGait, lerp, ramp, skidGait, strideGait, type GaitIn } from './locomotionGaits'
+import { backGait, brakeGait, crossGait, fallGait, hipY, idleGait, lerp, ramp, skidGait, strideGait, type GaitIn } from './locomotionGaits'
+import { applyMotion, forgetMotion, snapMotion, type MotionTargets } from './secondary'
 import { createPose, type PoseContext, type PuppetPose } from './pose'
 import { rigDims, type RigDims } from './skeleton'
 
@@ -43,6 +46,9 @@ interface LocoState {
   skid: number
   /** Fase inicial propia: los ciclos de espera no van al unísono en los saques. */
   phase0: number
+  /** Posición del último fotograma (detecta teleportes); NaN = sin fotograma previo. */
+  px: number
+  py: number
 }
 
 const states = new WeakMap<Player, LocoState>()
@@ -55,7 +61,7 @@ function stateOf(p: Player): LocoState {
     for (let i = 0; i < p.id.length; i++) h = (h * 31 + p.id.charCodeAt(i)) | 0
     st = {
       speed: 0, heading: 0, acc: L.initAccel, turn: 0, sprint: 0, back: 0, cross: 0, crossDir: 0, brake: 0,
-      brakeT: (h & 1) === 1, skidOn: false, skid: 0, phase0: ((h >>> 1) % 64) / 64 * TAU,
+      brakeT: (h & 1) === 1, skidOn: false, skid: 0, phase0: ((h >>> 1) % 64) / 64 * TAU, px: NaN, py: NaN,
     }
     states.set(p, st)
   }
@@ -68,6 +74,16 @@ export function setLocoState(p: Player, accel: number, turn: number, brakeT?: bo
   st.acc = accel
   st.turn = turn
   if (brakeT !== undefined) st.brakeT = brakeT
+}
+
+/** Lab: olvida el estado derivado y los muelles (las tiras dinámicas simulan desde cero). */
+export function resetLoco(p: Player) {
+  states.delete(p)
+  forgetMotion(p)
+  const c = p.container
+  c.setData('ab', undefined)
+  c.setData('sp', undefined)
+  c.setData('pt', undefined)
 }
 
 const follow = (v: number, target: number, k: number) => v + (target - v) * k
@@ -89,11 +105,19 @@ export function advanceStride(player: Player, timeNow: number, speedRatio: numbe
   const vy = player.velocity.y
   const speed = Math.hypot(vx, vy)
   const heading = Math.atan2(vy, vx)
-  if (dt > 0) {
+  // Teleporte (saque, recolocación): sin derivadas este fotograma y muelles al objetivo
+  const jumped = Math.abs(player.pos.x - st.px) + Math.abs(player.pos.y - st.py) > L.snapPx
+  st.px = player.pos.x
+  st.py = player.pos.y
+  if (jumped) snapMotion(player)
+  else if (dt > 0) {
     const sec = dt / 1000
-    st.acc = follow(st.acc, (speed - st.speed) / sec / PLAYER_ACCEL, kOf(L.tau.acc))
+    // Cada muestra va acotada: el salto de velocidad de un choque no es una frenada
+    const a = Math.max(-L.accClamp, Math.min(L.accClamp, (speed - st.speed) / sec / PLAYER_ACCEL))
+    st.acc = follow(st.acc, a, kOf(L.tau.acc))
     const turning = speed > L.turnMinSpeed && st.speed > L.turnMinSpeed
-    st.turn = follow(st.turn, turning ? Phaser.Math.Angle.Wrap(heading - st.heading) / sec : 0, kOf(L.tau.turn))
+    const w = turning ? Math.max(-L.turnClamp, Math.min(L.turnClamp, Phaser.Math.Angle.Wrap(heading - st.heading) / sec)) : 0
+    st.turn = follow(st.turn, w, kOf(L.tau.turn))
   }
   st.speed = speed
   if (speed > 1e-3) st.heading = heading
@@ -133,7 +157,7 @@ export function advanceStride(player: Player, timeNow: number, speedRatio: numbe
 
 const tmp = createPose()
 const tmpSkid = createPose()
-const gait: GaitIn = { amp: 0, drive: 0, sprint: 0, phase: 0, dir: 1, brakeT: false, dragSide: 1, fall: -1, fallDir: 1 }
+const gait: GaitIn = { amp: 0, drive: 0, push: 0, sprint: 0, phase: 0, dir: 1, brakeT: false, dragSide: 1, fall: -1, fallDir: 1 }
 
 /** Mezcla en `dst` los campos de locomoción de `src` con peso `w`. */
 function mixInto(dst: PuppetPose, src: PuppetPose, w: number) {
@@ -198,6 +222,7 @@ export function locomotion(pose: PuppetPose, ctx: PoseContext) {
   const g = gait
   g.amp = ctx.blend
   g.drive = Math.max(driveOf(st), 1 - ramp(0, L.idleBlend * 2, ctx.blend))
+  g.push = driveOf(st)
   g.sprint = st.sprint
   g.phase = ctx.phase
   g.dir = st.crossDir >= 0 ? 1 : -1
@@ -206,37 +231,67 @@ export function locomotion(pose: PuppetPose, ctx: PoseContext) {
   g.fall = fallProgress(ctx)
   g.fallDir = ((ctx.player.container.getData('tumbleDir') as number | undefined) ?? 1) >= 0 ? 1 : -1
 
+  const S = L.knee
   strideGait(pose, g)
+  // Altura base de la cadera de la mezcla (sin el vaivén de cada empuje): la lleva el muelle
+  let hip = hipY(lerp(lerp(S.glide, S.drive, g.drive), S.sprint, g.sprint))
   const wCross = st.cross * Math.abs(st.crossDir)
-  if (wCross > EPS) { crossGait(tmp, g); mixInto(pose, tmp, wCross) }
-  if (st.back > EPS) { backGait(tmp, g); mixInto(pose, tmp, st.back) }
+  if (wCross > EPS) { crossGait(tmp, g); mixInto(pose, tmp, wCross); hip = lerp(hip, hipY(S.drive), wCross) }
+  if (st.back > EPS) { backGait(tmp, g); mixInto(pose, tmp, st.back); hip = lerp(hip, hipY(S.back), st.back) }
   const wIdle = 1 - ramp(0, L.idleBlend, ctx.blend)
-  if (wIdle > EPS) { idleGait(tmp, g); mixInto(pose, tmp, wIdle) }
+  if (wIdle > EPS) { idleGait(tmp, g); mixInto(pose, tmp, wIdle); hip = lerp(hip, hipY(S.idle), wIdle) }
   if (st.brake > EPS) {
     brakeGait(tmp, g)
-    if (st.skid > EPS) { skidGait(tmpSkid, g); mixInto(tmp, tmpSkid, st.skid) }
+    let hb = hipY(S.brake)
+    if (st.skid > EPS) { skidGait(tmpSkid, g); mixInto(tmp, tmpSkid, st.skid); hb = lerp(hb, hipY(L.skid.knee), st.skid) }
     mixInto(pose, tmp, st.brake)
+    hip = lerp(hip, hb, st.brake)
   }
-  lean(pose, st, wCross)
+  const t = targets
+  t.pitch = pose.trunk.pitch + leanPitch(st)
+  t.roll = leanRoll(st, wCross)
+  t.hip = hip
+  t.edge = edgeTarget(ctx, st)
+  applyMotion(pose, ctx, t, L.lean.turnShift / L.lean.turn, g.fall >= 0)
   if (g.fall >= 0) fallGait(pose, g)
   keepReach(pose)
 }
 
+const targets: MotionTargets = { pitch: 0, roll: 0, hip: 0, edge: 0 }
+
 /**
- * Inclinaciones (E-11) sobre la mezcla: tronco adelante al acelerar (la aceleración ya va
- * filtrada) y ladeo hacia dentro del giro por la aceleración lateral v·ω, con la cadera
- * hacia el centro. Los cruces traen su ladeo, así que este se aparta con su peso.
+ * Inclinación del tronco por aceleración (E-11, objetivo del muelle desde E-17): adelante al
+ * acelerar (la aceleración ya va filtrada) y atrás de más al frenar, además de la postura
+ * de frenada.
  */
-function lean(pose: PuppetPose, st: LocoState, wCross: number) {
+function leanPitch(st: LocoState) {
   const K = L.lean
   const fwd = (1 - st.back) * (1 - st.brake)
-  pose.trunk.pitch += K.acc * Math.min(1, Math.max(0, st.acc) / K.accMax) * fwd
-  const lat = Math.max(-1, Math.min(1, (st.turn * st.speed) / PLAYER_ACCEL / K.turnRef))
-  const w = lat * (1 - wCross) * (1 - st.brake)
-  pose.trunk.roll += K.turn * w
-  pose.pelvis.x += K.turnShift * w
+  const brake = Math.min(1, Math.max(0, -st.acc) / RIG_MOTION.brakeRef) * (1 - st.back)
+  return K.acc * Math.min(1, Math.max(0, st.acc) / K.accMax) * fwd - RIG_MOTION.brakeLean * brake
 }
 
+/**
+ * Ladeo hacia dentro del giro por la aceleración lateral v·ω (E-11; objetivo del muelle):
+ * la cadera va hacia el centro con él. Los cruces traen su ladeo y este se aparta con su peso.
+ */
+function leanRoll(st: LocoState, wCross: number) {
+  const K = L.lean
+  const lat = Math.max(-1, Math.min(1, (st.turn * st.speed) / PLAYER_ACCEL / K.turnRef))
+  return K.turn * lat * (1 - wCross) * (1 - st.brake)
+}
+
+/**
+ * Canto de los patines (E-17): con la velocidad de lado respecto al cuerpo pintado (deriva en
+ * curva o derrape, que gira el cuerpo `skidTurn`) los patines muerden de canto contra la marcha.
+ */
+function edgeTarget(ctx: PoseContext, st: LocoState) {
+  if (st.speed < 1) return 0
+  const a = skidTurn(ctx.player)
+  const lat = (ctx.velRight * Math.cos(a) - ctx.velForward * Math.sin(a)) / st.speed
+  const E = RIG_MOTION.edge
+  return -E.max * Math.max(-1, Math.min(1, lat / E.ref)) * ramp(E.speed[0], E.speed[1], st.speed)
+}
 /** Figura de pie y quieta (sancionados, banquillos, árbitros a pie). */
 export function standingPose(pose: PuppetPose, dims: RigDims, kneeBend = 0) {
   pose.pelvis.x = 0

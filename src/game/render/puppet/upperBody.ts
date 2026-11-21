@@ -10,8 +10,10 @@
  * mango nunca pasa en pantalla de `maxScreen` veces su largo. Los toques
  * alternos mueven la pala por el borde de la bola sin soltarla.
  */
-import { RIG_FLOOR_FORESHORTEN, RIG_STANCE, STICK_BLADE, STICK_HOLD } from '../artSpec'
+import { RIG_FLOOR_FORESHORTEN, RIG_MOTION, RIG_STANCE, STICK_BLADE, STICK_HOLD } from '../artSpec'
 import { fallProgress } from './locomotion'
+import { ramp } from './locomotionGaits'
+import { motionOf } from './secondary'
 import type { PoseContext, PuppetPose } from './pose'
 import { copy3, set3, v3, type V3 } from './vec'
 
@@ -127,17 +129,30 @@ export function upperBody(pose: PuppetPose, ctx: PoseContext) {
   st.topHand = ctx.stickSide === 1 ? 0 : 1
 
   const ballYaw = Math.atan2(ctx.ball.x, ctx.ball.z)
+  // Acción superpuesta (E-17): manos y pala libre llegan tarde a donde va el tronco
+  const mo = motionOf(ctx.player)
+  const MO = RIG_MOTION
   let extra = 0
   if (ctx.carrying) {
     extra = Math.min(1, dribbleBlade(pose, ctx, s))
     pose.trunk.pitch += extra * H.reachLean
   } else {
     const a = clamp(ballYaw, -1.1, 1.1) * 0.5 + s * 0.32
-    set3(blade, Math.sin(a) * S.stickRest, 0, Math.cos(a) * S.stickRest)
+    set3(blade, Math.sin(a) * S.stickRest + mo.armX * MO.blade, 0, Math.cos(a) * S.stickRest + mo.armZ * MO.blade)
     placeBlade(pose, blade, a + s * 1.2)
   }
 
   baseGrip(pose, s, grip)
+  grip.x += mo.armX * MO.grip
+  grip.y += mo.armY * MO.grip
+  grip.z += mo.armZ * MO.grip
+  // Choque: el pomo sale hacia fuera y arriba para equilibrarse
+  const bal = fallProgress(ctx) >= 0 ? 0 : Math.min(1, mo.bal)
+  const BA = MO.bump.bal
+  if (bal > 0) {
+    grip.x -= s * BA.armsOut * 0.5 * bal
+    grip.y += BA.armsUp * 0.6 * bal
+  }
   if (extra > 0) {
     // Las manos siguen a la pala cuando la bola va lejos
     const h = Math.hypot(st.heel.x, st.heel.z) || 1
@@ -160,9 +175,37 @@ export function upperBody(pose: PuppetPose, ctx: PoseContext) {
     const p = pose.pelvis
     set3(pose.hands[ctx.stickSide], p.x + s * 0.17, p.y + 0.1, p.z + 0.06 + Math.sin(ctx.phase) * 0.16)
   }
+  if (bal > BA.release * 0.5) balanceHand(pose, ctx.stickSide, s, ramp(BA.release * 0.5, BA.release + 0.3, bal) * bal)
+  if (st.lowerGrip === null) {
+    const h = pose.hands[ctx.stickSide]
+    h.x += mo.armX * MO.hand
+    h.y += mo.armY * MO.hand
+    h.z += mo.armZ * MO.hand
+  }
 
   // Caído: la mano baja suelta el mango y hace lo que diga la caída (brazos abiertos, apoyo, rodillas)
   if (fallProgress(ctx) >= 0) st.lowerGrip = null
 
   pose.headYaw = clamp(ballYaw, -1.2, 1.2) * 0.35
+}
+
+const held = v3()
+
+/**
+ * Choque (E-17): la mano baja suelta el mango y se abre hacia su lado para equilibrarse.
+ * Sale del punto del mango donde agarraba (peso `w` 0..1), así que no salta al soltarse.
+ */
+function balanceHand(pose: PuppetPose, side: 0 | 1, s: number, w: number) {
+  const st = pose.stick
+  const p = pose.pelvis
+  const BA = RIG_MOTION.bump.bal
+  const h = pose.hands[side]
+  if (st.lowerGrip !== null) {
+    const g = st.lowerGrip
+    set3(held, st.top.x + (st.heel.x - st.top.x) * g, st.top.y + (st.heel.y - st.top.y) * g, st.top.z + (st.heel.z - st.top.z) * g)
+    st.lowerGrip = null
+  } else copy3(held, h)
+  h.x = held.x + (p.x + s * (0.16 + BA.armsOut) - held.x) * w
+  h.y = held.y + (p.y + 0.12 + BA.armsUp - held.y) * w
+  h.z = held.z + (p.z + 0.02 - held.z) * w
 }

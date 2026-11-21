@@ -386,16 +386,24 @@ export const RIG_STANCE = {
  * dentro de `turn` rad con la aceleración lateral `turnRef` (× PLAYER_ACCEL) y la cadera
  * `turnShift` hacia el centro (los cruces ya traen su propio ladeo).
  * `idleK`: respiración (cadera arriba y pecho erguido al inspirar, ciclo de `hz.idle`).
+ * `accClamp`/`turnClamp` (E-17): tope de cada muestra de aceleración (× PLAYER_ACCEL) y de giro
+ * (rad/s) antes de filtrarla, para que un choque o un teleporte no disparen frenada ni derrape;
+ * `snapPx`: salto de posición en un fotograma que cuenta como teleporte (reinicia los muelles).
+ * `start` (E-17): arranque desde parado; con empuje real y poca velocidad la zancada sale con
+ * amplitud `amp` aunque aún no corra, abre la punta `yaw` rad de más (arranque en V), empuja `out`
+ * más hacia fuera y `back` menos hacia atrás; `bob` hunde más la cadera en cada empuje con el empuje.
  */
 export const RIG_LOCO = {
   knee: { idle: 0.85, glide: 1.05, drive: 1.15, sprint: 1.25, back: 1.2, brake: 1.3 },
   pitch: { idle: 0.36, glide: 0.5, drive: 0.6, sprint: 0.76, back: 0.3, brake: -0.04 },
   pelvisZ: -0.02, feetHalf: 0.085, feetIdle: 0.11, restYaw: 0.1, kneeOut: 0.15, reach: 0.985,
-  push: 0.46, rec: 0.26, extHold: 0.25, cruiseDuty: 0.5,
+  push: 0.46, rec: 0.26, extHold: 0.25, cruiseDuty: 0.44,
   out: 0.17, back: 0.1, fore: 0.02, lift: 0.045, pushYaw: 0.75, recPitch: 0.12,
   cruiseAmp: 0.8, sprintAmp: 1.2, shift: 0.035, roll: 0.09, twist: 0.07, bob: 0.012,
   hand: { x: 0.16, y: 0.06, z: 0.12, swing: 0.12 },
-  hz: { idle: 0.3, cruise: 0.8, drive: 1.4, sprintCruise: 1.4, sprint: 2.2 },
+  hz: { idle: 0.3, cruise: 0.68, drive: 1.5, sprintCruise: 1.25, sprint: 2.3 },
+  start: { amp: 0.85, yaw: 0.3, out: 0.06, back: 0.5, bob: 1.2 },
+  accClamp: 3, turnClamp: 6, snapPx: 60,
   tau: { blend: 160, acc: 140, turn: 160, weight: 150 },
   initAccel: 0.6, idleBlend: 0.25, turnMinSpeed: 40,
   acc: [0.05, 0.6], brake: [0.35, 0.85], turn: [1.2, 2.6], turnSpeed: [0.25, 0.6],
@@ -409,6 +417,45 @@ export const RIG_LOCO = {
   },
   lean: { acc: 0.24, accMax: 1.6, turn: 0.3, turnRef: 1.1, turnShift: 0.05 },
   idleK: { breath: 0.016, pitchBreath: 0.085, sway: 0.014, roll: 0.03, yaw: 0.22 },
+} as const
+
+/**
+ * Animación secundaria (E-17): muelles masa-muelle amortiguados por jugador (`hz` propia,
+ * `zeta` amortiguamiento relativo; < 1 rebota). `trunk`: cabeceo total del tronco, que sigue
+ * la postura de los pasos más la inclinación por aceleración (RIG_LOCO.lean); `roll`: ladeo
+ * hacia dentro del giro; `hip`: altura base de la cadera; `arm`: brazos y stick siguen al
+ * tronco con retardo. `brakeLean`: tronco atrás de más (rad) a `brakeRef` de frenada (× PLAYER_ACCEL).
+ * `limits`: topes del cabeceo [atrás, adelante] y del ladeo (rad). `subStepMs`: subpaso de
+ * integración. `grip`/`hand`/`blade`: fracción del retardo de brazos que se lleva el pomo, la
+ * mano libre y la pala sin bola. `head`: fracción del ladeo (`roll`) y del vaivén del cabeceo
+ * (`pitch`) que la cabeza contrarresta.
+ * `edge`: patines de canto con la deriva (velocidad lateral en el marco del cuerpo / rapidez);
+ * hasta `max` rad a `ref` de deriva, entre `speed` px/s, filtrado con `tau` ms.
+ * `bump`: reacción a `player.bump` (px/s): se ignora bajo `min`, `ref` es el choque de
+ * referencia (magnitud 1, tope `cap`), solo si llega antes de `maxAge` ms y, tras otro, si
+ * pasan `refractory` ms o es `stronger` veces mayor. `kick`: golpe (rad/s) a los muelles del
+ * tronco en la dirección del impulso. `bal`: envolvente de equilibrio críticamente amortiguada
+ * (`w` rad/s, pico = magnitud a 1/w s) que abre los brazos (`armsOut`, `armsUp`, unidades de
+ * figura), suelta la mano baja por encima de `release` y flexiona la rodilla `dip`.
+ * `step`: paso de recuperación de `ms` con magnitud ≥ `min`: el pie del lado del impulso sale
+ * `dist` hacia él (levantado `lift` en la primera fracción `out` del paso) y vuelve.
+ */
+export const RIG_MOTION = {
+  trunk: { hz: 2.0, zeta: 0.42 },
+  roll: { hz: 1.9, zeta: 0.46 },
+  hip: { hz: 2.6, zeta: 0.5 },
+  arm: { hz: 1.5, zeta: 0.3 },
+  brakeLean: 0.12, brakeRef: 1.6,
+  limits: { back: -0.45, fwd: 1.25, roll: 0.65 },
+  subStepMs: 8,
+  grip: 0.9, hand: 1.1, blade: 0.5,
+  head: { roll: 0.5, pitch: 0.5 },
+  edge: { max: 0.5, ref: 0.45, speed: [60, 180], tau: 90 },
+  bump: {
+    min: 40, ref: 320, cap: 1.4, maxAge: 250, refractory: 140, stronger: 1.4, kick: 6.5,
+    bal: { w: 10, armsOut: 0.13, armsUp: 0.15, release: 0.15, dip: 0.03 },
+    step: { ms: 320, min: 0.3, dist: 0.13, lift: 0.05, out: 0.4 },
+  },
 } as const
 
 /**

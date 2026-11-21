@@ -118,8 +118,9 @@ export class Skeleton {
       offset3(j[J.hip0 + i], j[J.pelvis], s * d.hipHalf, 0, 0)
     }
     offset3(j[J.neck], j[J.shoulderC], 0, d.neck, 0.02 * d.k)
-    offset3(j[J.neckTop], j[J.neck], 0, 0.03, 0)
-    offset3(j[J.headC], j[J.neck], 0, d.headR * 0.92, d.headR * 0.4 * Math.max(0, Math.sin(pitch)))
+    const hl = p.headLean
+    offset3(j[J.neckTop], j[J.neck], hl.x * 0.5, 0.03, hl.z * 0.5)
+    offset3(j[J.headC], j[J.neck], hl.x, d.headR * 0.92, d.headR * 0.4 * Math.max(0, Math.sin(pitch)) + hl.z)
     // Dorsal entre los omóplatos, como en las camisetas reales: más abajo se leía en la lumbar
     lerp3(this.t1, j[J.pelvis], j[J.shoulderC], 0.7)
     offset3(j[J.numBack], this.t1, 0, 0, -0.09 * d.k)
@@ -129,7 +130,9 @@ export class Skeleton {
     for (let i = 0; i < 2; i++) {
       const f = p.feet[i]
       set3(j[J.foot0 + i], f.x, f.y, f.z)
-      offset3(this.t3, j[J.foot0 + i], 0, d.ankleY, 0)
+      // De canto, el tobillo cae hacia el lado del patín (su derecha es (cos yaw, 0, −sin yaw))
+      const lat = Math.sin(f.roll) * d.ankleY
+      offset3(this.t3, j[J.foot0 + i], lat * Math.cos(f.yaw), Math.cos(f.roll) * d.ankleY, -lat * Math.sin(f.yaw))
       this.twoBone(j[J.hip0 + i], this.t3, d.thigh, d.shin, p.kneePole[i], j[J.knee0 + i], j[J.ankle0 + i], false)
       lerp3(j[J.shorts0 + i], j[J.hip0 + i], j[J.knee0 + i], 0.55)
       lerp3(j[J.padTop0 + i], j[J.knee0 + i], j[J.ankle0 + i], -0.12)
