@@ -43,6 +43,8 @@ export class RinkFx {
   private readonly offQuality: () => void
   private density = 1
   private lastVt = -1
+  /** Suavizado de la intensidad de las ruedas para el `dtMs` del fotograma (igual para todos). */
+  private kSmooth = 0
 
   // Seguimiento por jugador (por índice; se reinicia si cambia el jugador del hueco)
   private readonly seen: (Player | null)[] = new Array(MAX_PLAYERS).fill(null)
@@ -80,7 +82,8 @@ export class RinkFx {
     createRinkFxTextures(scene)
     this.mode = arcade ? RINK_FX.mode.arcade : RINK_FX.mode.reglamento
     const b = RINK_FX.budget
-    this.parts = new ParticlePool(scene, b.particles.alta, b.particles.alta)
+    // Huecos hasta el tope de alta; las imágenes se crean según el nivel actual (applyQuality)
+    this.parts = new ParticlePool(scene, b.particles.alta, 0)
     this.marks = new MarkPool(scene, b.marks.alta)
     this.applyQuality()
     this.offQuality = onQualityChange(() => this.applyQuality())
@@ -102,6 +105,7 @@ export class RinkFx {
     const dtMs = this.lastVt < 0 ? 0 : Math.min(100, Math.max(0, vt - this.lastVt))
     this.lastVt = vt
     if (dtMs <= 0) return
+    this.kSmooth = 1 - Math.exp(-dtMs / S.smoothMs)
     const n = Math.min(players.length, MAX_PLAYERS)
     const emitSteps = live ? steps : 0
     for (let i = 0; i < n; i++) {
@@ -137,7 +141,7 @@ export class RinkFx {
     const dt = dtMs / 1000
     const pvx = this.pvx[i]
     const pvy = this.pvy[i]
-    const prev = Math.hypot(pvx, pvy)
+    const prev = Math.sqrt(pvx * pvx + pvy * pvy)
     let raw = 0
     let kind = NONE
     let dx = 0
@@ -162,7 +166,7 @@ export class RinkFx {
         dy = ux * side * 0.8 + uy * 0.6
       } else if (start > 0) { raw = start; kind = START; dx = -ux; dy = -uy }
     }
-    const k = 1 - Math.exp(-dtMs / S.smoothMs)
+    const k = this.kSmooth
     const was = this.inten[i]
     this.inten[i] += (raw - this.inten[i]) * k
     if (was < 0.4 && this.inten[i] >= 0.4) logRinkFx(this.scene, DRAG_NAMES[kind], p.pos.x, p.pos.y, this.inten[i])
@@ -172,12 +176,12 @@ export class RinkFx {
       this.diry[i] += (dy - this.diry[i]) * k
     }
     const inten = this.inten[i]
-    const dl = Math.hypot(this.dirx[i], this.diry[i])
+    const dl = Math.sqrt(this.dirx[i] * this.dirx[i] + this.diry[i] * this.diry[i])
     if (inten < 0.03 || dl < 0.01) { this.markOn[i] = 0; return }
     const ux = this.dirx[i] / dl
     const uy = this.diry[i] / dl
     // Patines a los lados de la marcha (perpendicular a la velocidad)
-    const sp = Math.hypot(p.velocity.x, p.velocity.y) || 1
+    const sp = Math.sqrt(p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y) || 1
     const gap = S.gapM * PX_PER_M
     const gx = (-p.velocity.y / sp) * gap
     const gy = (p.velocity.x / sp) * gap
