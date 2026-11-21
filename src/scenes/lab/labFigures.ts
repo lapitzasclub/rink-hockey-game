@@ -78,7 +78,7 @@ export interface LabMood {
 }
 
 /** Reacción en juego forzada (E-20): ms desde que empieza; pen = sancionado saliendo. */
-export interface LabReaction { kind: ReactionKind; ms: number; side?: 1 | -1; pen?: boolean }
+export interface LabReaction { kind: ReactionKind; ms: number; side?: 1 | -1; pen?: boolean; /** Ángulo de mundo hacia el «árbitro» de la protesta. */ look?: number }
 
 export interface FigureSpec {
   mood?: LabMood
@@ -153,7 +153,7 @@ export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
   }
   const fr = fig.reaction
   if (fr) {
-    player.reaction = { kind: fr.kind, at: t - fr.ms, until: t - fr.ms + REACTION.ms[fr.kind], side: fr.side ?? 1 }
+    player.reaction = { kind: fr.kind, at: t - fr.ms, until: t - fr.ms + REACTION.ms[fr.kind], side: fr.side ?? 1, tx: fr.look ? player.pos.x + Math.cos(fr.look) * 300 : NaN, ty: fr.look ? player.pos.y + Math.sin(fr.look) * 300 : NaN }
     player.penPhase = fr.pen ? 'out' : undefined
     player.penPhaseAt = t - 1000
   }

@@ -80,14 +80,36 @@ function slump(pose: PuppetPose, ctx: PoseContext, s: number, fi: 0 | 1) {
   to(pose.hands[fi], c.x + s * S.freeX, c.y - S.freeDrop, c.z + S.freeZ, w)
 }
 
-/** Brazos abiertos con las palmas arriba, temblando de indignación. */
-function protest(pose: PuppetPose, u: number, w: number, s: number, fi: 0 | 1) {
+/**
+ * Giro (rad, > 0 hacia la derecha del jugador) de la mirada hacia el punto (tx, ty) de la
+ * reacción, solo visual: `facing` no cambia. 0 si no hay punto.
+ */
+function lookTurn(ctx: PoseContext, r: PlayerReaction) {
+  if (r.tx !== r.tx) return 0
+  const p = ctx.player
+  const a = Math.atan2(r.ty - p.pos.y, r.tx - p.pos.x) - Math.atan2(p.facing.y, p.facing.x)
+  return Math.atan2(Math.sin(a), Math.cos(a))
+}
+
+/** Punto relativo a los hombros girado `tw` en el suelo (el tronco mira al árbitro). */
+function turned(c: V3, dx: number, dy: number, dz: number, tw: number, out: V3) {
+  return set3(out, c.x + dx * Math.cos(tw) + dz * Math.sin(tw), c.y + dy, c.z - dx * Math.sin(tw) + dz * Math.cos(tw))
+}
+
+/** Brazos abiertos con las palmas arriba hacia el árbitro, temblando de indignación. */
+function protest(pose: PuppetPose, ctx: PoseContext, r: PlayerReaction, u: number, w: number, s: number, fi: 0 | 1) {
   const Q = P.protest
   lean(pose, Q.pitch, w)
+  const look = lookTurn(ctx, r)
+  const tw = Math.max(-Q.twist, Math.min(Q.twist, look))
+  pose.trunk.twist += (tw - pose.trunk.twist) * w
+  pose.headYaw += Math.max(-Q.head, Math.min(Q.head, look - tw)) * w
   const c = shoulders(pose)
   const k = wave(u, Q.hz) * Q.shake
-  to(pose.hands[fi], c.x + s * Q.x, c.y + Q.y + k, c.z + Q.z, w)
-  hangStick(pose, c.x - s * Q.x, c.y + Q.y - k, c.z + Q.z, -s * 0.45, -0.85, 0.25, w)
+  turned(c, s * Q.x, Q.y + k, Q.z, tw, top)
+  to(pose.hands[fi], top.x, top.y, top.z, w)
+  turned(c, -s * Q.x, Q.y - k, Q.z, tw, heel)
+  hangStick(pose, heel.x, heel.y, heel.z, -s * 0.45 * Math.cos(tw), -0.85, 0.25, w)
 }
 
 /**
@@ -112,7 +134,9 @@ export function skaterReaction(pose: PuppetPose, ctx: PoseContext) {
       // Golpes de stick contra el suelo: las dos manos en el mango, la pala sube y cae
       const T = P.tap
       lean(pose, pose.trunk.pitch + T.pitch, w)
-      const k = Math.max(0, Math.sin(t * TAU * T.taps)) * w
+      // Cada golpe: sube despacio hasta la cadera (`rise` del ciclo) y cae de golpe al suelo
+      const cyc = (t * T.taps) % 1
+      const k = (cyc < T.rise ? smooth01(cyc / T.rise) : Math.max(0, 1 - (cyc - T.rise) / 0.08)) * w
       pose.stick.top.y += k * T.hand
       pose.stick.heel.y += k * T.heel
       break
@@ -140,8 +164,8 @@ export function skaterReaction(pose: PuppetPose, ctx: PoseContext) {
       hangStick(pose, c.x - s * Q.stickX, c.y + Q.stickY, c.z + Q.z, -s * 0.2, -0.95, -0.15, w)
       break
     }
-    case 'protest': protest(pose, u, w, s, fi); break
-    case 'card': protest(pose, u, w * (1 - smooth01((t - 0.6) / 0.4)), s, fi); break
+    case 'protest': protest(pose, ctx, r, u, w, s, fi); break
+    case 'card': protest(pose, ctx, r, u, w * (1 - smooth01((t - 0.6) / 0.4)), s, fi); break
     case 'own': {
       // El infractor levanta la mano libre: «he sido yo»
       const Q = P.own
@@ -184,12 +208,14 @@ export function goalieReaction(pose: PuppetPose, ctx: PoseContext, hand: V3, s: 
     return true
   }
   if (r.kind === 'phew') {
-    // Resoplido: hombros que caen y vuelven, manopla y stick colgando
+    // Resoplido: cabeza atrás, hombros hundidos y la manopla al casco
     const Q = P.phew
-    const e = pulse(t) * w
-    pose.trunk.pitch += Q.pitch * e
+    const e = Math.min(w, pulse(Math.min(1, t * 1.2)) * 1.4)
+    lean(pose, Q.pitch, e)
+    pose.headLean.z += Q.head * e
+    pose.trunk.roll -= s * Q.roll * e
     pose.pelvis.y -= Q.drop * e
-    mitt.y -= Q.mitt * e
+    to(mitt, -s * Q.mittX, Q.mittY, Q.mittZ, e)
     hand.y -= Q.hand * e
     return true
   }

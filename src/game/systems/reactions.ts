@@ -69,8 +69,8 @@ function react(st: ReactionState, p: Player, kind: ReactionKind, at: number, now
   if (busy(p, now, sinceFor(kind, st, now))) return false
   const until = at + R.ms[kind]
   const r = p.reaction
-  if (!r) { p.reaction = { kind, at, until, side }; return true }
-  r.kind = kind; r.at = at; r.until = until; r.side = side
+  if (!r) { p.reaction = { kind, at, until, side, tx: NaN, ty: NaN }; return true }
+  r.kind = kind; r.at = at; r.until = until; r.side = side; r.tx = NaN; r.ty = NaN
   return true
 }
 
@@ -142,14 +142,25 @@ export function reactPost(st: ReactionState, players: Player[], ball: Ball, carr
   if (shooter) reactMiss(st, players, shooter, ball.x, ball.y, carrierId, now)
 }
 
+/**
+ * La protesta mira al árbitro de su mitad (sistema en diagonal de `systems/officials.ts`: la
+ * mitad derecha junto a la valla lejana, la izquierda junto a la cercana), a su altura de pista.
+ */
+function lookAtReferee(p: Player) {
+  const r = p.reaction
+  if (!r) return
+  r.tx = p.pos.x
+  r.ty = p.pos.x > (LEFT_X + RIGHT_X) / 2 ? RINK.y : RINK.y + RINK.height
+}
+
 /** Falta pitada: la víctima protesta con los brazos abiertos; el infractor levanta la mano o, si ve tarjeta, protesta y sale cabizbajo. */
 export function reactFoul(st: ReactionState, players: Player[], byId_: string, victimId: string, carrierId: string | null, now: number) {
   const off = byId(players, byId_)
   const vic = byId(players, victimId)
-  if (vic && vic !== off) react(st, vic, 'protest', now, now, carrierId)
+  if (vic && vic !== off && react(st, vic, 'protest', now, now, carrierId)) lookAtReferee(vic)
   if (!off) return
   const card = (off.suspendedUntil ?? 0) > now
-  if (card && react(st, off, 'card', now, now, carrierId)) st.patFor = off.id
+  if (card && react(st, off, 'card', now, now, carrierId)) { st.patFor = off.id; lookAtReferee(off) }
   else if (!card) react(st, off, 'own', now, now, carrierId)
 }
 

@@ -25,8 +25,8 @@ export type PlayerMood = { kind: MoodKind; style: number; at: number; until: num
  * resopla, `protest` víctima de falta, `own` infractor, `card` sancionado, `pat` palmada.
  */
 export type ReactionKind = 'mine' | 'tap' | 'rue' | 'miss' | 'phew' | 'protest' | 'own' | 'card' | 'pat'
-/** `at`/`until` en `simNow` (cortar = `until` ≤ ahora); `side` = lado (±1, derecha) del gesto. */
-export type PlayerReaction = { kind: ReactionKind; at: number; until: number; side: 1 | -1 }
+/** `at`/`until` en `simNow` (cortar = `until` ≤ ahora); `side` = lado (±1, derecha) del gesto; `tx`/`ty` = punto de mundo al que mira la protesta (NaN: ninguno). */
+export type PlayerReaction = { kind: ReactionKind; at: number; until: number; side: 1 | -1; tx: number; ty: number }
 
 export type Ball = {
   x: number           // coordenada X mundo — usada por física
