@@ -32,7 +32,7 @@ Art. 7.4: un gol a la vez que la señal de fin de periodo vale y no hay saque de
 
 | Regla | Estado | Paquete |
 |---|---|---|
-| 5.2 juega la bola tras el pitido | ❌ el que saca recibe la posesión (`MatchScene.updateKickoff`) | R-01 |
+| 5.2 juega la bola tras el pitido | ✅ apunta y suelta pase o tiro; pase automático a los 3 s | R-01 |
 | 5.3 visitante abre | ✅ abre el rojo visitante; el azul la 2.ª parte (no hay prórroga) | R-04 |
 | 5.4 saca el que encaja | ✅ | — |
 | 5.5 colocación | ✅ (`matchFlow.kickoffTarget`) | — |

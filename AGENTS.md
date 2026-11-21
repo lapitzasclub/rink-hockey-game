@@ -324,6 +324,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - `/regla` (`.claude/commands/regla.md`, `docs/rules/`): extracto literal del reglamento en `REGLAMENTO.md` como única fuente para los agentes, backlog R-01..R-05 + R-99 con decisiones D-01..D-03, y agentes `regla-engineer` (opus), `regla-builder` (sonnet) y `regla-qa` (haiku); `ai-engineer` acepta R-XX. Las reglas salen de `/evo` en el enrutado de `/dev`.
 - R-05: `kickoffStats.ts` (tracker como `goaliePassStats`) mide en el humo acarreo, cruce a campo rival y pérdidas del saque; evento `at=kickoff` en labAt (requiere `auto=1`). Base en `docs/rules/smoke/2026-11-21-base-*.txt`: hoy el que saca suelta la bola al primer paso y cruza siempre, el rival nunca la gana en 3 s (142 saques reglamento, 145 arcade).
 - R-04: abre el partido el rojo visitante y la 2.ª parte el azul (art. 5.3, D-02).
+- R-01: al pitar el saque de centro el que saca ya no conduce: apunta y suelta como en el libre indirecto (`matchFlow.updateKickoffTakeState`, `MatchScene.takeKickoff`, apuntado común `aimSetPieceTaker`). El rojo pasa al compañero a los `KICKOFF_AI_AIM_MS`; la persona tiene `KICKOFF_AUTO_MS` antes del pase automático (D-05). Humo 20 × 2: goles/min, pases y posesión dentro de ruido; `at=kickoff` y `kickoffStats` ven el fin del saque en la suelta.
 
 ### 2026-11-21 — workflow general (/dev) y gasto de IA
 

@@ -10,13 +10,14 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 | D-02 | Quién es local: el azul (equipo de la persona) es local, así que el rojo visitante abre la 1.ª parte y la prórroga, y el azul la 2.ª (art. 5.3). | decidida (coordinador); se revisa si el usuario lo pide |
 | D-03 | Control del saque para la persona: igual que el libre indirecto (apuntar con el stick y soltar con pase o tiro). Sin botón, a los `KICKOFF_AUTO_MS` pasa solo al compañero del círculo para no atascar el partido. | decidida (coordinador) |
 | D-04 | El libre indirecto **no** va a la escena 2.5D: sale ~21 veces por partido de 4 min (humo E-99: 431 en 20 partidos) frente a ~4 penaltis y directos, y es un pase, no un duelo con el portero. Se mejora su apuntado en la cámara del partido (R-06). | decidida (usuario, 2026-11-21) |
+| D-05 | En el saque de centro, entre el pitido y el pase el resto queda quieto como en el libre indirecto (el rival entra al soltar): la IA pasa a los `KICKOFF_AI_AIM_MS` y la persona tiene `KICKOFF_AUTO_MS` antes del pase automático al compañero del círculo. R-01 baja a `regla-builder` porque copia el apuntado de `updateFoulRestartState`. | decidida (coordinador) |
 
 ## Estado
 
 | ID | Paquete | Agente · modelo | Depende de | Estado |
 |---|---|---|---|---|
 | R-05 | Contadores del saque en el humo y base | regla-builder · sonnet | — | ✅ |
-| R-01 | Saque de centro con pase | regla-engineer · opus | R-05 | ⏳ |
+| R-01 | Saque de centro con pase | regla-builder · sonnet | R-05 | ✅ |
 | R-02 | Cinco segundos tras el saque | regla-builder · sonnet | R-01 | ⏳ |
 | R-03 | Gol directo de saque o libre indirecto anulado | regla-engineer · opus | R-01 | ⏳ |
 | R-04 | El visitante abre el partido | coordinador | — | ✅ |

@@ -132,6 +132,8 @@ export type ActiveKickoff = {
   partnerPlayerId: string | null
   readyAt: number
   deadline: number
+  /** Instante del pitido; null mientras se colocan. El que saca juega la bola tras él. */
+  whistledAt: number | null
 }
 
 export const ROLE = {

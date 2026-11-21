@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import {
   BULLY_PLAYER_OFFSET, BULLY_SETUP_MS, CENTER_CIRCLE_RADIUS, DIRECT_FREE_HIT_SPOT_OFFSET, FOUL_AI_AIM_MS, FOUL_MAX_SETUP_MS,
+  KICKOFF_AI_AIM_MS, KICKOFF_AUTO_MS,
   FOUL_SETUP_MS, GAME_HEIGHT, GAME_WIDTH, GOAL_NET_HOLD_X, GOALIE_BASE_X, GOALIE_RADIUS, KICKOFF_MAX_SETUP_MS,
   KICKOFF_MIN_SETUP_MS, PENALTY_AREA_DEPTH, PENALTY_AREA_HEIGHT, PENALTY_SPOT_OFFSET, PLAYER_ACCEL, PLAYER_RADIUS,
   RESTART_ARRIVE_PX, RESTART_MIN_DISTANCE, RESTART_SKATE_DECEL, RESTART_SKATE_SPEED, RINK,
@@ -48,6 +49,7 @@ export function resetKickoffState(options: {
     partnerPlayerId: partner?.id ?? null,
     readyAt: timeNow + (snap ? 0 : KICKOFF_MIN_SETUP_MS),
     deadline: timeNow + (snap ? 0 : KICKOFF_MAX_SETUP_MS),
+    whistledAt: null,
   }
   if (snap) {
     for (const p of players) {
@@ -167,7 +169,8 @@ function placePlayer(p: Player, target: Vector, look: Vector, dt: number) {
 
 /**
  * Ritual del saque de centro: todos patinan a su sitio; cuando están colocados
- * (o vence el plazo) el árbitro pita y el que saca recibe la bola.
+ * (o vence el plazo) el árbitro pita; la bola sigue en el centro y el que saca
+ * la juega con un pase (`updateKickoffTakeState`).
  * Devuelve el que saca al pitar, o null mientras se colocan.
  */
 export function updateKickoffState(options: {
@@ -190,6 +193,49 @@ export function updateKickoffState(options: {
   ball.y = GAME_HEIGHT / 2
   if (time < kickoff.readyAt || (!allSet && time < kickoff.deadline)) return null
   return findPlayerById(players, kickoff.takerPlayerId)
+}
+
+/**
+ * Tras el pitido del saque de centro (art. 5.2) el que saca sigue pegado a la
+ * bola y la juega con un pase o tiro; el resto espera quieto. Mismo contrato que
+ * `updateFoulRestartState`: release=true cuando hay que soltar. El rojo apunta al
+ * compañero del círculo; el azul, si no suelta a tiempo, pasa solo.
+ */
+export function updateKickoffTakeState(options: {
+  time: number
+  kickoff: ActiveKickoff
+  players: Player[]
+  passJustDown: boolean
+  shootJustDown: boolean
+}) {
+  const { time, kickoff, players, passJustDown, shootJustDown } = options
+  const taker = findPlayerById(players, kickoff.takerPlayerId)
+  const idle = { taker, shouldPass: false, shouldShot: false, release: false, autoFacing: null as Vector | null }
+  if (!taker) return idle
+  taker.velocity = { x: 0, y: 0 }
+  keepTakerAtBall(taker)
+  const elapsed = time - (kickoff.whistledAt ?? time)
+  const partner = kickoff.partnerPlayerId ? findPlayerById(players, kickoff.partnerPlayerId) : null
+  let autoFacing: Vector | null = null
+  if (taker.team === 'red' || elapsed >= KICKOFF_AUTO_MS) {
+    const dx = partner ? partner.pos.x - taker.pos.x : attackDir(taker)
+    const dy = partner ? partner.pos.y - taker.pos.y : 0
+    const len = Math.hypot(dx, dy) || 1
+    autoFacing = { x: dx / len, y: dy / len }
+  }
+  if (taker.team === 'red') {
+    return { ...idle, shouldPass: true, release: elapsed >= KICKOFF_AI_AIM_MS, autoFacing }
+  }
+  if (elapsed >= KICKOFF_AUTO_MS) return { ...idle, shouldPass: true, release: true, autoFacing }
+  const shouldPass = passJustDown
+  const shouldShot = shootJustDown
+  return { ...idle, shouldPass, shouldShot, release: shouldPass || shouldShot }
+}
+
+/** Mantiene al que saca pegado a la bola, detrás de ella respecto a su ataque. */
+function keepTakerAtBall(taker: Player) {
+  taker.pos.x = GAME_WIDTH / 2 - attackDir(taker) * (PLAYER_RADIUS + 6)
+  taker.pos.y = GAME_HEIGHT / 2
 }
 
 /**

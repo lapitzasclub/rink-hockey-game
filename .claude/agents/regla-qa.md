@@ -28,3 +28,6 @@ Humo: <archivo> (<n>, fallidos <n>, atascos <n>, errores <n>)
 bal-compare: <líneas relevantes>
 Capturas: <n> en <carpeta>, errores de consola <n>
 ```
+
+## Humos en serie
+Nunca lances dos humos a la vez: el segundo sale solo cuando llegue el aviso de fin del primero. Si te equivocas, no lo repitas por tu cuenta: dilo en el informe.

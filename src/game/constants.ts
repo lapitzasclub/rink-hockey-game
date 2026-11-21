@@ -337,6 +337,10 @@ export const RESTART_ARRIVE_PX = 6
 export const KICKOFF_MIN_SETUP_MS = 900
 /** Si alguien no ha llegado a su sitio en este tiempo, se pita igual y el resto se recoloca (ms). */
 export const KICKOFF_MAX_SETUP_MS = 7000
+/** Pausa de la IA entre el pitido del saque de centro y su pase (ms; art. 5.2). */
+export const KICKOFF_AI_AIM_MS = 450
+/** Si el humano no saca en este tiempo tras el pitido, pasa solo al compañero (ms). */
+export const KICKOFF_AUTO_MS = 3000
 /** Plazo para colocarse en un saque de falta o neutral antes de sacar igualmente (ms). */
 export const FOUL_MAX_SETUP_MS = 5000
 /** Pausa de la IA entre el pitido de un directo o penalti y el lanzamiento (ms). */

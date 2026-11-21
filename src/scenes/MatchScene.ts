@@ -57,6 +57,7 @@ import {
   updateBullyState as updateBullyPhase,
   updateFoulRestartState as updateFoulRestartPhase,
   updateKickoffState,
+  updateKickoffTakeState,
 } from '../game/systems/matchFlow'
 import {
   handleBallControlAction,
@@ -1444,21 +1445,51 @@ export class MatchScene extends Phaser.Scene {
     if (!kickoff) return
     this.ballVelocity = { x: 0, y: 0 }
     this.ballCarrierId = null
+    if (kickoff.whistledAt !== null) { this.takeKickoff(kickoff, time); return }
     const taker = updateKickoffState({ time, dt, kickoff, players: this.players, ball: this.ball })
     if (!taker && kickoff.takerPlayerId) return
-    this.activeKickoff = null
-    this.ballIgnoreContactsUntil = 0
-    if (taker) {
-      this.ballCarrierId = taker.id
-      this.lastTouch = taker.team
-      if (taker.team === 'blue') {
-        const index = getControllablePlayers(this.players).findIndex((p) => p.id === taker.id)
-        if (index >= 0) this.controlledPlayerIndex = index
-      }
-    }
     this.officials.whistle()
     this.events.emit('match:kickoff', { team: kickoff.team, period: this.currentPeriod, time })
     playWhistle()
+    if (!taker) {
+      this.activeKickoff = null
+      this.ballIgnoreContactsUntil = 0
+      return
+    }
+    // Art. 5.2: la bola queda en el centro y el que saca la juega con un pase
+    kickoff.whistledAt = time
+    this.lastTouch = taker.team
+    if (taker.team === 'blue') {
+      const index = getControllablePlayers(this.players).findIndex((p) => p.id === taker.id)
+      if (index >= 0) this.controlledPlayerIndex = index
+    }
+  }
+
+  /** Tras el pitido: el que saca apunta y suelta pase o tiro; el resto sigue quieto. */
+  private takeKickoff(kickoff: ActiveKickoff, time: number) {
+    const state = updateKickoffTakeState({ time, kickoff, players: this.players, ...this.foulChargeInput(findPlayerById(this.players, kickoff.takerPlayerId) ?? undefined) })
+    const taker = state.taker
+    if (!taker) { this.activeKickoff = null; this.ballIgnoreContactsUntil = 0; return }
+    this.aimSetPieceTaker(taker, state.autoFacing)
+    if (!state.release) {
+      this.drawAimIndicator(taker, 'free-hit', time)
+      return
+    }
+    this.ballCarrierId = taker.id
+    this.lastTouch = taker.team
+    const charge = taker.team === 'blue' && !state.autoFacing ?this.foulChargeLevel : this.aiChargeTarget(taker, 'pass')
+    this.foulChargeLevel = 0
+    taker.charge = undefined
+    if (state.shouldPass) this.tryPass(taker, charge)
+    else if (state.shouldShot) this.tryShot(taker, false, charge)
+    this.aimIndicator.clear()
+    this.ballIgnoreContactsUntil = 0
+    this.activeKickoff = null
+    this.prevTouchButtons = {
+      pass: !!this.joystickInput.pass,
+      shoot: !!this.joystickInput.shoot,
+      switch: !!this.joystickInput.switch,
+    }
   }
 
   /** Inicia el estado de ejecución de falta delegando a matchFlow. */
@@ -1514,22 +1545,7 @@ export class MatchScene extends Phaser.Scene {
       playWhistle()
     }
 
-    // Apuntería: IA auto, joystick táctil o teclado WASD/flechas
-    const stickLen = Math.hypot(this.joystickInput.x, this.joystickInput.y)
-    if (state.taker?.team === 'red' && state.autoFacing) {
-      state.taker.facing = state.autoFacing
-    } else if (state.taker && state.taker.team === 'blue') {
-      if (stickLen > 0.15) {
-        state.taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
-      } else {
-        let kx = 0, ky = 0
-        const axis = this.keyboardAxis()
-        kx += axis.x
-        ky += axis.y
-        const kLen = Math.hypot(kx, ky)
-        if (kLen > 0) state.taker.facing = { x: kx / kLen, y: ky / kLen }
-      }
-    }
+    this.aimSetPieceTaker(state.taker, state.autoFacing)
 
     // Indicador de puntería: visible cuando ya se puede actuar y no se ha soltado aún
     if (state.taker && this.activeFoulRestart && time >= this.activeFoulRestart.readyAt && !state.release) {
@@ -1563,6 +1579,24 @@ export class MatchScene extends Phaser.Scene {
       pass: !!this.joystickInput.pass,
       shoot: !!this.joystickInput.shoot,
       switch: !!this.joystickInput.switch,
+    }
+  }
+
+  /** Apuntería del que saca: IA auto, joystick táctil o teclado WASD/flechas. */
+  private aimSetPieceTaker(taker: Player | null, autoFacing: Vector | null) {
+    if (!taker) return
+    if (taker.team === 'red') {
+      if (autoFacing) taker.facing = autoFacing
+      return
+    }
+    if (autoFacing) { taker.facing = autoFacing; return }
+    const stickLen = Math.hypot(this.joystickInput.x, this.joystickInput.y)
+    if (stickLen > 0.15) {
+      taker.facing = { x: this.joystickInput.x / stickLen, y: this.joystickInput.y / stickLen }
+    } else {
+      const axis = this.keyboardAxis()
+      const kLen = Math.hypot(axis.x, axis.y)
+      if (kLen > 0) taker.facing = { x: axis.x / kLen, y: axis.y / kLen }
     }
   }
 
