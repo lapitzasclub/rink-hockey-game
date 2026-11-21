@@ -4,3 +4,5 @@ Una fila por paquete cerrado, de cualquier workflow (`/dev`, `/gfx`, `/perf`, `/
 
 | Fecha | Paquete | Agentes (modelo) | Rondas | Tokens (k) | Duración (min) | Resultado | Nota |
 |---|---|---|---|---|---|---|---|
+| 2026-11-21 | evo · referencia de humo (20 × 2 modos) | perf-qa (haiku) | 1 | 32 | 5,4 | hecho | medida delegada en haiku: el coste de esperar el humo no lo paga opus |
+| 2026-11-21 | evo E-17 animación secundaria | gfx-engineer (opus) | 1 | 136 | 24,9 | aceptado | 141 herramientas; buena parte en capturas y en el EBUSY de Vite con gfx-shot dentro del worktree |

@@ -322,7 +322,8 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 - `/dev` (`.claude/commands/dev.md`, `docs/dev/`) para lo que no es de un dominio con workflow propio. Enruta cada tarea al modelo más barato que la hace bien: `dev-scout` (haiku, localiza y devuelve un mapa `archivo:línea`), `dev-builder` (sonnet, mecánico con patrón), `dev-engineer` (opus, lógica difícil), `dev-qa` (haiku, medir, papeleo e integración).
 - Reglas de gasto comunes a todos los workflows (WORKFLOW §3) y registro de tokens y duración por paquete en `docs/dev/LEDGER.md`.
-- `/evo`: E-15 (física de patinaje), E-16 (partículas de pista), E-17 (animación secundaria) y E-18 (modelo de cerca) en el backlog; contrato `player.bump` en `types.ts`.
+- `/evo`: E-15 (física de patinaje), E-16 (partículas de pista), E-17 (animación secundaria) y E-18 (modelo de cerca) en el backlog; contrato `player.bump` en `types.ts`. Referencia de humo nueva en main: `docs/evo/smoke/2026-11-21-referencia-main.txt`.
+- E-17: muelles de peso en tronco, cadera y brazos (`render/puppet/secondary.ts`, `RIG_MOTION`), reacción a `player.bump`, zancadas de arranque, cabeza estabilizada y patín de canto en deriva; tiras `?lab=players&strip=arranque|frenada|curva|choque`.
 
 ### 2026-11-21 — dentro del Loyola, como un juego nativo
 

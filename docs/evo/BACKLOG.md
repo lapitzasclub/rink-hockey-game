@@ -19,7 +19,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-15 | Física de patinaje: inercia, giro limitado por velocidad, choques con masa, rebote en la valla | ai-engineer · opus | ⬜ |
 | E-16 | Partículas de pista en los dos modos: ruedas, frenadas, marcas, impactos | gfx-engineer · opus | ⬜ |
-| E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ⬜ |
+| E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ⬜ |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
 
@@ -130,6 +130,7 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Objetivo:** que el cuerpo tenga peso: tronco y cadera sobre muelles amortiguados que siguen la aceleración (se echa atrás al frenar, se carga al arrancar, se inclina hacia dentro con la aceleración centrípeta v²/r), brazos y stick con acción superpuesta y retardo, cabeza estabilizada mirando al juego, impulsos de zancada proporcionales a la aceleración, y reacción a `player.bump` (sacudida en la dirección del impulso y paso de recuperación). Patines de canto cuando la velocidad y el rumbo no coinciden (deriva de E-15).
 **Archivos:** `render/puppet/` (locomotion, upperBody, pose, rig), `systems/visuals.ts`, `render/artSpec.ts`.
 **Aceptación:** tiras del laboratorio antes y después (arranque, frenada, curva, choque); partido en vivo sin temblores; calidad baja también se ve bien; banco movil-bajo en E-99.
+**Hecho:** `render/puppet/secondary.ts`: muelles por jugador (cabeceo, ladeo de la curva, cadera, brazos) con subpasos de 8 ms y estado preasignado; la inclinación de E-11 es su objetivo. `player.bump` se lee una vez por choque (umbral 40 px/s): golpe al tronco, brazos abiertos, mano baja suelta y paso de recuperación en 250–450 ms. Zancadas en V y más largas al arrancar, cabeza estabilizada (`headLean`), patín de canto en deriva (`foot.roll`). Constantes en `RIG_MOTION`. Tiras `?lab=players&strip=arranque|frenada|curva|choque` (`labMotionStrips.ts`). Capturas en `shots/E-17/`. Pendiente: el portero sin animación secundaria; calibrar el bump con la magnitud real de E-15; fallo del laboratorio que ya existía (piezas sueltas en la fila superior de las hojas con muchas figuras).
 
 ## E-18 — Modelo de cerca
 
