@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import { worldToScreen } from '../../game/render/viewTransform'
+import { FREE_HIT_BOARD_MARGIN, RINK } from '../../game/constants'
 import type { LabParams } from './labParams'
 import type { SmokeHooks } from './labSmoke'
 
@@ -181,8 +182,13 @@ export function forceSetPiece(match: Phaser.Scene, p: LabParams) {
         const by = s.players.find(q => q.team !== p.spTaker && q.role !== 'goalie')
         if (!taker || !by) return
         const penalty = p.kind === 'penalty'
+        // `wall=1`: libre a 70 cm de la valla de detrás del ejecutante (caso del atasco al colocarse)
+        const ownGoalie = s.players.find(q => q.team === p.spTaker && q.role === 'goalie')
+        const leftSide = (ownGoalie?.pos.x ?? 0) < RINK.x + RINK.width / 2
+        const wallX = leftSide ? RINK.x + FREE_HIT_BOARD_MARGIN : RINK.x + RINK.width - FREE_HIT_BOARD_MARGIN
         s.ruleState.pendingFoul = {
-          againstTeam: by.team, byPlayerId: by.id, victimPlayerId: taker.id, restartX: taker.pos.x, restartY: taker.pos.y,
+          againstTeam: by.team, byPlayerId: by.id, victimPlayerId: taker.id,
+          restartX: p.spWall ? wallX : taker.pos.x, restartY: p.spWall ? RINK.y + RINK.height * 0.3 : taker.pos.y,
           message: p.spFree ? 'LIBRE INDIRECTO' : penalty ? 'PENALTI' : 'LIBRE DIRECTO',
           sanction: p.spFree ? 'free-hit' : penalty ? 'penalty' : 'direct-free-hit',
         }
