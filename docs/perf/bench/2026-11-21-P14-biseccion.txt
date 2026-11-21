@@ -1,0 +1,66 @@
+# P-14 biseccion movil-bajo reglamento runs=3
+
+run 1/3: 101.8 fps · frame p50 9.6 p95 10.3 ms · lógica 2.52 · render 5.83 (p95 6.7) ms · tirones 2 · errores 0
+run 2/3: 94.8 fps · frame p50 9.6 p95 19.2 ms · lógica 2.93 · render 6.31 (p95 7.6) ms · tirones 3 · errores 0
+run 3/3: 99.8 fps · frame p50 10.1 p95 10.2 ms · lógica 2.6 · render 5.74 (p95 6.3) ms · tirones 2 · errores 0
+mediana: 99.8 fps · frame p95 10.3 ms · lógica 2.6 ms · render 5.83 ms (p95 6.7) · tirones/min 12.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":99.8,"frameP50":9.6,"frameP95":10.3,"frameP99":18.4,"updateAvg":2.6,"updateP95":4.3,"renderAvg":5.83,"renderP95":6.7,"jankPerMin":11.97365795250449,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== fda813f (E-17)
+run 1/3: 98.7 fps · frame p50 10.1 p95 10.2 ms · lógica 2.76 · render 5.84 (p95 6.7) ms · tirones 2 · errores 0
+run 2/3: 99.6 fps · frame p50 9.3 p95 10.6 ms · lógica 2.82 · render 5.86 (p95 7.6) ms · tirones 2 · errores 0
+run 3/3: 101.5 fps · frame p50 9.6 p95 10.3 ms · lógica 2.73 · render 5.82 (p95 6.6) ms · tirones 2 · errores 0
+mediana: 99.6 fps · frame p95 10.3 ms · lógica 2.76 ms · render 5.84 ms (p95 6.7) · tirones/min 12.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":99.6,"frameP50":9.6,"frameP95":10.3,"frameP99":19.4,"updateAvg":2.76,"updateP95":4.6,"renderAvg":5.84,"renderP95":6.7,"jankPerMin":11.988011988011989,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== de24216 (E-15)
+run 1/3: 98 fps · frame p50 9.3 p95 18.4 ms · lógica 2.79 · render 6.21 (p95 8) ms · tirones 3 · errores 0
+run 2/3: 99.8 fps · frame p50 9.7 p95 10.3 ms · lógica 2.79 · render 5.88 (p95 7) ms · tirones 3 · errores 0
+run 3/3: 99.1 fps · frame p50 9.8 p95 10.3 ms · lógica 2.75 · render 5.97 (p95 7.3) ms · tirones 3 · errores 0
+mediana: 99.1 fps · frame p95 10.3 ms · lógica 2.79 ms · render 5.97 ms (p95 7.3) · tirones/min 18.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":99.1,"frameP50":9.7,"frameP95":10.3,"frameP99":19.8,"updateAvg":2.79,"updateP95":4.5,"renderAvg":5.97,"renderP95":7.3,"jankPerMin":17.97842588893328,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== 67215f9 (E-18)
+run 1/3: 99.7 fps · frame p50 9.7 p95 10.5 ms · lógica 2.76 · render 6.04 (p95 7.1) ms · tirones 3 · errores 0
+run 2/3: 98.9 fps · frame p50 9.6 p95 10.6 ms · lógica 2.85 · render 6.01 (p95 7.3) ms · tirones 3 · errores 0
+run 3/3: 98.9 fps · frame p50 9.7 p95 10.4 ms · lógica 2.87 · render 6 (p95 7.2) ms · tirones 3 · errores 0
+mediana: 98.9 fps · frame p95 10.5 ms · lógica 2.85 ms · render 6.01 ms (p95 7.2) · tirones/min 18.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":98.9,"frameP50":9.7,"frameP95":10.5,"frameP99":19.9,"updateAvg":2.85,"updateP95":4.7,"renderAvg":6.01,"renderP95":7.2,"jankPerMin":17.97483523067705,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== 5370e4d (E-16)
+run 1/3: 94 fps · frame p50 10.1 p95 18.9 ms · lógica 3.1 · render 6.11 (p95 7.4) ms · tirones 3 · errores 0
+run 2/3: 92.7 fps · frame p50 9.7 p95 19.3 ms · lógica 3.27 · render 6.4 (p95 8) ms · tirones 3 · errores 0
+run 3/3: 92.7 fps · frame p50 10.1 p95 19.3 ms · lógica 3.25 · render 6.47 (p95 7.8) ms · tirones 2 · errores 0
+mediana: 92.7 fps · frame p95 19.3 ms · lógica 3.25 ms · render 6.4 ms (p95 7.8) · tirones/min 18.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":92.7,"frameP50":10.1,"frameP95":19.3,"frameP99":20.3,"updateAvg":3.25,"updateP95":5.4,"renderAvg":6.4,"renderP95":7.8,"jankPerMin":17.97483523067705,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== f8eff98 (E-19)
+run 1/3: 87.4 fps · frame p50 9.7 p95 19.4 ms · lógica 3.42 · render 6.84 (p95 10) ms · tirones 7 · errores 0
+run 2/3: 95.3 fps · frame p50 10.1 p95 18.8 ms · lógica 3.09 · render 6.32 (p95 7.2) ms · tirones 4 · errores 0
+run 3/3: 96.3 fps · frame p50 9.7 p95 18.8 ms · lógica 2.95 · render 6.34 (p95 7.4) ms · tirones 2 · errores 0
+mediana: 95.3 fps · frame p95 18.8 ms · lógica 3.09 ms · render 6.34 ms (p95 7.4) · tirones/min 23.9
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":95.3,"frameP50":9.7,"frameP95":18.8,"frameP99":20.3,"updateAvg":3.09,"updateP95":5,"renderAvg":6.34,"renderP95":7.4,"jankPerMin":23.940149625935163,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== 84ddf5f (E-20)
+run 1/3: 94.6 fps · frame p50 9.7 p95 18.9 ms · lógica 3.05 · render 6.48 (p95 7.6) ms · tirones 2 · errores 0
+run 2/3: 95.9 fps · frame p50 9.7 p95 18.8 ms · lógica 2.99 · render 6.35 (p95 7.4) ms · tirones 3 · errores 0
+run 3/3: 91.5 fps · frame p50 10.1 p95 19.3 ms · lógica 3.34 · render 6.35 (p95 9) ms · tirones 6 · errores 0
+mediana: 94.6 fps · frame p95 18.9 ms · lógica 3.05 ms · render 6.35 ms (p95 7.6) · tirones/min 18.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":94.6,"frameP50":9.7,"frameP95":18.9,"frameP99":19.9,"updateAvg":3.05,"updateP95":5,"renderAvg":6.35,"renderP95":7.6,"jankPerMin":17.965864856772132,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+== a112839 (E-21)
+run 1/3: 93.2 fps · frame p50 10.1 p95 19.7 ms · lógica 3.27 · render 6.37 (p95 7.5) ms · tirones 2 · errores 0
+run 2/3: 96.6 fps · frame p50 9.8 p95 18.5 ms · lógica 2.83 · render 6.43 (p95 7.6) ms · tirones 3 · errores 0
+run 3/3: 92.2 fps · frame p50 9.7 p95 19.3 ms · lógica 3.27 · render 6.49 (p95 7.8) ms · tirones 6 · errores 0
+mediana: 93.2 fps · frame p95 19.3 ms · lógica 3.27 ms · render 6.43 ms (p95 7.6) · tirones/min 17.9
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":93.2,"frameP50":9.8,"frameP95":19.3,"frameP99":20.3,"updateAvg":3.27,"updateP95":5.3,"renderAvg":6.43,"renderP95":7.6,"jankPerMin":17.942583732057415,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+
+FIN

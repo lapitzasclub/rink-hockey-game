@@ -24,7 +24,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-19 | Celebraciones y parones: gol, descanso y final de partido | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
 | E-20 | Reacciones en juego: parada, palo, falta, tarjeta | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
 | E-21 | Ceremonia: salida al campo, saludo final y goles con peso | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
-| E-99 | Cierre: humo final, banco movil-bajo frente a base en la misma máquina, informe (los niveles van en `/bal` B-04) | coordinador + perf-qa · haiku | 🟨 |
+| E-99 | Cierre: humo final, banco movil-bajo frente a base en la misma máquina, informe (los niveles van en `/bal` B-04) | coordinador + perf-qa · haiku | ✅ 2026-11-21 (margen del fotograma en `/perf` P-15) |
 
 IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos. E-15 (física), E-16 (partículas) y E-17 (animación) van en paralelo; E-18 tras E-17 (mismos archivos del rig).
 
@@ -170,5 +170,6 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 
 **Banco 2026-11-21** (`smoke/2026-11-21-E99-banco.txt`, movil-bajo, base `b5dd031` frente a main en la misma máquina): arcade igual (82,4 → 83,3 fps); reglamento −20 % (100,5 → 80,1 fps, p95 10,3 → 20,4 ms, lógica +42 %). Dudoso: la medida de main en reglamento fue la última y coincidió con el arranque de E-20 y E-21 (dos Vite y humos en la máquina). Repetir con la máquina libre y orden alterno (main, base, main, base) antes de abrir un paquete `/perf`.
 **Repetición** (máquina libre, orden alterno, main = E-21): reglamento 99,1 → 94,3 y 100,2 → 95,7 fps (−5 %), p95 10,3 → 19,3 / 18,4 ms (+80 %), lógica +16–19 %; arcade 95,5 → 84,9 fps (−11 %), lógica +30 %. La regresión es real y acumulada (E-15…E-21): pasa a `/perf` P-14. E-99 queda abierto hasta que P-14 cierre.
+**P-14 cerrado:** E-16 dejaba cientos de imágenes muertas en la lista de pintado; arreglado (+2–6 fps, arcade 82,9 → 88,7). El p95 bimodal no es de E-16 (sigue igual con las partículas apagadas): la media del fotograma roza los 10 ms del banco de 100 Hz; pasa a P-15. Humo de cierre en `docs/perf/bench/2026-11-21-P14-humo-*.txt`: sin diferencias, 0 atascos, 0 errores. E-99 cerrado.
 
 Humo final en los dos modos frente a la referencia nueva, una prueba por nivel (goles encajados por minuto contra la IA), AGENTS.md al día e informe corto.

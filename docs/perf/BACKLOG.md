@@ -19,7 +19,8 @@ Paquetes de trabajo (P-XX) del workflow de rendimiento ([WORKFLOW.md](./WORKFLOW
 | P-11 | Menú: mismas reglas y medida propia (`--menu`) | builder · sonnet | ⬜ |
 | P-12 | Pruebas en dispositivos reales con `?perf=1` (Android gama baja, iPhone) | usuario + qa | ⬜ |
 | P-13 | Memoria de texturas del pabellón (4 lienzos de 1960×1240) | builder · sonnet | ⬜ |
-| P-14 | Regresión de E-15…E-21 en movil-bajo: lógica +16–30 %, p95 de reglamento ×1,8 (`docs/evo/smoke/2026-11-21-E99-banco.txt`) | engineer · opus | 🟨 |
+| P-14 | Regresión de E-15…E-21 en movil-bajo: lógica +16–30 %, p95 de reglamento ×1,8 (`docs/evo/smoke/2026-11-21-E99-banco.txt`) | engineer · opus | ✅ 2026-11-21 (parcial: +2–6 fps; el p95 pasa a P-15) |
+| P-15 | Margen del fotograma en movil-bajo: media de ~9 ms pegada al umbral de 10 ms del banco (p95 bimodal 10/19 ms); perfilar el fotograma entero, empezando por la lógica (2,6 → 3,0 ms desde E-15) | engineer · opus | ⬜ |
 
 ## Medidas
 
@@ -52,6 +53,14 @@ Base `a78720b` → final de la sesión 26 (mediana de 3; `--soft`, de 2). fps to
 | DP-1 | ¿Renderizar a la resolución de la pantalla (hasta 1080p de alto) en calidad alta? Hoy el lienzo es siempre de 720 px de alto y el navegador lo escala: barato, pero se ve blando en monitores de 1080p o más. Cuesta ~2,25× relleno de píxeles en 1080p. | pendiente (usuario) |
 
 ## Encargos
+
+### P-14 — Regresión de E-16 en movil-bajo
+
+- Bisección (`bench/2026-11-21-P14-biseccion.txt`): el salto de p95 10 → 19 ms aparece en E-16 (partículas de pista).
+- Causa encontrada: los pools dejaban cientos de imágenes ocultas en la lista de pintado (240 partículas creadas al tope de alta en cualquier nivel y hasta 200 marcas), que se filtraban por cámara y se ordenaban cada fotograma. Ahora un hueco muerto sale de la lista y vuelve al nacer, y las partículas se crean según el nivel (`render/rinkFxPool.ts`, `render/rinkFx.ts`). Sin cambio visual.
+- Banco movil-bajo, orden alterno frente a main (`bench/2026-11-21-P14-banco.txt`): reglamento 95,4/95,3 → 97,6/96 fps; arcade 82,9 → 88,7 fps, tirones 47,9 → 30/min. El p95 sigue bimodal (18,3 y 10,4 ms frente a 18,8 y 18,9).
+- Ronda 2: el efecto entero mide < 0,1 ms por fotograma, y con las partículas apagadas (`quality=custom&…&fx=0`) el p95 bimodal y la lógica de 3,0–3,1 ms siguen igual. No es E-16: la media del fotograma (~9 ms) roza el umbral de 10 ms del banco (pantalla de 100 Hz) y cualquier extra la empuja a perder un fotograma. En un móvil de 60 Hz (16,7 ms) no se nota. Pasa a P-15.
+- Humo: reglamento 1,64 ± 0,19 frente a 1,44 ± 0,17 de E-21; arcade en paralelo con main 1,70 ± 0,24 frente a 1,95 ± 0,29 (solapan; la 1.ª tanda contra E-21 no solapaba y era ruido). 0 atascos y 0 errores.
 
 ### P-08 — Resolución de render nítida
 
