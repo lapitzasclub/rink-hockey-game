@@ -23,7 +23,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-19 | Celebraciones y parones: gol, descanso y final de partido | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
 | E-20 | Reacciones en juego: parada, palo, falta, tarjeta | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
-| E-21 | Ceremonia: salida al campo, saludo final y goles con peso | gfx-engineer · opus | 🟨 |
+| E-21 | Ceremonia: salida al campo, saludo final y goles con peso | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
 | E-99 | Cierre: humo final, banco movil-bajo frente a base en la misma máquina, informe (los niveles van en `/bal` B-04) | coordinador + perf-qa · haiku | 🟨 |
 
 IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos. E-15 (física), E-16 (partículas) y E-17 (animación) van en paralelo; E-18 tras E-17 (mismos archivos del rig).
@@ -164,9 +164,11 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Pedido del usuario (2026-11-21):** el mismo que E-20.
 **Objetivo:** salida al campo patinando desde los banquillos con saludo de capitanes antes del primer saque (reloj parado); saludo final en fila, choque de manos entre equipos y saludo a la grada; celebración escalada por importancia (gol en el último minuto, del empate o de la remontada: más grande y el banquillo salta a la pista; hat-trick con gesto propio y grada más fuerte).
 **Aceptación:** build; capturas de la salida, el saludo y un gol con peso (laboratorio que los fuerce); humo 20 × modo frente a `smoke/2026-11-21-E19-*.txt` sin diferencias en bal-compare, 0 atascos, 0 errores, 0 fuera de pista.
+**Hecho:** `systems/ceremony.ts` (tabla `CEREMONY`, `CEREMONY_POSE`). Salida: los cinco de cada equipo salen escalonados por la puerta abierta de su banquillo (bandera `doorHold` en `render/rink/boards.ts`), los capitanes se dan la mano en el centro y vuelven; reloj parado, ≤ 4,8 s, se salta con cualquier entrada y no se hace en humo, `ai` ni `autopilot`. Final: tras la coreografía de E-19, cruce en dos filas chocando la mano y fila horizontal en el tercio inferior de cara a la grada, en paralelo al cartel. Peso del gol (último minuto, empate, remontada, hat-trick; tope 1): hasta +1 s de pausa, piña más apretada, salto mayor del autor (`mood.big`), grada más fuerte (`arena.cheer` con `power`) y, en el último minuto, los suplentes saltan a la puerta del banquillo. Laboratorio `cer=intro|final|weight` y `?lab=players&strip=hattrick`; capturas en `shots/E-21/`. Humo con E-20 fusionado (`smoke/2026-11-21-E21-*.txt`): reglamento 1,44 ± 0,17 goles/min (E-20 1,48 ± 0,28), arcade 1,88 ± 0,27 (1,68 ± 0,22); 0 atascos ni errores; 2 fuera de pista en reglamento (física, como en main). Pendiente: el gesto del hat-trick se lee como puño, no como tres dedos; un árbitro queda en medio de la fila final.
 
 ## E-99 — Cierre
 
 **Banco 2026-11-21** (`smoke/2026-11-21-E99-banco.txt`, movil-bajo, base `b5dd031` frente a main en la misma máquina): arcade igual (82,4 → 83,3 fps); reglamento −20 % (100,5 → 80,1 fps, p95 10,3 → 20,4 ms, lógica +42 %). Dudoso: la medida de main en reglamento fue la última y coincidió con el arranque de E-20 y E-21 (dos Vite y humos en la máquina). Repetir con la máquina libre y orden alterno (main, base, main, base) antes de abrir un paquete `/perf`.
+**Repetición** (máquina libre, orden alterno, main = E-21): reglamento 99,1 → 94,3 y 100,2 → 95,7 fps (−5 %), p95 10,3 → 19,3 / 18,4 ms (+80 %), lógica +16–19 %; arcade 95,5 → 84,9 fps (−11 %), lógica +30 %. La regresión es real y acumulada (E-15…E-21): pasa a `/perf` P-14. E-99 queda abierto hasta que P-14 cierre.
 
 Humo final en los dos modos frente a la referencia nueva, una prueba por nivel (goles encajados por minuto contra la IA), AGENTS.md al día e informe corto.

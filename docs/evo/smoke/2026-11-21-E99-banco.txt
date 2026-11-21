@@ -26,3 +26,48 @@ mediana: 80.1 fps · frame p95 20.4 ms · lógica 3.75 ms · render 7.25 ms (p95
 == RESUMEN (medianas de 3 corridas, movil-bajo; base b5dd031 :5188 vs main :5185)
 arcade      fps 82.4 -> 83.3 (+1.1 %) | p95 19.9 -> 19.7 ms (-1.0 %) | render 7.28 -> 7.23 ms (-0.7 %) | logica 3.47 -> 3.51 ms (+1.2 %) | sin regresion
 reglamento  fps 100.5 -> 80.1 (-20.3 %) | p95 10.3 -> 20.4 ms (+98 %) | render 5.91 -> 7.25 ms (+22.7 %) | logica 2.64 -> 3.75 ms (+42 %) | REGRESION > 10 %
+
+## Repetición con la máquina libre, orden alterno (main = E-21)
+== reglamento movil-bajo base=http://127.0.0.1:5190/
+run 1/3: 98.1 fps ┬À frame p50 9.6 p95 18.3 ms ┬À l├│gica 2.86 ┬À render 6.17 (p95 6.9) ms ┬À tirones 3 ┬À errores 0
+run 2/3: 78.9 fps ┬À frame p50 9.7 p95 20.4 ms ┬À l├│gica 3.72 ┬À render 6.61 (p95 7.9) ms ┬À tirones 36 ┬À errores 0
+run 3/3: 94.3 fps ┬À frame p50 10.1 p95 19.3 ms ┬À l├│gica 3.17 ┬À render 6.32 (p95 7.1) ms ┬À tirones 4 ┬À errores 0
+mediana: 94.3 fps ┬À frame p95 19.3 ms ┬À l├│gica 3.17 ms ┬À render 6.32 ms (p95 7.1) ┬À tirones/min 24.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":94.3,"frameP50":9.7,"frameP95":19.3,"frameP99":20.4,"updateAvg":3.17,"updateP95":5.1,"renderAvg":6.32,"renderP95":7.1,"jankPerMin":23.954486475696175,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== reglamento movil-bajo base=http://127.0.0.1:5188/
+run 1/3: 99.1 fps ┬À frame p50 10.1 p95 10.2 ms ┬À l├│gica 2.66 ┬À render 5.8 (p95 6.4) ms ┬À tirones 2 ┬À errores 0
+run 2/3: 97.3 fps ┬À frame p50 10.1 p95 10.3 ms ┬À l├│gica 2.74 ┬À render 5.86 (p95 7.7) ms ┬À tirones 2 ┬À errores 0
+run 3/3: 101 fps ┬À frame p50 9.7 p95 10.3 ms ┬À l├│gica 2.59 ┬À render 5.93 (p95 6.6) ms ┬À tirones 2 ┬À errores 0
+mediana: 99.1 fps ┬À frame p95 10.3 ms ┬À l├│gica 2.66 ms ┬À render 5.86 ms (p95 6.6) ┬À tirones/min 12.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":99.1,"frameP50":10.1,"frameP95":10.3,"frameP99":19.9,"updateAvg":2.66,"updateP95":4.4,"renderAvg":5.86,"renderP95":6.6,"jankPerMin":11.980830670926517,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== reglamento movil-bajo base=http://127.0.0.1:5190/
+run 1/3: 95.7 fps ┬À frame p50 10.1 p95 18.4 ms ┬À l├│gica 3.16 ┬À render 6.22 (p95 7) ms ┬À tirones 2 ┬À errores 0
+run 2/3: 96.7 fps ┬À frame p50 10.1 p95 10.6 ms ┬À l├│gica 3.01 ┬À render 6.2 (p95 7.1) ms ┬À tirones 4 ┬À errores 0
+run 3/3: 95.2 fps ┬À frame p50 10.1 p95 19.3 ms ┬À l├│gica 3.06 ┬À render 6.26 (p95 7.4) ms ┬À tirones 1 ┬À errores 0
+mediana: 95.7 fps ┬À frame p95 18.4 ms ┬À l├│gica 3.06 ms ┬À render 6.22 ms (p95 7.1) ┬À tirones/min 12.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":95.7,"frameP50":10.1,"frameP95":18.4,"frameP99":20.3,"updateAvg":3.06,"updateP95":5,"renderAvg":6.22,"renderP95":7.1,"jankPerMin":11.974852809100888,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== reglamento movil-bajo base=http://127.0.0.1:5188/
+run 1/3: 99.6 fps ┬À frame p50 10.1 p95 10.3 ms ┬À l├│gica 2.63 ┬À render 5.76 (p95 6.4) ms ┬À tirones 2 ┬À errores 0
+run 2/3: 100.2 fps ┬À frame p50 10.1 p95 10.3 ms ┬À l├│gica 2.68 ┬À render 5.79 (p95 6.4) ms ┬À tirones 2 ┬À errores 0
+run 3/3: 102.4 fps ┬À frame p50 9.3 p95 10.2 ms ┬À l├│gica 2.57 ┬À render 5.86 (p95 6.5) ms ┬À tirones 2 ┬À errores 0
+mediana: 100.2 fps ┬À frame p95 10.3 ms ┬À l├│gica 2.63 ms ┬À render 5.79 ms (p95 6.4) ┬À tirones/min 12.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":100.2,"frameP50":10.1,"frameP95":10.3,"frameP99":19.2,"updateAvg":2.63,"updateP95":4.3,"renderAvg":5.79,"renderP95":6.4,"jankPerMin":11.986814504045551,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== arcade movil-bajo base=http://127.0.0.1:5190/
+run 1/3: 84.9 fps ┬À frame p50 10.1 p95 19.8 ms ┬À l├│gica 3.72 ┬À render 7.01 (p95 8.4) ms ┬À tirones 6 ┬À errores 0
+run 2/3: 87.4 fps ┬À frame p50 9.8 p95 19.4 ms ┬À l├│gica 3.37 ┬À render 7.01 (p95 8) ms ┬À tirones 4 ┬À errores 0
+run 3/3: 83.7 fps ┬À frame p50 10.1 p95 19.8 ms ┬À l├│gica 3.84 ┬À render 7.05 (p95 8.4) ms ┬À tirones 6 ┬À errores 0
+mediana: 84.9 fps ┬À frame p95 19.8 ms ┬À l├│gica 3.72 ms ┬À render 7.01 ms (p95 8.4) ┬À tirones/min 35.9
+[perf-bench] {"profile":"movil-bajo","mode":"arcade","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":84.9,"frameP50":10.1,"frameP95":19.8,"frameP99":20.4,"updateAvg":3.72,"updateP95":5.8,"renderAvg":7.01,"renderP95":8.4,"jankPerMin":35.92814371257485,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== arcade movil-bajo base=http://127.0.0.1:5188/
+run 1/3: 95.6 fps ┬À frame p50 9.7 p95 19.2 ms ┬À l├│gica 2.89 ┬À render 6.53 (p95 7.5) ms ┬À tirones 4 ┬À errores 0
+run 2/3: 95.5 fps ┬À frame p50 9.6 p95 18.9 ms ┬À l├│gica 2.86 ┬À render 6.59 (p95 7.6) ms ┬À tirones 2 ┬À errores 0
+run 3/3: 92.3 fps ┬À frame p50 9.7 p95 19.3 ms ┬À l├│gica 2.85 ┬À render 6.82 (p95 8.5) ms ┬À tirones 5 ┬À errores 0
+mediana: 95.5 fps ┬À frame p95 19.2 ms ┬À l├│gica 2.86 ms ┬À render 6.59 ms (p95 7.6) ┬À tirones/min 23.9
+[perf-bench] {"profile":"movil-bajo","mode":"arcade","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":95.5,"frameP50":9.7,"frameP95":19.2,"frameP99":20.3,"updateAvg":2.86,"updateP95":4.8,"renderAvg":6.59,"renderP95":7.6,"jankPerMin":23.940149625935163,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== fin repetición

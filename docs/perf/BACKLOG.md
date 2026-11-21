@@ -19,6 +19,7 @@ Paquetes de trabajo (P-XX) del workflow de rendimiento ([WORKFLOW.md](./WORKFLOW
 | P-11 | Menú: mismas reglas y medida propia (`--menu`) | builder · sonnet | ⬜ |
 | P-12 | Pruebas en dispositivos reales con `?perf=1` (Android gama baja, iPhone) | usuario + qa | ⬜ |
 | P-13 | Memoria de texturas del pabellón (4 lienzos de 1960×1240) | builder · sonnet | ⬜ |
+| P-14 | Regresión de E-15…E-21 en movil-bajo: lógica +16–30 %, p95 de reglamento ×1,8 (`docs/evo/smoke/2026-11-21-E99-banco.txt`) | engineer · opus | 🟨 |
 
 ## Medidas
 
