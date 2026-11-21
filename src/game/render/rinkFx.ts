@@ -33,14 +33,13 @@ const ramp = (v: number, r: readonly [number, number]) => Math.max(0, Math.min(1
 const BALL_Z = (BALL_VISUAL_DIAMETER_M / 2) * PX_PER_M
 const POSTS_Y = [RINK.y + RINK.height / 2 - GOAL_HALF_H, RINK.y + RINK.height / 2 + GOAL_HALF_H] as const
 
-const demoOn = import.meta.env.DEV && new URLSearchParams(window.location.search).get('rfx') === 'demo'
+const demoOn = import.meta.env.DEV && new URLSearchParams(window.location.search).get('rfx')?.startsWith('demo')
 
 export class RinkFx {
-  private readonly scene: Phaser.Scene
+  readonly scene: Phaser.Scene
   private readonly parts: ParticlePool
   private readonly marks: MarkPool
   private readonly mode: (typeof RINK_FX.mode)['arcade' | 'reglamento']
-  private readonly sparkCounts: readonly number[]
   private readonly offQuality: () => void
   private density = 1
   private lastVt = -1
@@ -74,12 +73,12 @@ export class RinkFx {
   private bvx2 = 0
   private bvy2 = 0
   private lastBallHit = -Infinity
+  private carrier: string | null = null
 
   constructor(scene: Phaser.Scene, arcade: boolean) {
     this.scene = scene
     createRinkFxTextures(scene)
     this.mode = arcade ? RINK_FX.mode.arcade : RINK_FX.mode.reglamento
-    this.sparkCounts = arcade ? RINK_FX.ball.sparks.arcade : RINK_FX.ball.sparks.reglamento
     const b = RINK_FX.budget
     this.parts = new ParticlePool(scene, b.particles.alta, b.particles.alta)
     this.marks = new MarkPool(scene, b.marks.alta)
@@ -96,9 +95,10 @@ export class RinkFx {
 
   /**
    * Una vez por fotograma, con jugadores y bola interpolados. `steps` = pasos de simulación
-   * del fotograma (tasa de emisión); `live` = false en saques, final o con la escena cercana.
+   * del fotograma (tasa de emisión); `live` = false en saques, final o con la escena cercana;
+   * `carrierId`: poseedor de la bola (un cambio descarta el golpe en el palo).
    */
-  update(players: Player[], ball: Ball, ballVelocity: Vector, vt: number, steps: number, live: boolean) {
+  update(players: Player[], ball: Ball, ballVelocity: Vector, vt: number, steps: number, live: boolean, carrierId: string | null) {
     const dtMs = this.lastVt < 0 ? 0 : Math.min(100, Math.max(0, vt - this.lastVt))
     this.lastVt = vt
     if (dtMs <= 0) return
@@ -124,7 +124,8 @@ export class RinkFx {
       this.ppx[i] = p.pos.x
       this.ppy[i] = p.pos.y
     }
-    this.ballHits(ball, ballVelocity, vt, live)
+    this.ballHits(players, n, ball, ballVelocity, vt, live, carrierId !== this.carrier)
+    this.carrier = carrierId
     if (demoOn) runRinkFxDemo(this, vt, steps)
     this.parts.update(vt, dtMs)
     this.marks.update(vt)
@@ -223,7 +224,7 @@ export class RinkFx {
   }
 
   /** Una mota (y a veces una nube) lanzada desde un patín hacia (ux, uy). Pública para el laboratorio. */
-  wheelSpray(x: number, y: number, ux: number, uy: number, inten: number, vt: number, puff: boolean) {
+  wheelSpray(x: number, y: number, ux: number, uy: number, inten: number, vt: number, puff: boolean, alphaK: number = this.mode.alpha) {
     const sp = this.parts.spec
     const ang = Math.atan2(uy, ux) + rand(-S.speck.spreadDeg, S.speck.spreadDeg) * DEG
     const v = rand(S.speck.speed[0], S.speck.speed[1]) * (0.55 + 0.45 * inten)
@@ -232,7 +233,7 @@ export class RinkFx {
     sp.x = x; sp.y = y; sp.z = 1
     sp.vx = Math.cos(ang) * v; sp.vy = Math.sin(ang) * v; sp.vz = rand(S.speck.vz[0], S.speck.vz[1]) * (0.6 + 0.4 * inten)
     sp.size0 = size; sp.size1 = size * 0.7
-    sp.alpha = S.speck.alpha * this.mode.alpha
+    sp.alpha = S.speck.alpha * alphaK
     sp.life = rand(S.speck.lifeMs[0], S.speck.lifeMs[1])
     sp.gravity = S.speck.gravity; sp.drag = S.speck.drag
     sp.tint = Math.random() < 0.4 ? RINK_FX.colors.chip : RINK_FX.colors.dust
@@ -241,7 +242,7 @@ export class RinkFx {
     if (puff) this.puff(x, y, ux, uy, 0.5 + 0.5 * inten, vt)
   }
 
-  private puff(x: number, y: number, ux: number, uy: number, k: number, vt: number) {
+  private puff(x: number, y: number, ux: number, uy: number, k: number, vt: number, alphaK = 1) {
     const sp = this.parts.spec
     const v = rand(S.puff.speed[0], S.puff.speed[1])
     sp.kind = PKind.Puff
@@ -249,7 +250,7 @@ export class RinkFx {
     sp.vx = ux * v; sp.vy = uy * v; sp.vz = rand(S.puff.vz[0], S.puff.vz[1])
     sp.size0 = S.puff.sizeM[0] * PX_PER_M * (0.7 + 0.3 * k)
     sp.size1 = S.puff.sizeM[1] * PX_PER_M * (0.6 + 0.4 * k)
-    sp.alpha = S.puff.alpha * this.mode.alpha * (0.6 + 0.4 * k)
+    sp.alpha = S.puff.alpha * this.mode.alpha * (0.6 + 0.4 * k) * alphaK
     sp.life = rand(S.puff.lifeMs[0], S.puff.lifeMs[1])
     sp.gravity = 0; sp.drag = S.puff.drag
     sp.tint = RINK_FX.colors.dust
@@ -293,14 +294,17 @@ export class RinkFx {
     this.parts.spawn(vt)
   }
 
-  /** Cuántas emite un efecto de `n` piezas con la densidad actual: nunca menos de `min` si hay partículas. */
-  private count(n: number, min = 1) {
-    return this.density <= 0 ? 0 : Math.max(min, Math.round(n * this.density * this.mode.rate))
+  /**
+   * Piezas de un golpe de `n` con la densidad y la tasa de golpes del modo (en reglamento más alta
+   * que la de las ruedas): nunca menos de `min` si hay partículas.
+   */
+  private hitCount(n: number, min = 1) {
+    return this.density <= 0 ? 0 : Math.max(min, Math.round(n * this.density * this.mode.hitRate))
   }
 
   /**
    * Bola contra la valla (`post` = false) o un palo: motas hacia la pista por la normal (nx, ny),
-   * destello y, en el palo, chispas. `k` ∈ [0, 1] según la velocidad de llegada. Pública para el laboratorio.
+   * destello y, en el palo (solo arcade), chispas. `k` ∈ [0, 1] según la velocidad de llegada. Pública para el laboratorio.
    */
   impact(x: number, y: number, nx: number, ny: number, tx: number, ty: number, k: number, post: boolean, vt: number) {
     if (this.density <= 0) return
@@ -308,7 +312,7 @@ export class RinkFx {
     const fa = this.mode.sparks ? RINK_FX.flash.alpha.arcade : RINK_FX.flash.alpha.reglamento
     this.flash(x, y, BALL_Z, (post ? RINK_FX.flash.postM : RINK_FX.flash.boardM) * (0.6 + 0.5 * k), fa * (0.6 + 0.4 * k),
       post ? RINK_FX.colors.flashPost : RINK_FX.colors.flash, vt, 2)
-    const n = this.count(b.specks[0] + (b.specks[1] - b.specks[0]) * k, 2)
+    const n = this.hitCount(b.specks[0] + (b.specks[1] - b.specks[0]) * k, b.minSpecks)
     const sp = this.parts.spec
     for (let j = 0; j < n; j++) {
       // Hacia la pista por la normal, arrastradas por la componente tangente de la bola
@@ -318,7 +322,7 @@ export class RinkFx {
       sp.x = x; sp.y = y; sp.z = BALL_Z
       sp.vx = Math.cos(ang) * v + tx * 0.25; sp.vy = Math.sin(ang) * v + ty * 0.25; sp.vz = rand(30, 130) * (0.5 + 0.5 * k)
       sp.size0 = rand(S.speck.sizeM[0], S.speck.sizeM[1]) * PX_PER_M; sp.size1 = sp.size0 * 0.7
-      sp.alpha = S.speck.alpha * this.mode.alpha
+      sp.alpha = S.speck.alpha * this.mode.hitAlpha
       sp.life = rand(S.speck.lifeMs[0], S.speck.lifeMs[1])
       sp.gravity = S.speck.gravity; sp.drag = S.speck.drag
       sp.tint = post ? RINK_FX.colors.chip : RINK_FX.colors.dust
@@ -326,9 +330,9 @@ export class RinkFx {
       this.parts.spawn(vt)
     }
     if (!post || k > 0.35) this.puff(x + nx * 3, y + ny * 3, nx, ny, 0.4 + 0.6 * k, vt)
-    if (post) {
-      const c = this.sparkCounts
-      this.sparks(x, y, nx, ny, this.count(c[0] + (c[1] - c[0]) * k, 1), 0.5 + 0.5 * k, vt, BALL_Z, 70)
+    if (post && this.mode.sparks) {
+      const c = RINK_FX.ball.sparks
+      this.sparks(x, y, nx, ny, this.hitCount(c[0] + (c[1] - c[0]) * k, 1), 0.5 + 0.5 * k, vt, BALL_Z, 70)
     }
   }
 
@@ -343,26 +347,28 @@ export class RinkFx {
     if (k <= 0) return
     const fa = this.mode.sparks ? RINK_FX.flash.alpha.arcade : RINK_FX.flash.alpha.reglamento
     const hip = bp.hipM * PX_PER_M
-    this.flash(x, y, hip, RINK_FX.flash.hitM * (0.6 + 0.5 * k), fa * (0.55 + 0.45 * k), RINK_FX.colors.flashHit, vt, 6)
+    // Hasta el choque flojo se lee: tamaño y alfa desde `minK`; el destello va delante de los dos cuerpos
+    const kv = bp.minK + (1 - bp.minK) * k
+    this.flash(x, y, hip, RINK_FX.flash.hitM * (0.6 + 0.5 * kv), fa * (0.55 + 0.45 * kv), RINK_FX.colors.flashHit, vt, bp.frontPx)
     if (this.mode.sparks) {
       // Arcade: estallido corto a los dos lados del contacto
-      const n = this.count(2 + 4 * k, 1)
+      const n = this.hitCount(2 + 4 * k, 1)
       this.sparks(x, y, -ny, nx, n, 0.5 + 0.5 * k, vt, hip, 50)
       this.sparks(x, y, ny, -nx, n, 0.5 + 0.5 * k, vt, hip, 50)
     }
-    const puffs = this.count(1 + 2 * k, 1)
+    const puffs = this.hitCount(1 + 2 * k, 1)
     for (let j = 0; j < puffs; j++) {
       const a = rand(0, Math.PI * 2)
-      this.puff(fx + Math.cos(a) * 4, fy + Math.sin(a) * 3, nx, ny, 0.4 + 0.6 * k, vt)
+      this.puff(fx + Math.cos(a) * 4, fy + Math.sin(a) * 3, nx, ny, 0.4 + 0.6 * kv, vt, bp.puffK)
     }
-    const specks = this.count(2 + 4 * k, 1)
-    for (let j = 0; j < specks; j++) this.wheelSpray(fx, fy, nx, ny, k, vt, false)
+    const specks = this.hitCount(2 + 4 * k, 2)
+    for (let j = 0; j < specks; j++) this.wheelSpray(fx, fy, nx, ny, kv, vt, false, this.mode.hitAlpha)
     if (strength >= bp.fall) this.fallDust(fx, fy, vt)
   }
 
   /** Corona de polvo a ras de suelo alrededor de los patines (caída o choque muy fuerte). */
   private fallDust(x: number, y: number, vt: number) {
-    const n = this.count(6, 3)
+    const n = this.hitCount(6, 3)
     for (let j = 0; j < n; j++) {
       const a = (j / n) * Math.PI * 2 + rand(-0.3, 0.3)
       this.puff(x + Math.cos(a) * 6, y + Math.sin(a) * 4, Math.cos(a), Math.sin(a), 1, vt)
@@ -423,7 +429,7 @@ export class RinkFx {
   }
 
   /** Bola: inversión de la componente normal junto a la valla o a un palo. */
-  private ballHits(ball: Ball, v: Vector, vt: number, live: boolean) {
+  private ballHits(players: Player[], n: number, ball: Ball, v: Vector, vt: number, live: boolean, carrierChanged: boolean) {
     const b = RINK_FX.ball
     if (!this.ballInit || Math.abs(ball.x - this.bx) + Math.abs(ball.y - this.by) > SIM_SNAP_DIST) {
       this.ballInit = true
@@ -431,13 +437,13 @@ export class RinkFx {
       this.bvx = this.bvx2 = v.x; this.bvy = this.bvy2 = v.y
       return
     }
-    if (live && this.density > 0 && vt - this.lastBallHit > b.cooldownMs) this.detectBall(ball, v, vt)
+    if (live && this.density > 0 && vt - this.lastBallHit > b.cooldownMs) this.detectBall(players, n, ball, v, vt, carrierChanged)
     this.bx = ball.x; this.by = ball.y
     this.bvx2 = this.bvx; this.bvy2 = this.bvy
     this.bvx = v.x; this.bvy = v.y
   }
 
-  private detectBall(ball: Ball, v: Vector, vt: number) {
+  private detectBall(players: Player[], n: number, ball: Ball, v: Vector, vt: number, carrierChanged: boolean) {
     const b = RINK_FX.ball
     // Llegada: la mayor de los dos fotogramas previos con el mismo sentido (la interpolación reparte el rebote)
     const inX = Math.sign(this.bvx) === Math.sign(this.bvx2) ? Math.max(Math.abs(this.bvx), Math.abs(this.bvx2)) : Math.abs(this.bvx)
@@ -452,6 +458,8 @@ export class RinkFx {
         const dx = ball.x - gx
         const dy = ball.y - py
         if (dx * dx + dy * dy > b.postPx * b.postPx) continue
+        // Parada o control junto al palo: el rebote es del jugador, no del palo
+        if (carrierChanged || this.playerNearBall(players, n, ball)) return
         const inSpeed = flipX && flipY ? Math.hypot(inX, inY) : flipX ? inX : inY
         const k = ramp(inSpeed, b.speed)
         if (k <= 0) return
@@ -486,6 +494,19 @@ export class RinkFx {
         this.impact(ball.x, ball.y - ny * BALL_RADIUS, 0, ny, v.x, 0, k, false, vt)
       }
     }
+  }
+
+  /** Algún jugador pegado a la bola (a `nearK` × la suma de radios). */
+  private playerNearBall(players: Player[], n: number, ball: Ball) {
+    const k = RINK_FX.ball.nearK
+    for (let i = 0; i < n; i++) {
+      const p = players[i]
+      const r = ((p.role === 'goalie' ? GOALIE_RADIUS : PLAYER_RADIUS) + BALL_RADIUS) * k
+      const dx = p.pos.x - ball.x
+      const dy = p.pos.y - ball.y
+      if (dx * dx + dy * dy < r * r) return true
+    }
+    return false
   }
 
   get fxDensity() { return this.density }

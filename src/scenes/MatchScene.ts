@@ -647,7 +647,7 @@ export class MatchScene extends Phaser.Scene {
       if (controlled && !hidden) updateVisuals(this.players, controlled, this.ball, this.ballCarrierId, vt)
       // Partículas: tantas emisiones como pasos de simulación, para que la densidad no dependa de los fps
       this.arcade?.postVisuals(this.players, this.ball, this.ballVelocity, vt, this.restartAt > 0 || this.matchEnded ? 0 : steps)
-      this.rinkFx?.update(this.players, this.ball, this.ballVelocity, vt, steps, !hidden && this.restartAt <= 0 && !this.matchEnded)
+      this.rinkFx?.update(this.players, this.ball, this.ballVelocity, vt, steps, !hidden && this.restartAt <= 0 && !this.matchEnded, this.ballCarrierId)
     } finally {
       this.restoreInterpolation()
     }

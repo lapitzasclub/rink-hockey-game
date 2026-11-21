@@ -1139,10 +1139,13 @@ export const RINK_FX = {
     particles: { alta: 240, media: 170, baja: 90 },
     marks: { alta: 200, media: 110, baja: 0 },
   },
-  /** Reglamento sobrio, arcade más vivo: emisión, alfa y chispas (de patín y de choque) solo en arcade. */
+  /**
+   * Reglamento sobrio, arcade más vivo: emisión y alfa de las ruedas, hitRate/hitAlpha de los golpes
+   * (bola en valla o palo y choques, que deben leerse también en reglamento) y chispas solo en arcade.
+   */
   mode: {
-    reglamento: { rate: 0.9, alpha: 0.9, sparks: false },
-    arcade: { rate: 1.3, alpha: 1, sparks: true },
+    reglamento: { rate: 0.9, alpha: 0.9, hitRate: 1.8, hitAlpha: 1, sparks: false },
+    arcade: { rate: 1.3, alpha: 1, hitRate: 1.3, hitAlpha: 1, sparks: true },
   },
   colors: {
     dust: 0xdde4ee,
@@ -1182,15 +1185,18 @@ export const RINK_FX = {
   marks: { on: 0.45, segM: 0.32, widthM: 0.075, alpha: 0.2, lifeMs: { alta: 7000, media: 4500, baja: 0 }, fadeFrom: 0.5 },
   /**
    * Bola contra valla o poste: se detecta por la inversión de la componente normal a menos de `tolPx`
-   * de la valla (o a `postPx` del poste). `speed` umbral y lleno de la velocidad de llegada.
+   * de la valla (o a `postPx` del poste). `speed` umbral y lleno de la velocidad de llegada. No cuenta
+   * como palo si un jugador está a menos de `nearK` × (su radio + el de la bola) o cambia el poseedor.
+   * `minSpecks`: motas mínimas del golpe (también en calidad baja).
    */
-  ball: { tolPx: 6, postPx: 14, speed: [170, 650] as const, cooldownMs: 90, specks: [4, 12] as const, sparks: { reglamento: [2, 5], arcade: [5, 12] } as const },
+  ball: { tolPx: 6, postPx: 14, minSpecks: 3, nearK: 1.2, speed: [170, 650] as const, cooldownMs: 90, specks: [4, 12] as const, sparks: [5, 12] as const },
   /**
    * Choques de jugadores: `player.bump` (E-15) reciente (`recentMs`) o, sin él, el frenazo de la velocidad
    * de acercamiento de dos jugadores en contacto (`fallbackGap` px de holgura). `strength` umbral y lleno
-   * (px/s); a partir de `fall`, polvo de caída en los patines. Golpe a `hipM` de altura.
+   * (px/s); a partir de `fall`, polvo de caída en los patines. Golpe a `hipM` de altura, con tamaño y alfa
+   * desde `minK` (el choque flojo también se lee), nubes × `puffK` y destello adelantado `frontPx` en el orden por y.
    */
-  bump: { recentMs: 160, strength: [110, 420] as const, fall: 380, cooldownMs: 320, hipM: 0.6, fallbackGap: 6, fallbackKeep: 0.45 },
+  bump: { recentMs: 160, strength: [110, 420] as const, fall: 380, cooldownMs: 320, hipM: 0.6, fallbackGap: 6, fallbackKeep: 0.45, minK: 0.4, frontPx: 30, puffK: 1.7 },
   /** Destellos: vida, tamaño (m) por tipo y alfa por modo. */
-  flash: { lifeMs: [150, 220] as const, boardM: 0.7, postM: 0.85, hitM: 0.9, alpha: { reglamento: 0.75, arcade: 0.9 } },
+  flash: { lifeMs: [150, 220] as const, boardM: 0.7, postM: 0.85, hitM: 1.15, alpha: { reglamento: 1, arcade: 0.9 } },
 } as const

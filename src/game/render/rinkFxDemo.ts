@@ -21,7 +21,9 @@ export const RFX_DEMO = {
   hit: { pts: [[840, 470], [930, 520]] as ReadonlyArray<readonly [number, number]>, periodMs: 400, strength: [300, 460] },
 } as const
 
-export const rfxLogOn = import.meta.env.DEV && new URLSearchParams(window.location.search).get('rfx') === 'log'
+/** `?rfx=log` en partido; `?rfx=demolog`, el laboratorio con registro de los choques. */
+const rfxParam = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('rfx') : null
+export const rfxLogOn = rfxParam === 'log' || rfxParam === 'demolog'
 /** Tras un efecto registrado, el bucle se duerme a los `freezeMs` (a media vida) para la captura. */
 const LOG = { freezeMs: 70, freezeAt: -1 }
 
@@ -107,6 +109,8 @@ export function runRinkFxDemo(fx: RinkFx, vt: number, steps: number) {
   // Choques: uno normal y uno fuerte (con polvo de caída)
   const h = RFX_DEMO.hit
   h.pts.forEach(([x, y], k) => {
-    if (crossed(prev, vt, h.periodMs, k * h.periodMs / 2)) fx.hit(x, y, 1, 0.2, h.strength[k], x + 10, y + 4, vt)
+    if (!crossed(prev, vt, h.periodMs, k * h.periodMs / 2)) return
+    logRinkFx(fx.scene, 'hit', x, y, h.strength[k])
+    fx.hit(x, y, 1, 0.2, h.strength[k], x + 10, y + 4, vt)
   })
 }
