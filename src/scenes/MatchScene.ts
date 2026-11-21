@@ -655,7 +655,7 @@ export class MatchScene extends Phaser.Scene {
     for (const player of this.players) {
       if (player.suspendedUntil && player.suspendedUntil > this.simNow) continue
       player.sprinting = false
-      applySkating(player, dt)
+      applySkating(player, dt, this.simNow)
     }
   }
 
@@ -750,7 +750,7 @@ export class MatchScene extends Phaser.Scene {
       aim: switchAim(this.moveAim(), this.isTouchDevice && Math.hypot(this.joystickInput.x, this.joystickInput.y) > 0.08),
     })
     this.updateTeamAI(dt)
-    resolvePlayerSpacing(this.players)
+    resolvePlayerSpacing(this.players, time)
     const prevBallX = this.prevBallX || this.ball.x
     this.arcade?.beforeBallStep(this.ballVelocity, this.ballCarrierId, dt)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
@@ -928,6 +928,7 @@ export class MatchScene extends Phaser.Scene {
       timeNow: this.simNow,
       ball: this.ball,
       pressTarget,
+      ballCarrierId: this.ballCarrierId,
     })
     this.updateTouchLabels(player)
 
@@ -1592,7 +1593,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballCarrierId = duel.carrying ? taker.id : null
     if (duel.struck) {
       updateTeamAIPlayers({ players: this.players, controlledPlayerIndex: this.controlledPlayerIndex, ball: this.ball, ballVelocity: this.ballVelocity, ballCarrierId: this.ballCarrierId, dt, timeNow: time, arcade: this.isArcade, updateGoalieAI, updateFieldPlayerAI })
-      resolvePlayerSpacing(this.players)
+      resolvePlayerSpacing(this.players, time)
     } else {
       // Hasta el golpeo los demás siguen donde los dejó el ritual de la falta (saque clásico)
       for (const p of this.players) {

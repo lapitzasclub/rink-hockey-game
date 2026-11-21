@@ -2,7 +2,7 @@ import { GAME_HEIGHT, GOALIE_HUMAN_MAX_Y, PLAYER_ACCEL, PLAYER_SPRINT_ACCEL_MULT
 import { prepareTeamAI } from './aiTeam'
 import { touchAssist } from './difficulty'
 import { steerGoalieFacing, type GoalieContext } from './goalieAI'
-import { applySkating } from './movement'
+import { applySkating, driveSkater } from './movement'
 import { getControlledPlayer } from './playerHelpers'
 import { watchGoaliePass } from './targeting'
 import type { Ball, Player, Vector } from '../types'
@@ -45,14 +45,17 @@ export function updateControlledPlayerMotion(options: {
   ball: { x: number, y: number }
   /** Punto al que lleva el botón de presionar (null si no se presiona). */
   pressTarget?: { x: number, y: number } | null
+  /** Portador de la bola (con ella se patina con algo menos de agarre). */
+  ballCarrierId?: string | null
 }) {
   const player = getControlledPlayer(options.players, options.controlledPlayerIndex)
   if (autopilot.on || goalieTakeover.id === player.id) return player // lo mueve updateTeamAIPlayers
+  const withBall = options.ballCarrierId === player.id
 
   // Si el jugador controlado está suspendido, solo aplicar rozamiento (sin input)
   if ((player.suspendedUntil && player.suspendedUntil > options.timeNow) || (player.stunUntil ?? 0) > options.timeNow) {
     player.sprinting = false
-    applySkating(player, options.dt)
+    applySkating(player, options.dt, options.timeNow, withBall)
     return player
   }
 
@@ -82,7 +85,7 @@ export function updateControlledPlayerMotion(options: {
   if (player.role === 'goalie') {
     // nipplejs da |stick| ≤ 0,5: en táctil se escala para que el portero acelere como con mando
     const k = usingJoystick && touchAssist.team === player.team ? TOUCH_ASSIST_EXTRA.goalieStickScale : 1
-    moveHumanGoalie(player, inputX, inputY, len, k, options.ball, options.dt)
+    moveHumanGoalie(player, inputX, inputY, len, k, options.ball, options.dt, options.timeNow)
     return player
   }
 
@@ -94,12 +97,11 @@ export function updateControlledPlayerMotion(options: {
 
   const accel = PLAYER_ACCEL * (player.sprinting ? PLAYER_SPRINT_ACCEL_MULTIPLIER : 1)
   if (len > 0) {
-    player.velocity.x += (inputX / len) * accel * options.dt
-    player.velocity.y += (inputY / len) * accel * options.dt
+    driveSkater(player, inputX / len, inputY / len, accel)
     player.facing = { x: inputX / len, y: inputY / len }
   }
 
-  applySkating(player, options.dt)
+  applySkating(player, options.dt, options.timeNow, withBall)
   return player
 }
 
@@ -108,7 +110,7 @@ export function updateControlledPlayerMotion(options: {
  * pone applySkating; aquí el recorrido lateral) y mirando a la bola como el de la IA. Las paradas
  * siguen siendo automáticas por posición (tryGoalieSave). `stickScale` escala el módulo del stick.
  */
-function moveHumanGoalie(player: Player, inputX: number, inputY: number, len: number, stickScale: number, ball: { x: number, y: number }, dt: number) {
+function moveHumanGoalie(player: Player, inputX: number, inputY: number, len: number, stickScale: number, ball: { x: number, y: number }, dt: number, now: number) {
   player.sprinting = false
   player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * dt)
   if (len > 0) {
@@ -117,7 +119,7 @@ function moveHumanGoalie(player: Player, inputX: number, inputY: number, len: nu
     player.velocity.y += (inputY / len) * k * PLAYER_ACCEL * dt
   }
   steerGoalieFacing(player, ball.x - player.pos.x, ball.y - player.pos.y, dt)
-  applySkating(player, dt)
+  applySkating(player, dt, now)
   const cy = GAME_HEIGHT / 2
   if (player.pos.y < cy - GOALIE_HUMAN_MAX_Y) { player.pos.y = cy - GOALIE_HUMAN_MAX_Y; if (player.velocity.y < 0) player.velocity.y = 0 }
   else if (player.pos.y > cy + GOALIE_HUMAN_MAX_Y) { player.pos.y = cy + GOALIE_HUMAN_MAX_Y; if (player.velocity.y > 0) player.velocity.y = 0 }
@@ -173,7 +175,7 @@ export function updateTeamAIPlayers(options: {
     if (player.suspendedUntil && player.suspendedUntil > options.timeNow) continue
     if ((player.stunUntil ?? 0) > options.timeNow) {
       player.sprinting = false
-      applySkating(player, options.dt)
+      applySkating(player, options.dt, options.timeNow, options.ballCarrierId === player.id)
       continue
     }
     player.stamina = Math.min(STAMINA_MAX, (player.stamina ?? STAMINA_MAX) + STAMINA_RECOVERY_PER_SECOND * options.dt * 0.8)
@@ -184,6 +186,6 @@ export function updateTeamAIPlayers(options: {
       options.updateFieldPlayerAI(options.players, player, options.ball.x, options.ball.y, options.ballCarrierId, options.dt)
     }
     if (player.sprinting) player.stamina = Math.max(0, (player.stamina ?? STAMINA_MAX) - STAMINA_SPRINT_DRAIN_PER_SECOND * options.dt * 0.55)
-    applySkating(player, options.dt)
+    applySkating(player, options.dt, options.timeNow, options.ballCarrierId === player.id)
   }
 }
