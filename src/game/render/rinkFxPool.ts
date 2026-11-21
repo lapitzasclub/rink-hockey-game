@@ -4,6 +4,9 @@
  * única (viewTransform): así respeta la perspectiva y su profundidad sale de la y de su
  * base, por delante o por detrás de los jugadores. Estado en arrays tipados y una imagen
  * por hueco creada una vez; al llenarse se reutiliza el hueco más antiguo.
+ * P-14: un hueco muerto sale de la lista de pintado (no solo se oculta): así los cientos de
+ * huecos libres no cuestan en el filtrado por cámara ni en el orden por profundidad de cada
+ * fotograma, y la escena solo paga por las partículas y marcas vivas.
  */
 import * as Phaser from 'phaser'
 import { bandDepth, DEPTH, RINK_FX } from './artSpec'
@@ -75,7 +78,9 @@ export class ParticlePool {
   setCapacity(cap: number) {
     cap = Math.max(0, Math.min(this.max, Math.round(cap)))
     while (this.imgs.length < cap) {
-      this.imgs.push(this.scene.add.image(0, 0, RFX_TEX.speck.key).setVisible(false).setDepth(DEPTH.COURT))
+      const img = this.scene.add.image(0, 0, RFX_TEX.speck.key).setVisible(false).setDepth(DEPTH.COURT)
+      img.removeFromDisplayList()
+      this.imgs.push(img)
     }
     for (let i = cap; i < this.cap; i++) this.kill(i)
     this.cap = cap
@@ -96,7 +101,7 @@ export class ParticlePool {
     this.grav[i] = s.gravity; this.drag[i] = s.drag; this.bias[i] = s.depthBias
     this.born[i] = vt; this.life[i] = Math.max(1, s.life)
     this.kind[i] = s.kind
-    if (!this.alive[i]) { this.alive[i] = 1; this.live++ }
+    if (!this.alive[i]) { this.alive[i] = 1; this.live++; this.imgs[i].addToDisplayList() }
     const additive = s.kind === PKind.Spark || s.kind === PKind.Flash
     this.imgs[i]
       .setTexture(TEX_BY_KIND[s.kind].key)
@@ -111,7 +116,7 @@ export class ParticlePool {
     if (!this.alive[i]) return
     this.alive[i] = 0
     this.live--
-    this.imgs[i]?.setVisible(false)
+    this.imgs[i]?.setVisible(false).removeFromDisplayList()
   }
 
   /** Avanza y pinta las vivas con el tiempo visual (`dtMs` del fotograma). */
@@ -194,8 +199,10 @@ export class MarkPool {
   setCapacity(cap: number, lifeMs: number) {
     cap = Math.max(0, Math.min(this.born.length, Math.round(cap)))
     while (this.imgs.length < cap) {
-      this.imgs.push(this.scene.add.image(0, 0, RFX_TEX.mark.key).setVisible(false)
-        .setTint(RINK_FX.colors.rubber).setDepth(DEPTH.FLOOR + 0.6))
+      const img = this.scene.add.image(0, 0, RFX_TEX.mark.key).setVisible(false)
+        .setTint(RINK_FX.colors.rubber).setDepth(DEPTH.FLOOR + 0.6)
+      img.removeFromDisplayList()
+      this.imgs.push(img)
     }
     for (let i = cap; i < this.cap; i++) this.kill(i)
     this.cap = cap
@@ -222,7 +229,7 @@ export class MarkPool {
     const flat = 0.55 + 0.45 * Math.abs(Math.sin(ang))
     this.born[i] = vt
     this.a0[i] = alpha
-    if (!this.alive(i)) this.live++
+    if (!this.alive(i)) { this.live++; this.imgs[i].addToDisplayList() }
     this.imgs[i].setPosition((P.x + Q.x) / 2, (P.y + Q.y) / 2).setRotation(ang)
       .setDisplaySize(len, Math.max(0.6, widthPx * s * flat)).setAlpha(alpha).setVisible(true)
   }
@@ -232,7 +239,7 @@ export class MarkPool {
   private kill(i: number) {
     const img = this.imgs[i]
     if (!img?.visible) return
-    img.setVisible(false)
+    img.setVisible(false).removeFromDisplayList()
     this.live--
   }
 
