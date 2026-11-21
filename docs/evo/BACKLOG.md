@@ -17,10 +17,10 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-13 | Sombra de los jugadores y marcador del seleccionado | coordinador | ✅ 2026-11-20 |
 | E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
-| E-15 | Física de patinaje: inercia, giro limitado por velocidad, choques con masa, rebote en la valla | ai-engineer · opus | ⬜ |
+| E-15 | Física de patinaje: inercia, giro limitado por velocidad, choques con masa, rebote en la valla | ai-engineer · opus | ✅ 2026-11-21 |
 | E-16 | Partículas de pista en los dos modos: ruedas, frenadas, marcas, impactos | gfx-engineer · opus | ⬜ |
 | E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ✅ 2026-11-21 |
-| E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ⬜ |
+| E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
 
 IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos. E-15 (física), E-16 (partículas) y E-17 (animación) van en paralelo; E-18 tras E-17 (mismos archivos del rig).
@@ -118,6 +118,7 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Objetivo:** el patín agarra en la dirección de las ruedas y la componente lateral se disipa con un agarre finito (deriva en curvas rápidas); el radio de giro crece con la velocidad (a sprint las curvas son abiertas; dar la vuelta es frenar y volver a arrancar); arranque fuerte y aceleración más dura cerca de la punta; con la bola, algo menos de agarre; choques entre jugadores por impulso con masas (el portero pesa más) y restitución baja; rebote amortiguado en la valla. Cada choque o rebote deja `player.bump` (impulso y `simNow`) para la animación de E-17. La IA anticipa la frenada (no se pasa de largo ni tiembla en su objetivo). Igual para humano e IA; la dificultad no la cambia. El portero conserva su manejo para no perder paradas.
 **Archivos:** `systems/movement.ts`, `systems/playerControl.ts`, el `seek` y la llegada de la IA (`systems/aiTeam.ts`, `systems/matchFlow.ts` `skateToward`), `systems/goalieAI.ts` solo si hace falta, constantes `SKATE_*` en `constants.ts`.
 **Aceptación:** humo 20 × modo frente a la referencia fresca de main: goles/min dentro de ±30 %, % de pases completados dentro del IC o mejor, % de paradas dentro del IC, 0 atascos, 0 errores, 0 fuera de pista; el evento «pista de hielo» sigue funcionando; partido en vivo con teclado: se nota la inercia sin que el control sea pesado.
+**Hecho:** los jugadores de campo tienen dirección de marcha propia: agarre lateral finito (deriva), giro que se abre con la velocidad (28 rad/s ÷ (1 + v/55)), frenada de 1100 px/s² cuando la dirección pedida se opone a la marcha y una curva de empuje de 0,26 s. Con bola, ×0,9. `seek` frena a tiempo al llegar. Choques por impulso con masas (portero 1,8, restitución 0,15, empujón de contacto 40), rebote en la valla (0,25) y `player.bump` desde 60 px/s. El portero, los saques (`skateToward`) y el banquillo no cambian. Constantes `SKATE_*`. Humo de 20 (`smoke/2026-11-21-E15-fisica.txt`) frente a la referencia: reglamento 1,95 ± 0,21 goles/min (+4 %), pases 89,3 %; arcade 1,89 ± 0,24 (−15 %), pases 85,2 %; ningún IC sin solapar; 0 atascos ni errores. Pendiente: probarlo a mano con teclado, mando y táctil; los empujones del arcade deslizan más que antes.
 
 ## E-16 — Partículas de pista
 
@@ -137,6 +138,7 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Objetivo:** patín quad con cuatro ruedas visibles que giran con la velocidad y freno delantero; rodilleras, espinilleras y guantes; pliegue de la camiseta con el movimiento; dorsal legible de espaldas. Que pase el listón de un indie publicado en el plano normal y en el cercano.
 **Archivos:** `render/puppet/` (paint, textures, kit, skeleton), `render/artSpec.ts`.
 **Aceptación:** capturas de cerca antes y después en los dos equipos; calidad baja bien; banco movil-bajo en E-99.
+**Hecho:** `puppet/gearSpec.ts` (medidas y colores), `gearTextures.ts` (texturas horneadas una vez: patín quad con 4 ruedas, placa, freno y bota en 8 vistas × 4 fases de giro + 1 corrida; espinillera, rodillera y guante) y `wheels.ts` (giro por distancia recorrida; quieto, la rueda no gira; marcha atrás, al revés; con histéresis pasa al marco corrido por encima de 55 rad/s). Fase de rueda desfasada entre pies, pliegue de camiseta 0–2 según la inclinación del tronco, guante que sigue el antebrazo, dorsal más legible. Los oficiales no cambian. Pendiente: el portero solo se ha revisado a escala de pista; cortes rectos en piezas del tronco en el lab a zoom 3.2 (ya estaban antes, no se ven en partido).
 
 ## E-99 — Cierre
 
