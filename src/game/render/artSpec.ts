@@ -582,6 +582,18 @@ export const BOARDS = {
  * desde la línea central de la pista (el banco azul a la izquierda, el rojo
  * espejado) y los `…SetbackM` desde la cara exterior de la valla lejana hacia fuera.
  */
+/**
+ * E-21 · Ceremonia. `hat`: hat-trick, mano libre arriba que marca tres veces (`ms` cada
+ * golpe, `jab` de subida). `bigHop`: salto extra del autor en el gol con peso (× su peso).
+ * `rush`: suplentes que saltan del banquillo a la puerta en el gol del último minuto
+ * (`moveMs` de ida y vuelta, `holdMs` de pie en la puerta, separados `spreadM` y a `setbackM` de la valla).
+ */
+export const CEREMONY_POSE = {
+  hat: { ms: 380, x: 0.08, y: 0.34, z: 0.1, jab: 0.06, twist: 0.15 },
+  bigHop: 1.4,
+  rush: { moveMs: 420, holdMs: 3200, spreadM: 0.62, setbackM: 0.45 },
+} as const
+
 export const BENCH = {
   /** Del extremo exterior e interior del banco a la esquina y al centro de la pista (m): su punto medio fija la puerta de la valla (rink/boards.ts). */
   cornerGapM: 5.25,

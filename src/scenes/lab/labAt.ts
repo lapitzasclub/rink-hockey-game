@@ -235,3 +235,26 @@ export function forceSetPiece(match: Phaser.Scene, p: LabParams) {
     match.events.once(Phaser.Scenes.Events.SHUTDOWN, () => match.events.off(Phaser.Scenes.Events.POST_UPDATE, onUpdate))
   })
 }
+
+/**
+ * E-21 (`cer=intro|final|weight`): `final` salta la salida y acaba el partido al poco; `weight`
+ * deja la 2.ª parte en su último minuto hasta el primer gol (gol con peso).
+ */
+export function forceCeremony(match: Phaser.Scene, cer: 'intro' | 'final' | 'weight') {
+  const s = match as unknown as { introSkip: boolean, introForce: boolean, simNow: number, currentPeriod: number, remainingSeconds: number, blueScore: number, redScore: number }
+  match.events.once(Phaser.Scenes.Events.CREATE, () => {
+    // `intro`: la salida al campo también con `auto=1` (para congelarla con `at=<ms>`)
+    if (cer === 'intro') { s.introForce = true; return }
+    s.introSkip = true
+    if (cer === 'final') (match as unknown as { labKeepAfterEnd: boolean }).labKeepAfterEnd = true
+    let set = false
+    const onUpdate = () => {
+      if (s.simNow < 300) return
+      if (!set) { set = true; s.currentPeriod = 2; s.remainingSeconds = cer === 'final' ? 1 : 58; }
+      if (cer === 'final' || s.blueScore + s.redScore > 0) { match.events.off('update', onUpdate); return }
+      if (s.remainingSeconds < 45) s.remainingSeconds = 58
+    }
+    match.events.on('update', onUpdate)
+    match.events.once(Phaser.Scenes.Events.SHUTDOWN, () => match.events.off('update', onUpdate))
+  })
+}

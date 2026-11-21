@@ -7,7 +7,7 @@
  */
 import { CELEBRATION } from '../../constants'
 import type { PlayerMood } from '../../types'
-import { MOOD_POSE as M, RIG_STANCE } from '../artSpec'
+import { CEREMONY_POSE, MOOD_POSE as M, RIG_STANCE } from '../artSpec'
 import { fallProgress, keepReach } from './locomotion'
 import type { PoseContext, PuppetPose } from './pose'
 import { rigDims } from './skeleton'
@@ -223,12 +223,28 @@ function score(pose: PuppetPose, ctx: PoseContext, m: PlayerMood, w: number, wa:
     else { carry(pose, run, s, fi, false); fist(pose, ctx.time, run, s, fi) }
   }
   if (fin <= 0) return 0
+  // E-21: gol con peso, salta más alto (y salta aunque su gesto sea de pie)
+  const big = m.big ?? 0
+  const jump = big > 0 && m.style !== 1 ? hop(pose, u, 0) * fin * big * CEREMONY_POSE.bigHop : 0
   switch (m.style) {
-    case 0: relax(pose, fin, 0); vArms(pose, u, fin, s, fi); return 0
+    case 0: relax(pose, fin, 0); vArms(pose, u, fin, s, fi); return jump
     case 1: kneel(pose, fin); vArms(pose, u, fin, s, fi); return 0
-    case 2: { relax(pose, fin, 0); const h = hop(pose, u, 0); fistUp(pose, fin, s, fi); return h * fin }
-    default: relax(pose, fin, 0); point(pose, u, fin, s, fi); return 0
+    case 2: { relax(pose, fin, 0); const h = hop(pose, u, 0); fistUp(pose, fin, s, fi); return h * fin * (1 + big * CEREMONY_POSE.bigHop) }
+    case 4: relax(pose, fin, 0); three(pose, u, fin, s, fi); return jump
+    default: relax(pose, fin, 0); point(pose, u, fin, s, fi); return jump
   }
+}
+
+/** Hat-trick (E-21): la mano libre en alto marca tres veces y se queda arriba; el stick, alzado. */
+function three(pose: PuppetPose, t: number, w: number, s: number, fi: 0 | 1) {
+  const T = CEREMONY_POSE.hat
+  pose.trunk.twist += (s * T.twist - pose.trunk.twist) * w
+  const c = shoulders(pose)
+  const jab = t < T.ms * 3 ? pulse((t % T.ms) / T.ms) * T.jab : 0
+  to(pose.hands[fi], c.x + s * T.x, c.y + T.y + jab, c.z + T.z, w)
+  set3(top, c.x - s * 0.2, c.y + 0.08, c.z + 0.04)
+  heelAlong(top, -s * 0.3, 0.9, 0.05, heel)
+  stickTo(pose, top, heel, NaN, w)
 }
 
 /** Compañero: llega con el puño arriba y, en la piña, brazo al hombro o sticks arriba. */

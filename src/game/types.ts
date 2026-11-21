@@ -17,7 +17,8 @@ export type Vector = { x: number, y: number }
  * `keeperDown` el portero que encaja, `rest` descanso, `cross` cruce de campo, `greet` saludo del empate.
  */
 export type MoodKind = 'score' | 'mate' | 'joy' | 'down' | 'keeperDown' | 'rest' | 'cross' | 'greet'
-export type PlayerMood = { kind: MoodKind; style: number; at: number; until: number; hit: number; side: 1 | -1 }
+/** `big` (E-21): peso del gol del autor (0..1); el clip agranda el gesto. */
+export type PlayerMood = { kind: MoodKind; style: number; at: number; until: number; hit: number; side: 1 | -1; big?: number }
 
 export type Ball = {
   x: number           // coordenada X mundo — usada por física

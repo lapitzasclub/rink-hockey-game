@@ -101,7 +101,7 @@ export class PauseDirector {
    * compañeros forman la piña con él; su portero sale y vuelve con los brazos arriba; el
    * que encaja frena cabizbajo y uno va despacio al centro. `until` = fin de la pausa.
    */
-  goal(players: Player[], team: TeamColor, time: number, until: number) {
+  goal(players: Player[], team: TeamColor, time: number, until: number, tight = 1) {
     this.ensure(players.length)
     const dir = teamSide(players, team) === 'left' ? 1 : -1
     const endX = dir > 0 ? RINK.x + RINK.width : RINK.x
@@ -153,8 +153,8 @@ export class PauseDirector {
         }
         const a = (k - (mates - 1) / 2) * 0.95
         k++
-        const ox = (Math.cos(a) * ux - Math.sin(a) * uy) * C.huddleRadius
-        const oy = (Math.sin(a) * ux + Math.cos(a) * uy) * C.huddleRadius
+        const ox = (Math.cos(a) * ux - Math.sin(a) * uy) * C.huddleRadius * tight
+        const oy = (Math.sin(a) * ux + Math.cos(a) * uy) * C.huddleRadius * tight
         setMood(p, 'mate', moodStyle(p.id, 2), time, until)
         if (si >= 0) this.plan(i, Mode.Follow, ox, oy, C.mateSpeed, si)
         else this.plan(i, Mode.Coast, 0, 0, C.coastTau)
