@@ -1,0 +1,28 @@
+== base b5dd031 (5188) arcade movil-bajo
+run 1/3: 82.4 fps · frame p50 10.1 p95 19.9 ms · lógica 3.47 · render 7.4 (p95 11.4) ms · tirones 19 · errores 0
+run 2/3: 90.8 fps · frame p50 9.8 p95 19.4 ms · lógica 3.15 · render 6.76 (p95 8) ms · tirones 5 · errores 0
+run 3/3: 80.8 fps · frame p50 10.2 p95 20 ms · lógica 3.79 · render 7.28 (p95 11.1) ms · tirones 12 · errores 0
+mediana: 82.4 fps · frame p95 19.9 ms · lógica 3.47 ms · render 7.28 ms (p95 11.1) · tirones/min 71.8
+[perf-bench] {"profile":"movil-bajo","mode":"arcade","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":82.4,"frameP50":10.1,"frameP95":19.9,"frameP99":28.5,"updateAvg":3.47,"updateP95":6.3,"renderAvg":7.28,"renderP95":11.1,"jankPerMin":71.84911685460533,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+== main (5185) arcade movil-bajo
+run 1/3: 83.3 fps · frame p50 10.1 p95 19.7 ms · lógica 3.51 · render 7.36 (p95 8.7) ms · tirones 7 · errores 0
+run 2/3: 84.2 fps · frame p50 10.1 p95 20 ms · lógica 3.49 · render 7.23 (p95 9.1) ms · tirones 3 · errores 0
+run 3/3: 81.9 fps · frame p50 10.1 p95 19.5 ms · lógica 3.81 · render 7.2 (p95 10) ms · tirones 7 · errores 0
+mediana: 83.3 fps · frame p95 19.7 ms · lógica 3.51 ms · render 7.23 ms (p95 9.1) · tirones/min 41.9
+[perf-bench] {"profile":"movil-bajo","mode":"arcade","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":83.3,"frameP50":10.1,"frameP95":19.7,"frameP99":20.7,"updateAvg":3.51,"updateP95":5.6,"renderAvg":7.23,"renderP95":9.1,"jankPerMin":41.903621670158635,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+== base b5dd031 (5188) reglamento movil-bajo
+run 1/3: 100.5 fps · frame p50 9.3 p95 10.5 ms · lógica 2.64 · render 5.91 (p95 6.9) ms · tirones 2 · errores 0
+run 2/3: 99 fps · frame p50 10.1 p95 10.3 ms · lógica 2.66 · render 5.98 (p95 6.7) ms · tirones 2 · errores 0
+run 3/3: 101.1 fps · frame p50 10.1 p95 10.3 ms · lógica 2.59 · render 5.78 (p95 6.5) ms · tirones 2 · errores 0
+mediana: 100.5 fps · frame p95 10.3 ms · lógica 2.64 ms · render 5.91 ms (p95 6.7) · tirones/min 12.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":100.5,"frameP50":10.1,"frameP95":10.3,"frameP99":19.3,"updateAvg":2.64,"updateP95":4.5,"renderAvg":5.91,"renderP95":6.7,"jankPerMin":11.988011988011989,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+== main (5185) reglamento movil-bajo
+run 1/3: 79.3 fps · frame p50 10.2 p95 20.4 ms · lógica 3.75 · render 7.34 (p95 12) ms · tirones 9 · errores 0
+run 2/3: 90.8 fps · frame p50 9.8 p95 19.3 ms · lógica 3.24 · render 6.57 (p95 8.8) ms · tirones 6 · errores 0
+run 3/3: 80.1 fps · frame p50 10.2 p95 20.4 ms · lógica 3.81 · render 7.25 (p95 11.2) ms · tirones 7 · errores 0
+mediana: 80.1 fps · frame p95 20.4 ms · lógica 3.75 ms · render 7.25 ms (p95 11.2) · tirones/min 42.0
+[perf-bench] {"profile":"movil-bajo","mode":"reglamento","cpu":6,"viewport":"740x360x2,mobile","soft":false,"runs":3,"fps":80.1,"frameP50":10.2,"frameP95":20.4,"frameP99":20.6,"updateAvg":3.75,"updateP95":6.6,"renderAvg":7.25,"renderP95":11.2,"jankPerMin":41.97062056560407,"errors":0,"env":{"game":[1480,720],"canvas":[1480,720],"css":[740,360],"dpr":2,"gpu":"ANGLE (NVIDIA, NVIDIA GeForce RTX 5070 Ti (0x00002C05) Direct3D11 vs_5_0 ps_5_0,"},"quality":"calidad media (auto)"}
+
+== RESUMEN (medianas de 3 corridas, movil-bajo; base b5dd031 :5188 vs main :5185)
+arcade      fps 82.4 -> 83.3 (+1.1 %) | p95 19.9 -> 19.7 ms (-1.0 %) | render 7.28 -> 7.23 ms (-0.7 %) | logica 3.47 -> 3.51 ms (+1.2 %) | sin regresion
+reglamento  fps 100.5 -> 80.1 (-20.3 %) | p95 10.3 -> 20.4 ms (+98 %) | render 5.91 -> 7.25 ms (+22.7 %) | logica 2.64 -> 3.75 ms (+42 %) | REGRESION > 10 %
