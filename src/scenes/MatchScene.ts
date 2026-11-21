@@ -90,6 +90,9 @@ import { equipoDeHueco, nombreDeHueco } from '../game/externalMatch'
 import { ArcadeController } from '../game/systems/arcade'
 import { resetArcadeMods } from '../game/systems/arcadeEvents'
 import { PauseDirector } from '../game/systems/celebration'
+import { CeremonyDirector } from '../game/systems/ceremony'
+import { CEREMONY } from '../game/constants'
+import { CROWD } from '../game/render/artSpec'
 import { CameraDirector } from '../game/systems/cameraDirector'
 import { createOfficials, type Officials } from '../game/systems/officials'
 import { ArcadeFx } from '../game/render/arcadeFx'
@@ -169,6 +172,10 @@ export class MatchScene extends Phaser.Scene {
   private officials!: Officials
   /** Coreografía de los parones (gol, descanso, final): E-19. */
   private pause = new PauseDirector()
+  /** E-21: salida al campo, saludo final y peso del gol. `introSkip`: saltar la salida (entrada del humano o humo). */
+  private ceremony = new CeremonyDirector()
+  introSkip = false
+  introForce = false
   private mode: GameMode = 'arcade'
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
@@ -244,6 +251,9 @@ export class MatchScene extends Phaser.Scene {
     this.matchEnded = false
     this.restartAt = 0
     this.pause = new PauseDirector()
+    this.ceremony = new CeremonyDirector()
+    this.introSkip = false
+    this.introForce = false
     this.lastTouch = 'blue'
     this.ruleState = createRuleState()
     this.lastLooseBallTime = 0
@@ -423,6 +433,7 @@ export class MatchScene extends Phaser.Scene {
       stopAnnouncer()
     })
     this.resetKickoff('red', true)
+    this.startIntro()
     this.cameraDirector.snapTo(this.ball)
     if (this.arcade) {
       this.arcade.start(this.players, this.simNow)
@@ -682,10 +693,11 @@ export class MatchScene extends Phaser.Scene {
     this.officials.syncTime(time)
     // Física normal por defecto; el evento de hielo la vuelve a cambiar solo con la bola en juego
     resetArcadeMods()
+    if (this.ceremony.introActive) { this.stepIntro(time, dt); return }
     this.advanceMatchClock()
     // Celebraciones, descanso y final: la lógica está parada y el director mueve a los jugadores
     if (this.matchEnded) {
-      this.pause.step(this.players, time, dt)
+      if (!this.ceremony.finalStep(this.players, time, dt)) this.pause.step(this.players, time, dt)
       return
     }
 
@@ -1377,7 +1389,8 @@ export class MatchScene extends Phaser.Scene {
       if (next.redScore > this.redScore) next.redScore++
       else next.blueScore++
     }
-    this.events.emit('match:goal', { team: next.redScore > this.redScore ? 'red' : 'blue', blue: next.blueScore, red: next.redScore, time })
+    const lastMinute = this.currentPeriod >= 2 && this.remainingSeconds <= CEREMONY.lastMinuteS
+    this.events.emit('match:goal', { team: next.redScore > this.redScore ? 'red' : 'blue', blue: next.blueScore, red: next.redScore, time, rush: lastMinute })
     playGoal()
     this.officials.goal()
     this.arena.cheer(time)
@@ -1393,7 +1406,10 @@ export class MatchScene extends Phaser.Scene {
     this.blueScore = next.blueScore
     this.redScore = next.redScore
     this.restartAt = this.isArcade ? time + ARCADE_GOAL_CELEBRATION_MS : next.restartAt
-    this.pause.goal(this.players, scorerTeam, time, this.restartAt)
+    this.restartAt = this.ceremony.goal(this.pause, this.players, scorerTeam, time, this.restartAt, { blue: next.blueScore, red: next.redScore, lastMinute })
+    // Gol con peso: la grada, más larga y más fuerte
+    const w = this.ceremony.weight
+    if (w > 0) this.arena.cheer(time, CROWD.cheerMs + w * CEREMONY.cheerMs, undefined, 1 + w * CEREMONY.cheerPower)
     // Saca de centro el que encaja (art. 5.1)
     this.nextKickoffTeam = scorerTeam === 'blue' ? 'red' : 'blue'
   }
@@ -1817,11 +1833,35 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** E-21: salida al campo desde los banquillos; cualquier tecla o toque la salta. */
+  private startIntro() {
+    this.ceremony.intro(this.players, this.simNow)
+    const skip = () => { if (this.ceremony.introActive) this.introSkip = true }
+    this.input.keyboard?.on('keydown', skip)
+    this.input.on('pointerdown', skip)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown', skip)
+      this.input.off('pointerdown', skip)
+    })
+  }
+
+  /** Paso de la salida al campo (reloj parado, sin control); al acabar o saltarla, el saque normal. */
+  private stepIntro(time: number, dt: number) {
+    const j = this.joystickInput
+    // El humo y la IA contra IA no la esperan, salvo el lab `cer=intro` (introForce)
+    const skip = ((this.introSkip || autopilot.on) && !this.introForce) || this.probe || this.actionHeld('pass') || this.actionHeld('shoot') || Math.hypot(j.x, j.y) > 0.3
+    if (!skip && this.ceremony.introStep(this.players, time, dt)) return
+    this.ceremony.endIntro(this.players, time)
+    this.resetKickoff('red', skip)
+    if (skip) this.cameraDirector.snapTo(this.ball)
+  }
+
   /** Congela el partido y muestra el resultado final con la pista de volver al menú. */
   private finishMatch() {
     this.matchEnded = true
     this.liveStats?.finish()
     this.pause.final(this.players, this.blueScore, this.redScore, this.simNow)
+    this.ceremony.final(this.simNow)
     const result = this.blueScore === this.redScore ? 'Empate'
       : this.blueScore > this.redScore ? `¡Gana ${nombreDeHueco('blue', 'el azul')}!`
       : `¡Gana ${nombreDeHueco('red', 'el rojo')}!`

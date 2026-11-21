@@ -371,6 +371,22 @@ export const CELEBRATION = {
   winAhead: 130, loseSpeed: 110, greetGap: 1.15 * PLAYER_RADIUS, greetRow: 66,
   fadeMs: 350, sepFactor: 1.7, carrierStaleMs: 8000,
 } as const
+/**
+ * E-21 · Ceremonia (`systems/ceremony.ts`). Salida al campo: salen por la puerta de su
+ * banquillo escalonados (`staggerMs`) en fila junto a la valla (`queueGap`); los capitanes se
+ * dan la mano en el centro (`capGap`); tope `introMaxMs` (≤ 5 s). Saludo final (`lineDelayMs`
+ * tras el final): dos filas enfrentadas a `lineGap` que se cruzan a `passSpeed` chocando la
+ * mano y saludan a la grada. Peso del gol: suma de factores (tope 1) que alarga la pausa
+ * hasta `extraMs`, aprieta la piña (`tighten`) y sube la grada (`cheerMs`, `cheerPower`).
+ */
+export const CEREMONY = {
+  staggerMs: 260, queueGap: 34, doorInset: 30, enterSpeed: 470, capSpeed: 380, capGap: 40,
+  arrive: 14, introMaxMs: 4800, shakeHoldMs: 700,
+  lineDelayMs: 2600, lineGap: 44, lineRow: 58, lineSpeed: 240, passSpeed: 50, passDist: 4.8,
+  formMaxMs: 2600, saluteMs: 900, saluteGapR: 4.2, rowYFrac: 0.31, doorOpenR: 80,
+  lastMinuteS: 60, wLastMinute: 0.5, wEqualizer: 0.35, wComeback: 0.45, wHatTrick: 0.5,
+  extraMs: 1000, tighten: 0.3, cheerMs: 1600, cheerPower: 0.5,
+} as const
 export const BULLY_PLAYER_OFFSET = 26 * K
 
 // ── Saques y faltas (reglamento World Skate 2026, art. 5, 13, 23, 27–30) ──

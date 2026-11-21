@@ -41,6 +41,8 @@ export function driveBlueRestarts(match: Phaser.Scene) {
 export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, hooks?: SmokeHooks, human: HumanKind | null = null) {
   const s = match as MatchView
   autopilot.on = !human
+  // E-21: el humo no espera a la salida al campo
+  match.events.once(Phaser.Scenes.Events.CREATE, () => { (match as unknown as { introSkip: boolean }).introSkip = true })
   const stats = createMatchStats(match, mode, { keepShots: true })
   let nextPartial = 30000
   let done = false
@@ -63,7 +65,8 @@ export function startSmoke(match: Phaser.Scene, mode: string, smokeMs: number, h
       nextPartial += 30000
       console.log('[smoke] ' + JSON.stringify(snapshot(false)))
     }
-    if (ms >= smokeMs || s.matchEnded) finish()
+    // E-21: `cer=final` sigue tras el final para congelar el saludo con `at=<ms>`)
+    if (ms >= smokeMs || (s.matchEnded && !(match as unknown as { labKeepAfterEnd?: boolean }).labKeepAfterEnd)) finish()
   }
 
   const finish = () => {

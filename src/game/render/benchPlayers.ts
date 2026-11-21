@@ -18,7 +18,7 @@ import * as Phaser from 'phaser'
 import { RINK } from '../constants'
 import { equipoDeHueco } from '../externalMatch'
 import type { TeamColor } from '../types'
-import { BENCH, FIGURE_EXAG, PLAYER_HEIGHT_M, PUPPET_LOCAL, TABLE, WORLD_PX_PER_M, bandDepth, figureScale } from './artSpec'
+import { BENCH, CEREMONY_POSE, FIGURE_EXAG, PLAYER_HEIGHT_M, PUPPET_LOCAL, TABLE, WORLD_PX_PER_M, bandDepth, figureScale } from './artSpec'
 import { POSE, ROLE_POSES, benchPose, type BenchRole, type BenchStyle } from './benchPoses'
 import { FigureBaker } from './figureBaker'
 import { lookFor, officialKit, playerKit, staffKit, teamKit, type RigKit } from './puppet/kit'
@@ -27,6 +27,8 @@ import { createPose } from './puppet/pose'
 import { PuppetRig, RIG_UNIT } from './puppet/rig'
 import { J, rigDims } from './puppet/skeleton'
 import { bakeResolution } from './quality'
+import { DOOR_HOLD_BENCH, doorHold } from './rink/boards'
+import { penaltyDoor } from './rink/table'
 import { PLATFORM_Z, SEAT_ANCHOR_Y, SEAT_PELVIS_Y, benchSide, benchX } from './rink/benches'
 import { BOARD_W } from './rink/geometry'
 import { officialSeat } from './rink/table'
@@ -66,6 +68,11 @@ export interface BenchPlayer {
   reactFrom: number
   reactUntil: number
   hop: boolean
+  /** E-21: salto a la puerta en el gol del último minuto (inicio, -1 = no) y sitio de pie (pantalla). */
+  rushFrom: number
+  homeX: number
+  rushX: number
+  rushY: number
 }
 
 /** Hechos de la simulación pendientes de reacción (los apuntan los oyentes). */
@@ -75,6 +82,7 @@ interface Pending {
   foulX: number
   card: TeamColor | null
   kickoff: boolean
+  rush: boolean
 }
 const pendingOf = new WeakMap<BenchPlayer[], Pending>()
 
@@ -211,10 +219,14 @@ export function createBenchPlayers(scene: Phaser.Scene): BenchPlayer[] {
     const k = ks[n]
     const baseY = foot.y - PUPPET_LOCAL.feetY * k
     const img = baker.image(scene, foot.x, baseY, frames[POSE.C]).setDepth(bandDepth('OFFCOURT_FAR', foot.y))
+    const R = CEREMONY_POSE.rush
+    const door = penaltyDoor(s.team ?? 'blue', -R.setbackM * WORLD_PX_PER_M.y)
+    const at = project(door.x + ((s.rank % 3) - 1) * R.spreadM * WORLD_PX_PER_M.x, door.y, 0)
     players.push({
       img, role: s.role, team: s.team, rank: s.rank, frames, wx: s.wx, wy: s.wy, baseY,
       hopPx: BENCH.hopUnits * RIG_UNIT * k, pose: POSE.C, look: POSE.C, follow: true, nextLook: 0, nextIdle: -1,
       seed: hash(n * 977 + 13), react: -1, alt: -1, reactFrom: 0, reactUntil: 0, hop: false,
+      rushFrom: -1, homeX: foot.x, rushX: at.x, rushY: at.y - PUPPET_LOCAL.feetY * k,
     })
   })
 
@@ -236,9 +248,9 @@ function placeHelmet(g: Phaser.GameObjects.Graphics, rig: PuppetRig, s: Spec, id
 
 /** Oyentes de la simulación: solo apuntan el hecho; se dan de baja al cerrar la escena. */
 function listen(scene: Phaser.Scene, players: BenchPlayer[]) {
-  const p: Pending = { goal: null, foul: null, foulX: CX, card: null, kickoff: false }
+  const p: Pending = { goal: null, foul: null, foulX: CX, card: null, kickoff: false, rush: false }
   pendingOf.set(players, p)
-  const onGoal = (e: { team: TeamColor }) => { p.goal = e.team }
+  const onGoal = (e: { team: TeamColor; rush?: boolean }) => { p.goal = e.team; p.rush = !!e.rush }
   const onFoul = (e: { against: TeamColor; x: number }) => { p.foul = e.against; p.foulX = e.x }
   const onCard = (e: { team: TeamColor }) => { p.card = e.team }
   const onKickoff = () => { p.kickoff = true }
@@ -271,7 +283,10 @@ function dispatch(players: BenchPlayer[], p: Pending, t: number) {
     const lag = f.rank * BENCH.staggerMs + rand(f) * 120
     if (p.goal) {
       const mine = f.team === p.goal
-      if (f.role === 'sub') mine ? react(f, POSE.CHEER_A, POSE.CHEER_B, t + lag, BENCH.cheerMs, true) : react(f, POSE.SAD, -1, t + lag, BENCH.sadMs, false)
+      // E-21: en el gol del último minuto los suplentes saltan del banquillo y celebran de pie en la puerta
+      const R = CEREMONY_POSE.rush
+      if (f.role === 'sub' && mine && p.rush) { react(f, POSE.CHEER_A, POSE.CHEER_B, t + lag, R.moveMs * 2 + R.holdMs, true); f.rushFrom = t + lag }
+      else if (f.role === 'sub') mine ? react(f, POSE.CHEER_A, POSE.CHEER_B, t + lag, BENCH.cheerMs, true) : react(f, POSE.SAD, -1, t + lag, BENCH.sadMs, false)
       else if (f.role === 'delegate') react(f, mine ? POSE.CHEER_A : POSE.SAD, -1, t + lag, mine ? BENCH.cheerMs : BENCH.sadMs, false)
       else if (f.role === 'coach') mine ? react(f, POSE.CHEER_A, POSE.CHEER_B, t + 150, BENCH.cheerMs, true) : react(f, POSE.DESPAIR, -1, t + 250, BENCH.sadMs, false)
       else if (f.role === 'scorer') react(f, POSE.WORK, -1, t + 900, TABLE.writeMs, false)
@@ -289,7 +304,22 @@ function dispatch(players: BenchPlayer[], p: Pending, t: number) {
     }
     if (p.kickoff && f.role === 'timer' && f.react < 0) react(f, POSE.WORK, -1, t, TABLE.clockMs, false)
   }
-  p.goal = null; p.foul = null; p.card = null; p.kickoff = false
+  p.goal = null; p.foul = null; p.card = null; p.kickoff = false; p.rush = false
+}
+
+/** Equipos con algún suplente asomado a la puerta este fotograma (la abre en `boards`). */
+const atDoor = { blue: false, red: false }
+
+const ease01 = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v))
+
+/** E-21: del asiento a la puerta, de pie un rato y de vuelta; pone la `x` y devuelve la `y` base. */
+function rushAt(f: BenchPlayer, t: number) {
+  const R = CEREMONY_POSE.rush
+  const e = t - f.rushFrom
+  const k = e < R.moveMs ? ease01(e / R.moveMs) : e < R.moveMs + R.holdMs ? 1 : ease01((R.moveMs * 2 + R.holdMs - e) / R.moveMs)
+  f.img.x = f.homeX + (f.rushX - f.homeX) * k
+  if (k > 0.6 && f.team) atDoor[f.team] = true
+  return f.baseY + (f.rushY - f.baseY) * k
 }
 
 /** Cambia de marco solo si cambia la pose. */
@@ -315,16 +345,20 @@ export function updateBenchPlayers(players: BenchPlayer[], timeNow: number, ball
   const p = pendingOf.get(players)
   if (p && (p.goal || p.foul || p.card || p.kickoff)) dispatch(players, p, timeNow)
 
+  atDoor.blue = false
+  atDoor.red = false
   for (const f of players) {
     if (f.react >= 0 && timeNow >= f.reactFrom) {
       if (timeNow < f.reactUntil) {
         const e = timeNow - f.reactFrom
         show(f, f.alt >= 0 && Math.floor(e / BENCH.flipMs) % 2 === 1 ? f.alt : f.react)
-        if (f.hop) f.img.y = f.baseY - f.hopPx * Math.abs(Math.sin((Math.PI * e) / BENCH.hopMs))
+        const base = f.rushFrom >= 0 ? rushAt(f, timeNow) : f.baseY
+        if (f.hop) f.img.y = base - f.hopPx * Math.abs(Math.sin((Math.PI * e) / BENCH.hopMs))
         continue
       }
       f.react = -1
       if (f.hop) f.img.y = f.baseY
+      if (f.rushFrom >= 0) { f.rushFrom = -1; f.img.x = f.homeX }
     }
     if (f.react >= 0) { show(f, f.look); continue }
 
@@ -350,4 +384,6 @@ export function updateBenchPlayers(players: BenchPlayer[], timeNow: number, ball
     }
     show(f, f.look)
   }
+  doorHold.blue = atDoor.blue ? doorHold.blue | DOOR_HOLD_BENCH : doorHold.blue & ~DOOR_HOLD_BENCH
+  doorHold.red = atDoor.red ? doorHold.red | DOOR_HOLD_BENCH : doorHold.red & ~DOOR_HOLD_BENCH
 }

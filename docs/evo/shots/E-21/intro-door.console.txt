@@ -1,0 +1,10 @@
+﻿[39800:20840:1121/125406.760:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5190/@vite/client (851)
+[39800:20840:1121/125406.795:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5190/@vite/client (955)
+[39800:20840:1121/125407.379:INFO:CONSOLE:12751] "%cPhaser v4.2.0 (WebGL | Web Audio)%c https://phaser.io/v402 color: #ffffff; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAOCAYAAAAmL5yKAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAARBJREFUeNpi/P//P0OHsPB/BiCoePuW [...]
+[39800:20840:1121/125407.416:INFO:CONSOLE:0] "[.WebGL-0x52b400d9b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5190/?lab=match&mode=reglamento&auto=1&cer=intro&at=500&after=0 (0)
+[39800:20840:1121/125407.917:INFO:CONSOLE:309] "[stands] res 1.46 · asientos 3260 · público 2813 · bloques 132 · texturas 10.85 Mpx (2862×1415, 3232×2103) · pintado 0 ms", source: http://127.0.0.1:5190/src/game/render/stands/crowd.ts (309)
+[39800:20840:1121/125407.918:INFO:CONSOLE:434] "[stands] objetos 155 · montaje 0 ms", source: http://127.0.0.1:5190/src/game/render/stands/crowd.ts (434)
+[39800:20840:1121/125408.273:INFO:CONSOLE:124] "[at] 500 t=500", source: http://127.0.0.1:5190/src/scenes/lab/labAt.ts (124)
+[39800:20840:1121/125408.277:INFO:CONSOLE:0] "[.WebGL-0x52b400d9b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5190/?lab=match&mode=reglamento&auto=1&cer=intro&at=500&after=0 (0)
+[39800:20840:1121/125408.577:INFO:CONSOLE:0] "[.WebGL-0x52b400d9b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5190/?lab=match&mode=reglamento&auto=1&cer=intro&at=500&after=0 (0)
+[39800:20840:1121/125408.579:INFO:CONSOLE:0] "[.WebGL-0x52b400d9b200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://127.0.0.1:5190/?lab=match&mode=reglamento&auto=1&cer=intro&at=500&after=0 (0)

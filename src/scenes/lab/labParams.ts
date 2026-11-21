@@ -57,6 +57,8 @@ export interface LabParams {
   spAt: string | null
   /** Stick fijo de la persona durante el duelo (`x,y`, ejes de pantalla). */
   spStick: { x: number, y: number } | null
+  /** E-21 (`lab=match`): `cer=final` acaba el partido al empezar; `cer=weight` deja la 2.ª parte en su último minuto hasta el primer gol. */
+  cer: 'intro' | 'final' | 'weight' | null
 }
 
 const num = (q: URLSearchParams, key: string): number | null => {
@@ -105,6 +107,7 @@ export function readLabParams(search: string): LabParams {
     spFree: q.get('kind') === 'free',
     spWall: q.get('wall') === '1',
     spAt: q.get('spAt'),
+    cer: q.get('cer') === 'intro' ? 'intro' : q.get('cer') === 'final' ? 'final' : q.get('cer') === 'weight' ? 'weight' : null,
     spStick: (() => {
       const v = (q.get('spStick') ?? '').split(',').map(Number)
       return v.length === 2 && v.every(Number.isFinite) ? { x: v[0], y: v[1] } : null

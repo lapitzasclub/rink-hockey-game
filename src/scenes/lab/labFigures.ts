@@ -75,6 +75,8 @@ export interface LabMood {
   ms: number
   hit?: number | null
   side?: 1 | -1
+  /** E-21: peso del gol (gesto agrandado). */
+  big?: number
 }
 
 /** Reacción en juego forzada (E-20): ms desde que empieza; pen = sancionado saliendo. */
@@ -149,7 +151,7 @@ export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
   if (fm) {
     const hit = fm.hit === undefined || fm.hit === null ? Infinity : t - fm.hit
     const m = player.mood ?? (player.mood = { kind: fm.kind, style: 0, at: 0, until: Infinity, hit, side: 1 })
-    m.kind = fm.kind; m.style = fm.style; m.at = t - fm.ms; m.until = Infinity; m.hit = hit; m.side = fm.side ?? 1
+    m.kind = fm.kind; m.style = fm.style; m.at = t - fm.ms; m.until = Infinity; m.hit = hit; m.side = fm.side ?? 1; m.big = fm.big
   }
   const fr = fig.reaction
   if (fr) {

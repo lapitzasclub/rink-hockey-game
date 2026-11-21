@@ -17,7 +17,8 @@ export type Arena = {
   /** excitement 0..1: amplitud y ritmo del vaivén del público. */
   update(time: number, excitement: number): void
   /** El público salta unos segundos (goles, final); con `team`, sobre todo su peña. */
-  cheer(time: number, durationMs?: number, team?: TeamColor | null): void
+  /** `power` (E-21): multiplica el salto (gol con peso). */
+  cheer(time: number, durationMs?: number, team?: TeamColor | null, power?: number): void
   /** Calidad baja: el público neutro se queda quieto (vuelve a su sitio); las peñas siguen, más calmadas. */
   setCrowdAnimated(on: boolean): void
 }
@@ -45,6 +46,7 @@ export function createArena(scene: Phaser.Scene): Arena {
   let full = !lite
   let cheerUntil = 0
   let cheerTeam: TeamColor | null = null
+  let cheerPower = 1
   let teamAt = -Infinity
   let lastTime = 0
 
@@ -74,9 +76,9 @@ export function createArena(scene: Phaser.Scene): Arena {
         let amp = idleAmp
         let freq = idleFreq
         if (cheering) {
-          if (mine) { amp = idleAmp + (CROWD.cheerAmpPena - idleAmp) * fade; freq = CROWD.cheerFreq }
+          if (mine) { amp = idleAmp + (CROWD.cheerAmpPena * cheerPower - idleAmp) * fade; freq = CROWD.cheerFreq }
           else if (team !== null && cheerTeam !== null) amp = idleAmp * 0.4
-          else { amp = idleAmp + (CROWD.cheerAmp - idleAmp) * fade; freq = CROWD.cheerFreq }
+          else { amp = idleAmp + (CROWD.cheerAmp * cheerPower - idleAmp) * fade; freq = CROWD.cheerFreq }
         }
         live.img.y = live.baseY - Math.abs(Math.sin(time * freq + live.block.phase)) * amp
       }
@@ -89,8 +91,9 @@ export function createArena(scene: Phaser.Scene): Arena {
         }
       }
     },
-    cheer(time, durationMs = CROWD.cheerMs, team?: TeamColor | null) {
+    cheer(time, durationMs = CROWD.cheerMs, team?: TeamColor | null, power = 1) {
       cheerUntil = time + durationMs
+      cheerPower = power
       if (team !== undefined) {
         cheerTeam = team
         teamAt = time
