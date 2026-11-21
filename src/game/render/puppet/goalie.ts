@@ -14,6 +14,7 @@ import { goalieClip } from './goalieClips'
 import type { PoseContext, PuppetPose } from './pose'
 import { aimStick } from './upperBody'
 import { set3, v3 } from './vec'
+import { spinWheels } from './wheels'
 
 /** Largo del stick del portero (lo lleva corto, a una mano). */
 const GOALIE_STICK_LEN = 0.46
@@ -95,4 +96,5 @@ export function goaliePose(pose: PuppetPose, ctx: PoseContext) {
   pose.headYaw = Phaser.Math.Clamp(ballYaw, -1.2, 1.2) * 0.3
   goalieClip(pose, ctx, hand, s)
   aimStick(pose, hand, GOALIE_STICK_LEN)
+  spinWheels(pose, ctx)
 }

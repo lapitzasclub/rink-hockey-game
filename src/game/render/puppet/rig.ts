@@ -14,9 +14,11 @@ import { puppetAtlas, type FrameRef, type PuppetAtlas } from './atlas'
 import type { RigKit } from './kit'
 import type { FigureKind, PuppetPose, Side } from './pose'
 import { BLADE_LEN, J, Skeleton, viewIndex } from './skeleton'
+import { gloveFrame, kneePadFrame, shinFrame, skateFrames } from './gearTextures'
+import { GLOVE, JERSEY_FOLD, SKATE } from './gearSpec'
 import {
   FIGURE_PX, VIEWS, WHITE, blobFrame, bladeFrame, blockerFrame, capsuleFrame, headFrame, mittFrame, numberFrame,
-  padFrame, padLen, shadowFrame, skateFrame, torsoFrame, torsoLen,
+  padFrame, padLen, shadowFrame, torsoFrame, torsoLen,
 } from './textures'
 
 /** Unidades locales del contenedor por unidad de figura. */
@@ -38,6 +40,11 @@ interface Slot {
   bias: number
   /** Marcos por vista (8) o null si la pieza no depende de la vista. */
   views: FrameRef[] | null
+  /** Juegos de marcos por vista que elige `variant` (fases de rueda, pliegues de la camiseta). */
+  variants: FrameRef[][] | null
+  variant: number
+  /** Pieza que sigue el giro de otra (guante con su antebrazo). */
+  align?: Slot
   /** Qué yaw elige el marco: cuerpo, cabeza o pie 0/1. */
   viewOf: 'body' | 'head' | 'foot0' | 'foot1'
   d: number
@@ -88,7 +95,7 @@ export class PuppetRig {
     const first = views ? views[0] : frame as FrameRef
     const img = this.scene.add.image(0, 0, first.page, first.frame).setScale(TEX_SCALE)
     if (tint !== WHITE) img.setTint(tint)
-    const slot: Slot = { img, kind, a, b, nom: nomUnits * RIG_UNIT, bias, views, viewOf, d: 0 }
+    const slot: Slot = { img, kind, a, b, nom: nomUnits * RIG_UNIT, bias, views, variants: null, variant: 0, viewOf, d: 0 }
     this.slots.push(slot)
     return slot
   }
@@ -99,19 +106,23 @@ export class PuppetRig {
     const kit = this.kit
     const goalie = this.kind === 'goalie'
     const official = this.kind === 'official'
-    const skates = viewNames.map(v => skateFrame(at, v, kit.footwear))
+    const skates = skateFrames(at, kit.footwear)
     const legC = official ? kit.shorts : kit.socks
+    // Espinilleras y rodilleras solo en patinadores: los oficiales llevan pantalón largo
+    const shinF = official ? capsuleFrame(at, 'shin', d.shin, 0.036 * L, 0.032 * L) : viewNames.map(v => shinFrame(at, d, v))
+    const kneeF = viewNames.map(v => kneePadFrame(at, v))
 
     for (let i = 0; i < 2; i++) {
-      this.add('pt', skates, J.foot0 + i, J.ankle0 + i, 0, 0.003, WHITE, i === 0 ? 'foot0' : 'foot1')
+      // El patín elige su marco en `apply` (vista del pie y fase de rueda): sin `views`
+      this.add('pt', skates[0][0], J.foot0 + i, J.ankle0 + i, 0, 0.003, WHITE, i === 0 ? 'foot0' : 'foot1').variants = skates
       if (goalie) {
         this.add('seg', viewNames.map(v => padFrame(at, d, v, kit)), J.padTop0 + i, J.ankle0 + i, padLen(d), 0.006)
         this.add('seg', capsuleFrame(at, 'g-thigh', d.thigh, 0.06, 0.052), J.hip0 + i, J.knee0 + i, d.thigh, 0.03, kit.shorts)
         continue
       }
-      const shin = this.add('seg', capsuleFrame(at, 'shin', d.shin, 0.036 * L, 0.032 * L), J.knee0 + i, J.ankle0 + i, d.shin, 0, legC)
+      const shin = this.add('seg', shinF, J.knee0 + i, J.ankle0 + i, d.shin, 0, legC)
       const thigh = this.add('seg', capsuleFrame(at, 'thigh', d.thigh, 0.046 * L, 0.04 * L), J.hip0 + i, J.knee0 + i, d.thigh, 0, legC)
-      if (!official) this.add('pt', blobFrame(at, 'kneepad', 0.044 * L, 0.05 * L, RIG_GEAR.kneePad), J.knee0 + i, J.knee0 + i, 0, 0.004).over = [shin, thigh]
+      if (!official) this.add('pt', kneeF, J.knee0 + i, J.knee0 + i, 0, 0.004).over = [shin, thigh]
       this.add('seg', capsuleFrame(at, 'shorts', d.thigh * 0.55, 0.058 * L, 0.052 * L), J.hip0 + i, J.shorts0 + i, d.thigh * 0.55, 0.002, kit.shorts).over = [thigh]
     }
     const pelvisR = goalie ? 0.075 : 0.058
@@ -119,6 +130,8 @@ export class PuppetRig {
     // Portero y árbitro llevan el tronco pintado con sus colores; el resto es blanco teñido
     const painted = goalie || kit.vest !== undefined
     this.torso = this.add('seg', viewNames.map(v => torsoFrame(at, d, v, painted ? kit : null)), J.torsoTop, J.torsoBase, torsoLen(d), goalie ? 0.05 : 0, painted ? WHITE : kit.jersey)
+    // Camiseta teñida: un juego de marcos por nivel de pliegue (el 0 es el de arriba)
+    if (!painted) this.torso.variants = [0, 1, 2].map(f => viewNames.map(v => torsoFrame(at, d, v, null, f)))
     if (kit.number) {
       this.numBack = numberFrame(at, kit.number, 0.12, kit.numColor)
       this.numFront = numberFrame(at, kit.number, 0.055, kit.numColor)
@@ -137,8 +150,13 @@ export class PuppetRig {
     for (let i = 0; i < 2; i++) {
       this.add('seg', upperF, J.sh0 + i, J.el0 + i, d.upperArm, 0, kit.jersey)
       const forearm = this.add('seg', foreF, J.el0 + i, J.hand0 + i, d.foreArm, 0.001, armC)
-      if (!goalie) {
-        this.add('pt', blobFrame(at, 'glove', 0.044 * L, 0.044 * L), J.hand0 + i, J.hand0 + i, 0, 0.003, official ? kit.skin : kit.gloves).over = [forearm]
+      if (official) {
+        this.add('pt', blobFrame(at, 'glove', 0.044 * L, 0.044 * L), J.hand0 + i, J.hand0 + i, 0, 0.003, kit.skin).over = [forearm]
+      } else if (!goalie) {
+        // Pulgar hacia el centro del cuerpo visto de frente
+        const glove = this.add('pt', gloveFrame(at, i === 0 ? -1 : 1), J.hand0 + i, J.hand0 + i, 0, 0.003, kit.gloves)
+        glove.over = [forearm]
+        glove.align = forearm
       } else if (i === this.stickSide) {
         this.add('pt', viewNames.map(v => blockerFrame(at, v, kit)), J.hand0 + i, J.hand0 + i, 0, 0.08)
       } else {
@@ -168,14 +186,16 @@ export class PuppetRig {
     const { px, py, pd } = sk
     const bodyView = viewIndex(pose.yaw)
     const fz = sk.view.fz
+    this.pickVariants(pose)
 
     for (const s of this.slots) {
-      if (s.views) {
+      const set = s.variants ? s.variants[s.variant] : s.views
+      if (set) {
         // Un giro +a en el marco del cuerpo resta a la vista de mundo
         const yaw = s.viewOf === 'body' ? pose.yaw
           : s.viewOf === 'head' ? pose.yaw - pose.headYaw
             : pose.yaw - pose.feet[s.viewOf === 'foot0' ? 0 : 1].yaw
-        const f = s.views[s.viewOf === 'body' ? bodyView : viewIndex(yaw)]
+        const f = set[s.viewOf === 'body' ? bodyView : viewIndex(yaw)]
         if (s.img.frame.name !== f.frame) s.img.setFrame(f.frame)
       }
       if (s.kind === 'seg') {
@@ -189,6 +209,13 @@ export class PuppetRig {
       } else {
         s.img.setPosition(px[s.a], py[s.a])
         s.d = pd[s.a] + s.bias
+        const o = s.align
+        if (o) {
+          // El guante sigue al antebrazo; si este se ve casi de punta, conserva el último giro
+          const dx = px[o.b] - px[o.a]
+          const dy = py[o.b] - py[o.a]
+          if (dx * dx + dy * dy > (GLOVE.alignMin * o.nom) ** 2) s.img.rotation = o.img.rotation
+        }
       }
     }
 
@@ -231,6 +258,33 @@ export class PuppetRig {
     for (const s of this.stickSlots) s.img.setVisible(pose.stick.visible)
 
     this.sortByDepth()
+  }
+
+  /**
+   * Fase horneada de cada patín (giro de rueda, desfasado entre pies; corrida a
+   * toda marcha) y nivel de pliegue de la camiseta según la inclinación del tronco.
+   */
+  private pickVariants(pose: PuppetPose) {
+    for (let i = 0; i < 2; i++) {
+      const s = this.slots[this.slotOfFoot(i)]
+      const v = s.variants
+      if (!v || v.length === 1) continue
+      const n = v.length - 1
+      if (pose.wheels.blur) {
+        s.variant = n
+        continue
+      }
+      const ph = (pose.wheels.spin + i * SKATE.footPhase) % Math.PI
+      s.variant = Math.min(n - 1, Math.floor(((ph < 0 ? ph + Math.PI : ph) / Math.PI) * n))
+    }
+    const t = this.torso
+    if (!t.variants) return
+    const { levels, hysteresis: h } = JERSEY_FOLD
+    const p = pose.trunk.pitch
+    let l = t.variant
+    while (l < levels.length && p > levels[l] + h) l++
+    while (l > 0 && p < levels[l - 1] - h) l--
+    t.variant = l
   }
 
   private footSlots: [number, number] = [-1, -1]
