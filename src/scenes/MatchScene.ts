@@ -144,8 +144,8 @@ export class MatchScene extends Phaser.Scene {
   private activeBully: ActiveBully | null = null
   private activeFoulRestart: ActiveFoulRestart | null = null
   private activeKickoff: ActiveKickoff | null = null
-  /** Quién saca el próximo saque de centro: el que encaja, o el rojo en la 2.ª parte. */
-  private nextKickoffTeam: TeamColor = 'blue'
+  /** Quién saca el próximo saque de centro: el que encaja; el rojo visitante abre el partido y el azul la 2.ª parte (art. 5.3). */
+  private nextKickoffTeam: TeamColor = 'red'
   /** El cambio de campo del descanso se hace al acabar el cartel, y los jugadores cruzan patinando. */
   private pendingSideSwitch = false
   private stuckCarrierStartTime = 0
@@ -243,7 +243,7 @@ export class MatchScene extends Phaser.Scene {
     this.finalShot = null
     this.duel.active = false
     this.activeKickoff = null
-    this.nextKickoffTeam = 'blue'
+    this.nextKickoffTeam = 'red'
     this.pendingSideSwitch = false
     this.stuckCarrierStartTime = 0
     this.stuckCarrierOrigin = null
@@ -411,7 +411,7 @@ export class MatchScene extends Phaser.Scene {
       resetArcadeMods()
       stopAnnouncer()
     })
-    this.resetKickoff('blue', true)
+    this.resetKickoff('red', true)
     this.cameraDirector.snapTo(this.ball)
     if (this.arcade) {
       this.arcade.start(this.players, this.simNow)
@@ -1742,12 +1742,12 @@ export class MatchScene extends Phaser.Scene {
   /**
    * Descanso: los equipos cambian de campo, como en el reglamento. Mientras dura
    * el cartel los jugadores frenan; al acabar cruzan patinando a su nueva mitad
-   * y saca el rojo (el azul sacó en la 1.ª parte).
+   * y saca el azul local (el rojo visitante sacó en la 1.ª parte, art. 5.3).
    */
   private startSecondHalf() {
     this.finalShot = null
     this.pendingSideSwitch = true
-    this.nextKickoffTeam = 'red'
+    this.nextKickoffTeam = 'blue'
     this.activeFoulRestart = null
     this.activeBully = null
     this.activeKickoff = null

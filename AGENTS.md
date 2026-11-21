@@ -318,6 +318,13 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-21 — workflow de reglamento (/regla)
+
+- Revisión del saque de centro contra World Skate 2026 (art. 5 y 7.3): la colocación cumple; faltan el pase obligatorio al pitar (hoy el que saca recibe la posesión), los 5 s para llevar la bola a campo rival, anular el gol directo de saque o de libre indirecto, y que el visitante abra el partido.
+- `/regla` (`.claude/commands/regla.md`, `docs/rules/`): extracto literal del reglamento en `REGLAMENTO.md` como única fuente para los agentes, backlog R-01..R-05 + R-99 con decisiones D-01..D-03, y agentes `regla-engineer` (opus), `regla-builder` (sonnet) y `regla-qa` (haiku); `ai-engineer` acepta R-XX. Las reglas salen de `/evo` en el enrutado de `/dev`.
+- R-05: `kickoffStats.ts` (tracker como `goaliePassStats`) mide en el humo acarreo, cruce a campo rival y pérdidas del saque; evento `at=kickoff` en labAt (requiere `auto=1`). Base en `docs/rules/smoke/2026-11-21-base-*.txt`: hoy el que saca suelta la bola al primer paso y cruza siempre, el rival nunca la gana en 3 s (142 saques reglamento, 145 arcade).
+- R-04: abre el partido el rojo visitante y la 2.ª parte el azul (art. 5.3, D-02).
+
 ### 2026-11-21 — workflow general (/dev) y gasto de IA
 
 - `/dev` (`.claude/commands/dev.md`, `docs/dev/`) para lo que no es de un dominio con workflow propio. Enruta cada tarea al modelo más barato que la hace bien: `dev-scout` (haiku, localiza y devuelve un mapa `archivo:línea`), `dev-builder` (sonnet, mecánico con patrón), `dev-engineer` (opus, lógica difícil), `dev-qa` (haiku, medir, papeleo e integración).
