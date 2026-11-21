@@ -11,14 +11,13 @@ import type { RigKit } from './kit'
 import {
   capsulePath, detailLine, ellipsePath, hex, paintHead, paintNumber, paintShape, polyPath, strokeOutline, tone, type HeadSpec,
 } from './paint'
-import { rigDims, type RigDims } from './skeleton'
+import type { RigDims } from './skeleton'
 
 /** px de pantalla a s = 1 por unidad de figura. */
 export const FIGURE_PX = PLAYER_HEIGHT_M * PX_PER_M * FIGURE_EXAG
 export const VIEWS = 8
 export const WHITE = 0xffffff
 const M = 1.6
-const L = RIG_PROPORTIONS.limb
 const F = RIG_FLOOR_FORESHORTEN
 
 const viewYaw = (v: number) => (v * Math.PI) / 4
@@ -95,9 +94,10 @@ export const torsoLen = (d: RigDims) => d.trunk * 0.95 + 0.01
 
 /**
  * Tronco visto desde la vista `v`: secciones elípticas en hombros (arriba,
- * ancla) y cadera, unidas por los laterales. El portero lleva peto marcado.
+ * ancla) y cadera, unidas por los laterales. El portero lleva peto marcado; la
+ * camiseta teñida, cuello, costuras y los pliegues del nivel `fold` (E-18).
  */
-export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKit | null): FrameRef {
+export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKit | null, fold = 0): FrameRef {
   const t = torsoSize(d)
   const yaw = viewYaw(v)
   const c = Math.abs(Math.cos(yaw))
@@ -109,7 +109,7 @@ export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKi
   const hb = (t.hip * s + t.depth * c) * F * FIGURE_PX
   const goalie = d.kind === 'goalie' && kit
   const vest = !goalie && kit?.vest !== undefined ? kit : null
-  const name = goalie ? `torso-goalie-${kit.id}-${v}` : vest ? `torso-vest-${vest.id}-${v}` : `torso-${d.kind}-${v}`
+  const name = goalie ? `torso-goalie-${kit.id}-${v}` : vest ? `torso-vest-${vest.id}-${v}` : `torso-${d.kind}-${v}-f${fold}`
   const w = Math.max(wt, wb)
   return atlas.ensure(name, { left: -w - M, right: w + M, top: -ht - M, bottom: len + hb + M }, ctx => {
     const p = new Path2D()
@@ -124,7 +124,11 @@ export function torsoFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKi
       strokeOutline(ctx, p, Math.min(wt, wb))
       return
     }
-    if (!goalie) return
+    if (!goalie) {
+      paintJersey(ctx, p, t, yaw, len, wt, wb, ht, hb, fold)
+      strokeOutline(ctx, p, Math.min(wt, wb))
+      return
+    }
     // Peto bajo la camiseta: placas horizontales y cintura en el segundo color
     ctx.save()
     ctx.clip(p)
@@ -171,6 +175,75 @@ function paintVest(
   ctx.restore()
 }
 
+/**
+ * Camiseta teñida (E-18): cuello, costuras laterales, bajo y pliegues que se
+ * marcan al inclinar el tronco (`fold` 0–2): de frente, arrugas en la tripa; de
+ * lado, del pecho hacia el costado. La espalda queda limpia para el dorsal.
+ */
+function paintJersey(
+  ctx: CanvasRenderingContext2D, p: Path2D, t: ReturnType<typeof torsoSize>,
+  yaw: number, len: number, wt: number, wb: number, ht: number, hb: number, fold: number,
+) {
+  const fx = Math.sin(yaw)
+  const fz = Math.cos(yaw)
+  const P = FIGURE_PX
+  const line = (c: number, w: number) => { ctx.strokeStyle = hex(c); ctx.lineWidth = w; ctx.lineCap = 'round' }
+  ctx.save()
+  ctx.clip(p)
+  // Cuello: anillo alrededor del arranque del cuello (la cabeza tapa la mitad de atrás)
+  const nrx = 0.042 * P
+  line(tone(WHITE, 0.62), 0.8)
+  ctx.beginPath()
+  ctx.ellipse(fx * t.depth * 0.3 * P, Math.max(0.3, ht * 0.25), nrx, Math.max(0.9, nrx * 0.45 + ht * 0.3), 0, 0, Math.PI * 2)
+  ctx.stroke()
+  // Costuras laterales: el costado que mira a cámara
+  line(tone(WHITE, 0.8), 0.45)
+  for (const s of [-1, 1]) {
+    if (s * fx < 0.2) continue
+    ctx.beginPath()
+    ctx.moveTo(-s * fz * t.sh * P * 0.92, ht * 0.4)
+    ctx.lineTo(-s * fz * t.hip * P * 0.92, len + hb)
+    ctx.stroke()
+  }
+  // Bajo de la camiseta
+  line(tone(WHITE, 0.78), 0.55)
+  ctx.beginPath()
+  ctx.ellipse(0, len - 1.1, wb, Math.max(0.5, hb), 0, Math.PI * 0.05, Math.PI * 0.95)
+  ctx.stroke()
+  if (fold > 0) {
+    const rows = fold === 1 ? [0.64] : [0.56, 0.73]
+    line(tone(WHITE, fold > 1 ? 0.7 : 0.77), 0.6)
+    const sag = 0.8 + 0.5 * fold
+    for (const f of rows) {
+      const y = len * f
+      const w = wt + (wb - wt) * f
+      ctx.beginPath()
+      if (fz > 0.2) {
+        // Arruga de la tripa: curva hacia abajo, centrada en el frente del tronco
+        const cx = fx * w * 0.3
+        const hw = w * 0.55 * Math.max(0.45, fz)
+        ctx.moveTo(cx - hw, y)
+        ctx.quadraticCurveTo(cx, y + 2 * sag, cx + hw, y)
+      } else if (Math.abs(fx) > 0.5) {
+        // De lado: del pecho (delante) hacia el costado
+        const sx = Math.sign(fx)
+        ctx.moveTo(sx * w, y - 0.5)
+        ctx.quadraticCurveTo(sx * w * 0.7, y + sag, sx * w * 0.2, y + 1.6 * sag)
+      }
+      ctx.stroke()
+    }
+    if (fz < -0.2 && fold === 2) {
+      // Espalda estirada al ir muy inclinado: el bajo tira hacia arriba
+      line(tone(WHITE, 0.86), 0.5)
+      ctx.beginPath()
+      ctx.moveTo(-wb * 0.6, len * 0.88)
+      ctx.quadraticCurveTo(0, len * 0.88 - 1.4, wb * 0.6, len * 0.88)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
+}
+
 /** Cabeza con casco (o sin él) para una vista; ancla en el centro de la cabeza. */
 export function headFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKit): FrameRef {
   const r = d.headR * FIGURE_PX
@@ -193,50 +266,6 @@ export function headFrame(atlas: PuppetAtlas, d: RigDims, v: number, kit: RigKit
   const w = r * aspect * 1.3
   return atlas.ensure(`head-${kit.skin}-${kit.hair}-${kit.helmet ?? 'none'}-${kit.cage ? 1 : 0}-${v}`, { left: -w - M, right: w + M, top: -1.25 * r - M, bottom: 1.25 * r + M }, ctx => {
     paintHead(ctx, spec)
-  })
-}
-
-/** Pieza de patín en 3D (marco del pie: z = punta), para ordenar y pintar. */
-interface SkatePiece { k: 'cap' | 'ell'; a: number[]; b?: number[]; ra: number; rb: number; c: number; bias: number; thin: boolean }
-
-/** Patín quad (bota, placa, 4 ruedas 2 × 2 y freno) o zapatilla, visto con la punta hacia la vista `v`. */
-export function skateFrame(atlas: PuppetAtlas, v: number, footwear: 'skate' | 'shoe'): FrameRef {
-  const yaw = viewYaw(v)
-  const fx = Math.sin(yaw)
-  const fz = Math.cos(yaw)
-  const pr = (p: number[]) => [(p[0] * -fz + p[2] * fx) * FIGURE_PX, (-p[1] + (p[0] * fx + p[2] * fz) * F) * FIGURE_PX, p[0] * fx + p[2] * fz]
-  const pieces: SkatePiece[] = []
-  if (footwear === 'shoe') {
-    pieces.push({ k: 'cap', a: [0, 0.025, -0.02], b: [0, 0.02, 0.08], ra: 0.03 * L, rb: 0.026 * L, c: RIG_GEAR.shoe, bias: 0, thin: false })
-  } else {
-    const wr = RIG_PROPORTIONS.skate * 0.36
-    const sole = 2 * wr + 0.012
-    const ankleY = rigDims('skater').ankleY
-    const side = Math.abs(fx)
-    for (const along of [-0.03, 0.065]) {
-      for (const sd of [-1, 1]) {
-        pieces.push({ k: 'ell', a: [sd * 0.026, wr, along], ra: Math.max(wr * side, 0.014), rb: wr, c: RIG_GEAR.wheel, bias: 0, thin: true })
-      }
-    }
-    pieces.push({ k: 'cap', a: [0, 2 * wr, -0.04], b: [0, 2 * wr, 0.075], ra: 0.009, rb: 0.009, c: RIG_GEAR.plate, bias: 0.001, thin: true })
-    pieces.push({ k: 'ell', a: [0, wr * 0.95, 0.1], ra: wr * 0.55 * L, rb: wr * 0.55 * L, c: RIG_GEAR.toeStop, bias: 0.002, thin: true })
-    pieces.push({ k: 'cap', a: [0, ankleY + 0.045, 0], b: [0, sole + 0.02, -0.03], ra: 0.034 * L, rb: 0.032 * L, c: RIG_GEAR.boot, bias: 0.003, thin: false })
-    pieces.push({ k: 'cap', a: [0, sole + 0.02, -0.03], b: [0, sole + 0.012, 0.085], ra: 0.03 * L, rb: 0.024 * L, c: RIG_GEAR.boot, bias: 0.003, thin: false })
-  }
-  const shapes = pieces.map((p, i) => {
-    const a = pr(p.a)
-    const b = p.b ? pr(p.b) : a
-    return { p, a, b, d: (a[2] + b[2]) / 2 + p.bias, i }
-  }).sort((x, y) => x.d - y.d || x.i - y.i)
-  const ext = 0.15 * FIGURE_PX
-  const top = (rigDims('skater').ankleY + 0.1) * FIGURE_PX
-  return atlas.ensure(`skate-${footwear}-${v}`, { left: -ext, right: ext, top: -top, bottom: 0.08 * FIGURE_PX }, ctx => {
-    for (const { p, a, b } of shapes) {
-      const ra = p.ra * FIGURE_PX
-      const rb = p.rb * FIGURE_PX
-      const path = p.k === 'ell' ? ellipsePath(a[0], a[1], ra, rb) : capsulePath(a[0], a[1], b[0], b[1], ra, rb)
-      paintShape(ctx, path, p.c, Math.min(ra, rb), p.thin)
-    }
   })
 }
 
@@ -316,7 +345,7 @@ export function blockerFrame(atlas: PuppetAtlas, v: number, kit: RigKit): FrameR
 /** Dorsal (SPEC §5): grande a la espalda, pequeño en el pecho. */
 export function numberFrame(atlas: PuppetAtlas, text: string, size: number, c: number): FrameRef {
   const px = size * FIGURE_PX
-  const w = px * 0.36 * text.length + 1.5
+  const w = px * 0.42 * text.length + 1.8
   const h = px * 0.62 + 1.5
   return atlas.ensure(`num-${text}-${size}-${c}`, { left: -w, right: w, top: -h, bottom: h }, ctx => {
     paintNumber(ctx, text, px, c)

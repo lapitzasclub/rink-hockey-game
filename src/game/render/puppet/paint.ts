@@ -73,6 +73,18 @@ export function paintShape(ctx: CanvasRenderingContext2D, path: Path2D, c: numbe
   strokeOutline(ctx, path, size, thin)
 }
 
+/**
+ * Pieza de varias formas como una sola silueta: contorno doble por debajo y
+ * relleno encima, así las costuras entre sus partes no se ven.
+ */
+export function paintUnion(ctx: CanvasRenderingContext2D, path: Path2D, c: number, size: number) {
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 2 * Math.max(RIG_OUTLINE.min, Math.min(RIG_OUTLINE.max, size * 0.5))
+  ctx.strokeStyle = hex(RIG_OUTLINE.color)
+  ctx.stroke(path)
+  fillShaded(ctx, path, c, size)
+}
+
 /** Línea de detalle (costuras, franjas) sin contorno. */
 export function detailLine(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, c: number, w: number) {
   ctx.strokeStyle = hex(c)
@@ -221,14 +233,17 @@ function paintCage(ctx: CanvasRenderingContext2D, h: HeadSpec) {
   ctx.stroke(face)
 }
 
-/** Dorsal centrado en (0, 0) con contorno. */
+/**
+ * Dorsal centrado en (0, 0) con contorno. Letra muy gruesa y contorno opaco
+ * (E-18): de espaldas, a escala de partido, la negrita normal se empastaba.
+ */
 export function paintNumber(ctx: CanvasRenderingContext2D, text: string, size: number, c: number) {
-  ctx.font = `bold ${size}px Arial, sans-serif`
+  ctx.font = `900 ${size}px "Arial Black", Roboto, Arial, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.lineJoin = 'round'
-  ctx.lineWidth = Math.max(0.6, size * 0.16)
-  ctx.strokeStyle = hex(RIG_OUTLINE.color, 0.85)
+  ctx.lineWidth = Math.max(0.7, size * 0.2)
+  ctx.strokeStyle = hex(RIG_OUTLINE.color)
   ctx.strokeText(text, 0, 0)
   ctx.fillStyle = hex(c)
   ctx.fillText(text, 0, 0)

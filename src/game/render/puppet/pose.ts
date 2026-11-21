@@ -69,6 +69,11 @@ export interface PuppetPose {
   stick: StickPose
   /** Escala de la cabeza (1 = reglamento; los cabezones del arcade la suben). */
   headScale: number
+  /**
+   * Ruedas de los patines (E-18): giro acumulado (rad, > 0 rodando hacia delante) y si
+   * van tan rápido que se pintan corridas. Lo escribe `spinWheels` con la distancia recorrida.
+   */
+  wheels: { spin: number; blur: boolean }
 }
 
 /** Datos de entrada de las capas de pose: lectura del estado del jugador, sin tocar la física. */
@@ -114,6 +119,7 @@ export function createPose(): PuppetPose {
     elbowPole: [v3(), v3()],
     stick: { visible: false, top: v3(), heel: v3(), bladeYaw: 0, topHand: 0, lowerGrip: null },
     headScale: 1,
+    wheels: { spin: 0, blur: false },
   }
 }
 
@@ -133,4 +139,6 @@ export function resetPose(p: PuppetPose) {
   }
   p.stick.visible = false
   p.stick.lowerGrip = null
+  // El giro se conserva (sentado o en espera la rueda queda donde paró); corrida solo en marcha
+  p.wheels.blur = false
 }

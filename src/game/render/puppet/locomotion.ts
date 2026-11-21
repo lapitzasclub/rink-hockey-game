@@ -18,6 +18,7 @@ import { backGait, brakeGait, crossGait, fallGait, hipY, idleGait, lerp, ramp, s
 import { applyMotion, forgetMotion, snapMotion, type MotionTargets } from './secondary'
 import { createPose, type PoseContext, type PuppetPose } from './pose'
 import { rigDims, type RigDims } from './skeleton'
+import { spinWheels } from './wheels'
 
 const TAU = Math.PI * 2
 const L = RIG_LOCO
@@ -255,6 +256,7 @@ export function locomotion(pose: PuppetPose, ctx: PoseContext) {
   applyMotion(pose, ctx, t, L.lean.turnShift / L.lean.turn, g.fall >= 0)
   if (g.fall >= 0) fallGait(pose, g)
   keepReach(pose)
+  spinWheels(pose, ctx)
 }
 
 const targets: MotionTargets = { pitch: 0, roll: 0, hip: 0, edge: 0 }
