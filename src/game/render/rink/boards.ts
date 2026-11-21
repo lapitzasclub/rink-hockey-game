@@ -210,6 +210,13 @@ type DoorLeaves = {
 }
 const doorLeaves: Partial<Record<TeamColor, DoorLeaves>> = {}
 let doorClock = -1
+/**
+ * Puertas abiertas por otra causa que el paso del sancionado: un bit por causa
+ * (`DOOR_HOLD_INTRO` salida al campo, `DOOR_HOLD_BENCH` suplentes asomados en el gol).
+ */
+export const doorHold: Record<TeamColor, number> = { blue: 0, red: 0 }
+export const DOOR_HOLD_INTRO = 1
+export const DOOR_HOLD_BENCH = 2
 
 /** Hueco de la puerta con las dos hojas giradas `theta` hacia el pasillo (se abren hacia fuera de la pista). */
 function drawOpenDoor(g: Phaser.GameObjects.Graphics, x: number, theta: number) {
@@ -267,7 +274,7 @@ export function updateBoardDoors(busy: Record<TeamColor, boolean>, timeNow: numb
     const d = doorLeaves[team]
     if (!d || !d.open.active) continue
     const step = dtMs / BOARDS.doorSwingMs
-    d.amount = Math.min(1, Math.max(0, d.amount + (busy[team] ? step : -step)))
+    d.amount = Math.min(1, Math.max(0, d.amount + (busy[team] || doorHold[team] !== 0 ? step : -step)))
     const shown = d.amount > 0.65 ? 2 : d.amount > 0.15 ? 1 : 0
     if (shown === d.shown) continue
     d.shown = shown

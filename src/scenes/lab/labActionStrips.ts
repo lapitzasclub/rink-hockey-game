@@ -131,6 +131,12 @@ export const ACTION_STRIPS: Record<string, () => FigureSpec[]> = {
     mood: { kind: 'down' as const, style: row + 1, ms },
     x: MID_X + (k - 2) * MOOD_DX, y: MID_Y + row * MOOD_DY,
   }))),
+  /** E-21: hat-trick (tres dedos), salto con el puño con peso y sin él. */
+  hattrick: () => [
+    ...moodRow(-1, { kind: 'score', style: 4, ms: 1500, hit: 500 }),
+    ...moodRow(0, { kind: 'score', style: 2, ms: 1500, hit: 400, big: 1 }),
+    ...moodRow(1, { kind: 'score', style: 2, ms: 1500, hit: 400 }),
+  ],
   /** E-19: cabizbajo arrastrando el stick, final ganador (salto en V) y choque de manos al cruzar. */
   moods4: () => [
     ...moodRow(-1, { kind: 'down', style: 0, ms: 1500 }, true),

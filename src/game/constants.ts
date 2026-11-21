@@ -367,7 +367,7 @@ export const CEREMONY = {
   staggerMs: 260, queueGap: 34, doorInset: 30, enterSpeed: 470, capSpeed: 380, capGap: 40,
   arrive: 14, introMaxMs: 4800, shakeHoldMs: 700,
   lineDelayMs: 2600, lineGap: 44, lineRow: 58, lineSpeed: 240, passSpeed: 50, passDist: 4.8,
-  formMaxMs: 2600, saluteMs: 900, saluteGap: 50, saluteY: 90,
+  formMaxMs: 2600, saluteMs: 900, saluteGapR: 4.2, rowYFrac: 0.31, doorOpenR: 80,
   lastMinuteS: 60, wLastMinute: 0.5, wEqualizer: 0.35, wComeback: 0.45, wHatTrick: 0.5,
   extraMs: 1000, tighten: 0.3, cheerMs: 1600, cheerPower: 0.5,
 } as const

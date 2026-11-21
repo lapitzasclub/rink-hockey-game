@@ -74,6 +74,8 @@ export interface LabMood {
   ms: number
   hit?: number | null
   side?: 1 | -1
+  /** E-21: peso del gol (gesto agrandado). */
+  big?: number
 }
 
 export interface FigureSpec {
@@ -144,7 +146,7 @@ export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
   if (fm) {
     const hit = fm.hit === undefined || fm.hit === null ? Infinity : t - fm.hit
     const m = player.mood ?? (player.mood = { kind: fm.kind, style: 0, at: 0, until: Infinity, hit, side: 1 })
-    m.kind = fm.kind; m.style = fm.style; m.at = t - fm.ms; m.until = Infinity; m.hit = hit; m.side = fm.side ?? 1
+    m.kind = fm.kind; m.style = fm.style; m.at = t - fm.ms; m.until = Infinity; m.hit = hit; m.side = fm.side ?? 1; m.big = fm.big
   }
   // Con bola, donde la pone la física (con su adelanto por velocidad); sin ella, un proxy delante
   if (fig.carrying) updateBallPosition(fig.ball, { x: 0, y: 0 }, player.id, [player], 0)

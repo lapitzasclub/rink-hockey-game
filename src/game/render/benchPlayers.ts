@@ -27,6 +27,7 @@ import { createPose } from './puppet/pose'
 import { PuppetRig, RIG_UNIT } from './puppet/rig'
 import { J, rigDims } from './puppet/skeleton'
 import { bakeResolution } from './quality'
+import { DOOR_HOLD_BENCH, doorHold } from './rink/boards'
 import { penaltyDoor } from './rink/table'
 import { PLATFORM_Z, SEAT_ANCHOR_Y, SEAT_PELVIS_Y, benchSide, benchX } from './rink/benches'
 import { BOARD_W } from './rink/geometry'
@@ -306,6 +307,9 @@ function dispatch(players: BenchPlayer[], p: Pending, t: number) {
   p.goal = null; p.foul = null; p.card = null; p.kickoff = false; p.rush = false
 }
 
+/** Equipos con algún suplente asomado a la puerta este fotograma (la abre en `boards`). */
+const atDoor = { blue: false, red: false }
+
 const ease01 = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v))
 
 /** E-21: del asiento a la puerta, de pie un rato y de vuelta; pone la `x` y devuelve la `y` base. */
@@ -314,6 +318,7 @@ function rushAt(f: BenchPlayer, t: number) {
   const e = t - f.rushFrom
   const k = e < R.moveMs ? ease01(e / R.moveMs) : e < R.moveMs + R.holdMs ? 1 : ease01((R.moveMs * 2 + R.holdMs - e) / R.moveMs)
   f.img.x = f.homeX + (f.rushX - f.homeX) * k
+  if (k > 0.6 && f.team) atDoor[f.team] = true
   return f.baseY + (f.rushY - f.baseY) * k
 }
 
@@ -340,6 +345,8 @@ export function updateBenchPlayers(players: BenchPlayer[], timeNow: number, ball
   const p = pendingOf.get(players)
   if (p && (p.goal || p.foul || p.card || p.kickoff)) dispatch(players, p, timeNow)
 
+  atDoor.blue = false
+  atDoor.red = false
   for (const f of players) {
     if (f.react >= 0 && timeNow >= f.reactFrom) {
       if (timeNow < f.reactUntil) {
@@ -377,4 +384,6 @@ export function updateBenchPlayers(players: BenchPlayer[], timeNow: number, ball
     }
     show(f, f.look)
   }
+  doorHold.blue = atDoor.blue ? doorHold.blue | DOOR_HOLD_BENCH : doorHold.blue & ~DOOR_HOLD_BENCH
+  doorHold.red = atDoor.red ? doorHold.red | DOOR_HOLD_BENCH : doorHold.red & ~DOOR_HOLD_BENCH
 }

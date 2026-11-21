@@ -9,11 +9,15 @@
  *   chocando la mano con los rivales y saludan a la grada.
  * - `goal`: peso del gol (último minuto, empate, remontada, hat-trick) y celebración acorde.
  */
-import { CELEBRATION as C, CEREMONY as E } from '../constants'
+import { CELEBRATION as C, CEREMONY as E, PLAYER_RADIUS, RINK } from '../constants'
+import { DOOR_HOLD_INTRO, doorHold } from '../render/rink/boards'
 import { penaltyDoor } from '../render/rink/table'
 import type { Player, TeamColor } from '../types'
 import type { PauseDirector } from './celebration'
 import { coast, glide, MID_X, MID_Y, moodStyle, setMood, suspended, turnFacing } from './celebrationMotion'
+
+/** Altura de las filas del final: tercio inferior, por debajo del cartel del resultado. */
+const ROW_Y = MID_Y + RINK.height * E.rowYFrac
 
 const St = { Wait: 0, Go: 1, Meet: 2, Back: 3, Done: 4 } as const
 /** Fases del saludo final: E-19 aún, formar filas, cruzarse, saludo a la grada. */
@@ -110,9 +114,16 @@ export class CeremonyDirector {
     if (!this.introActive) return false
     this.ensure(players.length)
     let busy = false
+    doorHold.blue &= ~DOOR_HOLD_INTRO
+    doorHold.red &= ~DOOR_HOLD_INTRO
     for (let i = 0; i < players.length; i++) {
       const p = players[i]
       const cap = i === this.cap.blue || i === this.cap.red
+      // La puerta del banquillo, abierta mientras quede alguien por salir o cruzándola
+      if (this.st[i] === St.Wait || this.st[i] === St.Go) {
+        const d = penaltyDoor(p.team, E.doorInset, this.door)
+        if (this.st[i] === St.Wait || Math.hypot(p.pos.x - d.x, p.pos.y - d.y) < E.doorOpenR) doorHold[p.team] |= DOOR_HOLD_INTRO
+      }
       switch (this.st[i]) {
         case St.Wait:
           busy = true
@@ -177,6 +188,8 @@ export class CeremonyDirector {
   /** Fin de la salida (o salto): el gesto se apaga; el saque normal lo hace la escena. */
   endIntro(players: Player[], time: number) {
     this.introActive = false
+    doorHold.blue &= ~DOOR_HOLD_INTRO
+    doorHold.red &= ~DOOR_HOLD_INTRO
     for (const p of players) if (p.mood && p.mood.until === Infinity) p.mood.until = time + C.fadeMs
   }
 
@@ -202,10 +215,10 @@ export class CeremonyDirector {
         continue
       }
       const dir = p.side === 'left' ? 1 : -1
-      const ty = this.phase === Fin.Pass ? this.ty[i] + dir * E.passDist * row : this.ty[i]
-      const d = glide(p, this.tx[i], ty, this.phase === Fin.Pass ? E.passSpeed : E.lineSpeed, dt, true)
+      const tx = this.phase === Fin.Pass ? this.tx[i] + dir * E.passDist * row : this.tx[i]
+      const d = glide(p, tx, this.ty[i], this.phase === Fin.Pass ? E.passSpeed : E.lineSpeed, dt, true)
       if (d > E.arrive) moving = true
-      else turnFacing(p, this.phase === Fin.Pass ? 0 : -dir, this.phase === Fin.Pass ? dir : 0, Math.min(1, dt * 6))
+      else turnFacing(p, this.phase === Fin.Pass ? dir : 0, this.phase === Fin.Pass ? 0 : dir, Math.min(1, dt * 6))
     }
     if (this.phase === Fin.Pass) this.slaps(players, time)
     const formed = !moving || time - this.phaseAt > E.formMaxMs
@@ -215,8 +228,8 @@ export class CeremonyDirector {
   }
 
   /**
-   * Dos filas junto a la línea central: el equipo de la izquierda arriba y el de la derecha
-   * abajo; al cruzarse (uno baja, otro sube) quedan frente a frente a `lineGap`.
+   * Dos filas horizontales en el tercio inferior (no tapan el cartel): la izquierda arriba y a la
+   * izquierda, la derecha abajo y a la derecha; al cruzarse quedan frente a frente a `lineGap`.
    */
   private planLines(players: Player[], time: number) {
     this.phase = Fin.Form
@@ -228,8 +241,8 @@ export class CeremonyDirector {
         // El portero cierra la fila
         if (suspended(p, time) || (g === 0) === (p.role === 'goalie')) continue
         const dir = p.side === 'left' ? 1 : -1
-        this.tx[i] = MID_X - dir * E.lineGap * 0.5
-        this.ty[i] = MID_Y - dir * E.lineRow * (0.5 + k[p.side]++)
+        this.tx[i] = MID_X - dir * E.lineRow * (0.5 + k[p.side]++)
+        this.ty[i] = ROW_Y - dir * E.lineGap * 0.5
         this.slap[i] = -1
         setMood(p, 'cross', 0, time, Infinity)
       }
@@ -246,7 +259,7 @@ export class CeremonyDirector {
         if (b.side === 'left' || !b.mood || suspended(b, time) || this.slap[i] === j) continue
         const dx = b.pos.x - a.pos.x
         const dy = b.pos.y - a.pos.y
-        if (Math.abs(dy) > E.lineRow * 0.45 || Math.abs(dx) > E.lineGap * 1.6) continue
+        if (Math.abs(dx) > E.lineRow * 0.45 || Math.abs(dy) > E.lineGap * 1.6) continue
         if (busyHand(a, time) || busyHand(b, time)) continue
         this.slap[i] = j
         this.slap[j] = i
@@ -266,8 +279,8 @@ export class CeremonyDirector {
       for (let i = 0; i < players.length; i++) {
         const p = players[i]
         if (suspended(p, time) || (g === 0) !== (p.side === 'left')) continue
-        this.tx[i] = MID_X + (k++ - 4.5) * E.saluteGap
-        this.ty[i] = MID_Y + E.saluteY
+        this.tx[i] = MID_X + (k++ - 4.5) * E.saluteGapR * PLAYER_RADIUS
+        this.ty[i] = ROW_Y
       }
     }
     for (let i = 0; i < players.length; i++) {
