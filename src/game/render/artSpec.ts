@@ -251,9 +251,20 @@ export const MOOD_POSE = {
   point: { x: 0.3, y: 0.12, z: 0.18, twist: 0.22, stickY: 0.27 },
   hug: { x: 0.06, y: 0.02, z: 0.26, pitch: 0.26, bounce: 0.03, hz: 1.8 },
   clash: { y: 0.2, z: 0.12, pump: 0.03, hz: 1.8 },
-  knees: { pelvisY: 0.43, pitch: 0.95, handX: 0.085, handY: 0.3, handZ: 0.16 },
-  hips: { x: 0.155, y: -0.2, z: -0.02, pitch: 0.12 },
-  helmet: { x: 0.05, y: 0.15, z: 0.07, pitch: 0.3 },
+  /**
+   * Cabizbajo: `slow*`/`still*` tramos de `speedRatio` en que se apagan el encorvado y los
+   * brazos; `settle` ms hasta pasar del hundimiento (`slump`) a la variante; `headZ` cabeza
+   * adelantada (cuello caído). `slump`: stick colgando de la mano, con la pala arrastrada
+   * detrás (`yaw` rad; delante se confundía con la postura de juego), y brazo libre muerto.
+   */
+  down: {
+    slow0: 0.5, slow1: 0.85, still0: 0.2, still1: 0.45, settle: 850, settleMs: 450, headZ: 0.08,
+    slump: { pelvisY: 0.44, pitch: 0.95, handX: 0.16, handY: -0.03, handZ: 0.07, yaw: 2.2, freeX: 0.12, freeDrop: 0.3, freeZ: 0.07 },
+  },
+  /** Variantes del cabizbajo: resoplido (`heave` rad a `hz`), negar con la cabeza y mecerse. */
+  knees: { pelvisY: 0.4, pitch: 1.12, handX: 0.085, handY: 0.27, handZ: 0.17, heave: 0.07, hz: 0.9 },
+  hips: { x: 0.155, y: -0.2, z: -0.02, pitch: 0.82, yaw: 2.3, shake: 0.5, shakeHz: 0.8 },
+  helmet: { x: 0.05, y: 0.15, z: 0.07, pitch: 0.9, rock: 0.09, rockHz: 0.45 },
   five: { ms: 650, x: 0.18, y: 0.28, z: 0.14 },
   stretch: { delay: 700, hz: 0.4, roll: 0.26, twist: 0.45, ramp: 400 },
   shake: { ms: 1100, y: 0.13, z: 0.3, amp: 0.02, hz: 4 },

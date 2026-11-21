@@ -57,6 +57,8 @@ const MOOD_DX = 140
 const MOOD_DY = 125
 /** A cámara, 3/4, de lado, 3/4 de espaldas y de espaldas. */
 const MOOD_VIEWS = [Math.PI / 2, Math.PI / 4, 0, -Math.PI / 4, -Math.PI / 2]
+/** Instantes (ms desde el gol) de la hoja del lamento. */
+const LAMENT_MS = [300, 700, 1100, 1600, 2400]
 
 /** Fila `row` (−1, 0, 1) de un gesto de parón en cinco vistas; `moving` patina a media velocidad. */
 function moodRow(row: number, mood: LabMood, moving = false): FigureSpec[] {
@@ -123,6 +125,12 @@ export const ACTION_STRIPS: Record<string, () => FigureSpec[]> = {
     ...moodRow(0, { kind: 'down', style: 1, ms: 1500 }),
     ...moodRow(1, { kind: 'down', style: 2, ms: 1500 }),
   ],
+  /** E-19: lamento en el tiempo (columnas 0,3 → 2,5 s), una fila por variante, en 3/4 a cámara. */
+  lament: () => [-1, 0, 1].flatMap(row => LAMENT_MS.map((ms, k) => ({
+    team: 'blue' as const, role: 'defender' as const, aimAhead: true, angle: Math.PI / 4,
+    mood: { kind: 'down' as const, style: row + 1, ms },
+    x: MID_X + (k - 2) * MOOD_DX, y: MID_Y + row * MOOD_DY,
+  }))),
   /** E-19: cabizbajo arrastrando el stick, final ganador (salto en V) y choque de manos al cruzar. */
   moods4: () => [
     ...moodRow(-1, { kind: 'down', style: 0, ms: 1500 }, true),

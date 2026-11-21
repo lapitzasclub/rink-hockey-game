@@ -322,8 +322,8 @@ export const GOAL_CELEBRATION_MS = 2800
 /**
  * Coreografía de los parones (E-19, `systems/celebration.ts`): velocidades en px/s,
  * frenadas en px/s², distancias en px de mundo y tiempos en ms de simulación.
- * - Gol: el autor patina `scorerSpeed` a la esquina del fondo atacado (a `cornerX`/`cornerY`
- *   de las vallas, como mucho `scorerRun` de recorrido); se tira de rodillas si va a más de
+ * - Gol: el autor patina `scorerSpeed` hacia la esquina del fondo atacado y frena
+ *   a la altura del borde del área (como mucho `scorerRun` de recorrido); se tira de rodillas si va a más de
  *   `slideMinSpeed` y frena deslizando a `slideDecel`. Los compañeros forman la piña a
  *   `huddleRadius` de él (`mateSpeed`, llegan a `huddleArrive`). Su portero sale `keeperOut`
  *   y vuelve a `keeperBackMs`. El que encaja frena (`coastTau`, s) y uno va al centro a `centerSpeed`.
@@ -336,7 +336,15 @@ export const GOAL_CELEBRATION_MS = 2800
  * - `fadeMs` = salida del gesto; `sepFactor` × radio = separación mínima en los parones.
  */
 export const CELEBRATION = {
-  scorerSpeed: 430, cornerX: 120, cornerY: 75, scorerRun: 360,
+  /**
+   * Piña del gol: a la altura del borde del área atacada y a `huddleSideM` m de la valla
+   * lateral (nunca a menos de `huddleBoardM` m de ninguna). Los compañeros esperan a
+   * `mateHold` × el radio hasta `mateDelayMs` tras el gesto del autor (o `mateMaxWaitMs`).
+   */
+  scorerSpeed: 430, huddleSideM: 3.4, huddleBoardM: 2.5, scorerRun: 360,
+  mateHold: 3.4, mateDelayMs: 450, mateMaxWaitMs: 1500,
+  /** Fracción del giro normal con que el que encaja se da la vuelta, de espaldas al gol. */
+  turnSlow: 0.3,
   slideMinSpeed: 250, slideDecel: 380, slideMinRun: 240,
   mateSpeed: 420, huddleRadius: 2 * PLAYER_RADIUS, huddleArrive: 34,
   keeperOut: 70, keeperSpeed: 160, keeperBackMs: 1300,

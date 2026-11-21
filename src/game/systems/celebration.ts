@@ -9,7 +9,7 @@
  * - `cross` marca el cruce de campo; `beforeRitual`/`afterRitual` rodean el ritual del saque
  *   de centro para que el portero cruce por la valla y para el choque de manos al pasar.
  */
-import { CELEBRATION as C, GOALIE_BASE_X, PLAYER_RADIUS, RINK } from '../constants'
+import { CELEBRATION as C, GOAL_LINE_OFFSET, GOALIE_BASE_X, METER_PX, PENALTY_AREA_DEPTH, PLAYER_RADIUS, RINK } from '../constants'
 import { attackDir, teamSide } from '../formation'
 import type { Player, TeamColor } from '../types'
 import { coast, glide, integrate, MID_X, MID_Y, moodStyle, setMood, suspended, turnFacing } from './celebrationMotion'
@@ -110,8 +110,11 @@ export class PauseDirector {
     let cy = MID_Y
     if (si >= 0) {
       const s = players[si]
-      cx = endX - dir * C.cornerX
-      cy = s.pos.y < MID_Y ? RINK.y + C.cornerY : RINK.y + RINK.height - C.cornerY
+      // Dentro de la pista y a la vista: borde del área atacada, lejos de las dos vallas
+      const minB = C.huddleBoardM * METER_PX
+      const side = Math.max(minB, C.huddleSideM * METER_PX)
+      cx = endX - dir * Math.max(minB, GOAL_LINE_OFFSET + PENALTY_AREA_DEPTH)
+      cy = s.pos.y < MID_Y ? RINK.y + side : RINK.y + RINK.height - side
       const d = Math.hypot(cx - s.pos.x, cy - s.pos.y)
       if (d > C.scorerRun) {
         cx = s.pos.x + ((cx - s.pos.x) * C.scorerRun) / d
@@ -136,6 +139,7 @@ export class PauseDirector {
     let k = 0
     let nearCenter = -1
     let nearD = Infinity
+    let lost = 0
     for (let i = 0; i < players.length; i++) {
       const p = players[i]
       if (suspended(p, time) || i === si) continue
@@ -161,8 +165,11 @@ export class PauseDirector {
         this.plan(i, Mode.Coast, 0, 0, C.coastTau)
         continue
       }
-      setMood(p, 'down', moodStyle(p.id, 3), time, until)
+      // Variantes repartidas (no repetidas) entre los que encajan; el de la cadera da la espalda al gol
+      const style = (moodStyle(p.team, 3) + lost++) % 3
+      setMood(p, 'down', style, time, until)
       this.plan(i, Mode.Coast, 0, 0, C.coastTau)
+      if (style === 1) { this.lx[i] = p.pos.x + attackDir(p) * 300; this.ly[i] = p.pos.y }
       const d = Math.hypot(p.pos.x - MID_X, p.pos.y - MID_Y)
       if (d < nearD) { nearD = d; nearCenter = i }
     }
@@ -324,7 +331,10 @@ export class PauseDirector {
   private move(players: Player[], i: number, p: Player, time: number, dt: number) {
     const m = p.mood!
     switch (this.mode[i]) {
-      case Mode.Coast: coast(p, this.spd[i], dt); break
+      case Mode.Coast:
+        coast(p, this.spd[i], dt)
+        if (!Number.isNaN(this.lx[i])) this.look(p, this.lx[i], this.ly[i], dt * C.turnSlow)
+        break
       case Mode.Slide: {
         const v = p.velocity
         const s = Math.hypot(v.x, v.y)
@@ -335,9 +345,13 @@ export class PauseDirector {
         break
       }
       case Mode.Follow: {
+        // Esperan algo abiertos a que el autor haga su gesto y después cierran la piña
         const s = players[this.ref[i]]
-        const d = glide(p, s.pos.x + this.tx[i], s.pos.y + this.ty[i], this.spd[i], dt, true)
-        if (m.hit === Infinity && s.mood && s.mood.hit <= time && d < C.huddleArrive) m.hit = time
+        const sm = s.mood
+        const close = !sm || sm.hit + C.mateDelayMs <= time || time - m.at > C.mateMaxWaitMs
+        const f = close ? 1 : C.mateHold
+        const d = glide(p, s.pos.x + this.tx[i] * f, s.pos.y + this.ty[i] * f, this.spd[i], dt, true)
+        if (m.hit === Infinity && close && d < C.huddleArrive) m.hit = time
         if (d < C.huddleArrive * 1.5) this.look(p, s.pos.x, s.pos.y, dt)
         break
       }

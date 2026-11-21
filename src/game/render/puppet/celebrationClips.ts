@@ -257,40 +257,65 @@ function mate(pose: PuppetPose, ctx: PoseContext, m: PlayerMood, w: number, wa: 
   to(pose.hands[fi], grip.x, grip.y, grip.z, fin)
 }
 
-/** Cabizbajo: arrastra el stick al patinar; parado, manos en las rodillas, en la cadera o en el casco. */
+/**
+ * Cabizbajo, exagerado para leerse a escala de pista. Al encajar se hunde (tronco caído,
+ * cabeza baja, stick colgando de una mano y el otro brazo muerto); pasado `settle` cambia a
+ * su variante, que sigue viva: manos en las rodillas resoplando, en la cadera negando con
+ * la cabeza (la simulación lo pone de espaldas al gol) o mano al casco meciéndose.
+ * Patinando solo se encorva y arrastra el stick.
+ */
 function down(pose: PuppetPose, ctx: PoseContext, m: PlayerMood, w: number, s: number, fi: 0 | 1) {
+  const D = M.down
+  const S = D.slump
   relax(pose, w, 1)
   carry(pose, w, s, fi, true)
-  const ws = w * (1 - ramp(0.12, 0.35, ctx.speedRatio))
-  if (ws <= 0) return
   const p = pose.pelvis
+  const t = ctx.time - m.at
+  // Encorvado también al deslizarse despacio; los brazos y el stick, solo ya parado
+  const wl = w * (1 - ramp(D.slow0, D.slow1, ctx.speedRatio))
+  if (wl <= 0) return
+  p.y += (S.pelvisY - p.y) * wl
+  pose.trunk.pitch += (S.pitch - pose.trunk.pitch) * wl
+  pose.headYaw *= 1 - wl
+  pose.headLean.z += D.headZ * wl
+  const ws = w * (1 - ramp(D.still0, D.still1, ctx.speedRatio))
+  if (ws <= 0) return
+  set3(top, p.x - s * S.handX, p.y + S.handY, p.z + S.handZ)
+  floorHeel(top, -s * S.yaw, heel)
+  stickTo(pose, top, heel, -s * S.yaw + s * 1.2, ws)
+  let c = shoulders(pose)
+  to(pose.hands[fi], c.x + s * S.freeX, c.y - S.freeDrop, c.z + S.freeZ, ws)
+  const wb = ws * ramp(D.settle, D.settle + D.settleMs, t)
+  if (wb <= 0) return
   if (m.style === 0) {
     const K = M.knees
-    p.y += (K.pelvisY - p.y) * ws
-    pose.trunk.pitch += (K.pitch - pose.trunk.pitch) * ws
-    to(pose.hands[fi], p.x + s * K.handX, K.handY, p.z + K.handZ, ws)
+    const hv = wave(t, K.hz) * K.heave
+    p.y += (K.pelvisY - p.y) * wb
+    pose.trunk.pitch += (K.pitch + hv - pose.trunk.pitch) * wb
+    to(pose.hands[fi], p.x + s * K.handX, K.handY, p.z + K.handZ, wb)
     set3(top, p.x - s * K.handX, K.handY, p.z + K.handZ)
     floorHeel(top, s * 0.3, heel)
-    stickTo(pose, top, heel, s * 1.5, ws)
+    stickTo(pose, top, heel, s * 1.5, wb)
     return
   }
   if (m.style === 1) {
     const H = M.hips
-    pose.trunk.pitch += (H.pitch + M.relax.headDown - pose.trunk.pitch) * ws
-    const c = shoulders(pose)
-    to(pose.hands[fi], c.x + s * H.x, c.y + H.y, c.z + H.z, ws)
+    pose.trunk.pitch += (H.pitch - pose.trunk.pitch) * wb
+    pose.headYaw += wave(t - D.settle, H.shakeHz) * H.shake * wb
+    c = shoulders(pose)
+    to(pose.hands[fi], c.x + s * H.x, c.y + H.y, c.z + H.z, wb)
     set3(top, c.x - s * H.x, c.y + H.y, c.z + H.z)
-    floorHeel(top, -s * 0.5, heel)
-    stickTo(pose, top, heel, -s * 0.5 + s * 1.2, ws)
-    for (let i = 0; i < 2; i++) to(pose.elbowPole[i], i === 0 ? -1 : 1, 0, -0.5, ws)
+    floorHeel(top, -s * H.yaw, heel)
+    stickTo(pose, top, heel, -s * H.yaw + s * 1.2, wb)
+    for (let i = 0; i < 2; i++) to(pose.elbowPole[i], i === 0 ? -1 : 1, 0, -0.5, wb)
     return
   }
   const H = M.helmet
-  pose.trunk.pitch += (H.pitch - pose.trunk.pitch) * ws
-  carry(pose, ws, s, fi, false)
-  const c = shoulders(pose)
-  to(pose.hands[fi], c.x + s * H.x, c.y + H.y, c.z + H.z + Math.sin(pose.trunk.pitch) * 0.14, ws)
-  to(pose.elbowPole[fi], s, 0.6, 0.2, ws)
+  pose.trunk.pitch += (H.pitch - pose.trunk.pitch) * wb
+  pose.trunk.roll += wave(t - D.settle, H.rockHz) * H.rock * wb
+  c = shoulders(pose)
+  to(pose.hands[fi], c.x + s * H.x, c.y + H.y, c.z + H.z + Math.sin(pose.trunk.pitch) * 0.14, wb)
+  to(pose.elbowPole[fi], s, 0.6, 0.2, wb)
 }
 
 /** Estiramientos del descanso: stick por encima de la cabeza, ladeo o giro con el stick en la nuca. */
