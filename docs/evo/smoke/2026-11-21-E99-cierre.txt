@@ -8,3 +8,8 @@
 == bench reglamento movil-bajo
 [perf-bench] fps 66.4 · frame p50 10.7 · p95 20.5 ms · lógica 5.04 · render 8.23 ms · GPU RTX 5070 Ti
 
+
+== banco movil-bajo, misma máquina y condiciones (RTX 5070 Ti, calidad media auto, 3 runs, mediana)
+base b5dd031: arcade 81,8 fps · p95 16,7 · lógica 3,62 · render 7,35 | reglamento 99,2 fps · p95 16,7 · lógica 2,85 · render 6,12
+main f98eaea: arcade 77,2 fps · p95 16,8 · lógica 3,96 · render 7,64 | reglamento 88,0 fps · p95 16,7 · lógica 3,51 · render 6,74
+diferencia: arcade −5,6 % fps (lógica +9 %, render +4 %); reglamento −11,3 % fps (lógica +23 %, render +10 %). La medida anterior de este archivo (53/66 fps) se tomó con el emulador y otros Vite abiertos: no vale.
