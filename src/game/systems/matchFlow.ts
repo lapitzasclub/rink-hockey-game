@@ -394,6 +394,26 @@ function foulTarget(p: Player, foul: ActiveFoulRestart, taker: Player, players: 
 }
 
 /**
+ * Sitio del ejecutante: detrás de la bola respecto a su ataque. Pegado a la valla
+ * del fondo (la bola queda a 70 cm) ese sitio cae fuera de la pista: entonces se
+ * pone al lado de la bola, hacia el centro, para que pueda llegar.
+ */
+function foulTakerSpot(foul: ActiveFoulRestart, dir: number): Vector {
+  const gap = PLAYER_RADIUS + 4
+  const minX = RINK.x + PLAYER_RADIUS + RESTART_ARRIVE_PX
+  const maxX = RINK.x + RINK.width - PLAYER_RADIUS - RESTART_ARRIVE_PX
+  const minY = RINK.y + PLAYER_RADIUS + RESTART_ARRIVE_PX
+  const maxY = RINK.y + RINK.height - PLAYER_RADIUS - RESTART_ARRIVE_PX
+  const x = foul.x - dir * gap
+  if (x >= minX && x <= maxX) return { x, y: Phaser.Math.Clamp(foul.y, minY, maxY) }
+  const toCenter = foul.y < GAME_HEIGHT / 2 ? 1 : -1
+  return {
+    x: Phaser.Math.Clamp(x, minX, maxX),
+    y: Phaser.Math.Clamp(foul.y + toCenter * gap, minY, maxY),
+  }
+}
+
+/**
  * Tick del saque de falta.
  *
  * Mientras se colocan (hasta que llegan todos, o vence el plazo), el
@@ -423,9 +443,17 @@ export function updateFoulRestartState(options: {
   let takerSet = true
   if (taker) {
     const toGoal = { x: attackDir(taker), y: 0 }
-    const takerTarget = { x: foul.x - attackDir(taker) * (PLAYER_RADIUS + 4), y: foul.y }
+    const takerTarget = foulTakerSpot(foul, attackDir(taker))
     if (time < foul.readyAt || !wasReady) {
       takerSet = placePlayer(taker, takerTarget, toGoal, dt)
+      // Plazo vencido: se le coloca en su sitio para que el saque nunca se quede esperando
+      if (!takerSet && time >= foul.deadline) {
+        taker.pos.x = takerTarget.x
+        taker.pos.y = takerTarget.y
+        taker.velocity = { x: 0, y: 0 }
+        taker.facing = toGoal
+        takerSet = true
+      }
     } else {
       taker.velocity = { x: 0, y: 0 }
     }

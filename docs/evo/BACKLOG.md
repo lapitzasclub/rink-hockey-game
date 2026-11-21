@@ -21,6 +21,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-16 | Partículas de pista en los dos modos: ruedas, frenadas, marcas, impactos | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ✅ 2026-11-21 |
+| E-19 | Celebraciones y parones: gol, descanso y final de partido | gfx-engineer · opus | 🟨 |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
 
 IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos. E-15 (física), E-16 (partículas) y E-17 (animación) van en paralelo; E-18 tras E-17 (mismos archivos del rig).
@@ -140,6 +141,13 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Archivos:** `render/puppet/` (paint, textures, kit, skeleton), `render/artSpec.ts`.
 **Aceptación:** capturas de cerca antes y después en los dos equipos; calidad baja bien; banco movil-bajo en E-99.
 **Hecho:** `puppet/gearSpec.ts` (medidas y colores), `gearTextures.ts` (texturas horneadas una vez: patín quad con 4 ruedas, placa, freno y bota en 8 vistas × 4 fases de giro + 1 corrida; espinillera, rodillera y guante) y `wheels.ts` (giro por distancia recorrida; quieto, la rueda no gira; marcha atrás, al revés; con histéresis pasa al marco corrido por encima de 55 rad/s). Fase de rueda desfasada entre pies, pliegue de camiseta 0–2 según la inclinación del tronco, guante que sigue el antebrazo, dorsal más legible. Los oficiales no cambian. Pendiente: el portero solo se ha revisado a escala de pista; cortes rectos en piezas del tronco en el lab a zoom 3.2 (ya estaban antes, no se ven en partido).
+
+## E-19 — Celebraciones y parones
+
+**Pedido del usuario (2026-11-21):** «mejora las animaciones de distintas celebraciones en los goles, de cambio de campo, etc.».
+**Diagnóstico:** tras el gol todos se deslizan hasta frenar (`coastPlayers`) y hacen un gesto en el sitio de 1,8 s (dos variantes); el que encaja no reacciona; en el descanso esperan quietos y cruzan con la postura de juego; al final del partido nadie celebra.
+**Objetivo:** gol: el goleador sale patinando hacia la valla del fondo atacado con una celebración propia (varias variantes), los compañeros van a abrazarle (piña), su portero celebra en su área y el equipo que encaja se lamenta (cabeza baja, manos en las rodillas, el portero golpea el stick). Descanso: postura relajada, se cruzan chocando la mano. Final: el ganador hace piña y el que pierde patina cabizbajo; en empate se saludan. Movimiento en `stepSimulation`, poses en el pintado.
+**Aceptación:** build; tiras del laboratorio de cada clip y capturas en partido en los dos modos y en calidad baja; humo 20 × modo frente a `docs/rules/smoke/2026-11-21-R99-*.txt` con goles/min dentro de ±30 %, 0 atascos, 0 errores y 0 fuera de pista; banco movil-bajo en E-99.
 
 ## E-99 — Cierre
 

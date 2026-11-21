@@ -318,6 +318,12 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 
 ## Work log
 
+### 2026-11-21 — gasto de IA en todos los workflows
+
+- `docs/dev/WORKFLOW.md` §3.9–3.14 a partir del LEDGER: presupuesto S/M/L por encargo con corte a PARCIAL, escena de laboratorio antes que partido en vivo, humos de los dos modos en paralelo, scout si el encargo pide abrir más de 3 archivos, worktree estanco y revisión del LEDGER cada 5 paquetes. `/dev` y CLAUDE.md lo recogen.
+- `/evo` E-19 (celebraciones de gol, descanso y final) en curso con `gfx-engineer` en `.claude/worktrees/e-19`.
+- Arreglo: libre pegado a la valla del fondo que el ejecutante tiene detrás. Su sitio (detrás de la bola, que queda a 70 cm) caía fuera de la pista, nunca llegaba y el saque se quedaba esperando para siempre (el plazo solo cubría al resto). Ahora `foulTakerSpot` (`matchFlow.ts`) lo pone al lado de la bola hacia el centro y, vencido el plazo, se le coloca. Laboratorio: `?lab=match&mode=reglamento&sp=force&kind=free&wall=1&spAt=800`.
+
 ### 2026-11-21 — workflow de reglamento (/regla)
 
 - Revisión del saque de centro contra World Skate 2026 (art. 5 y 7.3): la colocación cumple; faltan el pase obligatorio al pitar (hoy el que saca recibe la posesión), los 5 s para llevar la bola a campo rival, anular el gol directo de saque o de libre indirecto, y que el visitante abra el partido.

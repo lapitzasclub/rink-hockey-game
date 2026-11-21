@@ -23,6 +23,9 @@ Argumento recibido: `$ARGUMENTS` (vacío = `status`).
 - **ledger**: resume LEDGER por tipo de paquete y modelo (tokens medios, rondas, rechazos) y propone ajustes de enrutado en ≤ 6 líneas.
 
 ## Coste
+- Todo encargo, de cualquier workflow, lleva `Presupuesto: S|M|L` (WORKFLOW §3.9) y nombra la escena de laboratorio que fuerza el caso (§3.10).
+- Más de 3 archivos para redactar un encargo → `dev-scout` primero (§3.12).
+- Cada 5 filas nuevas en LEDGER, propón `/dev ledger` al usuario.
 - No mires más de 3 capturas por paquete. No releas lo que un agente ya resumió.
 - Junta tareas pequeñas del mismo área en un solo encargo de `dev-builder`, y verificaciones en una sola pasada de `dev-qa`.
 - Reporta al usuario en ≤ 8 líneas: veredicto, qué cambia, siguiente paso.
