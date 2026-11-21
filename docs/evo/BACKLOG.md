@@ -18,7 +18,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-15 | Física de patinaje: inercia, giro limitado por velocidad, choques con masa, rebote en la valla | ai-engineer · opus | ✅ 2026-11-21 |
-| E-16 | Partículas de pista en los dos modos: ruedas, frenadas, marcas, impactos | gfx-engineer · opus | ⬜ |
+| E-16 | Partículas de pista en los dos modos: ruedas, frenadas, marcas, impactos | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
@@ -125,6 +125,7 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Objetivo:** hoy solo el arcade tiene partículas. En los dos modos: polvo y virutas de rueda en frenadas fuertes, derrapes y arranques a sprint; marcas de goma tenues en el suelo que se desvanecen (alta y media); impacto de la bola contra valla y poste; golpe de dos jugadores que chocan; polvo al caer. Sobrio en reglamento, más vivo en arcade. Todo en el pintado, a partir del estado (velocidad entre fotogramas, bola que rebota), sin tocar la simulación.
 **Archivos:** nuevo `render/rinkFx.ts`, el gancho mínimo en `MatchScene.ts` (`create` y `renderFrame`), bloque `RINK_FX` al final de `render/artSpec.ts`, la densidad de `render/quality.ts`.
 **Aceptación:** capturas de cerca de cada efecto en los dos modos y en calidad baja (debe verse bien); emisores compartidos, sin crear objetos por fotograma; partido en vivo; banco movil-bajo en E-99.
+**Hecho:** `render/rinkFx.ts` con pool propio (`rinkFxPool.ts`) y texturas horneadas (`rinkFxTextures.ts`), bloque `RINK_FX` en `artSpec.ts`. Muestra polvo fino al frenar, al derrapar y al arrancar a sprint, marcas de goma que se apagan, golpes de la bola en la valla y en el palo, choques (con `player.bump` de E-15) y caídas. Proyectado en el suelo y ordenado en profundidad con los jugadores. Reglamento sobrio pero legible; arcade más vivo. En calidad baja hay menos motas y no hay marcas. Para comprobarlo: `?lab=match&rfx=demo` y `?rfx=log`. No cuenta como palo si un jugador está pegado a la bola o cambia el poseedor. Pendiente: recalibrar `skate.brake/skid/start` con la física de E-15.
 
 ## E-17 — Animación secundaria
 

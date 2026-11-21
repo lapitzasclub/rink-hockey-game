@@ -326,6 +326,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - E-17: muelles de peso en tronco, cadera y brazos (`render/puppet/secondary.ts`, `RIG_MOTION`), reacción a `player.bump`, zancadas de arranque, cabeza estabilizada y patín de canto en deriva; tiras `?lab=players&strip=arranque|frenada|curva|choque`.
 - E-15: física de patinaje en `systems/movement.ts` (constantes `SKATE_*`): dirección de marcha con deriva, giro que se abre con la velocidad, frenada, choques con masa, rebote en la valla y `player.bump`. Los controles piden propulsión (`driveSkater`) en vez de sumar velocidad. Portero y saques sin cambios. Humo de 20 dentro de ±30 % (`docs/evo/smoke/2026-11-21-E15-fisica.txt`).
 - E-18: patín quad con ruedas que giran según la distancia recorrida, espinilleras, rodilleras, guantes y pliegues de camiseta (`render/puppet/gearSpec.ts`, `gearTextures.ts`, `wheels.ts`), todo horneado una vez.
+- E-16: partículas de pista (`render/rinkFx.ts`, `RINK_FX` en `artSpec.ts`): polvo y marcas de ruedas, golpes de bola en valla y palo, choques y caídas; demo en `?lab=match&rfx=demo`.
 
 ### 2026-11-21 — dentro del Loyola, como un juego nativo
 
