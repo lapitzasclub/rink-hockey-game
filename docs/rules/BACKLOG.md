@@ -22,7 +22,7 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 | R-03 | Gol directo de saque o libre indirecto anulado | regla-builder · sonnet | R-02 | ✅ |
 | R-04 | El visitante abre el partido | coordinador | — | ✅ |
 | R-06 | Apuntado del libre indirecto: receptor y línea de pase | regla-builder · sonnet | R-03 | ✅ |
-| R-99 | Cierre: humo 20 × 2 modos y partido del usuario | regla-qa · haiku | R-01..R-04 | ⏳ |
+| R-99 | Cierre: humo 20 × 2 modos y partido del usuario | coordinador | R-01..R-06 | 🟡 falta el partido del usuario |
 
 ## R-05 — Contadores del saque en el humo y base
 
@@ -67,3 +67,4 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 ## R-99 — Cierre
 
 - Humo 20 × reglamento y 20 × arcade en main contra la base de R-05; tabla de estado de REGLAMENTO.md al día; un partido del usuario (táctil y mando) para el control del saque.
+- **Humo (2026-11-21, `smoke/…-R99-*.txt`):** todo en ruido frente a la base salvo robos en arcade 11,30 → 9,46/min, que viene de R-01 (base → R-01: 8,60; R-03 → R-99: igual) porque el que saca ya no conduce hacia los rivales. 0 atascos, 0 errores y 0 fallidas en los dos modos. La tabla de REGLAMENTO.md ya estaba al día. Falta el partido del usuario.

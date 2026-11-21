@@ -328,6 +328,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - R-02: 5 s tras el saque (art. 5.7, solo reglamento): marca `kickoffTeam/kickoffAt` en `PassivityState` desde `takeKickoff`, límite `PASSIVITY.kickoffMs` con `limitKind` 'kickoff', HUD `SAQUE n`. Humo 20: 0 libres por 5 s (la IA cruza a ~300 ms), resto en ruido.
 - R-03: gol directo anulado (arts. 5.8, 7.3.b) en `systems/directRestart.ts`: marca al soltar saque o libre indirecto, se borra con portador, portero, roce o poste (`ballFrameHit.post`); `checkGoalState` anula y `rules.registerAnnulledGoal` reanuda (libre indirecto o neutral en `areaCorner`; en arcade, bola saltando). `?koshot=1` (DEV) lo fuerza en el laboratorio. Humo 20 × 2: 0 anulados en IA contra IA, resto en ruido.
 - R-06 (D-04): el apuntado del libre indirecto y del saque marca al receptor de `getBestPassTarget` y la línea de pase, verde si está libre y rojo si `laneBlockPenalty` la ve tapada (colores `AIM_PASS` en `artSpec.ts`). Solo se ve cuando saca la persona (la IA suelta al pitar). Laboratorio: `sp=force&kind=free` pita un libre indirecto.
+- R-99: humo de cierre 20 × 2 frente a la base de R-05: todo en ruido salvo robos en arcade (11,3 → 9,5/min, efecto de R-01: el saque ya no se conduce). Falta el partido del usuario con táctil y mando.
 
 ### 2026-11-21 — workflow general (/dev) y gasto de IA
 

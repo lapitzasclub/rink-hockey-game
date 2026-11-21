@@ -14,3 +14,4 @@ Una fila por paquete cerrado, de cualquier workflow (`/dev`, `/gfx`, `/perf`, `/
 | 2026-11-21 | regla R-02 cinco segundos tras el saque | regla-builder (sonnet) | 1 | 31 | 0,8 | aceptado | Node bloqueado por NVM (firma); reinstalado; humo de aceptación lo pasó el coordinador |
 | 2026-11-21 | regla R-03 gol directo anulado | regla-builder (sonnet) | 1 | 55 | 9,2 | aceptado | el caso forzado no llegaba a puerta y arcade descartaba el libre: lo arregló el coordinador (~10 líneas) con trazas en consola |
 | 2026-11-21 | regla R-06 apuntado del libre indirecto | regla-builder (sonnet) | 1 | 30 | 0,9 | aceptado | no vio el indicador (la IA suelta al pitar); el coordinador añadió `kind=free` al laboratorio y reforzó el trazo |
+| 2026-11-21 | regla R-99 cierre (humo 20 × 2) | coordinador | — | — | — | humo aceptado | falta el partido del usuario |
