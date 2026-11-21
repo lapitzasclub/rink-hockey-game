@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser'
-import { ARCADE_CHECK_STUN_MS, PLAYER_ACCEL, PLAYER_MAX_SPEED, PLAYER_SPRINT_MAX_SPEED } from '../../game/constants'
+import { ARCADE_CHECK_STUN_MS, PLAYER_ACCEL, REACTION, PLAYER_MAX_SPEED, PLAYER_SPRINT_MAX_SPEED } from '../../game/constants'
 import { createBall } from '../../game/entities/createBall'
 import { createPlayer } from '../../game/entities/createPlayer'
 import { resetLoco, setLocoState } from '../../game/render/puppet/locomotion'
@@ -9,7 +9,7 @@ import { ACTION_CLIP_MS, GOALIE_CLIP_MS } from '../../game/render/artSpec'
 import { lookFor } from '../../game/render/puppet/kit'
 import type { SaveKind } from '../../game/render/puppet/goalieClips'
 import type { ActionType } from '../../game/render/puppet/pose'
-import type { Ball, MoodKind, Player, Role, TeamColor } from '../../game/types'
+import type { Ball, MoodKind, Player, ReactionKind, Role, TeamColor } from '../../game/types'
 
 /** Figura del lab: jugador + pose fija (fase de patinaje en radianes o parado). */
 export interface LabFigure {
@@ -17,6 +17,7 @@ export interface LabFigure {
   action?: { type: ActionType; t: number }
   gk?: FigureSpec['gk']
   mood?: LabMood
+  reaction?: LabReaction
   player: Player
   ball: Ball
   carrying: boolean
@@ -76,8 +77,12 @@ export interface LabMood {
   side?: 1 | -1
 }
 
+/** Reacción en juego forzada (E-20): ms desde que empieza; pen = sancionado saliendo. */
+export interface LabReaction { kind: ReactionKind; ms: number; side?: 1 | -1; pen?: boolean; /** Ángulo de mundo hacia el «árbitro» de la protesta. */ look?: number }
+
 export interface FigureSpec {
   mood?: LabMood
+  reaction?: LabReaction
   /** Mano del stick forzada (busca un id con esa mano); acción y su progreso 0..1. */
   hand?: 'L' | 'R'
   action?: ActionType
@@ -113,7 +118,7 @@ export function createFigure(scene: Phaser.Scene, id: string, spec: FigureSpec, 
     ? createBall(scene)
     : aimAhead ? { x: spec.x, y: spec.y, visual: sharedBall.visual } : sharedBall
   const action = spec.action ? { type: spec.action, t: spec.actionT ?? 0 } : undefined
-  return { action, gk: spec.gk, mood: spec.mood, player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null, angle0: angle }
+  return { action, gk: spec.gk, mood: spec.mood, reaction: spec.reaction, player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null, angle0: angle }
 }
 
 /** Aplica la pose de la figura para el instante `t` (determinista: dt de animación = 0). */
@@ -145,6 +150,12 @@ export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
     const hit = fm.hit === undefined || fm.hit === null ? Infinity : t - fm.hit
     const m = player.mood ?? (player.mood = { kind: fm.kind, style: 0, at: 0, until: Infinity, hit, side: 1 })
     m.kind = fm.kind; m.style = fm.style; m.at = t - fm.ms; m.until = Infinity; m.hit = hit; m.side = fm.side ?? 1
+  }
+  const fr = fig.reaction
+  if (fr) {
+    player.reaction = { kind: fr.kind, at: t - fr.ms, until: t - fr.ms + REACTION.ms[fr.kind], side: fr.side ?? 1, tx: fr.look ? player.pos.x + Math.cos(fr.look) * 300 : NaN, ty: fr.look ? player.pos.y + Math.sin(fr.look) * 300 : NaN }
+    player.penPhase = fr.pen ? 'out' : undefined
+    player.penPhaseAt = t - 1000
   }
   // Con bola, donde la pone la física (con su adelanto por velocidad); sin ella, un proxy delante
   if (fig.carrying) updateBallPosition(fig.ball, { x: 0, y: 0 }, player.id, [player], 0)

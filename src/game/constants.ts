@@ -80,6 +80,22 @@ export const GOALIE_RELEASE_LEAD = 28 * K
 export const BULLY_CONTEST_GAP = 74 * K
 export const GOAL_POST_REBOUND = 0.82
 export const GOAL_SIDE_REBOUND = 0.78
+
+/**
+ * Reacciones en juego (E-20, `systems/reactions.ts`): gestos cortos de tronco y brazos que no
+ * paran el juego. Duraciones en ms de simulación; `fadeMs` entrada y salida del gesto.
+ * - Parada: el portero que bloca (`mine`, tras `mineDelayMs`), hasta `mates` compañeros a
+ *   menos de `mateRadius` px (`tap`) y el tirador (`rue`). Solo si hubo tiro hace < `shotWindowMs`.
+ * - Palo o fuera por poco (bola que cruza la línea a < `nearMissPx` del poste): tirador `miss`, portero `phew`.
+ * - Falta: víctima `protest`, infractor `own`. Tarjeta: sancionado `card`; un compañero que pase
+ *   a < `patRadius` px mientras sale le da la palmada (`pat`).
+ */
+export const REACTION = {
+  ms: { mine: 850, tap: 700, rue: 900, miss: 900, phew: 800, protest: 900, own: 800, card: 900, pat: 520 },
+  /** `actMs`: una acción (pase, tiro, robo, recepción) marcada hace menos de esto cuenta como «actuando». */
+  fadeMs: 150, mineDelayMs: 220, shotWindowMs: 1600, actMs: 450, tapStaggerMs: 110,
+  mates: 2, mateRadius: 300 * K, nearMissPx: 22 * K, patRadius: 2.6 * PLAYER_RADIUS,
+} as const
 export const PLAYER_MAX_SPEED = 320
 export const PLAYER_SPRINT_MAX_SPEED = 500
 export const PLAYER_ACCEL = 860
