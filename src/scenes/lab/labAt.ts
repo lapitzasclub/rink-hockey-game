@@ -25,6 +25,7 @@ type MatchView = Phaser.Scene & {
   redScore: number
   ruleState: { teamFouls: Record<Team, number>, passivity?: { hudKind: string | null } }
   activeFoulRestart: unknown
+  activeKickoff: unknown
   simNow: number
   officials?: { refs?: Array<{ x: number, y: number, gesture: unknown }> }
 }
@@ -92,7 +93,7 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
   const s = match as MatchView
   const at = p.at ?? ''
   const atMs = /^\d+(\.\d+)?$/.test(at) ? Number(at) : null
-  const prev = { goals: 0, fouls: 0, foul: false, susp: new Map<string, number>(), saveAt: 0, gk: null as string | null, speed: 0 }
+  const prev = { goals: 0, fouls: 0, foul: false, kickoff: false, susp: new Map<string, number>(), saveAt: 0, gk: null as string | null, speed: 0 }
   let hitMs: number | null = null
 
   const detect = (ms: number): boolean => {
@@ -116,10 +117,13 @@ export function atHooks(match: Phaser.Scene, p: LabParams): SmokeHooks {
       : at === 'goal' ? goals > prev.goals
       : at === 'foul' ? fouls > prev.fouls || (foulNow && !prev.foul)
       : at === 'card' ? carded
+      // R-05: pitido del saque de centro (activeKickoff pasa de no nulo a null)
+      : at === 'kickoff' ? prev.kickoff && !s.activeKickoff
       : at === 'save' ? (gk !== null && gk !== prev.gk && prev.speed > 150) || saveAt > prev.saveAt
       // B-10: cuenta atrás de tiempo de posesión (≤ 5 s) o aviso de juego pasivo en el HUD
       : at === 'countdown' || at === 'passive' ? s.ruleState.passivity?.hudKind === (at === 'countdown' ? 'possession' : 'passive')
       : false
+    prev.kickoff = !!s.activeKickoff
     prev.goals = goals; prev.fouls = fouls; prev.foul = foulNow; prev.saveAt = saveAt; prev.gk = gk
     prev.speed = Math.hypot(s.ballVelocity.x, s.ballVelocity.y)
     return hit

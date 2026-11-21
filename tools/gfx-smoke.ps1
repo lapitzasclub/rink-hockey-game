@@ -60,14 +60,15 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'lossesBluePerMin', 'lossesRedPerMin', 'lossesCheckBluePerMin', 'lossesCheckRedPerMin', 'stealTriesBluePerMin', 'stealTriesRedPerMin', 'stealPctBlue', 'stealPctRed',
   'humanStealTriesPerMin', 'humanStealsPerMin', 'goalieHumanPctBlue', 'goalsVsHumanGoaliePerMin',
   'humanTryPerPressS', 'humanStealPerPressS', 'redTryPerPressS', 'redStealPerPressS', 'humanLossPerPressS', 'blueLossPerPressS', 'humanGoalSidePctBlue',
-  'passivityCallsBlue', 'passivityCallsRed', 'goaliePassesBlue', 'goaliePassesRed'
+  'passivityCallsBlue', 'passivityCallsRed', 'goaliePassesBlue', 'goaliePassesRed',
+  'kickoffCarryMs', 'kickoffCrossMs', 'kickoffCrossPct', 'kickoffLostPct'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 # B-08: tiros y goles por banda de distancia a la línea de gol (px) y equipo que tira, sumados en el lote
 $bands = @(@{ k = 'B0'; lo = 0; hi = 50 }, @{ k = 'B50'; lo = 50; hi = 100 }, @{ k = 'B100'; lo = 100; hi = 180 }, @{ k = 'B180'; lo = 180; hi = 1e9 })
 $bandN = @{}; $bandG = @{}; foreach ($b in $bands) { foreach ($t in 'Blue', 'Red') { $bandN["$t$($b.k)"] = 0; $bandG["$t$($b.k)"] = 0 } }
 $tot = @{ goalsNoShot = 0; goalsCarriedOwn = 0; jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0;
   possCallsBlue = 0; possCallsRed = 0; passiveCallsBlue = 0; passiveCallsRed = 0; passiveWarnings = 0; countdowns = 0;
-  gkPassBlue = 0; gkPassRed = 0; gkDoneBlue = 0; gkDoneRed = 0; gkGoalsBlue = 0; gkGoalsRed = 0 }
+  gkPassBlue = 0; gkPassRed = 0; gkDoneBlue = 0; gkDoneRed = 0; gkGoalsBlue = 0; gkGoalsRed = 0; kickoffs = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
   if (-not $line) { $tot.failed++; Write-Output ("run {0}/{1}: SIN [smoke]" -f $i, $Runs); continue }
@@ -161,6 +162,17 @@ foreach ($i in 1..$Runs) {
     $tot.gkPassBlue += [int]$j.goaliePasses.blue; $tot.gkPassRed += [int]$j.goaliePasses.red
     $tot.gkDoneBlue += [int]$j.goaliePassesDone.blue; $tot.gkDoneRed += [int]$j.goaliePassesDone.red
     $tot.gkGoalsBlue += [int]$j.goalsAfterGoaliePass.blue; $tot.gkGoalsRed += [int]$j.goalsAfterGoaliePass.red
+  }
+  # R-05: saque de centro (por partido, ambos equipos juntos): acarreo, cruce a campo rival y pérdida en los primeros 3 s
+  if ($null -ne $j.kickoffsTaken) {
+    $ko = [int]($j.kickoffsTaken.blue + $j.kickoffsTaken.red); $tot.kickoffs += $ko
+    if ($ko -gt 0) {
+      $cr = [int]($j.kickoffCrossed.blue + $j.kickoffCrossed.red)
+      $samples.kickoffCarryMs += ($j.kickoffCarryMsSum.blue + $j.kickoffCarryMsSum.red) / $ko
+      if ($cr -gt 0) { $samples.kickoffCrossMs += ($j.kickoffCrossMsSum.blue + $j.kickoffCrossMsSum.red) / $cr }
+      $samples.kickoffCrossPct += 100 * $cr / $ko
+      $samples.kickoffLostPct += 100 * ($j.kickoffLostEarly.blue + $j.kickoffLostEarly.red) / $ko
+    }
   }
   foreach ($r in @($j.shotLog)) {
     if ($null -eq $r) { continue }

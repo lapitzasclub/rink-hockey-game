@@ -8,7 +8,7 @@ import { getControlledPlayer } from './playerHelpers'
 import { stealTryCount } from './matchActions'
 import { ballCarriedBy } from './ball'
 import { goaliePassTracker } from './goaliePassStats'
-
+import { kickoffTracker } from './kickoffStats'
 /**
  * Estadísticas del partido (WP-64, B-01): observa MatchScene en solo lectura y cuenta goles,
  * tiros, paradas, pases, faltas, atascos… Lo comparten el humo del laboratorio (`labSmoke`) y
@@ -142,7 +142,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
   let prevFoulObj: unknown = null
   const prevFouls = pair()
   const prevSusp = new Map<string, number>()
-  const gkPass = goaliePassTracker(s)  // B-09: pases al portero propio
+  const gkPass = goaliePassTracker(s), ko = kickoffTracker(s)  // B-09: pases al portero propio; R-05: saque de centro
   /** Último simNow en que la persona llevaba al portero de cada equipo. */
   const humanGoalieAt: Pair = { blue: -Infinity, red: -Infinity }
   let pending: null | { team: Team, onTarget: boolean, age: number, hi: boolean, pass: boolean, rec: ShotRecord | null } = null
@@ -207,7 +207,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
       }
       prevScore[t] = sc
     }
-    gkPass.step()
+    gkPass.step(); ko.step()
     // Faltas, sanciones y tarjetas
     // pendingFoul se consume en el mismo frame que nace: se detecta el saque (activeFoulRestart)
     const af = s.activeFoulRestart
@@ -491,7 +491,7 @@ export function createMatchStats(match: Phaser.Scene, mode: string, opts: { keep
     unmarked: byTeam(t => (st.defSec[t] ? Math.round(100 * st.unmarkedSec[t] / st.defSec[t]) / 100 : null)),
     doublePct: byTeam(t => (st.defSec[t] ? Math.round(1000 * st.doubleSec[t] / st.defSec[t]) / 10 : null)),
     humanOnCarrierPct: byTeam(t => (st.defSec[t] ? Math.round(1000 * st.humanOnCarrierSec[t] / st.defSec[t]) / 10 : null)),
-    ...gkPass.stats,
+    ...gkPass.stats, ...ko.stats,
     passivityCalls: s.ruleState.passivity?.stats ?? null,   // B-10: pitadas por equipo y tipo, avisos, cuentas atrás
     ...(opts.keepShots ? { shotLog } : {}),
   })

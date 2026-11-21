@@ -9,3 +9,4 @@ Una fila por paquete cerrado, de cualquier workflow (`/dev`, `/gfx`, `/perf`, `/
 | 2026-11-21 | evo E-15 física de patinaje | ai-engineer (opus) + perf-qa (haiku) | 1 | 153 + 38 | 36,9 + 5,9 | aceptado | opus pasó 22 corridas de humo propias: bajar a 5 por modo en la verificación propia |
 | 2026-11-21 | evo E-18 modelo de cerca | gfx-engineer (opus) | 1 | 68 | 16,8 | aceptado | encargo con tope de capturas: la mitad de tokens que E-17; dejó una línea suelta en main fuera de su worktree |
 | 2026-11-21 | evo E-16 partículas de pista | gfx-engineer (opus) | 2 | 166 | 47,2 | aceptado | 197 herramientas: el más caro; demasiadas capturas en vivo buscando el momento del golpe; mejor la escena demo |
+| 2026-11-21 | regla R-05 contadores del saque y base | regla-builder (sonnet) + regla-qa (haiku) | 1 | 39 + 20 | 11,1 + 10,6 | aceptado | encargo con rangos: 33 herramientas; QA pasó los dos modos en paralelo (paso fijo, no afecta a los contadores) |
