@@ -9,13 +9,14 @@ import { ACTION_CLIP_MS, GOALIE_CLIP_MS } from '../../game/render/artSpec'
 import { lookFor } from '../../game/render/puppet/kit'
 import type { SaveKind } from '../../game/render/puppet/goalieClips'
 import type { ActionType } from '../../game/render/puppet/pose'
-import type { Ball, Player, Role, TeamColor } from '../../game/types'
+import type { Ball, MoodKind, Player, Role, TeamColor } from '../../game/types'
 
 /** Figura del lab: jugador + pose fija (fase de patinaje en radianes o parado). */
 export interface LabFigure {
   /** Acción con progreso fijo 0..1 (hojas de WP-32). */
   action?: { type: ActionType; t: number }
   gk?: FigureSpec['gk']
+  mood?: LabMood
   player: Player
   ball: Ball
   carrying: boolean
@@ -66,7 +67,17 @@ export interface LabScript {
   bumpMag?: number
 }
 
+/** Gesto de parón forzado (E-19): `ms` desde que empieza y `hit` ms desde su momento (null = aún no). */
+export interface LabMood {
+  kind: MoodKind
+  style: number
+  ms: number
+  hit?: number | null
+  side?: 1 | -1
+}
+
 export interface FigureSpec {
+  mood?: LabMood
   /** Mano del stick forzada (busca un id con esa mano); acción y su progreso 0..1. */
   hand?: 'L' | 'R'
   action?: ActionType
@@ -102,7 +113,7 @@ export function createFigure(scene: Phaser.Scene, id: string, spec: FigureSpec, 
     ? createBall(scene)
     : aimAhead ? { x: spec.x, y: spec.y, visual: sharedBall.visual } : sharedBall
   const action = spec.action ? { type: spec.action, t: spec.actionT ?? 0 } : undefined
-  return { action, gk: spec.gk, player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null, angle0: angle }
+  return { action, gk: spec.gk, mood: spec.mood, player, ball, carrying, aimAhead, phase: spec.phase ?? null, loco: spec.loco ?? null, angle0: angle }
 }
 
 /** Aplica la pose de la figura para el instante `t` (determinista: dt de animación = 0). */
@@ -128,6 +139,12 @@ export function poseFigure(fig: LabFigure, t: number, phaseOffset = 0) {
   if (fig.action) {
     const ms = fig.action.type === 'save' ? GOALIE_CLIP_MS.save : ACTION_CLIP_MS[fig.action.type as keyof typeof ACTION_CLIP_MS]
     player.anim = { type: fig.action.type, at: t - fig.action.t * ms, save: fig.gk?.save, side: fig.gk?.side }
+  }
+  const fm = fig.mood
+  if (fm) {
+    const hit = fm.hit === undefined || fm.hit === null ? Infinity : t - fm.hit
+    const m = player.mood ?? (player.mood = { kind: fm.kind, style: 0, at: 0, until: Infinity, hit, side: 1 })
+    m.kind = fm.kind; m.style = fm.style; m.at = t - fm.ms; m.until = Infinity; m.hit = hit; m.side = fm.side ?? 1
   }
   // Con bola, donde la pone la física (con su adelanto por velocidad); sin ella, un proxy delante
   if (fig.carrying) updateBallPosition(fig.ball, { x: 0, y: 0 }, player.id, [player], 0)

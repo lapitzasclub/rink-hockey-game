@@ -49,4 +49,18 @@ export const GOALIE_STRIPS: Record<string, () => FigureSpec[]> = {
     ...row(4, 8, k => (k < 4 ? save('split', -1, true)(k) : save('body', 1, true)(k - 4))),
     ...row(5, 8, k => ({ angle: k < 4 ? Math.PI / 2 : -Math.PI / 2, action: 'celebrate', actionT: 0.1 + (k % 4) * 0.28 })),
   ],
+  /**
+   * E-19: gestos del portero en los parones (cuatro vistas por bloque). Filas: alegría (dos
+   * instantes del salto), encaja (golpe de stick / de rodillas), cruce patinando y choque de
+   * manos, saludo del final.
+   */
+  gkmoods: () => [
+    ...row(0, 8, k => ({ angle: VIEWS[k % 4], mood: { kind: 'joy', style: 0, ms: k < 4 ? 1600 : 1820 } }), 4),
+    ...row(1, 8, k => ({ angle: VIEWS[k % 4], mood: { kind: 'keeperDown', style: k < 4 ? 0 : 1, ms: 750 } }), 4),
+    ...row(2, 8, k => ({
+      angle: VIEWS[k % 4], phase: TAU * 0.3, loco: { speed: 0.6 },
+      mood: k < 4 ? { kind: 'rest', style: 0, ms: 1500 } : { kind: 'cross', style: 0, ms: 1500, hit: 325 },
+    }), 4),
+    ...row(3, 8, k => ({ angle: VIEWS[k % 4], mood: { kind: 'greet', style: 0, ms: 1500, hit: 450 } }), 4),
+  ],
 }

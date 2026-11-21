@@ -1,0 +1,11 @@
+﻿[45012:44676:1121/112602.803:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5186/@vite/client (851)
+[45012:44676:1121/112602.808:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5186/@vite/client (955)
+[45012:44676:1121/112602.896:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5186/@vite/client (851)
+[45012:44676:1121/112602.930:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5186/@vite/client (955)
+[45012:44676:1121/112603.454:INFO:CONSOLE:12751] "%cPhaser v4.2.0 (WebGL | Web Audio)%c https://phaser.io/v402 color: #ffffff; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAOCAYAAAAmL5yKAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAARBJREFUeNpi/P//P0OHsPB/BiCoePuW [...]
+[45012:44676:1121/112604.007:INFO:CONSOLE:309] "[stands] res 1.60 · asientos 3260 · público 2813 · bloques 132 · texturas 12.95 Mpx (3136×1551, 3762×2150) · pintado 0 ms", source: http://127.0.0.1:5186/src/game/render/stands/crowd.ts?t=1795256750037 (309)
+[45012:44676:1121/112604.009:INFO:CONSOLE:434] "[stands] objetos 155 · montaje 0 ms", source: http://127.0.0.1:5186/src/game/render/stands/crowd.ts?t=1795256750037 (434)
+[45012:44676:1121/112604.301:INFO:CONSOLE:0] "[.WebGL-0x757400626800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=lament&zoom=1.6 (0)
+[45012:44676:1121/112604.559:INFO:CONSOLE:0] "[.WebGL-0x757400626800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=lament&zoom=1.6 (0)
+[45012:44676:1121/112604.559:INFO:CONSOLE:0] "[.WebGL-0x757400626800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=lament&zoom=1.6 (0)
+[45012:44676:1121/112604.564:INFO:CONSOLE:0] "[.WebGL-0x757400626800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://127.0.0.1:5186/?lab=players&strip=lament&zoom=1.6 (0)

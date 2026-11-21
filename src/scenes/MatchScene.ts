@@ -33,7 +33,7 @@ import {
 import { markDirect, clearDirect, directFor, directStats, koShot } from '../game/systems/directRestart'
 import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIAttemptSteal } from '../game/systems/ai'
 import { decideCarrierAction } from '../game/systems/aiDecision'
-import { applySkating, resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
+import { resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
 import {
   findPlayerById,
   getControllablePlayers,
@@ -88,7 +88,7 @@ import { announce, announceOneOf, stopAnnouncer } from '../game/audio/announcer'
 import { equipoDeHueco, nombreDeHueco } from '../game/externalMatch'
 import { ArcadeController } from '../game/systems/arcade'
 import { resetArcadeMods } from '../game/systems/arcadeEvents'
-import { celebrateGoal } from '../game/render/puppet/actions'
+import { PauseDirector } from '../game/systems/celebration'
 import { CameraDirector } from '../game/systems/cameraDirector'
 import { createOfficials, type Officials } from '../game/systems/officials'
 import { ArcadeFx } from '../game/render/arcadeFx'
@@ -164,6 +164,8 @@ export class MatchScene extends Phaser.Scene {
   private prevBallX = 0
   private benchPlayers: BenchPlayer[] = []
   private officials!: Officials
+  /** Coreografía de los parones (gol, descanso, final): E-19. */
+  private pause = new PauseDirector()
   private mode: GameMode = 'arcade'
   private uiCamera!: Phaser.Cameras.Scene2D.Camera
   private uiBuilding = false
@@ -238,6 +240,7 @@ export class MatchScene extends Phaser.Scene {
     this.currentPeriod = 1
     this.matchEnded = false
     this.restartAt = 0
+    this.pause = new PauseDirector()
     this.lastTouch = 'blue'
     this.ruleState = createRuleState()
     this.lastLooseBallTime = 0
@@ -564,6 +567,7 @@ export class MatchScene extends Phaser.Scene {
     this.currentPeriod = next.currentPeriod
     this.ruleState = next.ruleState
     if (typeof next.restartAt === 'number') this.restartAt = next.restartAt
+    if (newHalf) this.pause.half(this.players, this.simNow, this.restartAt)
   }
 
   /** Guarda dónde empiezan jugadores y bola el paso que va a simularse (para interpolar al pintar). */
@@ -660,18 +664,6 @@ export class MatchScene extends Phaser.Scene {
   }
 
   /**
-   * Celebraciones, descanso y final: la lógica del partido está parada, pero los
-   * jugadores se deslizan hasta frenar en vez de quedarse congelados a media zancada.
-   */
-  private coastPlayers(dt: number) {
-    for (const player of this.players) {
-      if (player.suspendedUntil && player.suspendedUntil > this.simNow) continue
-      player.sprinting = false
-      applySkating(player, dt, this.simNow)
-    }
-  }
-
-  /**
    * Paso fijo de la simulación (SIM_STEP_MS).
    *
    * Orden importante:
@@ -688,8 +680,9 @@ export class MatchScene extends Phaser.Scene {
     // Física normal por defecto; el evento de hielo la vuelve a cambiar solo con la bola en juego
     resetArcadeMods()
     this.advanceMatchClock()
+    // Celebraciones, descanso y final: la lógica está parada y el director mueve a los jugadores
     if (this.matchEnded) {
-      this.coastPlayers(dt)
+      this.pause.step(this.players, time, dt)
       return
     }
 
@@ -698,7 +691,7 @@ export class MatchScene extends Phaser.Scene {
       restartAt: this.restartAt,
       centerText: this.centerText,
       onRestart: () => {
-        if (this.pendingSideSwitch) switchSides(this.players)
+        if (this.pendingSideSwitch) { switchSides(this.players); this.pause.cross(this.players, time) }
         this.pendingSideSwitch = false
         this.resetKickoff(this.nextKickoffTeam, false)
       },
@@ -709,7 +702,7 @@ export class MatchScene extends Phaser.Scene {
     updateSuspendedPlayers(this.players, time, dt, stopped)
 
     if (this.restartAt > 0) {
-      this.coastPlayers(dt)
+      this.pause.step(this.players, time, dt)
       return
     }
     if (this.duel.active) { this.stepDuel(time, dt); return }
@@ -717,8 +710,12 @@ export class MatchScene extends Phaser.Scene {
     // Saque de centro, de falta o neutral: solo avanza su ritual (colocación, pitido, ejecución)
     if (this.activeKickoff || this.activeBully || this.activeFoulRestart) {
       this.releaseControlledGoalie()
-      if (this.activeKickoff) this.updateKickoff(time, dt)
-      else if (this.activeBully) this.updateBullyState(time, dt)
+      if (this.activeKickoff) {
+        // Tras el descanso el portero cruza por la valla y los que se cruzan chocan las manos
+        this.pause.beforeRitual(this.players)
+        this.updateKickoff(time, dt)
+        this.pause.afterRitual(this.players, time, dt)
+      } else if (this.activeBully) this.updateBullyState(time, dt)
       else this.updateFoulRestartState(time, dt)
       updateStickAngles(this.players, this.ball, this.ballCarrierId, time)
       return
@@ -1342,7 +1339,8 @@ export class MatchScene extends Phaser.Scene {
 
   /** Comprueba si la bola ha cruzado la portería y actualiza marcador. */
   private checkGoalState(time: number) {
-    const goal = checkGoal(this.ball, this.ballVelocity, this.ballEnteredGoalFromFront, this.players)
+    this.pause.track(this.ballCarrierId, this.players, time)
+    const goal =checkGoal(this.ball, this.ballVelocity, this.ballEnteredGoalFromFront, this.players)
     const annulled = goal ? directFor(goal.scorer) : null
     if (goal && annulled) {
       // Arts. 5.8 y 7.3.b: gol directo sin tocar a nadie; no suma y se reanuda con libre indirecto o saque neutral
@@ -1377,7 +1375,6 @@ export class MatchScene extends Phaser.Scene {
     this.events.emit('match:goal', { team: next.redScore > this.redScore ? 'red' : 'blue', blue: next.blueScore, red: next.redScore, time })
     playGoal()
     this.officials.goal()
-    celebrateGoal(this.players, next.redScore > this.redScore ? 'red' : 'blue', time)
     this.arena.cheer(time)
     if (this.arcade) this.celebrateArcadeGoal(next.redScore > this.redScore ? 'red' : 'blue', time)
     else this.cameras.main.shake(300, 0.011)
@@ -1391,6 +1388,7 @@ export class MatchScene extends Phaser.Scene {
     this.blueScore = next.blueScore
     this.redScore = next.redScore
     this.restartAt = this.isArcade ? time + ARCADE_GOAL_CELEBRATION_MS : next.restartAt
+    this.pause.goal(this.players, scorerTeam, time, this.restartAt)
     // Saca de centro el que encaja (art. 5.1)
     this.nextKickoffTeam = scorerTeam === 'blue' ? 'red' : 'blue'
   }
@@ -1818,6 +1816,7 @@ export class MatchScene extends Phaser.Scene {
   private finishMatch() {
     this.matchEnded = true
     this.liveStats?.finish()
+    this.pause.final(this.players, this.blueScore, this.redScore, this.simNow)
     const result = this.blueScore === this.redScore ? 'Empate'
       : this.blueScore > this.redScore ? `¡Gana ${nombreDeHueco('blue', 'el azul')}!`
       : `¡Gana ${nombreDeHueco('red', 'el rojo')}!`

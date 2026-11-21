@@ -316,6 +316,45 @@ export const DEFAULT_HALF_REAL_MINUTES = 3
 export const CLOCK_WARNING_GAME_SECONDS = 60
 /** Pausa del descanso entre partes antes del saque (ms reales). */
 export const PERIOD_RESTART_DELAY_MS = 2600
+/** Celebración del gol en reglamento antes del saque de centro (ms de simulación; E-19). */
+export const GOAL_CELEBRATION_MS = 2800
+
+/**
+ * Coreografía de los parones (E-19, `systems/celebration.ts`): velocidades en px/s,
+ * frenadas en px/s², distancias en px de mundo y tiempos en ms de simulación.
+ * - Gol: el autor patina `scorerSpeed` hacia la esquina del fondo atacado y frena
+ *   a la altura del borde del área (como mucho `scorerRun` de recorrido); se tira de rodillas si va a más de
+ *   `slideMinSpeed` y frena deslizando a `slideDecel`. Los compañeros forman la piña a
+ *   `huddleRadius` de él (`mateSpeed`, llegan a `huddleArrive`). Su portero sale `keeperOut`
+ *   y vuelve a `keeperBackMs`. El que encaja frena (`coastTau`, s) y uno va al centro a `centerSpeed`.
+ * - Descanso: las parejas se juntan a `restSpeed` (si están a menos de `pairMax`) y chocan
+ *   las manos a `fiveDist`; el portero cruza por la valla (`boardGap`) a `keeperCrossSpeed`.
+ *   Cruzando, el choque de manos es con un compañero a menos de `fiveDist`; el gesto
+ *   relajado acaba al bajar de `crossEndSpeed` (tras `crossMinMs`) o a los `crossMaxMs`.
+ * - Final: ganadores en piña delante de su portero (`winAhead`), perdedores a `loseSpeed`
+ *   hacia el centro; en empate, parejas a `greetGap` y filas a `greetRow`.
+ * - `fadeMs` = salida del gesto; `sepFactor` × radio = separación mínima en los parones.
+ */
+export const CELEBRATION = {
+  /**
+   * Piña del gol: a la altura del borde del área atacada y a `huddleSideM` m de la valla
+   * lateral (nunca a menos de `huddleBoardM` m de ninguna). Los compañeros esperan a
+   * `mateHold` × el radio hasta `mateDelayMs` tras el gesto del autor (o `mateMaxWaitMs`).
+   */
+  scorerSpeed: 430, huddleSideM: 3.4, huddleBoardM: 2.5, scorerRun: 360,
+  mateHold: 3.4, mateDelayMs: 450, mateMaxWaitMs: 1500,
+  /** Fracción del giro normal con que el que encaja se da la vuelta, de espaldas al gol. */
+  turnSlow: 0.3,
+  slideMinSpeed: 250, slideDecel: 380, slideMinRun: 240,
+  mateSpeed: 420, huddleRadius: 2 * PLAYER_RADIUS, huddleArrive: 34,
+  keeperOut: 70, keeperSpeed: 160, keeperBackMs: 1300,
+  coastTau: 0.35, centerSpeed: 120, glideTau: 0.8,
+  restSpeed: 150, pairMax: 520, fiveDist: 2.6 * PLAYER_RADIUS,
+  boardGap: 48, keeperCrossSpeed: 320, waypointPx: 28,
+  crossEndSpeed: 170, crossMinMs: 600, crossMaxMs: 7000,
+  winAhead: 130, loseSpeed: 110, greetGap: 1.15 * PLAYER_RADIUS, greetRow: 66,
+  fadeMs: 350, sepFactor: 1.7, carrierStaleMs: 8000,
+} as const
 export const BULLY_PLAYER_OFFSET = 26 * K
 
 // ── Saques y faltas (reglamento World Skate 2026, art. 5, 13, 23, 27–30) ──
@@ -602,7 +641,7 @@ export function aiProfileFor(team: 'blue' | 'red'): AiProfile {
 // Tuning del modo arcade (estilo NBA Jam): turbo, cargas, racha, powerups y cámara.
 
 /** Pausa de celebración tras gol en arcade (ms); más larga para lucir la cámara y los efectos. */
-export const ARCADE_GOAL_CELEBRATION_MS = 2600
+export const ARCADE_GOAL_CELEBRATION_MS = 3200
 /** Escala del casco en arcade ("cabezones"). */
 export const ARCADE_HEAD_SCALE = 1.32
 

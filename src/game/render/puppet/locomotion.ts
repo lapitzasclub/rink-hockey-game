@@ -183,7 +183,7 @@ function mixInto(dst: PuppetPose, src: PuppetPose, w: number) {
 }
 
 /** Baja la cadera lo justo para que cada pierna llegue a su patín (la de empuje queda estirada). */
-function keepReach(p: PuppetPose) {
+export function keepReach(p: PuppetPose) {
   const reach = (DIMS.thigh + DIMS.shin) * L.reach
   for (let i = 0; i < 2; i++) {
     const f = p.feet[i]

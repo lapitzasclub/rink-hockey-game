@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import type { Ball, Player } from '../types'
+import { GOAL_CELEBRATION_MS } from '../constants'
 import { selectBestControlledPlayer } from './playerHelpers'
 import { checkGoal } from './ball'
 import { applyGoalReset } from './matchFlow'
@@ -72,7 +73,7 @@ export function checkAndApplyGoal(options: {
     ballCarrierId: null,
     blueScore: options.blueScore,
     redScore: options.redScore,
-    restartAt: options.time + 1800,
+    restartAt: options.time + GOAL_CELEBRATION_MS,
   }
 
   if (goal.scorer === 'red') {

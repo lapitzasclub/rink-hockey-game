@@ -9,6 +9,7 @@ import { GOALIE_SAVE_RADIUS } from '../../constants'
 import type { Ball, Player } from '../../types'
 import { ACTION_CLIP_MS, GOALIE_CLIP_MS, GOALIE_ENVELOPE, GOALIE_SAVE_PICK, GOALIE_SAVE_POSE } from '../artSpec'
 import { startAnim } from './actions'
+import { goalieMood } from './celebrationClips'
 import type { PoseContext, PuppetPose } from './pose'
 import type { V3 } from './vec'
 
@@ -122,6 +123,8 @@ export function goalieClip(pose: PuppetPose, ctx: PoseContext, hand: V3, s: numb
     }
     return
   }
+  // Gestos de los parones (E-19): sustituyen a la reacción antigua
+  if (goalieMood(pose, ctx, hand, s)) return
   const t = goalieClipT(p, 'celebrate', ctx.time)
   if (t < 0) return
   // Encajó: cabeza gacha, manopla caída y el stick golpea el suelo varias veces

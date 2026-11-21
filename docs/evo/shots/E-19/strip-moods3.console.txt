@@ -1,0 +1,11 @@
+﻿[37012:35776:1121/111507.266:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5186/@vite/client (851)
+[37012:35776:1121/111507.278:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5186/@vite/client (955)
+[37012:35776:1121/111507.341:INFO:CONSOLE:851] "[vite] connecting...", source: http://127.0.0.1:5186/@vite/client (851)
+[37012:35776:1121/111507.384:INFO:CONSOLE:955] "[vite] connected.", source: http://127.0.0.1:5186/@vite/client (955)
+[37012:35776:1121/111507.810:INFO:CONSOLE:12751] "%cPhaser v4.2.0 (WebGL | Web Audio)%c https://phaser.io/v402 color: #ffffff; background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAOCAYAAAAmL5yKAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAARBJREFUeNpi/P//P0OHsPB/BiCoePuW [...]
+[37012:35776:1121/111508.480:INFO:CONSOLE:309] "[stands] res 2.00 · asientos 3260 · público 2813 · bloques 132 · texturas 20.32 Mpx (3920×1939, 3318×3834) · pintado 0 ms", source: http://127.0.0.1:5186/src/game/render/stands/crowd.ts (309)
+[37012:35776:1121/111508.483:INFO:CONSOLE:434] "[stands] objetos 155 · montaje 0 ms", source: http://127.0.0.1:5186/src/game/render/stands/crowd.ts (434)
+[37012:35776:1121/111508.811:INFO:CONSOLE:0] "[.WebGL-0xc9403211200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=moods3&zoom=2&cy=320 (0)
+[37012:35776:1121/111509.061:INFO:CONSOLE:0] "[.WebGL-0xc9403211200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=moods3&zoom=2&cy=320 (0)
+[37012:35776:1121/111509.061:INFO:CONSOLE:0] "[.WebGL-0xc9403211200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels", source: http://127.0.0.1:5186/?lab=players&strip=moods3&zoom=2&cy=320 (0)
+[37012:35776:1121/111509.065:INFO:CONSOLE:0] "[.WebGL-0xc9403211200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)", source: http://127.0.0.1:5186/?lab=players&strip=moods3&zoom=2&cy=320 (0)

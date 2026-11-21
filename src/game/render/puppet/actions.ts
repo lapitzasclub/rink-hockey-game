@@ -6,9 +6,10 @@
  * hombros con el mismo arco que `stickWorldAngle` (facing + sin(tπ)·1,1).
  */
 import { ARCADE_CHECK_COOLDOWN_MS } from '../../constants'
-import type { Player, TeamColor } from '../../types'
+import type { Player } from '../../types'
 import { ACTION_CLIP_MS } from '../artSpec'
 import { playClip } from './actionClips'
+import { skaterMood } from './celebrationClips'
 import type { ActionType, PoseContext, PuppetPose } from './pose'
 import type { V3 } from './vec'
 
@@ -66,15 +67,10 @@ export function startAnim(player: Player, type: ActionType, at: number) {
   anim.at = at
 }
 
-/** Marca la celebración en los jugadores de campo del equipo que marca y la reacción (cabeza gacha) en el portero que encaja. */
-export function celebrateGoal(players: Player[], team: TeamColor, at: number) {
-  for (const p of players) {
-    if (p.team === team ? p.role !== 'goalie' : p.role === 'goalie') startAnim(p, 'celebrate', at)
-  }
-}
-
 export function actions(pose: PuppetPose, ctx: PoseContext) {
   if (!pose.stick.visible) return
+  // Gestos de los parones (gol, descanso, final): sustituyen a los clips mientras duran
+  if (ctx.kind === 'skater' && ctx.player.mood) skaterMood(pose, ctx)
   if (ctx.action) {
     playClip(pose, ctx, ctx.action, ctx.swing)
     return

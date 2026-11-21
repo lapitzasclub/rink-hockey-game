@@ -5,7 +5,7 @@
 import { RINK } from '../../game/constants'
 import type { ActionType } from '../../game/render/puppet/pose'
 import type { Role } from '../../game/types'
-import type { FigureSpec } from './labFigures'
+import type { FigureSpec, LabMood } from './labFigures'
 
 const MID_Y = RINK.y + RINK.height / 2
 const MID_X = RINK.x + RINK.width / 2
@@ -52,6 +52,23 @@ function closeRow(row: number, n: number, make: (k: number) => Partial<FigureSpe
   }))
 }
 
+/** Hojas de gestos (E-19): más holgadas, los brazos en alto y el stick en cruz ocupan sitio. */
+const MOOD_DX = 140
+const MOOD_DY = 125
+/** A cámara, 3/4, de lado, 3/4 de espaldas y de espaldas. */
+const MOOD_VIEWS = [Math.PI / 2, Math.PI / 4, 0, -Math.PI / 4, -Math.PI / 2]
+/** Instantes (ms desde el gol) de la hoja del lamento. */
+const LAMENT_MS = [300, 700, 1100, 1600, 2400]
+
+/** Fila `row` (−1, 0, 1) de un gesto de parón en cinco vistas; `moving` patina a media velocidad. */
+function moodRow(row: number, mood: LabMood, moving = false): FigureSpec[] {
+  return MOOD_VIEWS.map((angle, k) => ({
+    team: 'blue' as const, role: 'defender' as const, aimAhead: true, angle, mood,
+    x: MID_X + (k - 2) * MOOD_DX, y: MID_Y + row * MOOD_DY,
+    ...(moving ? { phase: TAU * 0.3, loco: { speed: 0.6 } } : {}),
+  }))
+}
+
 /** Entradas que `labScenes` añade a su tabla de hojas. */
 export const ACTION_STRIPS: Record<string, () => FigureSpec[]> = {
   /** WP-32: conducción en marcha (columnas = fase de zancada): de espaldas, de lado (diestro y zurdo) y de frente. */
@@ -89,5 +106,47 @@ export const ACTION_STRIPS: Record<string, () => FigureSpec[]> = {
     ...closeRow(-1, 6, k => ({ angle: 0, phase: TAU * 0.3, loco: { speed: 0.55, accel: k * 0.4 } })),
     ...closeRow(0, 6, k => ({ angle: -Math.PI / 2, phase: TAU * 0.3, loco: { accel: 0, turn: -1.1 + k * 0.44 } })),
     ...closeRow(1, 6, k => ({ angle: Math.PI / 2, phase: TAU * 0.3, loco: { accel: 0.3, turn: [-3, -2, -1.4, 1.4, 2, 3][k] } })),
+  ],
+  /** E-19: autor del gol: avión en carrera, rodillazo y salto con el puño. */
+  moods: () => [
+    ...moodRow(-1, { kind: 'score', style: 0, ms: 900 }, true),
+    ...moodRow(0, { kind: 'score', style: 1, ms: 1500, hit: 500 }),
+    ...moodRow(1, { kind: 'score', style: 2, ms: 1500, hit: 400 }),
+  ],
+  /** E-19: señalar a la grada; piña con el brazo al hombro y con los sticks arriba. */
+  moods2: () => [
+    ...moodRow(-1, { kind: 'score', style: 3, ms: 1500, hit: 700 }),
+    ...moodRow(0, { kind: 'mate', style: 0, ms: 1500, hit: 600 }),
+    ...moodRow(1, { kind: 'mate', style: 1, ms: 1500, hit: 600 }),
+  ],
+  /** E-19: cabizbajos parados: manos en las rodillas, en la cadera y en el casco. */
+  moods3: () => [
+    ...moodRow(-1, { kind: 'down', style: 0, ms: 1500 }),
+    ...moodRow(0, { kind: 'down', style: 1, ms: 1500 }),
+    ...moodRow(1, { kind: 'down', style: 2, ms: 1500 }),
+  ],
+  /** E-19: lamento en el tiempo (columnas 0,3 → 2,5 s), una fila por variante, en 3/4 a cámara. */
+  lament: () => [-1, 0, 1].flatMap(row => LAMENT_MS.map((ms, k) => ({
+    team: 'blue' as const, role: 'defender' as const, aimAhead: true, angle: Math.PI / 4,
+    mood: { kind: 'down' as const, style: row + 1, ms },
+    x: MID_X + (k - 2) * MOOD_DX, y: MID_Y + row * MOOD_DY,
+  }))),
+  /** E-19: cabizbajo arrastrando el stick, final ganador (salto en V) y choque de manos al cruzar. */
+  moods4: () => [
+    ...moodRow(-1, { kind: 'down', style: 0, ms: 1500 }, true),
+    ...moodRow(0, { kind: 'joy', style: 0, ms: 1500, hit: 400 }),
+    ...moodRow(1, { kind: 'cross', style: 0, ms: 1000, hit: 325 }, true),
+  ],
+  /** E-19: descanso, los tres estiramientos. */
+  moods5: () => [
+    ...moodRow(-1, { kind: 'rest', style: 0, ms: 1900 }),
+    ...moodRow(0, { kind: 'rest', style: 1, ms: 1900 }),
+    ...moodRow(1, { kind: 'rest', style: 2, ms: 1900 }),
+  ],
+  /** E-19: compañero llegando con el puño, avión al llegar (brazos en V) y saludo del empate. */
+  moods6: () => [
+    ...moodRow(-1, { kind: 'mate', style: 0, ms: 700 }, true),
+    ...moodRow(0, { kind: 'score', style: 0, ms: 1500, hit: 600 }),
+    ...moodRow(1, { kind: 'greet', style: 0, ms: 1500, hit: 450 }),
   ],
 }
