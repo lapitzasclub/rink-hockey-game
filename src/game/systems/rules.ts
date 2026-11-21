@@ -264,6 +264,47 @@ export function registerPassivity(state: RuleState, players: Player[], team: Tea
 }
 
 /**
+ * R-03 · gol anulado por entrar directo de un saque de centro (art. 5.8: libre indirecto para el
+ * que defendía) o de un libre indirecto (art. 7.3.b: saque neutral), en la esquina inferior del
+ * área más cercana a donde entró la bola. `y` es la altura de entrada.
+ */
+export function registerAnnulledGoal(state: RuleState, players: Player[], scorer: TeamColor, kind: 'kickoff' | 'free-hit', y: number, timeNow: number) {
+  const defender: TeamColor = scorer === 'blue' ? 'red' : 'blue'
+  const side = players.find(p => p.team === defender)?.side
+  if (!side) return
+  const at = areaCorner(side, y)
+  let atk: Player | null = null
+  let def: Player | null = null
+  let dAtk = Infinity
+  let dDef = Infinity
+  for (const p of players) {
+    if (p.role === 'goalie' || (p.suspendedUntil && p.suspendedUntil > timeNow)) continue
+    const d = Math.hypot(p.pos.x - at.x, p.pos.y - at.y)
+    if (p.team === scorer) { if (d < dAtk) { dAtk = d; atk = p } } else if (d < dDef) { dDef = d; def = p }
+  }
+  if (!atk || !def) return
+  if (kind === 'free-hit') {
+    state.pendingBully = {
+      x: at.x,
+      y: at.y,
+      message: 'Gol anulado: libre indirecto directo · saque neutral',
+      participants: scorer === 'blue' ? { bluePlayerId: atk.id, redPlayerId: def.id } : { bluePlayerId: def.id, redPlayerId: atk.id },
+    }
+    return
+  }
+  const m = FREE_HIT_BOARD_MARGIN
+  state.pendingFoul = {
+    againstTeam: scorer,
+    byPlayerId: atk.id,
+    victimPlayerId: def.id,
+    restartX: Math.min(Math.max(at.x, RINK.x + m), RINK.x + RINK.width - m),
+    restartY: Math.min(Math.max(at.y, RINK.y + m), RINK.y + RINK.height - m),
+    sanction: SANCTION.FREE_HIT,
+    message: 'Gol anulado: saque de centro directo · libre indirecto',
+  }
+}
+
+/**
  * Saque neutral (el antiguo bully, art. 13): bola trabada sin saber quién la tiene.
  * Si queda detrás de la portería se saca en la esquina del área más cercana (art. 13.3.c).
  */

@@ -27,7 +27,10 @@ import { createArena, type Arena } from '../game/render/arena'
 import { createBenchPlayers, updateBenchPlayers, type BenchPlayer } from '../game/render/benchPlayers'
 import {
   updateBallPosition,
+  ballFrameHit,
+  checkGoal,
 } from '../game/systems/ball'
+import { markDirect, clearDirect, directFor, directStats, koShot } from '../game/systems/directRestart'
 import { shouldGoaliePass, updateFieldPlayerAI, updateGoalieAI, shouldAIAttemptSteal } from '../game/systems/ai'
 import { decideCarrierAction } from '../game/systems/aiDecision'
 import { applySkating, resolvePlayerSpacing, updateSuspendedPlayers } from '../game/systems/movement'
@@ -45,7 +48,7 @@ import { createHud } from '../game/ui/createHud'
 import type { Scoreboard } from '../game/ui/scoreboard'
 import { updateMatchHud } from '../game/ui/matchHud'
 import { createMobileJoystick } from '../game/input/mobileJoystick'
-import { createRuleState, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
+import { createRuleState, registerAnnulledGoal, registerGoalieZoneFoul, type RuleState } from '../game/systems/rules'
 import { updatePassivity } from '../game/systems/passivity'
 import type { PassivityHud } from '../game/ui/passivityHud'
 import { getGoalLineX } from '../game/utils'
@@ -244,6 +247,7 @@ export class MatchScene extends Phaser.Scene {
     this.finalShot = null
     this.duel.active = false
     this.activeKickoff = null
+    clearDirect()
     this.nextKickoffTeam = 'red'
     this.pendingSideSwitch = false
     this.stuckCarrierStartTime = 0
@@ -763,10 +767,12 @@ export class MatchScene extends Phaser.Scene {
     this.arcade?.beforeBallStep(this.ballVelocity, this.ballCarrierId, dt)
     this.ballVelocity = updateBallPosition(this.ball, this.ballVelocity, this.ballCarrierId, this.players, dt)
     this.arcade?.afterBallStep(this.ball, this.ballVelocity, this.ballCarrierId, time, !this.probe)
+    if (ballFrameHit.post) { ballFrameHit.post = false; clearDirect() }   // art. 7.3.b: el poste cuenta como toque
     this.updateGoalEntryFlag(prevBallX)
     this.prevBallX = this.ball.x
     this.handleGoalieSave()
     this.handleBallControl(time)
+    if (this.ballCarrierId) clearDirect()   // un portador (otro jugador) valida el gol
     this.handleLooseBallContacts()
     this.checkGoalieZoneFoul(time)
     // B-10: tiempo de posesión y juego pasivo (solo reglamento); 'warn' = aviso del árbitro
@@ -1085,6 +1091,7 @@ export class MatchScene extends Phaser.Scene {
       timeNow: this.simNow,
     })
     if (!result) return
+    clearDirect()   // parada o desvío del portero: toque válido
     if (result.ballCarrierId) playSave()
     if (this.arcade) {
       const goalie = (result.ballCarrierId ? findPlayerById(this.players, result.ballCarrierId) : null)
@@ -1145,6 +1152,7 @@ export class MatchScene extends Phaser.Scene {
       lastTouch: this.lastTouch,
     })
     if (!result) return
+    if (result.ballVelocity !== this.ballVelocity) clearDirect()   // roce de cuerpo o stick
     this.ballVelocity = result.ballVelocity
     this.lastTouch = result.lastTouch
   }
@@ -1334,6 +1342,21 @@ export class MatchScene extends Phaser.Scene {
 
   /** Comprueba si la bola ha cruzado la portería y actualiza marcador. */
   private checkGoalState(time: number) {
+    const goal = checkGoal(this.ball, this.ballVelocity, this.ballEnteredGoalFromFront, this.players)
+    const annulled = goal ? directFor(goal.scorer) : null
+    if (goal && annulled) {
+      // Arts. 5.8 y 7.3.b: gol directo sin tocar a nadie; no suma y se reanuda con libre indirecto o saque neutral
+      directStats.goalsAnnulled[goal.scorer]++
+      clearDirect()
+      this.ball.x = goal.holdX
+      this.ball.y = goal.holdY
+      this.ballVelocity = { x: 0, y: 0 }
+      this.ballCarrierId = null
+      // Arcade descarta las faltas: se reanuda con la bola saltando en la esquina (saque neutral)
+      registerAnnulledGoal(this.ruleState, this.players, goal.scorer, this.isArcade ? 'free-hit' : annulled, goal.holdY, time)
+      if (this.isArcade) { const sp = worldToScreen(goal.holdX, goal.holdY); this.fx?.floatText(sp.x, sp.y - 60, 'GOL ANULADO', '#ffffff', 22) }
+      return
+    }
     const next = checkAndApplyGoal({
       ball: this.ball,
       ballVelocity: this.ballVelocity,
@@ -1433,6 +1456,7 @@ export class MatchScene extends Phaser.Scene {
     this.activeBully = nextState.activeBully
     this.activeFoulRestart = nextState.activeFoulRestart
     this.activeKickoff = nextState.activeKickoff
+    clearDirect()
     this.stuckCarrierStartTime = nextState.stuckCarrierStartTime
     this.stuckCarrierOrigin = nextState.stuckCarrierOrigin
     this.ruleState = nextState.ruleState
@@ -1481,8 +1505,20 @@ export class MatchScene extends Phaser.Scene {
     const charge = taker.team === 'blue' && !state.autoFacing ?this.foulChargeLevel : this.aiChargeTarget(taker, 'pass')
     this.foulChargeLevel = 0
     taker.charge = undefined
-    if (state.shouldPass) this.tryPass(taker, charge)
-    else if (state.shouldShot) this.tryShot(taker, false, charge)
+    const forceShot = koShot && taker.team === 'red'   // laboratorio: el saque de la IA tira a puerta
+    if (state.shouldPass && !forceShot) this.tryPass(taker, charge)
+    else if (state.shouldShot || forceShot) this.tryShot(taker, false, forceShot ? 1 : charge)
+    // Art. 5.8: si la bola sale suelta, un gol directo no valdría
+    if (!this.ballCarrierId) markDirect(taker.team, 'kickoff', taker.id)
+    // Laboratorio: el tiro va al centro de la portería y nadie lo toca en 5 s, para ver el gol anulado
+    if (forceShot) {
+      for (const p of this.players) p.saveDisabledUntil = time + 5000
+      const rival = this.players.find(p => p.team !== taker.team)
+      const gx = rival ? getGoalLineX(rival.side) : 0
+      const sp = Math.hypot(this.ballVelocity.x, this.ballVelocity.y)
+      const a = Math.atan2(GAME_HEIGHT / 2 - this.ball.y, gx - this.ball.x)
+      this.ballVelocity = { x: Math.cos(a) * sp, y: Math.sin(a) * sp }
+    }
     this.aimIndicator.clear()
     this.ballIgnoreContactsUntil = 0
     this.activeKickoff = null
@@ -1501,6 +1537,7 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       timeNow: this.simNow,
     })
+    clearDirect()
     this.ballVelocity = nextState.ballVelocity
     this.ballCarrierId = nextState.ballCarrierId
     this.ballIgnoreContactsUntil = nextState.ballIgnoreContactsUntil
@@ -1518,6 +1555,7 @@ export class MatchScene extends Phaser.Scene {
       ball: this.ball,
       timeNow: this.simNow,
     })
+    clearDirect()
     this.ballVelocity = nextState.ballVelocity
     this.ballCarrierId = nextState.ballCarrierId
     this.ballIgnoreContactsUntil = nextState.ballIgnoreContactsUntil
@@ -1571,6 +1609,8 @@ export class MatchScene extends Phaser.Scene {
     state.taker.charge = undefined
     if (state.shouldPass && freeHit) this.tryPass(state.taker, charge)
     else if (state.shouldShot) this.tryShot(state.taker, false, charge)
+    // Art. 7.3.b: el libre indirecto no puede marcar directo (el penalti y el libre directo sí)
+    if (freeHit && !this.ballCarrierId) markDirect(state.taker.team, 'free-hit', state.taker.id)
     this.aimIndicator.clear()
     this.centerText.setVisible(false)
     this.ballIgnoreContactsUntil = 0

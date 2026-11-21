@@ -18,6 +18,8 @@ export const ballCarriedBy = { team: '' as Player['team'] | '' }
  * de rebotes en la valla, que el arcade lee para la bola loca y el gol de billar.
  */
 export const ballMods = { frictionScale: 1, wallBounces: 0 }
+/** R-03: la bola ha dado en un poste o larguero en este paso (MatchScene lo lee y lo apaga). */
+export const ballFrameHit = { post: false }
 
 export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrierId: string | null, players: Player[], dt: number) {
   const carrier = ballCarrierId ? findPlayerById(players, ballCarrierId) : null
@@ -112,6 +114,8 @@ export function updateBallPosition(ball: Ball, ballVelocity: Vector, ballCarrier
   const hitLeftBottomPost = nearLeftGoalMouth && ball.y >= goalBottom - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
   const hitRightTopPost = nearRightGoalMouth && ball.y >= goalTop - BALL_RADIUS && ball.y <= goalTop + BALL_RADIUS
   const hitRightBottomPost = nearRightGoalMouth && ball.y >= goalBottom - BALL_RADIUS && ball.y <= goalBottom + BALL_RADIUS
+
+  if (hitLeftPostFace || hitRightPostFace || hitLeftTopPost || hitLeftBottomPost || hitRightTopPost || hitRightBottomPost) ballFrameHit.post = true
 
   if (hitLeftPostFace || hitRightPostFace) {
     nextVelocity.x *= -GOAL_POST_REBOUND

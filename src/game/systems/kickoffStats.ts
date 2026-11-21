@@ -1,4 +1,5 @@
 import { RINK } from '../constants'
+import { directStats, resetDirectStats } from './directRestart'
 
 type Team = 'blue' | 'red'
 type Pair = Record<Team, number>
@@ -27,7 +28,9 @@ type View = {
  */
 export function kickoffTracker(s: View) {
   const mk = (): Pair => ({ blue: 0, red: 0 })
-  const stats = { kickoffsTaken: mk(), kickoffCarryMsSum: mk(), kickoffCrossed: mk(), kickoffCrossMsSum: mk(), kickoffLostEarly: mk() }
+  resetDirectStats()
+  // R-03: goalsAnnulled es el mismo objeto que cuenta MatchScene (gol directo anulado, arts. 5.8 y 7.3.b)
+  const stats = { kickoffsTaken: mk(), kickoffCarryMsSum: mk(), kickoffCrossed: mk(), kickoffCrossMsSum: mk(), kickoffLostEarly: mk(), goalsAnnulled: directStats.goalsAnnulled }
   let prevKickoff: unknown = null
   let tr: null | { team: Team, at: number, taker: string | null, atkRight: boolean } = null
 
