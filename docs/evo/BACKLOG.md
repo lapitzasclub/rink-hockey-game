@@ -12,8 +12,8 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-03 | Portero: IA, movimientos raros y portero seleccionable | ai-engineer · opus | ✅ 2026-11-20 (mando y táctil sin probar en aparato real) |
 | E-04 | Niveles de dificultad | → `/bal` B-04 | ➡️ |
 | E-14 | Controles táctiles: sprint en el stick, presionar para robar, botones al alcance del pulgar | coordinador | ✅ 2026-11-20 |
-| E-05 | Reglas: faltas de equipo, libre directo, penalti, saque neutral | coordinador | 🟨 |
-| E-12 | Transiciones sin teletransporte: gol, saque de centro, descanso | coordinador | 🟨 |
+| E-05 | Reglas: faltas de equipo, libre directo, penalti, saque neutral | coordinador | ✅ 2026-11-19 (lo siguiente de reglas va por `/regla`) |
+| E-12 | Transiciones sin teletransporte: gol, saque de centro, descanso | coordinador | ✅ 2026-11-19 (humo `smoke/2026-11-19-E12-expulsado-puerta.txt`) |
 | E-13 | Sombra de los jugadores y marcador del seleccionado | coordinador | ✅ 2026-11-20 |
 | E-10 | Animación: pendientes del portero, respiración y C de espaldas | gfx-engineer · opus | ✅ 2026-11-19 |
 | E-11 | Animación: frenada, giro, inclinación, celebración, caída, recepción | gfx-engineer · opus | ✅ 2026-11-19 |
@@ -22,7 +22,9 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-19 | Celebraciones y parones: gol, descanso y final de partido | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
-| E-99 | Cierre: humo final, prueba de niveles, informe | coordinador + perf-qa · haiku | ⬜ |
+| E-20 | Reacciones en juego: parada, palo, falta, tarjeta | gfx-engineer · opus | 🟨 |
+| E-21 | Ceremonia: salida al campo, saludo final y goles con peso | gfx-engineer · opus | 🟨 |
+| E-99 | Cierre: humo final, banco movil-bajo frente a base en la misma máquina, informe (los niveles van en `/bal` B-04) | coordinador + perf-qa · haiku | 🟨 |
 
 IA (E-01…E-04) y animación (E-10, E-11) van en paralelo en worktrees distintos: no comparten archivos. E-15 (física), E-16 (partículas) y E-17 (animación) van en paralelo; E-18 tras E-17 (mismos archivos del rig).
 
@@ -149,6 +151,18 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Objetivo:** gol: el goleador sale patinando hacia la valla del fondo atacado con una celebración propia (varias variantes), los compañeros van a abrazarle (piña), su portero celebra en su área y el equipo que encaja se lamenta (cabeza baja, manos en las rodillas, el portero golpea el stick). Descanso: postura relajada, se cruzan chocando la mano. Final: el ganador hace piña y el que pierde patina cabizbajo; en empate se saludan. Movimiento en `stepSimulation`, poses en el pintado.
 **Aceptación:** build; tiras del laboratorio de cada clip y capturas en partido en los dos modos y en calidad baja; humo 20 × modo frente a `docs/rules/smoke/2026-11-21-R99-*.txt` con goles/min dentro de ±30 %, 0 atascos, 0 errores y 0 fuera de pista; banco movil-bajo en E-99.
 **Hecho:** `systems/celebration.ts` (`PauseDirector`, sustituye a `coastPlayers` en los parones) y `celebrationMotion.ts` mueven a los jugadores en la simulación; `render/puppet/celebrationClips.ts` pinta las poses a partir de `Player.mood`. Gol: el autor va al borde del área atacada (≥ 2,5 m de las vallas) con su gesto por id (avión, rodillazo, salto con puño, señalar); los compañeros esperan abiertos y cierran la piña; su portero sale y vuelve; los que encajan se hunden y pasan a manos en las rodillas, en la cadera (girándose de espaldas) o al casco; el portero golpea el stick. Descanso: estiramientos, cruce relajado con choque de manos, porteros por la banda. Final: piña del ganador, perdedor cabizbajo, saludo en empate. `GOAL_CELEBRATION_MS` 2800 (antes 1800 inline) y arcade 3200; tabla `CELEBRATION` y `MOOD_POSE`. Tiras `?lab=actions&strip=moods…moods6|lament`, `?lab=goalie&strip=gkmoods`; capturas en `shots/E-19/`. Humo (`smoke/2026-11-21-E19-*.txt`): reglamento 1,64 ± 0,17 goles/min (ref. 1,61 ± 0,16), arcade 1,89 ± 0,27 (ref. 1,89 ± 0,25); bal-compare todo igual; 0 atascos ni errores. Pendiente: el lamento sigue discreto a escala de pista; piezas troceadas en tiras de zoom ≥ 2 (ya pasaba en E-11).
+
+## E-20 — Reacciones en juego
+
+**Pedido del usuario (2026-11-21):** «seguro que se te ocurren más» (tras E-19).
+**Objetivo:** gestos cortos (≤ 900 ms) sin parar el juego ni tocar la física: parada (portero «¡mía!», compañeros golpean el stick, el tirador se lleva las manos al casco), palo o tiro fuera por poco (tirador echa la cabeza atrás, portero resopla), falta (víctima protesta al árbitro con los brazos abiertos, infractor levanta la mano), tarjeta (sancionado se queja y sale cabizbajo; un compañero le da una palmada). Capa sobre el tronco y los brazos; nunca a quien lleva la bola o hace una acción.
+**Aceptación:** build; tira `?lab=actions&strip=reactions`; capturas en partido en los dos modos; humo 20 × modo frente a `smoke/2026-11-21-E19-*.txt` sin diferencias en bal-compare, 0 atascos, 0 errores.
+
+## E-21 — Ceremonia y goles con peso
+
+**Pedido del usuario (2026-11-21):** el mismo que E-20.
+**Objetivo:** salida al campo patinando desde los banquillos con saludo de capitanes antes del primer saque (reloj parado); saludo final en fila, choque de manos entre equipos y saludo a la grada; celebración escalada por importancia (gol en el último minuto, del empate o de la remontada: más grande y el banquillo salta a la pista; hat-trick con gesto propio y grada más fuerte).
+**Aceptación:** build; capturas de la salida, el saludo y un gol con peso (laboratorio que los fuerce); humo 20 × modo frente a `smoke/2026-11-21-E19-*.txt` sin diferencias en bal-compare, 0 atascos, 0 errores, 0 fuera de pista.
 
 ## E-99 — Cierre
 
