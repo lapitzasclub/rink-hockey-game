@@ -44,6 +44,21 @@ Documentos hermanos: [BACKLOG.md](./BACKLOG.md) (tareas T-XX) y [LEDGER.md](./LE
 6. **Esfuerzo por rol.** `effort` en el frontmatter: scout y QA `low`, builder `medium`, engineer `high`. No se sube sin motivo escrito en el encargo.
 7. **Lotes.** Varias tareas S del mismo área se juntan en un encargo de `dev-builder`; varias verificaciones en una sola pasada de `dev-qa`.
 8. **Registro.** Al cerrar cada paquete (de cualquier workflow), una fila en [LEDGER.md](./LEDGER.md) con los tokens y la duración que da la notificación de cada agente. Si un tipo de paquete sale caro de forma repetida, se ajusta el enrutado.
+9. **Presupuesto en el encargo.** Cada encargo lleva un tope según su tamaño (tabla abajo). Al llegar al tope el agente para y entrega PARCIAL con lo que falta; el coordinador decide si sigue. Más vale un PARCIAL barato que una ronda que se va al doble.
+10. **Escena antes que partido.** Lo que depende de un momento (un golpe, un gol, un saque) se prueba en el laboratorio o en una escena demo que lo fuerce (`?lab=…`, `rfx=demo`, `labAt`), no buscándolo en capturas de partido en vivo (E-16: 197 herramientas por eso). El encargo nombra la escena o pide crearla primero.
+11. **Humos en paralelo.** Los dos modos se pueden pasar a la vez contra el mismo Vite (paso fijo: no cambia los contadores). QA los lanza en segundo plano y no espera mirando.
+12. **El encargo cuesta poco.** Si el coordinador necesita abrir más de 3 archivos para redactar un encargo, manda antes `dev-scout`. El coordinador no hace de scout con opus.
+13. **Worktree estanco.** El agente con worktree no escribe nada en el árbol de main (E-18 dejó una línea suelta). QA revisa `git status` de main antes de integrar.
+14. **Revisión periódica.** Cada 5 filas nuevas en LEDGER, `/dev ledger`: qué tipo de paquete se pasa del presupuesto y qué regla o enrutado se cambia.
+
+| Tamaño | Ejemplo | Modelo | Tope orientativo |
+|---|---|---|---|
+| S | texto, constante, cableado de ≤ 50 líneas | sonnet o coordinador | 40 k tokens · 30 herramientas |
+| M | clip de animación, regla con patrón existente, UI | sonnet / opus | 80 k · 70 herramientas |
+| L | sistema nuevo, física, varios clips con escena | opus | 150 k · 120 herramientas |
+| QA | build + humo 20 × 2 + ≤ 3 capturas | haiku | 40 k |
+
+Los topes salen de LEDGER (E-18 bien acotado: 68 k; E-16 sin acotar: 166 k) y se ajustan en cada revisión.
 
 ## 4. Plantilla de encargo
 
@@ -55,7 +70,8 @@ Contexto: <≤ 5 líneas que el agente no tenga que buscar: mapa del scout, deci
 Lee SOLO: <archivos y rangos>
 Archivos propios: <lista>   Prohibidos: <lista>
 Criterio de aceptación: <medible>
-Verificación propia: <build + lo barato>
+Verificación propia: <build + lo barato; escena de laboratorio que fuerza el caso>
+Presupuesto: <S|M|L> — al tope, PARCIAL (§3.9)
 Entrega: informe §5
 ```
 
