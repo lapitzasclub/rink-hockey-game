@@ -69,6 +69,15 @@ export function updatePassivity(rs: RuleState, o: { players: Player[], ball: Bal
   ps.lastStep = now
   const resumed = gap > PASSIVITY.resumeGapMs
   if (resumed) resetPossession(ps, null)
+  // Saque de centro (art. 5.7): 5 s para pasar la línea central, contados desde la suelta
+  if (ps.kickoffTeam) {
+    ps.team = ps.kickoffTeam
+    ps.crossed = false
+    ps.ownSince = ps.kickoffAt
+    ps.limitMs = PASSIVITY.kickoffMs
+    ps.limitKind = 'kickoff'
+    ps.kickoffTeam = null
+  }
   const dtMs = resumed ? 0 : gap
   passivityView.at = now
   passivityView.urgency.blue = passivityView.urgency.red = 0
@@ -94,6 +103,7 @@ export function updatePassivity(rs: RuleState, o: { players: Player[], ball: Bal
   } else if (rel < 0 && ps.ownSince < 0) {
     ps.ownSince = now
     ps.limitMs = ps.crossed ? PASSIVITY.returnMs : PASSIVITY.ownHalfMs
+    ps.limitKind = 'possession'
     resetIdle(ps)
   }
 
@@ -101,15 +111,16 @@ export function updatePassivity(rs: RuleState, o: { players: Player[], ball: Bal
     const left = ps.limitMs - (now - ps.ownSince)
     // Agotado con la bola suelta se espera a ver quién la controla: si es el rival, posesión nueva
     if (left <= 0 && own && !busy) {
-      registerPassivity(rs, players, team, 'possession', ball.x, ball.y, now)
+      registerPassivity(rs, players, team, ps.limitKind, ball.x, ball.y, now)
       resetPossession(ps, null)
       return null
     }
-    if (left <= PASSIVITY.hudFromMs) {
-      ps.hudKind = 'possession'
+    // La cuenta del saque se ve entera desde el inicio
+    if (left <= PASSIVITY.hudFromMs || ps.limitKind === 'kickoff') {
+      ps.hudKind = ps.limitKind
       ps.hudTeam = team
       ps.hudMs = Math.max(0, left)
-      if (prevHud !== 'possession') ps.stats.countdowns++
+      if (prevHud !== ps.limitKind) ps.stats.countdowns++
     }
     passivityView.urgency[team] = clamp01((PASSIVITY.aiLeadMs - left) / PASSIVITY.aiLeadMs)
     passivityView.cross[team] = true

@@ -1477,6 +1477,7 @@ export class MatchScene extends Phaser.Scene {
     }
     this.ballCarrierId = taker.id
     this.lastTouch = taker.team
+    if (!this.isArcade) { const ps = this.ruleState.passivity; ps.kickoffTeam = taker.team; ps.kickoffAt = time }   // art. 5.7
     const charge = taker.team === 'blue' && !state.autoFacing ?this.foulChargeLevel : this.aiChargeTarget(taker, 'pass')
     this.foulChargeLevel = 0
     taker.charge = undefined

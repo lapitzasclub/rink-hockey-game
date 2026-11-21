@@ -60,14 +60,14 @@ $keys = 'goalsPerMin', 'shotsPerMin', 'onTargetPerMin', 'savePct', 'foulsPerMin'
   'lossesBluePerMin', 'lossesRedPerMin', 'lossesCheckBluePerMin', 'lossesCheckRedPerMin', 'stealTriesBluePerMin', 'stealTriesRedPerMin', 'stealPctBlue', 'stealPctRed',
   'humanStealTriesPerMin', 'humanStealsPerMin', 'goalieHumanPctBlue', 'goalsVsHumanGoaliePerMin',
   'humanTryPerPressS', 'humanStealPerPressS', 'redTryPerPressS', 'redStealPerPressS', 'humanLossPerPressS', 'blueLossPerPressS', 'humanGoalSidePctBlue',
-  'passivityCallsBlue', 'passivityCallsRed', 'goaliePassesBlue', 'goaliePassesRed',
+  'passivityCallsBlue', 'passivityCallsRed', 'kickoffCallsPerMatch', 'goaliePassesBlue', 'goaliePassesRed',
   'kickoffCarryMs', 'kickoffCrossMs', 'kickoffCrossPct', 'kickoffLostPct'
 $samples = @{}; foreach ($k in $keys) { $samples[$k] = @() }
 # B-08: tiros y goles por banda de distancia a la línea de gol (px) y equipo que tira, sumados en el lote
 $bands = @(@{ k = 'B0'; lo = 0; hi = 50 }, @{ k = 'B50'; lo = 50; hi = 100 }, @{ k = 'B100'; lo = 100; hi = 180 }, @{ k = 'B180'; lo = 180; hi = 1e9 })
 $bandN = @{}; $bandG = @{}; foreach ($b in $bands) { foreach ($t in 'Blue', 'Red') { $bandN["$t$($b.k)"] = 0; $bandG["$t$($b.k)"] = 0 } }
 $tot = @{ goalsNoShot = 0; goalsCarriedOwn = 0; jams = 0; jamSec = 0; badPlayerFrames = 0; consoleErrors = 0; failed = 0; freeHits = 0; directFreeHits = 0; penalties = 0; neutralRestarts = 0; blueCards = 0;
-  possCallsBlue = 0; possCallsRed = 0; passiveCallsBlue = 0; passiveCallsRed = 0; passiveWarnings = 0; countdowns = 0;
+  possCallsBlue = 0; possCallsRed = 0; passiveCallsBlue = 0; passiveCallsRed = 0; passiveWarnings = 0; countdowns = 0; kickoffCalls = 0;
   gkPassBlue = 0; gkPassRed = 0; gkDoneBlue = 0; gkDoneRed = 0; gkGoalsBlue = 0; gkGoalsRed = 0; kickoffs = 0 }
 foreach ($i in 1..$Runs) {
   $line = Invoke-Smoke
@@ -154,7 +154,8 @@ foreach ($i in 1..$Runs) {
     $samples.passivityCallsBlue += $pc.possession.blue + $pc.passive.blue; $samples.passivityCallsRed += $pc.possession.red + $pc.passive.red
     $tot.possCallsBlue += [int]$pc.possession.blue; $tot.possCallsRed += [int]$pc.possession.red
     $tot.passiveCallsBlue += [int]$pc.passive.blue; $tot.passiveCallsRed += [int]$pc.passive.red
-    $tot.passiveWarnings += [int]($pc.warnings.blue + $pc.warnings.red); $tot.countdowns += [int]$pc.countdowns
+    if ($null -ne $pc.kickoff) { $kc = [int]($pc.kickoff.blue + $pc.kickoff.red); $tot.kickoffCalls += $kc; $samples.kickoffCallsPerMatch += $kc }
+    $tot.passiveWarnings +=[int]($pc.warnings.blue + $pc.warnings.red); $tot.countdowns += [int]$pc.countdowns
   }
   # B-09: pases al portero propio (por partido y equipo que pasa), los que atrapa y goles encajados en los 5 s siguientes
   if ($null -ne $j.goaliePasses) {

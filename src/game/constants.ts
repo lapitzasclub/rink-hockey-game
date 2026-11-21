@@ -896,11 +896,14 @@ export const SWITCH_DEFEND = { behindPx: 120, rampPx: 60, ballAimRad: 0.7 }
  *   Avanzar advancePx o tirar (bola suelta a shotSpeed px/s hacia la portería rival) lo anula.
  * - hudFromMs: la cuenta atrás de posesión se ve cuando quedan estos ms o menos (la del aviso, siempre).
  * - resumeGapMs: un hueco mayor entre pasos en juego es un parón (gol, falta, saque): posesión nueva.
+ * - kickoffMs: tras el saque de centro, el equipo que saca tiene este tiempo para pasar la línea
+ *   central (art. 5.7); si no, libre indirecto para el rival. La cuenta atrás se ve desde el inicio.
  * - aiLeadMs: la IA empieza a darse prisa estos ms antes de cada límite (aiDecision).
  */
 export const PASSIVITY = {
   ownHalfMs: 10000,
   returnMs: 5000,
+  kickoffMs: 5000,
   passiveMs: 10000,
   warnMs: 5000,
   pressPx: 3 * METER_PX,

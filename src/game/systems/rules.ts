@@ -36,7 +36,7 @@ export type RuleState = {
   passivity: PassivityState
 }
 
-export type PassivityKind = 'possession' | 'passive'
+export type PassivityKind = 'possession' | 'passive' | 'kickoff'
 
 /** Contadores de posesión y pasividad del equipo con la bola (tiempos en simNow). */
 export type PassivityState = {
@@ -47,6 +47,11 @@ export type PassivityState = {
   /** simNow en que la bola entró en su campo (-1 = el tiempo de posesión no corre) y su límite. */
   ownSince: number
   limitMs: number
+  /** Qué límite corre en ownSince: posesión normal o los 5 s del saque de centro (art. 5.7). */
+  limitKind: 'possession' | 'kickoff'
+  /** Marca que deja el saque de centro al soltar la bola; updatePassivity la consume. */
+  kickoffTeam: TeamColor | null
+  kickoffAt: number
   /** Juego pasivo en campo rival: ms sin avanzar ni presión, mejor distancia a la portería y aviso. */
   idleMs: number
   bestDist: number
@@ -58,14 +63,14 @@ export type PassivityState = {
   hudTeam: TeamColor
   hudMs: number
   /** Para el humo: pitadas por equipo y tipo, avisos y veces que aparece la cuenta atrás. */
-  stats: { possession: Record<TeamColor, number>, passive: Record<TeamColor, number>, warnings: Record<TeamColor, number>, countdowns: number }
+  stats: { possession: Record<TeamColor, number>, passive: Record<TeamColor, number>, kickoff: Record<TeamColor, number>, warnings: Record<TeamColor, number>, countdowns: number }
 }
 
 export function createPassivityState(): PassivityState {
   return {
-    team: null, crossed: false, ownSince: -1, limitMs: 0, idleMs: 0, bestDist: Infinity, warned: false, warnElapsedMs: 0,
+    team: null, crossed: false, ownSince: -1, limitMs: 0, limitKind: 'possession', kickoffTeam: null, kickoffAt: 0, idleMs: 0, bestDist: Infinity, warned: false, warnElapsedMs: 0,
     lastStep: -Infinity, hudKind: null, hudTeam: 'blue', hudMs: 0,
-    stats: { possession: { blue: 0, red: 0 }, passive: { blue: 0, red: 0 }, warnings: { blue: 0, red: 0 }, countdowns: 0 },
+    stats: { possession: { blue: 0, red: 0 }, passive: { blue: 0, red: 0 }, kickoff: { blue: 0, red: 0 }, warnings: { blue: 0, red: 0 }, countdowns: 0 },
   }
 }
 
@@ -252,7 +257,9 @@ export function registerPassivity(state: RuleState, players: Player[], team: Tea
     restartX: Math.min(Math.max(x, RINK.x + m), RINK.x + RINK.width - m),
     restartY: Math.min(Math.max(y, RINK.y + m), RINK.y + RINK.height - m),
     sanction: SANCTION.FREE_HIT,
-    message: `${kind === 'possession' ? 'Tiempo de posesión' : 'Juego pasivo'} de ${teamLabel(team)} · libre indirecto`,
+    message: kind === 'kickoff'
+      ? `Cinco segundos de saque de ${teamLabel(team)} · libre indirecto`
+      : `${kind === 'possession' ? 'Tiempo de posesión' : 'Juego pasivo'} de ${teamLabel(team)} · libre indirecto`,
   }
 }
 

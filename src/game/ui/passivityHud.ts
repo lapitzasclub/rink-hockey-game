@@ -49,7 +49,7 @@ export function createPassivityHud(scene: Phaser.Scene) {
       bg.blue.setVisible(kind !== null && ps.hudTeam === 'blue')
       bg.red.setVisible(kind !== null && ps.hudTeam === 'red')
       text.setVisible(kind !== null)
-      if (kind) text.setText(`${kind === 'possession' ? 'POSESIÓN' : 'PASIVO'} ${Math.ceil(ps.hudMs / 1000)}`)
+      if (kind) text.setText(`${kind === 'possession' ? 'POSESIÓN' : kind === 'kickoff' ? 'SAQUE' : 'PASIVO'} ${Math.ceil(ps.hudMs / 1000)}`)
     },
   }
 }

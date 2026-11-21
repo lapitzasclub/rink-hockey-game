@@ -19,7 +19,7 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 | R-05 | Contadores del saque en el humo y base | regla-builder · sonnet | — | ✅ |
 | R-01 | Saque de centro con pase | regla-builder · sonnet | R-05 | ✅ |
 | R-02 | Cinco segundos tras el saque | regla-builder · sonnet | R-01 | ⏳ |
-| R-03 | Gol directo de saque o libre indirecto anulado | regla-engineer · opus | R-01 | ⏳ |
+| R-03 | Gol directo de saque o libre indirecto anulado | regla-builder · sonnet | R-02 | ⏳ |
 | R-04 | El visitante abre el partido | coordinador | — | ✅ |
 | R-06 | Apuntado del libre indirecto: receptor y línea de pase | regla-builder · sonnet | R-03 | ⏳ |
 | R-99 | Cierre: humo 20 × 2 modos y partido del usuario | regla-qa · haiku | R-01..R-04 | ⏳ |
@@ -48,7 +48,7 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 ## R-03 — Gol directo de saque o libre indirecto anulado (art. 5.8, 7.3.b)
 
 - **Objetivo:** si la bola de un saque de centro o de un libre indirecto entra en la portería rival sin tocar a otro jugador ni la portería, el gol no sube: aviso del árbitro y libre indirecto desde la esquina inferior del área más cercana a donde entró la bola (en el saque de centro) o saque neutral en la esquina (resto de 7.3).
-- **Diagnóstico pendiente:** el coordinador localiza la validación de gol y si ya existe un reinicio desde la esquina del área (rebote en el cuerpo, art. 7.3.a) antes de despachar; si existe, el paquete baja a `regla-builder`.
+- **Diagnóstico (coordinador):** el gol se valida en `MatchScene.checkGoalState` (~1336) con `sceneFlow.checkAndApplyGoal` (54–89). Los reinicios en un punto ya existen en `rules.ts`: `areaCorner` (106), `registerPassivity` para el libre indirecto y `registerBully` para el neutral. Por eso baja a `regla-builder`: marca «directo» al soltar (`takeKickoff` y `updateFoulRestartState`), se borra con cualquier toque (portador, parada, roce de `handleLooseBallContactsAction` o poste de `ball.ts`) y se anula el gol si la marca sigue activa. Va tras R-02 porque los dos tocan `MatchScene.ts`.
 - **Aceptación:** humo 20 × 2 modos con los goles anulados contados; capturas del aviso con un caso forzado en el laboratorio.
 
 ## R-04 — El visitante abre el partido (art. 5.3, D-02)
