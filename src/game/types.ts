@@ -20,6 +20,15 @@ export type MoodKind = 'score' | 'mate' | 'joy' | 'down' | 'keeperDown' | 'rest'
 /** `big` (E-21): peso del gol del autor (0..1); el clip agranda el gesto. */
 export type PlayerMood = { kind: MoodKind; style: number; at: number; until: number; hit: number; side: 1 | -1; big?: number }
 
+/**
+ * Reacciones en juego (E-20): `mine` portero que bloca, `tap` compañero que golpea el stick,
+ * `rue` tirador al que paran, `miss` tirador al palo o fuera por poco, `phew` portero que
+ * resopla, `protest` víctima de falta, `own` infractor, `card` sancionado, `pat` palmada.
+ */
+export type ReactionKind = 'mine' | 'tap' | 'rue' | 'miss' | 'phew' | 'protest' | 'own' | 'card' | 'pat'
+/** `at`/`until` en `simNow` (cortar = `until` ≤ ahora); `side` = lado (±1, derecha) del gesto; `tx`/`ty` = punto de mundo al que mira la protesta (NaN: ninguno). */
+export type PlayerReaction = { kind: ReactionKind; at: number; until: number; side: 1 | -1; tx: number; ty: number }
+
 export type Ball = {
   x: number           // coordenada X mundo — usada por física
   y: number           // coordenada Y mundo — usada por física
@@ -77,6 +86,8 @@ export type Player = {
    * `side` = lado (±1, derecha del jugador) del compañero en el choque de manos.
    */
   mood?: PlayerMood
+  /** Reacción en juego (E-20): la decide `systems/reactions.ts` en la simulación y la pinta `reactionClips`. */
+  reaction?: PlayerReaction
   /** Último choque con otro jugador o con la valla (E-15): impulso recibido en px/s y su `simNow`. Lo lee la animación (E-17). */
   bump?: { x: number, y: number, at: number }
   /** Angulo del stick en coordenadas mundo; el render puede usar otro por perspectiva. */

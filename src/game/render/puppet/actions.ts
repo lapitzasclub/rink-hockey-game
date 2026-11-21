@@ -10,6 +10,7 @@ import type { Player } from '../../types'
 import { ACTION_CLIP_MS } from '../artSpec'
 import { playClip } from './actionClips'
 import { skaterMood } from './celebrationClips'
+import { skaterReaction } from './reactionClips'
 import type { ActionType, PoseContext, PuppetPose } from './pose'
 import type { V3 } from './vec'
 
@@ -71,6 +72,8 @@ export function actions(pose: PuppetPose, ctx: PoseContext) {
   if (!pose.stick.visible) return
   // Gestos de los parones (gol, descanso, final): sustituyen a los clips mientras duran
   if (ctx.kind === 'skater' && ctx.player.mood) skaterMood(pose, ctx)
+  // Reacciones en juego (E-20): parada, palo, falta, tarjeta; los clips de acción mandan sobre ellas
+  if (ctx.kind === 'skater' && (ctx.player.reaction || ctx.player.penPhase)) skaterReaction(pose, ctx)
   if (ctx.action) {
     playClip(pose, ctx, ctx.action, ctx.swing)
     return

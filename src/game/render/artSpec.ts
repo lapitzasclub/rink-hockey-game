@@ -318,6 +318,27 @@ export const GOALIE_CLIP_MS = { save: 280 } as const
 export const GOALIE_ENVELOPE = { save: [0.22, 0.7], concede: [0.15, 0.85] } as const
 
 /**
+ * Reacciones en juego (E-20, `reactionClips.ts`), unidades de figura y rad. Las manos del
+ * patinador van respecto al centro de hombros (x hacia el lado de la mano libre); las del
+ * portero en su marco absoluto, como `GOALIE_SAVE_POSE`.
+ * `mine` manopla arriba; `phew` hombros que caen; `tap` golpes de stick (`taps` en el gesto);
+ * `rue` encorvado con manos al casco; `miss` cabeza atrás con las manos encima; `protest`
+ * brazos abiertos; `own` mano arriba; `pat` palmada al lado; `slump` sancionado que sale.
+ */
+export const REACTION_POSE = {
+  mine: { mittX: 0.1, mittY: 0.86, mittZ: 0.06, pump: 0.04, hz: 2.4, pitch: -0.08, roll: 0.08 },
+  phew: { pitch: -0.12, head: -0.09, drop: 0.07, mittX: 0.07, mittY: 0.74, mittZ: 0.1, hand: 0.2, roll: 0.1 },
+  tap: { taps: 2, rise: 0.72, hand: 0.22, heel: 0.48, pitch: 0.2 },
+  rue: { pitch: 0.42, x: 0.05, y: 0.15, z: 0.07, stickX: 0.17, stickY: -0.03 },
+  miss: { pitch: -0.2, head: -0.07, x: 0.07, y: 0.24, z: 0.0, stickX: 0.1, stickY: 0.22 },
+  /** `twist`/`head`: tope del giro (rad) del tronco y de la cabeza hacia el árbitro. */
+  protest: { x: 0.4, y: 0.06, z: 0.2, pitch: -0.06, shake: 0.035, hz: 2.2, twist: 0.7, head: 0.6 },
+  own: { x: 0.07, y: 0.33, z: 0.03, pitch: 0.06 },
+  pat: { x: 0.28, y: -0.02, z: 0.1, cross: 0.16 },
+  slump: { fadeMs: 400, pitch: 0.3, head: 0.08, freeX: 0.13, freeDrop: 0.3, freeZ: 0.06 },
+} as const
+
+/**
  * Selección de parada por la bola respecto al portero en el instante de la parada
  * (fracciones del radio de parada): `body` = por debajo de esa distancia, bloqueo con el
  * cuerpo; `wide` = lateral por encima del cual abre el pad; `side` = lateral mínimo para

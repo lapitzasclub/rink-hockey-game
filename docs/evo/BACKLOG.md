@@ -22,7 +22,7 @@ Proceso en [WORKFLOW.md](./WORKFLOW.md). Estado: ⬜ pendiente · 🟨 en curso 
 | E-17 | Animación secundaria: muelles de peso, acción superpuesta, reacción a choques | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-18 | Modelo: patín quad con ruedas que giran, protecciones, detalle de cerca | gfx-engineer · opus | ✅ 2026-11-21 |
 | E-19 | Celebraciones y parones: gol, descanso y final de partido | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
-| E-20 | Reacciones en juego: parada, palo, falta, tarjeta | gfx-engineer · opus | 🟨 |
+| E-20 | Reacciones en juego: parada, palo, falta, tarjeta | gfx-engineer · opus | ✅ 2026-11-21 (falta el partido del usuario) |
 | E-21 | Ceremonia: salida al campo, saludo final y goles con peso | gfx-engineer · opus | 🟨 |
 | E-99 | Cierre: humo final, banco movil-bajo frente a base en la misma máquina, informe (los niveles van en `/bal` B-04) | coordinador + perf-qa · haiku | 🟨 |
 
@@ -157,6 +157,7 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Pedido del usuario (2026-11-21):** «seguro que se te ocurren más» (tras E-19).
 **Objetivo:** gestos cortos (≤ 900 ms) sin parar el juego ni tocar la física: parada (portero «¡mía!», compañeros golpean el stick, el tirador se lleva las manos al casco), palo o tiro fuera por poco (tirador echa la cabeza atrás, portero resopla), falta (víctima protesta al árbitro con los brazos abiertos, infractor levanta la mano), tarjeta (sancionado se queja y sale cabizbajo; un compañero le da una palmada). Capa sobre el tronco y los brazos; nunca a quien lleva la bola o hace una acción.
 **Aceptación:** build; tira `?lab=actions&strip=reactions`; capturas en partido en los dos modos; humo 20 × modo frente a `smoke/2026-11-21-E19-*.txt` sin diferencias en bal-compare, 0 atascos, 0 errores.
+**Hecho:** `systems/reactions.ts` decide en la simulación (`Player.reaction`, simNow, objeto reutilizado) y `render/puppet/reactionClips.ts` pinta tronco, cabeza y brazos encima del patinaje. Parada: «¡mía!» del portero que bloca, dos compañeros golpean el stick, el tirador al casco. Palo o fuera a menos de 22·K px del poste tras un tiro: cabeza atrás del tirador, resoplido del portero con la manopla al casco. Falta: la víctima (el que la saca) protesta girada hacia el árbitro, el infractor levanta la mano. Tarjeta: protesta y salida cabizbaja; palmada de un compañero cercano. Tabla `REACTION`, `REACTION_POSE`. Tira `?lab=players&strip=reactions`; capturas en `shots/E-20/`. Humo (`smoke/2026-11-21-E20-*.txt`): reglamento 1,48 ± 0,28 goles/min (E-19 1,64 ± 0,18), arcade 1,68 ± 0,22 (1,89 ± 0,27); todo solapa; 0 atascos ni errores; 1 fuera de pista en reglamento (también en la referencia de main, R01–R03: física, no lo toca E-20). Pendiente: el golpe de stick solo se nota en movimiento (sin mota de polvo); el árbitro al que se mira es aproximado.
 
 ## E-21 — Ceremonia y goles con peso
 
@@ -165,5 +166,7 @@ Petición del usuario: el botón de correr se pulsaba casi siempre, robar costab
 **Aceptación:** build; capturas de la salida, el saludo y un gol con peso (laboratorio que los fuerce); humo 20 × modo frente a `smoke/2026-11-21-E19-*.txt` sin diferencias en bal-compare, 0 atascos, 0 errores, 0 fuera de pista.
 
 ## E-99 — Cierre
+
+**Banco 2026-11-21** (`smoke/2026-11-21-E99-banco.txt`, movil-bajo, base `b5dd031` frente a main en la misma máquina): arcade igual (82,4 → 83,3 fps); reglamento −20 % (100,5 → 80,1 fps, p95 10,3 → 20,4 ms, lógica +42 %). Dudoso: la medida de main en reglamento fue la última y coincidió con el arranque de E-20 y E-21 (dos Vite y humos en la máquina). Repetir con la máquina libre y orden alterno (main, base, main, base) antes de abrir un paquete `/perf`.
 
 Humo final en los dos modos frente a la referencia nueva, una prueba por nivel (goles encajados por minuto contra la IA), AGENTS.md al día e informe corto.

@@ -5,7 +5,7 @@
 import { RINK } from '../../game/constants'
 import type { ActionType } from '../../game/render/puppet/pose'
 import type { Role } from '../../game/types'
-import type { FigureSpec, LabMood } from './labFigures'
+import type { FigureSpec, LabMood, LabReaction } from './labFigures'
 
 const MID_Y = RINK.y + RINK.height / 2
 const MID_X = RINK.x + RINK.width / 2
@@ -67,6 +67,16 @@ function moodRow(row: number, mood: LabMood, moving = false): FigureSpec[] {
     x: MID_X + (k - 2) * MOOD_DX, y: MID_Y + row * MOOD_DY,
     ...(moving ? { phase: TAU * 0.3, loco: { speed: 0.6 } } : {}),
   }))
+}
+
+/** Celda de la hoja de reacciones (E-20): columna, vista, rol y reacción; `moving` patina. */
+function reactionCell(row: number, col: number, angle: number, reaction: LabReaction, role: Role = 'defender', moving = false): FigureSpec {
+  return {
+    team: 'blue', role, aimAhead: true, angle, reaction,
+    ...(role === 'goalie' ? { gk: { kneel: false } } : {}),
+    ...(moving ? { phase: TAU * 0.3, loco: { speed: 0.5 } } : {}),
+    x: MID_X + (col - 2) * MOOD_DX, y: MID_Y + (row - 1.5) * MOOD_DY,
+  }
 }
 
 /** Entradas que `labScenes` añade a su tabla de hojas. */
@@ -155,4 +165,36 @@ export const ACTION_STRIPS: Record<string, () => FigureSpec[]> = {
     ...moodRow(0, { kind: 'score', style: 0, ms: 1500, hit: 600 }),
     ...moodRow(1, { kind: 'greet', style: 0, ms: 1500, hit: 450 }),
   ],
+  /**
+   * E-20: reacciones en juego, a media reacción. Filas: parada (portero «¡mía!», compañero
+   * golpeando el stick, tirador con manos al casco), palo (tirador, portero resoplando),
+   * falta (víctima protestando, infractor con la mano arriba) y tarjeta (protesta, salida
+   * cabizbaja y palmada del compañero).
+   */
+  reactions: () => {
+    const F = Math.PI / 2
+    const Q = Math.PI / 4
+    return [
+      reactionCell(0, 0, F, { kind: 'mine', ms: 420 }, 'goalie'),
+      reactionCell(0, 1, Q, { kind: 'mine', ms: 600 }, 'goalie'),
+      reactionCell(0, 2, F, { kind: 'tap', ms: 230 }),
+      reactionCell(0, 3, Q, { kind: 'tap', ms: 290 }),
+      reactionCell(0, 4, Q, { kind: 'rue', ms: 450 }),
+      reactionCell(1, 0, F, { kind: 'miss', ms: 380 }),
+      reactionCell(1, 1, Q, { kind: 'miss', ms: 450 }),
+      reactionCell(1, 2, 0, { kind: 'miss', ms: 450 }),
+      reactionCell(1, 3, F, { kind: 'phew', ms: 400 }, 'goalie'),
+      reactionCell(1, 4, Q, { kind: 'phew', ms: 400 }, 'goalie'),
+      reactionCell(2, 0, F, { kind: 'protest', ms: 450, look: -Math.PI / 2 }),
+      reactionCell(2, 1, Q, { kind: 'protest', ms: 450, look: -Math.PI / 2 }),
+      reactionCell(2, 2, 0, { kind: 'protest', ms: 450, look: -Math.PI / 2 }),
+      reactionCell(2, 3, F, { kind: 'own', ms: 400 }),
+      reactionCell(2, 4, Q, { kind: 'own', ms: 400 }),
+      reactionCell(3, 0, F, { kind: 'card', ms: 350, pen: true, look: -Math.PI / 2 }),
+      reactionCell(3, 1, Q, { kind: 'card', ms: 1400, pen: true }, 'defender', true),
+      reactionCell(3, 2, -Q, { kind: 'card', ms: 1400, pen: true }, 'defender', true),
+      reactionCell(3, 3, F, { kind: 'pat', ms: 260, side: 1 }, 'defender', true),
+      reactionCell(3, 4, Q, { kind: 'pat', ms: 260, side: -1 }, 'defender', true),
+    ]
+  },
 }
