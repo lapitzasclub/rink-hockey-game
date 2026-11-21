@@ -21,6 +21,9 @@ export const WORLD_PX_PER_M = {
 /** Exageración uniforme de toda figura humana, por legibilidad. Se ajusta solo en el Gate A. */
 export const FIGURE_EXAG = 1.15
 
+/** R-06 (D-04): colores del apuntado de libre indirecto y saque de centro; verde = línea libre, rojo = un rival la tapa. */
+export const AIM_PASS = { open: 0x7dffb0, blocked: 0xff6a5a } as const
+
 /**
  * Cámara estenopeica única (SPEC §2), en px de mundo.
  *

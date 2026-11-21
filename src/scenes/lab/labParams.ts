@@ -49,6 +49,8 @@ export interface LabParams {
   /** L-02 (`lab=match`): `sp=force` pita al empezar un penalti o directo (`kind`) a favor de `taker`. */
   spForce: boolean
   spTaker: 'blue' | 'red'
+  /** R-06: `kind=free` pita un libre indirecto en vez de penalti o directo (capturas del apuntado). */
+  spFree: boolean
   /** ms tras el pitido del duelo (o `end+N`: tras su final) a los que se congela. */
   spAt: string | null
   /** Stick fijo de la persona durante el duelo (`x,y`, ejes de pantalla). */
@@ -98,6 +100,7 @@ export function readLabParams(search: string): LabParams {
     finalShot: q.get('final') === '1',
     spForce: q.get('sp') === 'force',
     spTaker: q.get('taker') === 'red' ? 'red' : 'blue',
+    spFree: q.get('kind') === 'free',
     spAt: q.get('spAt'),
     spStick: (() => {
       const v = (q.get('spStick') ?? '').split(',').map(Number)

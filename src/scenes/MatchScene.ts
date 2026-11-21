@@ -52,7 +52,7 @@ import { createRuleState, registerAnnulledGoal, registerGoalieZoneFoul, type Rul
 import { updatePassivity } from '../game/systems/passivity'
 import type { PassivityHud } from '../game/ui/passivityHud'
 import { getGoalLineX } from '../game/utils'
-import { peekAIPassAim, setAIPassAim } from '../game/systems/targeting'
+import { peekAIPassAim, setAIPassAim, getBestPassTarget, laneBlockPenalty } from '../game/systems/targeting'
 import {
   resetKickoffState,
   startBullyState,
@@ -74,7 +74,7 @@ import { matchTime, tickMatchClock } from '../game/systems/matchClock'
 import { getDifficulty, getHalfRealMinutes, getSetPieceCamera } from '../game/ui/prefs'
 import { MatchDuel, type DuelEnd } from '../game/setpiece/duel'
 import { SetPieceScene } from '../game/setpiece/scene'
-import { PX_PER_M } from '../game/render/artSpec'
+import { PX_PER_M, AIM_PASS } from '../game/render/artSpec'
 import { attackDir } from '../game/formation'
 import { checkChanceScale, configureMatchDifficulty, getTeamDifficulty, mateStealRoll } from '../game/systems/difficulty'
 import { autopilot, updateControlledPlayerMotion, updateTeamAIPlayers } from '../game/systems/playerControl'
@@ -1733,6 +1733,25 @@ export class MatchScene extends Phaser.Scene {
     const maxDist = sanction === 'penalty' ? 265 : 195
     const color = sanction === 'penalty' ? 0xff8833 : sanction === 'direct-free-hit' ? 0xffdd55 : 0xe0ecff
     const pulse = 0.35 + 0.22 * Math.sin(timeNow * 0.007)
+
+    // R-06: en el libre indirecto / saque de centro se marca al receptor del pase real y si la línea está tapada
+    const receiver = sanction === 'free-hit' ? getBestPassTarget(this.players, taker) : null
+    if (receiver) {
+      const pc = laneBlockPenalty(this.players, taker, receiver) === 0 ? AIM_PASS.open : AIM_PASS.blocked
+      const dx = receiver.pos.x - taker.pos.x
+      const dy = receiver.pos.y - taker.pos.y
+      const dist = Math.hypot(dx, dy) || 1
+      for (let d = 22; d < dist - 12; d += 15) {
+        const t = d / dist
+        const sp = worldToScreen(taker.pos.x + dx * t, taker.pos.y + dy * t)
+        this.aimIndicator.fillStyle(pc, Math.min(1, pulse * 1.6) * (1 - t * 0.3))
+        this.aimIndicator.fillCircle(sp.x, sp.y, Math.max(2, 3.5 * (1 - t * 0.3)))
+      }
+      const rp = worldToScreen(receiver.pos.x, receiver.pos.y)
+      this.aimIndicator.lineStyle(3, pc, Math.min(1, pulse * 1.7))
+      this.aimIndicator.strokeCircle(rp.x, rp.y, 14)
+      return
+    }
 
     for (let d = 22; d <= maxDist; d += 15) {
       const t = d / maxDist

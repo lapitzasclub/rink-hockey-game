@@ -183,11 +183,13 @@ export function forceSetPiece(match: Phaser.Scene, p: LabParams) {
         const penalty = p.kind === 'penalty'
         s.ruleState.pendingFoul = {
           againstTeam: by.team, byPlayerId: by.id, victimPlayerId: taker.id, restartX: taker.pos.x, restartY: taker.pos.y,
-          message: penalty ? 'PENALTI' : 'LIBRE DIRECTO', sanction: penalty ? 'penalty' : 'direct-free-hit',
+          message: p.spFree ? 'LIBRE INDIRECTO' : penalty ? 'PENALTI' : 'LIBRE DIRECTO',
+          sanction: p.spFree ? 'free-hit' : penalty ? 'penalty' : 'direct-free-hit',
         }
       }
       const d = s.duel
-      if (p.spStick) { s.joystickInput.x = d.active ? p.spStick.x : 0; s.joystickInput.y = d.active ? p.spStick.y : 0 }
+      const aiming = d.active || (p.spFree && !!s.activeFoulRestart)
+      if (p.spStick) { s.joystickInput.x = aiming ? p.spStick.x : 0; s.joystickInput.y = aiming ? p.spStick.y : 0 }
       // Pitido: empieza el duelo o (cámara clásica) el lanzador ya puede golpear
       const f = s.activeFoulRestart as { readyAt: number } | null
       if (d.active) whistle = d.startedAt

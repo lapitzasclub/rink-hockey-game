@@ -184,7 +184,7 @@ export function getBestPassTarget(players: Player[], player: Player): Player | n
 }
 
 /** Penalización (0..PASS_LANE_BLOCK_PENALTY) por rivales cerca de la línea pasador→receptor. */
-function laneBlockPenalty(players: Player[], from: Player, to: Player) {
+export function laneBlockPenalty(players: Player[], from: Player, to: Player) {
   const sx = to.pos.x - from.pos.x
   const sy = to.pos.y - from.pos.y
   const len2 = sx * sx + sy * sy || 1

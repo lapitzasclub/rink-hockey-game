@@ -21,7 +21,7 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 | R-02 | Cinco segundos tras el saque | regla-builder · sonnet | R-01 | ✅ |
 | R-03 | Gol directo de saque o libre indirecto anulado | regla-builder · sonnet | R-02 | ✅ |
 | R-04 | El visitante abre el partido | coordinador | — | ✅ |
-| R-06 | Apuntado del libre indirecto: receptor y línea de pase | regla-builder · sonnet | R-03 | ⏳ |
+| R-06 | Apuntado del libre indirecto: receptor y línea de pase | regla-builder · sonnet | R-03 | ✅ |
 | R-99 | Cierre: humo 20 × 2 modos y partido del usuario | regla-qa · haiku | R-01..R-04 | ⏳ |
 
 ## R-05 — Contadores del saque en el humo y base
@@ -62,6 +62,7 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 - **Objetivo:** mientras apunta la persona, el indicador marca al compañero que recibiría el pase (el mismo que elegiría `tryPass`) y la línea de pase, libre o tapada por un rival. También en el saque de centro de R-01, que usa el mismo apuntado.
 - **Diagnóstico pendiente:** `MatchScene.drawAimIndicator` (llamado ~1536) y la elección de receptor de `tryPass`; el coordinador da rangos al despachar. Indicador horneado o reutilizado, sin formas nuevas por fotograma (perf §5); colores en `artSpec.ts`.
 - **Aceptación:** build; 3 capturas `at=foul` (libre con línea libre, tapada y en saque de centro); humo de 5 sin cambios fuera de ruido (solo pinta).
+- **Hecho:** `drawAimIndicator` marca con `getBestPassTarget` al receptor (aro) y la línea de puntos, verde `AIM_PASS.open` o rojo `AIM_PASS.blocked` según `laneBlockPenalty`. La IA suelta el libre al pitar, así que el indicador solo se ve cuando saca la persona; capturas con `sp=force&kind=free&taker=blue&spAt=400` (opción nueva del laboratorio). La de línea tapada se sacó invirtiendo el color a mano un momento; el saque de centro usa el mismo dibujo y no se capturó (la IA lo suelta en pocos pasos).
 
 ## R-99 — Cierre
 
