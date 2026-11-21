@@ -88,6 +88,7 @@ import { celebrateGoal } from '../game/render/puppet/actions'
 import { CameraDirector } from '../game/systems/cameraDirector'
 import { createOfficials, type Officials } from '../game/systems/officials'
 import { ArcadeFx } from '../game/render/arcadeFx'
+import { RinkFx } from '../game/render/rinkFx'
 import { ARCADE_HUD_TOUCH_DY, createArcadeHud, type ArcadeHud } from '../game/ui/arcadeHud'
 import { HudLayout, safeAreaInsetsCss } from '../game/ui/hudLayout'
 import { crowdAnimated, onQualityChange, particleDensity, qualityWatchEnabled } from '../game/render/quality'
@@ -178,6 +179,8 @@ export class MatchScene extends Phaser.Scene {
   labTouch: boolean | null = null
   private arcade: ArcadeController | null = null
   private fx: ArcadeFx | null = null
+  /** E-16: polvo de ruedas, marcas de goma e impactos (los dos modos). */
+  private rinkFx: RinkFx | null = null
   private arcadeHud: ArcadeHud | null = null
   private crowd: { setIntensity(v: number): void, stop(): void } | null = null
   private arena!: Arena
@@ -341,6 +344,7 @@ export class MatchScene extends Phaser.Scene {
     this.leftGoalNet  = bakeGraphics(nets.left, 'net-left', true)
     this.rightGoalNet = bakeGraphics(nets.right, 'net-right', true)
     this.createInput()
+    this.rinkFx = new RinkFx(this, this.isArcade)
     if (this.isArcade) {
       this.fx = new ArcadeFx(this, (build) => this.withUi(build), particleDensity())
       // Antes que los jugadores: la capa de powerups queda por debajo
@@ -402,6 +406,8 @@ export class MatchScene extends Phaser.Scene {
       this.crowd = null
       this.arcade?.destroy()
       this.fx?.destroy()
+      this.rinkFx?.destroy()
+      this.rinkFx = null
       resetArcadeMods()
       stopAnnouncer()
     })
@@ -641,6 +647,7 @@ export class MatchScene extends Phaser.Scene {
       if (controlled && !hidden) updateVisuals(this.players, controlled, this.ball, this.ballCarrierId, vt)
       // Partículas: tantas emisiones como pasos de simulación, para que la densidad no dependa de los fps
       this.arcade?.postVisuals(this.players, this.ball, this.ballVelocity, vt, this.restartAt > 0 || this.matchEnded ? 0 : steps)
+      this.rinkFx?.update(this.players, this.ball, this.ballVelocity, vt, steps, !hidden && this.restartAt <= 0 && !this.matchEnded, this.ballCarrierId)
     } finally {
       this.restoreInterpolation()
     }

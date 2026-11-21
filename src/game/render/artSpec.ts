@@ -1174,3 +1174,76 @@ export const SETPIECE_FOLLOW = {
   /** Altura (m) sobre el punto a la que apunta el zoom del partido. */
   zoomLiftM: 0.6,
 } as const
+
+/**
+ * E-16: partículas de pista en los dos modos (`render/rinkFx.ts`). Velocidades en px de mundo/s,
+ * aceleraciones en px/s², tamaños en m (× `PX_PER_M`) y tiempos en ms. Los rangos `[a, b]` son
+ * umbral y lleno (intensidad 0 → 1) o mínimo y máximo de un aleatorio.
+ */
+export const RINK_FX = {
+  /** Imágenes preasignadas por nivel: partículas y tramos de goma (marcas solo en alta y media). */
+  budget: {
+    particles: { alta: 240, media: 170, baja: 90 },
+    marks: { alta: 200, media: 110, baja: 0 },
+  },
+  /**
+   * Reglamento sobrio, arcade más vivo: emisión y alfa de las ruedas, hitRate/hitAlpha de los golpes
+   * (bola en valla o palo y choques, que deben leerse también en reglamento) y chispas solo en arcade.
+   */
+  mode: {
+    reglamento: { rate: 0.9, alpha: 0.9, hitRate: 1.8, hitAlpha: 1, sparks: false },
+    arcade: { rate: 1.3, alpha: 1, hitRate: 1.3, hitAlpha: 1, sparks: true },
+  },
+  colors: {
+    dust: 0xdde4ee,
+    chip: 0xf3efe6,
+    rubber: 0x0a0e16,
+    sparks: [0xffffff, 0xffe6a8, 0xffb64d] as ReadonlyArray<number>,
+    flash: 0xffffff,
+    flashPost: 0xfff0c0,
+    flashHit: 0xf4f8ff,
+  },
+  /**
+   * Ruedas. Frenada: deceleración a lo largo de la marcha; derrape: aceleración lateral; arranque:
+   * aceleración hacia delante con turbo por debajo de `startMaxSpeed`. Solo por encima de `minSpeed`
+   * (frenada y derrape). Intensidad suavizada en `smoothMs`; `rate` motas por paso a intensidad 1,
+   * una nube cada `puffEvery` motas; patines a ±`gapM` del centro.
+   */
+  skate: {
+    minSpeed: 150,
+    brake: [1250, 2400] as const,
+    skid: [1050, 2000] as const,
+    start: [700, 1500] as const,
+    startMaxSpeed: 300,
+    smoothMs: 45,
+    gapM: 0.15,
+    rate: 2.4,
+    puffEvery: 3,
+    sparkRate: 0.3,
+    sparkFrom: 0.65,
+    speck: { speed: [45, 140] as const, vz: [25, 95] as const, sizeM: [0.06, 0.1] as const, lifeMs: [260, 460] as const, alpha: 0.75, spreadDeg: 30, gravity: 900, drag: 3 },
+    puff: { speed: [12, 40] as const, vz: [6, 18] as const, sizeM: [0.22, 0.62] as const, lifeMs: [420, 680] as const, alpha: 0.22, drag: 2.5 },
+    spark: { speed: [120, 260] as const, vz: [30, 110] as const, sizeM: 0.22, lifeMs: [140, 240] as const, alpha: 0.9, gravity: 1400 },
+  },
+  /**
+   * Marcas de goma: un tramo por patín cada `segM` m mientras la frenada o el derrape pasan de `on`.
+   * Ancho (m), alfa a intensidad 1, vida por nivel y fracción de vida en que empiezan a desvanecerse.
+   */
+  marks: { on: 0.45, segM: 0.32, widthM: 0.075, alpha: 0.2, lifeMs: { alta: 7000, media: 4500, baja: 0 }, fadeFrom: 0.5 },
+  /**
+   * Bola contra valla o poste: se detecta por la inversión de la componente normal a menos de `tolPx`
+   * de la valla (o a `postPx` del poste). `speed` umbral y lleno de la velocidad de llegada. No cuenta
+   * como palo si un jugador está a menos de `nearK` × (su radio + el de la bola) o cambia el poseedor.
+   * `minSpecks`: motas mínimas del golpe (también en calidad baja).
+   */
+  ball: { tolPx: 6, postPx: 14, minSpecks: 3, nearK: 1.2, speed: [170, 650] as const, cooldownMs: 90, specks: [4, 12] as const, sparks: [5, 12] as const },
+  /**
+   * Choques de jugadores: `player.bump` (E-15) reciente (`recentMs`) o, sin él, el frenazo de la velocidad
+   * de acercamiento de dos jugadores en contacto (`fallbackGap` px de holgura). `strength` umbral y lleno
+   * (px/s); a partir de `fall`, polvo de caída en los patines. Golpe a `hipM` de altura, con tamaño y alfa
+   * desde `minK` (el choque flojo también se lee), nubes × `puffK` y destello adelantado `frontPx` en el orden por y.
+   */
+  bump: { recentMs: 160, strength: [110, 420] as const, fall: 380, cooldownMs: 320, hipM: 0.6, fallbackGap: 6, fallbackKeep: 0.45, minK: 0.4, frontPx: 30, puffK: 1.7 },
+  /** Destellos: vida, tamaño (m) por tipo y alfa por modo. */
+  flash: { lifeMs: [150, 220] as const, boardM: 0.7, postM: 0.85, hitM: 1.15, alpha: { reglamento: 1, arcade: 0.9 } },
+} as const
