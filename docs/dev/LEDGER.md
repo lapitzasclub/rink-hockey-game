@@ -15,4 +15,5 @@ Una fila por paquete cerrado, de cualquier workflow (`/dev`, `/gfx`, `/perf`, `/
 | 2026-11-21 | regla R-03 gol directo anulado | regla-builder (sonnet) | 1 | 55 | 9,2 | aceptado | el caso forzado no llegaba a puerta y arcade descartaba el libre: lo arregló el coordinador (~10 líneas) con trazas en consola |
 | 2026-11-21 | regla R-06 apuntado del libre indirecto | regla-builder (sonnet) | 1 | 30 | 0,9 | aceptado | no vio el indicador (la IA suelta al pitar); el coordinador añadió `kind=free` al laboratorio y reforzó el trazo |
 | 2026-11-21 | regla R-99 cierre (humo 20 × 2) | coordinador | — | — | — | humo aceptado | falta el partido del usuario |
+| 2026-11-21 | evo E-19 celebraciones y parones | gfx-engineer (opus) + perf-qa (haiku) | 2 | 146 + 38 | 43,8 + 3,9 | aceptado | 305 herramientas; encargo sin presupuesto (anterior a §3.9): 241 en la 1.ª ronda; con tope M la 2.ª fueron 64. QA con los dos humos en paralelo: 9 herramientas |
 | 2026-11-21 | bug: libre pegado a la valla bloquea el saque | coordinador | 1 | — | ~10 | hecho | trivial sin agente; caso nuevo `wall=1` en el laboratorio; la 1.ª captura salió en arcade (pasar `mode=reglamento`) |

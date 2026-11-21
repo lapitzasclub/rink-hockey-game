@@ -321,7 +321,7 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 ### 2026-11-21 — gasto de IA en todos los workflows
 
 - `docs/dev/WORKFLOW.md` §3.9–3.14 a partir del LEDGER: presupuesto S/M/L por encargo con corte a PARCIAL, escena de laboratorio antes que partido en vivo, humos de los dos modos en paralelo, scout si el encargo pide abrir más de 3 archivos, worktree estanco y revisión del LEDGER cada 5 paquetes. `/dev` y CLAUDE.md lo recogen.
-- `/evo` E-19 (celebraciones de gol, descanso y final) en curso con `gfx-engineer` en `.claude/worktrees/e-19`.
+- `/evo` E-19 aceptado: celebraciones de gol (gesto del autor por id, piña, portero), lamento del que encaja, descanso con estiramientos y cruce chocando la mano, y final de partido. `systems/celebration.ts` (`PauseDirector`) mueve en la simulación y `render/puppet/celebrationClips.ts` pinta según `Player.mood`; celebración 2,8 s en reglamento y 3,2 s en arcade. Humo igual que la referencia en los dos modos.
 - Arreglo: libre pegado a la valla del fondo que el ejecutante tiene detrás. Su sitio (detrás de la bola, que queda a 70 cm) caía fuera de la pista, nunca llegaba y el saque se quedaba esperando para siempre (el plazo solo cubría al resto). Ahora `foulTakerSpot` (`matchFlow.ts`) lo pone al lado de la bola hacia el centro y, vencido el plazo, se le coloca. Laboratorio: `?lab=match&mode=reglamento&sp=force&kind=free&wall=1&spAt=800`.
 
 ### 2026-11-21 — workflow de reglamento (/regla)
