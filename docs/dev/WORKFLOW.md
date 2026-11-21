@@ -8,7 +8,7 @@ Documentos hermanos: [BACKLOG.md](./BACKLOG.md) (tareas T-XX) y [LEDGER.md](./LE
 
 | Si la tarea es… | Va a | Modelo |
 |---|---|---|
-| De un dominio con workflow propio | `/gfx` (gráficos), `/perf` (rendimiento), `/bal` (equilibrio), `/lanz` (penalti y directo), `/evo` (animación, IA, física, reglas) | el del workflow |
+| De un dominio con workflow propio | `/gfx` (gráficos), `/perf` (rendimiento), `/bal` (equilibrio), `/lanz` (penalti y directo), `/regla` (saques y reglas del reglamento oficial), `/evo` (animación, IA, física) | el del workflow |
 | Trivial: ≤ ~30 líneas, archivos conocidos, sin riesgo de juego | el coordinador, sin agente | el de la sesión |
 | Hay que **localizar** código o entender un flujo antes de decidir | `dev-scout` → mapa `archivo:línea` | haiku |
 | Mecánica con especificación clara: cableado, UI, menús, CSS, textos, repetir un patrón existente, tests | `dev-builder` | sonnet |

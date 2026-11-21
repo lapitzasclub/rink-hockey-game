@@ -46,6 +46,12 @@ Juego de rink hockey 2D — Phaser 4, TypeScript, Vite. Lee [AGENTS.md](./AGENTS
 - `lanz-engineer` (opus) motor, cámara, rig cercano y animación; `ai-engineer` (opus) IA del lanzamiento; `lanz-artist` (sonnet) HUD, piezas, escenario y efectos; `bal-tuner` (sonnet) acierto; `lanz-qa` (haiku) build, capturas, lotes y papeleo.
 - Lo que solo toca el lanzamiento se mide con el lote headless (`?lab=setpiece&batch=N`), no con el humo; D-01: 2.5D en Phaser (sin Three.js); L-00 lo valida.
 
+## Workflow de reglamento
+
+- Saques (centro, libres, neutral), validez de gol y tiempos de posesión según el reglamento oficial con `/regla` según [docs/rules/WORKFLOW.md](./docs/rules/WORKFLOW.md) y [docs/rules/BACKLOG.md](./docs/rules/BACKLOG.md).
+- La única fuente de reglas para los agentes es [docs/rules/REGLAMENTO.md](./docs/rules/REGLAMENTO.md) (extracto literal de World Skate 2026); si falta un artículo, lo añade el coordinador.
+- `regla-engineer` (opus) flujo nuevo de reglas; `regla-builder` (sonnet) lo que repite un patrón; `ai-engineer` (opus) solo IA nueva; `regla-qa` (haiku) humo, capturas y papeleo.
+
 ## Comandos
 
 ```bash
