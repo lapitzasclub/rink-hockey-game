@@ -224,6 +224,42 @@ export const ACTION_POSE = {
   stickHandY: 0.78, stickHandSide: 0.24, stickTilt: 0.32,
 } as const
 
+/**
+ * Gestos de los parones (E-19, `celebrationClips`), en unidades de figura, rad y ms. Las
+ * alturas de manos van sobre el hombro (salvo `knees`/`shake`, sobre la cadera) y los x hacia
+ * el lado de cada mano. `fadeIn` entrada del gesto (la salida es `CELEBRATION.fadeMs`),
+ * `arrive` paso de la carrera al gesto final.
+ * - `relax`: de pie, erguido (`pitch`), zancada a `stride` y cabeza gacha `headDown` (pitch extra).
+ * - `carry`: stick a una mano y bajo; la pala delante (`yaw`) o arrastrada detrás (`dragYaw`).
+ * - `plane` avión (brazos en cruz, alabeo `roll` a `hz`); `fist` puño que sube y baja;
+ *   `vArms` brazos arriba en V con el stick en alto; `slide` de rodillas deslizando;
+ *   `jump` saltos (`h`, cada `period`, agachándose `crouch`); `point` señala a la grada.
+ * - Piña: `hug` brazo al hombro del autor; `clash` sticks arriba al centro.
+ * - Cabizbajo: `knees` manos en las rodillas, `hips` en la cadera, `helmet` en el casco.
+ * - `five` choque de manos, `stretch` estiramientos del descanso, `shake` apretón del saludo.
+ * - `goalie`: portero erguido y relajado (`stride`/`lift` de su patinaje al cruzar).
+ */
+export const MOOD_POSE = {
+  fadeIn: 300, arrive: 260,
+  relax: { pelvisY: 0.5, pitch: 0.1, stride: 0.5, headDown: 0.34 },
+  carry: { handX: 0.17, handDrop: 0.03, handZ: 0.05, yaw: 0.35, dragYaw: 2.6, freeX: 0.17, freeDrop: 0.05 },
+  plane: { armX: 0.36, armY: 0.02, roll: 0.22, hz: 0.6, pitch: 0.3 },
+  fist: { x: 0.15, low: 0.12, high: 0.27, hz: 1.6, z: 0.04 },
+  vArms: { x: 0.2, y: 0.25, z: 0.04, pump: 0.03, hz: 1.5, pitch: -0.06 },
+  slide: { pelvisY: 0.27, footZ: -0.25, footY: -0.03, footPitch: 0.8, pitch: -0.2, poleY: -0.8 },
+  jump: { h: 0.11, period: 640, crouch: 0.045 },
+  point: { x: 0.3, y: 0.12, z: 0.18, twist: 0.22, stickY: 0.27 },
+  hug: { x: 0.06, y: 0.02, z: 0.26, pitch: 0.26, bounce: 0.03, hz: 1.8 },
+  clash: { y: 0.2, z: 0.12, pump: 0.03, hz: 1.8 },
+  knees: { pelvisY: 0.43, pitch: 0.95, handX: 0.085, handY: 0.3, handZ: 0.16 },
+  hips: { x: 0.155, y: -0.2, z: -0.02, pitch: 0.12 },
+  helmet: { x: 0.05, y: 0.15, z: 0.07, pitch: 0.3 },
+  five: { ms: 650, x: 0.18, y: 0.28, z: 0.14 },
+  stretch: { delay: 700, hz: 0.4, roll: 0.26, twist: 0.45, ramp: 400 },
+  shake: { ms: 1100, y: 0.13, z: 0.3, amp: 0.02, hz: 4 },
+  goalie: { pelvisY: 0.47, pitch: 0.08, stride: 0.1, lift: 0.03, mittX: 0.21, mittY: 0.42, handX: 0.19, handY: 0.4, handZ: 0.12 },
+} as const
+
 // ─── Portero (WP-33) ───
 
 /**

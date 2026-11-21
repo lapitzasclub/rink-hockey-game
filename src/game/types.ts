@@ -11,6 +11,14 @@ export type Role = 'goalie' | 'defender' | 'wing' | 'pivot'
 
 export type Vector = { x: number, y: number }
 
+/**
+ * Gestos de los parones (E-19): `score` el que marca, `mate` sus compañeros, `joy` alegría
+ * (portero del que marca y ganadores), `down` cabizbajo (el que encaja y los que pierden),
+ * `keeperDown` el portero que encaja, `rest` descanso, `cross` cruce de campo, `greet` saludo del empate.
+ */
+export type MoodKind = 'score' | 'mate' | 'joy' | 'down' | 'keeperDown' | 'rest' | 'cross' | 'greet'
+export type PlayerMood = { kind: MoodKind; style: number; at: number; until: number; hit: number; side: 1 | -1 }
+
 export type Ball = {
   x: number           // coordenada X mundo — usada por física
   y: number           // coordenada Y mundo — usada por física
@@ -61,6 +69,13 @@ export type Player = {
   nameTag?: Phaser.GameObjects.Text | null
   stickSwingUntil?: number
   anim?: { type: 'pass' | 'shot' | 'turbo' | 'steal' | 'receive' | 'check' | 'celebrate' | 'save'; at: number; save?: 'split' | 'glove' | 'stick' | 'body'; side?: 1 | -1 }
+  /**
+   * Gesto de los parones (E-19): lo pone `systems/celebration.ts` en la simulación y la pose
+   * lo lee. `at`/`until` en `simNow` (`until` = Infinity: hasta el final), `hit` = llegada al
+   * abrazo, choque de manos o saludo (Infinity: aún no), `style` = variante fija por id y
+   * `side` = lado (±1, derecha del jugador) del compañero en el choque de manos.
+   */
+  mood?: PlayerMood
   /** Último choque con otro jugador o con la valla (E-15): impulso recibido en px/s y su `simNow`. Lo lee la animación (E-17). */
   bump?: { x: number, y: number, at: number }
   /** Angulo del stick en coordenadas mundo; el render puede usar otro por perspectiva. */

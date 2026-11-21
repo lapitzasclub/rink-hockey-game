@@ -10,6 +10,7 @@
 import * as Phaser from 'phaser'
 import type { Player } from '../../types'
 import { GOALIE_BREATH, GOALIE_MOVE, GOALIE_POSTURE, GOALIE_VIEW } from '../artSpec'
+import { goalieMoodKneel } from './celebrationClips'
 import { goalieClip } from './goalieClips'
 import type { PoseContext, PuppetPose } from './pose'
 import { aimStick } from './upperBody'
@@ -57,7 +58,7 @@ function posture(ctx: PoseContext): number {
 }
 
 export function goaliePose(pose: PuppetPose, ctx: PoseContext) {
-  const k = posture(ctx)
+  const k = goalieMoodKneel(ctx, posture(ctx))
   const s = ctx.stickSide === 1 ? 1 : -1
   const M = GOALIE_MOVE
   // Desplazamiento lateral: pasos cortos de pie, deslizamiento de rodillas
