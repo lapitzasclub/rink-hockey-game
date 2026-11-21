@@ -37,5 +37,5 @@ Art. 7.4: un gol a la vez que la señal de fin de periodo vale y no hay saque de
 | 5.4 saca el que encaja | ✅ | — |
 | 5.5 colocación | ✅ (`matchFlow.kickoffTarget`) | — |
 | 5.6 balón en juego al pitar | ✅ | — |
-| 5.7 cinco segundos | ❌ solo el límite general de 10 s (`PASSIVITY.ownHalfMs`) | R-02 |
-| 5.8 / 7.3.b gol directo de saque o libre indirecto | ❌ el gol sube al marcador | R-03 |
+| 5.7 cinco segundos | ✅ `PASSIVITY.kickoffMs` desde la suelta, solo reglamento | R-02 |
+| 5.8 / 7.3.b gol directo de saque o libre indirecto | ✅ anulado y reanudado en la esquina del área (`directRestart.ts`) | R-03 |

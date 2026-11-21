@@ -325,6 +325,8 @@ El juego empezó renderizado por código, pero ya admite assets visuales en `pub
 - R-05: `kickoffStats.ts` (tracker como `goaliePassStats`) mide en el humo acarreo, cruce a campo rival y pérdidas del saque; evento `at=kickoff` en labAt (requiere `auto=1`). Base en `docs/rules/smoke/2026-11-21-base-*.txt`: hoy el que saca suelta la bola al primer paso y cruza siempre, el rival nunca la gana en 3 s (142 saques reglamento, 145 arcade).
 - R-04: abre el partido el rojo visitante y la 2.ª parte el azul (art. 5.3, D-02).
 - R-01: al pitar el saque de centro el que saca ya no conduce: apunta y suelta como en el libre indirecto (`matchFlow.updateKickoffTakeState`, `MatchScene.takeKickoff`, apuntado común `aimSetPieceTaker`). El rojo pasa al compañero a los `KICKOFF_AI_AIM_MS`; la persona tiene `KICKOFF_AUTO_MS` antes del pase automático (D-05). Humo 20 × 2: goles/min, pases y posesión dentro de ruido; `at=kickoff` y `kickoffStats` ven el fin del saque en la suelta.
+- R-02: 5 s tras el saque (art. 5.7, solo reglamento): marca `kickoffTeam/kickoffAt` en `PassivityState` desde `takeKickoff`, límite `PASSIVITY.kickoffMs` con `limitKind` 'kickoff', HUD `SAQUE n`. Humo 20: 0 libres por 5 s (la IA cruza a ~300 ms), resto en ruido.
+- R-03: gol directo anulado (arts. 5.8, 7.3.b) en `systems/directRestart.ts`: marca al soltar saque o libre indirecto, se borra con portador, portero, roce o poste (`ballFrameHit.post`); `checkGoalState` anula y `rules.registerAnnulledGoal` reanuda (libre indirecto o neutral en `areaCorner`; en arcade, bola saltando). `?koshot=1` (DEV) lo fuerza en el laboratorio. Humo 20 × 2: 0 anulados en IA contra IA, resto en ruido.
 
 ### 2026-11-21 — workflow general (/dev) y gasto de IA
 

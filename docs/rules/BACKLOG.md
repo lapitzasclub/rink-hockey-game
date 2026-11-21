@@ -18,8 +18,8 @@ Paquetes R-XX y decisiones D-XX. Reglas citadas por artículo de [REGLAMENTO.md]
 |---|---|---|---|---|
 | R-05 | Contadores del saque en el humo y base | regla-builder · sonnet | — | ✅ |
 | R-01 | Saque de centro con pase | regla-builder · sonnet | R-05 | ✅ |
-| R-02 | Cinco segundos tras el saque | regla-builder · sonnet | R-01 | ⏳ |
-| R-03 | Gol directo de saque o libre indirecto anulado | regla-builder · sonnet | R-02 | ⏳ |
+| R-02 | Cinco segundos tras el saque | regla-builder · sonnet | R-01 | ✅ |
+| R-03 | Gol directo de saque o libre indirecto anulado | regla-builder · sonnet | R-02 | ✅ |
 | R-04 | El visitante abre el partido | coordinador | — | ✅ |
 | R-06 | Apuntado del libre indirecto: receptor y línea de pase | regla-builder · sonnet | R-03 | ⏳ |
 | R-99 | Cierre: humo 20 × 2 modos y partido del usuario | regla-qa · haiku | R-01..R-04 | ⏳ |
