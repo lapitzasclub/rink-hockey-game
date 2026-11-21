@@ -3,6 +3,8 @@
  * orquesta la pose del rig por capas:
  *   pose = locomotion(…) ⊕ upperBody(…) ⊕ actions(…)   (portero: goaliePose)
  *   rig.apply(pose)
+ * La locomoción lleva dentro la animación secundaria (E-17, puppet/secondary.ts): muelles de
+ * peso, brazos con retardo y reacción a `player.bump`, con el dt del pintado ya acotado.
  * y coloca sombra, anillo, barra de stamina y etiqueta.
  */
 import * as Phaser from 'phaser'

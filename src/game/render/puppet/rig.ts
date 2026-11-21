@@ -200,10 +200,11 @@ export class PuppetRig {
     }
 
     for (let i = 0; i < 2; i++) {
-      // El patín cabecea en pantalla según cuánto se le ve de lado
+      // El patín cabecea en pantalla según cuánto se le ve de lado y se ladea (canto) según cuánto de frente
       const f = pose.feet[i]
       const slot = this.slots[this.slotOfFoot(i)]
-      slot.img.rotation = f.pitch * Math.sin(pose.yaw - f.yaw)
+      const rel = pose.yaw - f.yaw
+      slot.img.rotation = f.pitch * Math.sin(rel) - f.roll * Math.cos(rel)
     }
 
     const hs = pose.headScale

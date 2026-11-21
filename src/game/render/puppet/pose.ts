@@ -31,6 +31,8 @@ export interface FootPose {
   yaw: number
   /** Cabeceo del patín: > 0 = punta abajo (freno frontal apoyado). */
   pitch: number
+  /** Canto del patín (E-17): > 0 = la caña cae hacia la derecha del patín. */
+  roll: number
 }
 
 export interface StickPose {
@@ -56,6 +58,8 @@ export interface PuppetPose {
   trunk: { pitch: number; roll: number; twist: number }
   /** Giro de la cabeza respecto al cuerpo (mirada); cambia la textura de cabeza que se usa. */
   headYaw: number
+  /** Desplazamiento de la cabeza respecto al cuello (E-17): la estabiliza contra el balanceo. */
+  headLean: { x: number; z: number }
   feet: [FootPose, FootPose]
   /** Objetivos IK de mano para las manos que no agarran el stick. */
   hands: [V3, V3]
@@ -95,7 +99,7 @@ export interface PoseContext {
   stickSide: Side
 }
 
-const foot = (): FootPose => ({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0 })
+const foot = (): FootPose => ({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 })
 
 export function createPose(): PuppetPose {
   return {
@@ -103,6 +107,7 @@ export function createPose(): PuppetPose {
     pelvis: v3(0, 0.45, 0),
     trunk: { pitch: 0, roll: 0, twist: 0 },
     headYaw: 0,
+    headLean: { x: 0, z: 0 },
     feet: [foot(), foot()],
     hands: [v3(), v3()],
     kneePole: [v3(), v3()],
@@ -116,10 +121,11 @@ export function createPose(): PuppetPose {
 export function resetPose(p: PuppetPose) {
   p.trunk.pitch = 0; p.trunk.roll = 0; p.trunk.twist = 0
   p.headYaw = 0
+  p.headLean.x = 0; p.headLean.z = 0
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? -1 : 1
     const f = p.feet[i]
-    f.x = s * 0.09; f.y = 0; f.z = 0; f.yaw = s * 0.15; f.pitch = 0
+    f.x = s * 0.09; f.y = 0; f.z = 0; f.yaw = s * 0.15; f.pitch = 0; f.roll = 0
     const kp = p.kneePole[i]
     kp.x = s * 0.15; kp.y = 0; kp.z = 1
     const ep = p.elbowPole[i]

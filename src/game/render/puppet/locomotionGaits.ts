@@ -16,6 +16,8 @@ export interface GaitIn {
   amp: number
   /** 0 = crucero (desliza) … 1 = empuje a tope (acelerando). */
   drive: number
+  /** Empuje real por aceleración 0..1 (sin el que la espera fuerza en drive). */
+  push: number
   sprint: number
   phase: number
   /** Sentido del cruce: 1 = gira hacia la derecha del jugador. */
@@ -75,10 +77,17 @@ export function strideGait(out: PuppetPose, g: GaitIn) {
   const d = g.drive
   const sp = g.sprint
   base(out, lerp(lerp(L.knee.glide, L.knee.drive, d), L.knee.sprint, sp), lerp(lerp(L.pitch.glide, L.pitch.drive, d), L.pitch.sprint, sp))
-  const amp = g.amp * lerp(L.cruiseAmp, 1, d) * lerp(1, L.sprintAmp, sp)
+  // Arranque (E-17): con empuje real y aún sin velocidad, zancadas marcadas y en V
+  const a0 = Math.min(1, g.amp)
+  const start = g.push * (1 - a0)
+  const K = L.start
+  const amp = (g.amp + (1 - a0) * g.push * K.amp) * lerp(L.cruiseAmp, 1, d) * lerp(1, L.sprintAmp, sp)
   const duty = lerp(L.cruiseDuty, 1, Math.max(d, sp))
   const P = L.push * duty
   const R = L.rec * duty
+  const side = L.out + K.out * start
+  const back = L.back * (1 - K.back * start)
+  const pushYaw = L.pushYaw + K.yaw * start
   let lean = 0
   for (let i = 0; i < 2; i++) {
     const s = i === 0 ? -1 : 1
@@ -87,17 +96,17 @@ export function strideGait(out: PuppetPose, g: GaitIn) {
     if (u < P) {
       const e = smooth01(u / (P * (1 - L.extHold)))
       ext = e
-      x = L.out * e
-      z = -L.back * e
-      yaw = lerp(L.restYaw, L.pushYaw, e)
+      x = side * e
+      z = -back * e
+      yaw = lerp(L.restYaw, pushYaw, e)
     } else if (u < P + R) {
       const t = (u - P) / R
       const e = smooth01(t)
       ext = 1 - e
-      x = L.out * (1 - e)
-      z = lerp(-L.back, L.fore, e)
+      x = side * (1 - e)
+      z = lerp(-back, L.fore, e)
       y = L.lift * Math.sin(Math.PI * t)
-      yaw = lerp(L.pushYaw, L.restYaw, e)
+      yaw = lerp(pushYaw, L.restYaw, e)
       pitch = L.recPitch * Math.sin(Math.PI * t)
     } else {
       z = L.fore * (1 - (u - P - R) / (1 - P - R))
@@ -107,7 +116,7 @@ export function strideGait(out: PuppetPose, g: GaitIn) {
   }
   lean *= Math.min(1, amp)
   out.pelvis.x = lean * L.shift
-  out.pelvis.y -= Math.abs(lean) * L.bob
+  out.pelvis.y -= Math.abs(lean) * L.bob * (1 + K.bob * g.push)
   out.trunk.roll = lean * L.roll
   out.trunk.twist = lean * L.twist
   const swing = lean * L.hand.swing * sp
